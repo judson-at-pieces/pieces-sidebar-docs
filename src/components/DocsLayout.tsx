@@ -485,7 +485,7 @@ function DocsSidebar({ className }: { className?: string }) {
                 <Link
                   to={item.href}
                   className={cn(
-                    "flex-1 flex items-center py-2 text-sm rounded-lg transition-colors break-words whitespace-normal leading-tight",
+                    "flex-1 flex items-center py-2 text-sm rounded-lg transition-colors break-words whitespace-normal leading-tight text-left",
                     paddingClass,
                     item.isBold && "font-bold",
                     isActive(item.href)
@@ -493,12 +493,12 @@ function DocsSidebar({ className }: { className?: string }) {
                       : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
                   )}
                 >
-                  <span className="break-words whitespace-normal leading-tight">{item.title}</span>
+                  <span className="break-words whitespace-normal leading-tight text-left">{item.title}</span>
                 </Link>
               ) : (
                 <div className={cn("flex-1 flex items-center py-2 text-sm", paddingClass)}>
                   <span className={cn(
-                    "break-words whitespace-normal leading-tight font-semibold text-foreground",
+                    "break-words whitespace-normal leading-tight font-semibold text-foreground text-left",
                     item.isBold && "font-bold"
                   )}>
                     {item.title}
@@ -528,7 +528,7 @@ function DocsSidebar({ className }: { className?: string }) {
         key={item.href}
         to={item.href}
         className={cn(
-          "block py-2 text-sm rounded-lg transition-colors break-words whitespace-normal leading-tight",
+          "block py-2 text-sm rounded-lg transition-colors break-words whitespace-normal leading-tight text-left",
           paddingClass,
           item.isBold && "font-bold",
           isActive(item.href)
@@ -553,7 +553,7 @@ function DocsSidebar({ className }: { className?: string }) {
                 placeholder="Search docs..."
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring"
+                className="w-full pl-10 pr-4 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring text-left"
               />
             </div>
           </div>
@@ -563,7 +563,7 @@ function DocsSidebar({ className }: { className?: string }) {
               <div key={section.title}>
                 {section.isSection ? (
                   <div>
-                    <div className="px-3 py-2 text-sm font-semibold text-foreground break-words whitespace-normal leading-tight">
+                    <div className="px-3 py-2 text-sm font-semibold text-foreground break-words whitespace-normal leading-tight text-left">
                       {section.title}
                     </div>
                     <div className="ml-2 space-y-1">
