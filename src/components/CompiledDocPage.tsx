@@ -15,15 +15,17 @@ export function CompiledDocPage() {
       return;
     }
 
-    // Clean up the path - remove any double slashes and normalize
-    let normalizedPath = path.replace(/\/+/g, '/');
+    // The router gives us paths like "desktop/copilot" but we need "/desktop/copilot"
+    let normalizedPath = path;
     if (!normalizedPath.startsWith('/')) {
       normalizedPath = `/${normalizedPath}`;
     }
     
-    // Clean up any double slashes again
+    // Clean up any double slashes
     normalizedPath = normalizedPath.replace(/\/+/g, '/');
     
+    console.log('CompiledDocPage: Router path:', path);
+    console.log('CompiledDocPage: Normalized path:', normalizedPath);
     console.log('CompiledDocPage: Looking for compiled content at:', normalizedPath);
     
     const content = getCompiledContent(normalizedPath);
