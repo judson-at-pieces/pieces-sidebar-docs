@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Github, Loader2, ExternalLink, GitBranch, Check } from 'lucide-react';
+import { Github, Loader2, ExternalLink, GitBranch, Check, RefreshCw } from 'lucide-react';
 import { githubAppService } from '@/services/githubAppService';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -40,6 +40,7 @@ export function GitHubAppRepoSelector({ onRepoConfigured }: GitHubAppRepoSelecto
   const [selectedRepo, setSelectedRepo] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [configuring, setConfiguring] = useState(false);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   useEffect(() => {
     loadInstallations();
@@ -48,28 +49,59 @@ export function GitHubAppRepoSelector({ onRepoConfigured }: GitHubAppRepoSelecto
   const loadInstallations = async () => {
     setLoading(true);
     try {
-      const installations = await githubAppService.getInstallations();
-      setInstallations(installations);
+      console.log('Loading GitHub App installations...');
       
-      if (installations.length === 0) {
-        toast.error('No installations found. Please install the GitHub App first.');
+      // First check if we have any installations in our database
+      const { data: dbInstallations, error: dbError } = await supabase
+        .from('github_installations')
+        .select('*')
+        .order('installed_at', { ascending: false });
+
+      if (dbError) {
+        console.error('Error loading installations from database:', dbError);
+        toast.error('Failed to load GitHub App installations from database');
+        setInstallations([]);
+        return;
+      }
+
+      console.log('Installations from database:', dbInstallations);
+
+      if (dbInstallations && dbInstallations.length > 0) {
+        // Convert database format to expected format
+        const formattedInstallations: GitHubInstallation[] = dbInstallations.map(install => ({
+          installation_id: install.installation_id,
+          account_login: install.account_login,
+          account_type: install.account_type,
+          installed_at: install.installed_at
+        }));
+        
+        setInstallations(formattedInstallations);
+        console.log('Found installations:', formattedInstallations);
+      } else {
+        console.log('No installations found in database');
+        setInstallations([]);
       }
     } catch (error: any) {
       console.error('Error loading installations:', error);
       toast.error('Failed to load GitHub App installations');
+      setInstallations([]);
     } finally {
       setLoading(false);
+      setInitialLoading(false);
     }
   };
 
   const loadRepositories = async (installationId: number) => {
     setLoading(true);
     try {
+      console.log('Loading repositories for installation:', installationId);
       const repos = await githubAppService.getInstallationRepositories(installationId);
+      console.log('Found repositories:', repos);
       setRepositories(repos);
     } catch (error: any) {
       console.error('Error loading repositories:', error);
       toast.error('Failed to load repositories for this installation');
+      setRepositories([]);
     } finally {
       setLoading(false);
     }
@@ -95,9 +127,11 @@ export function GitHubAppRepoSelector({ onRepoConfigured }: GitHubAppRepoSelecto
     try {
       const [owner, repoName] = repo.full_name.split('/');
 
-      // Save configuration with installation ID using raw insert to avoid type issues
+      console.log('Configuring repository:', { owner, repoName, installationId: selectedInstallation });
+
+      // Save configuration with installation ID
       const { error } = await supabase
-        .from('github_config' as any)
+        .from('github_config')
         .insert({
           repo_owner: owner,
           repo_name: repoName,
@@ -119,7 +153,12 @@ export function GitHubAppRepoSelector({ onRepoConfigured }: GitHubAppRepoSelecto
     }
   };
 
-  if (loading && installations.length === 0) {
+  const handleRefreshInstallations = async () => {
+    await loadInstallations();
+    toast.success('Installations refreshed');
+  };
+
+  if (initialLoading) {
     return (
       <Card>
         <CardHeader>
@@ -151,26 +190,30 @@ export function GitHubAppRepoSelector({ onRepoConfigured }: GitHubAppRepoSelecto
         <CardContent>
           <Alert className="mb-4">
             <AlertDescription>
-              You need to install the Pieces Documentation Bot GitHub App to configure repositories for documentation editing.
+              The Pieces Documentation Bot GitHub App needs to be installed on your repositories. 
+              If you've already installed it, try refreshing to check for new installations.
             </AlertDescription>
           </Alert>
           
-          <Button 
-            onClick={() => window.open(githubAppService.getInstallationUrl(), '_blank')}
-            className="w-full"
-          >
-            <ExternalLink className="h-4 w-4 mr-2" />
-            Install Pieces Documentation Bot
-          </Button>
-          
-          <Button 
-            onClick={loadInstallations}
-            variant="outline"
-            className="w-full mt-2"
-          >
-            <Loader2 className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : 'hidden'}`} />
-            Refresh Installations
-          </Button>
+          <div className="space-y-2">
+            <Button 
+              onClick={() => window.open(githubAppService.getInstallationUrl(), '_blank')}
+              className="w-full"
+            >
+              <ExternalLink className="h-4 w-4 mr-2" />
+              Install Pieces Documentation Bot
+            </Button>
+            
+            <Button 
+              onClick={handleRefreshInstallations}
+              variant="outline"
+              className="w-full"
+              disabled={loading}
+            >
+              <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
+              Refresh Installations
+            </Button>
+          </div>
         </CardContent>
       </Card>
     );
@@ -235,10 +278,17 @@ export function GitHubAppRepoSelector({ onRepoConfigured }: GitHubAppRepoSelecto
               </SelectContent>
             </Select>
             
-            {repositories.length === 0 && !loading && (
+            {repositories.length === 0 && !loading && selectedInstallation && (
               <p className="text-sm text-muted-foreground mt-2">
                 No repositories found for this installation.
               </p>
+            )}
+
+            {loading && selectedInstallation && (
+              <div className="flex items-center space-x-2 mt-2">
+                <Loader2 className="h-4 w-4 animate-spin" />
+                <span className="text-sm text-muted-foreground">Loading repositories...</span>
+              </div>
             )}
           </div>
         )}
@@ -257,12 +307,12 @@ export function GitHubAppRepoSelector({ onRepoConfigured }: GitHubAppRepoSelecto
 
         <div className="flex space-x-2">
           <Button 
-            onClick={loadInstallations} 
+            onClick={handleRefreshInstallations} 
             variant="outline"
             disabled={loading}
             className="flex-1"
           >
-            <Loader2 className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : 'hidden'}`} />
+            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
           
