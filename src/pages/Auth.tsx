@@ -84,7 +84,7 @@ export default function Auth() {
     );
   }
 
-  // If user is not signed in, show the auth forms
+  // If user is not signed in, show the auth forms (without access code tab)
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
@@ -96,10 +96,9 @@ export default function Auth() {
         </div>
 
         <Tabs defaultValue="signin" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="signin">Sign In</TabsTrigger>
             <TabsTrigger value="signup">Sign Up</TabsTrigger>
-            <TabsTrigger value="access">Access Code</TabsTrigger>
           </TabsList>
           
           <TabsContent value="signin" className="space-y-4">
@@ -132,10 +131,6 @@ export default function Auth() {
                 </CardContent>
               </Card>
             )}
-          </TabsContent>
-
-          <TabsContent value="access" className="space-y-4">
-            <AccessCodeForm onSuccess={() => {}} />
           </TabsContent>
         </Tabs>
       </div>

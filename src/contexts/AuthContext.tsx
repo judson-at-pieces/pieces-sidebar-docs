@@ -44,9 +44,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Audit log for authentication
           auditLog.authAttempt(session.user.email || '', true, 'github');
           
-          // Only fetch roles, don't assign any automatically
+          // Check if this is a new sign-up or existing user
           setTimeout(async () => {
-            await fetchUserRoles(session.user.id);
+            await handleUserAuthentication(session.user, event);
           }, 500);
         } else {
           setUserRoles([]);
@@ -57,6 +57,65 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const handleUserAuthentication = async (user: User, event: string) => {
+    try {
+      // First, fetch current roles
+      await fetchUserRoles(user.id);
+      
+      // Check if user has any roles
+      const { data: existingRoles, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', user.id);
+
+      if (error) {
+        logger.error('Error checking user roles', { error: error.message });
+        return;
+      }
+
+      // If user has no roles, check if there's a valid unused access code
+      // that could be applied (this handles the case where someone used a code then signed up)
+      if (!existingRoles || existingRoles.length === 0) {
+        // Check for recent unused access codes that could belong to this signup
+        const { data: recentCodes } = await supabase
+          .from('admin_access_codes')
+          .select('*')
+          .is('used_by', null)
+          .eq('is_active', true)
+          .gte('expires_at', new Date().toISOString())
+          .order('created_at', { ascending: false })
+          .limit(1);
+
+        // If there's a recent valid code and this is a sign-up, assign editor role
+        if (recentCodes && recentCodes.length > 0 && event === 'SIGNED_IN') {
+          const code = recentCodes[0];
+          
+          // Mark the code as used by this user
+          await supabase
+            .from('admin_access_codes')
+            .update({ 
+              used_by: user.id, 
+              used_at: new Date().toISOString() 
+            })
+            .eq('id', code.id);
+
+          // Assign editor role
+          await supabase
+            .from('user_roles')
+            .insert({ user_id: user.id, role: 'editor' });
+
+          auditLog.roleChanged(user.id, 'editor', user.id);
+          logger.info('Editor role assigned to new user with access code');
+          
+          // Refresh roles
+          await fetchUserRoles(user.id);
+        }
+      }
+    } catch (error: any) {
+      logger.error('Error handling user authentication', { error: error.message });
+    }
+  };
 
   const fetchUserRoles = async (userId: string) => {
     try {
