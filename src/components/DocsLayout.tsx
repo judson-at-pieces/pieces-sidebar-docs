@@ -1,3 +1,5 @@
+
+
 import { useState } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -7,11 +9,6 @@ import { Menu, Search, ChevronDown, ChevronRight, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./ThemeToggle";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-
-interface DocsSidebarProps {
-  className?: string;
-  onItemClick?: () => void;
-}
 
 const navigation = [
   {
@@ -418,7 +415,7 @@ const navigation = [
   },
 ];
 
-function DocsSidebar({ className, onItemClick }: DocsSidebarProps) {
+function DocsSidebar({ className }: { className?: string }) {
   const location = useLocation();
   const [openSections, setOpenSections] = useState<string[]>([
     "Meet Pieces", 
@@ -440,8 +437,6 @@ function DocsSidebar({ className, onItemClick }: DocsSidebarProps) {
         ? prev.filter(title => title !== sectionTitle)
         : [...prev, sectionTitle]
     );
-    // Close sidebar on mobile when toggling sections
-    onItemClick?.();
   };
 
   const isActive = (href: string) => location.pathname === href;
@@ -491,7 +486,6 @@ function DocsSidebar({ className, onItemClick }: DocsSidebarProps) {
               {item.href ? (
                 <Link
                   to={item.href}
-                  onClick={onItemClick}
                   className={cn(
                     "flex-1 flex items-center py-2 text-sm rounded-lg transition-colors break-words whitespace-normal leading-tight text-left",
                     paddingClass,
@@ -535,7 +529,6 @@ function DocsSidebar({ className, onItemClick }: DocsSidebarProps) {
       <Link
         key={item.href}
         to={item.href}
-        onClick={onItemClick}
         className={cn(
           "block py-2 text-sm rounded-lg transition-colors break-words whitespace-normal leading-tight text-left",
           paddingClass,
@@ -604,10 +597,6 @@ function DocsSidebar({ className, onItemClick }: DocsSidebarProps) {
 export default function DocsLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
-  const handleSidebarItemClick = () => {
-    setSidebarOpen(false);
-  };
-
   return (
     <div className="min-h-screen bg-background">
       {/* Mobile sidebar */}
@@ -626,7 +615,7 @@ export default function DocsLayout() {
         </div>
         <SheetContent side="left" className="p-0 w-64">
           <ScrollArea className="h-full">
-            <DocsSidebar onItemClick={handleSidebarItemClick} />
+            <DocsSidebar />
           </ScrollArea>
         </SheetContent>
       </Sheet>
@@ -662,3 +651,4 @@ export default function DocsLayout() {
     </div>
   );
 }
+
