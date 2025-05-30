@@ -1,4 +1,3 @@
-
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -22,11 +21,11 @@ export function DynamicDocPage() {
       setError(null);
       
       try {
-        // Construct the full docs path since the content index uses /docs/ prefixes
-        const fullPath = `/docs/${path}`;
-        console.log('Attempting to load content for path:', fullPath);
+        // For getting-started, use the direct path without /docs/ prefix
+        const contentPath = path === 'getting-started' ? 'getting-started' : `/docs/${path}`;
+        console.log('Attempting to load content for path:', contentPath);
         
-        const contentPage = await loadMarkdownContent(fullPath);
+        const contentPage = await loadMarkdownContent(contentPath);
         console.log('Loaded content page:', contentPage);
         
         if (contentPage) {
@@ -35,7 +34,7 @@ export function DynamicDocPage() {
           console.log('Full content length:', contentPage.content.length);
           setContent(contentPage);
         } else {
-          console.log('No content found for path:', fullPath);
+          console.log('No content found for path:', contentPath);
           setError('Content not found');
         }
       } catch (err) {
