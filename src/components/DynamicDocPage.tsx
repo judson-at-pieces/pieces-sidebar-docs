@@ -96,15 +96,15 @@ export function DynamicDocPage() {
   const shouldShowTOC = !isGettingStartedPage && content.content.includes('#');
 
   return (
-    <div className="max-w-7xl mx-auto flex gap-8">
+    <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
       {/* Main content */}
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 order-2 lg:order-1">
         {/* Page header - hide for getting-started page */}
         {!isGettingStartedPage && (
           <div className="mb-8 pb-6 border-b border-border">
-            <h1 className="text-4xl font-bold mb-2">{content.metadata.title}</h1>
+            <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-2 leading-tight">{content.metadata.title}</h1>
             {content.metadata.description && (
-              <p className="text-xl text-muted-foreground mb-4">{content.metadata.description}</p>
+              <p className="text-base md:text-lg lg:text-xl text-muted-foreground mb-4">{content.metadata.description}</p>
             )}
             
             {/* Metadata */}
@@ -132,7 +132,11 @@ export function DynamicDocPage() {
       </div>
 
       {/* Table of Contents - only show when appropriate */}
-      {shouldShowTOC && <TableOfContents content={content.content} />}
+      {shouldShowTOC && (
+        <div className="order-1 lg:order-2">
+          <TableOfContents content={content.content} />
+        </div>
+      )}
     </div>
   );
 }

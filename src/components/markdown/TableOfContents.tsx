@@ -74,8 +74,42 @@ export function TableOfContents({ content }: TableOfContentsProps) {
   if (tocItems.length === 0) return null;
 
   return (
-    <div className="w-64 shrink-0">
-      <div className="sticky top-6">
+    <div className="w-full lg:w-64 shrink-0">
+      {/* Mobile TOC - collapsible */}
+      <div className="lg:hidden mb-6 border rounded-lg p-4 bg-muted/30">
+        <details className="group">
+          <summary className="flex items-center justify-between cursor-pointer list-none">
+            <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
+              On this page
+            </h3>
+            <span className="text-muted-foreground group-open:rotate-90 transition-transform">
+              ▶
+            </span>
+          </summary>
+          <nav className="mt-4 space-y-1 max-h-64 overflow-y-auto">
+            {tocItems.map((item) => (
+              <button
+                key={item.id}
+                onClick={() => scrollToHeading(item.id)}
+                className={`block w-full text-left text-sm transition-colors hover:text-foreground ${
+                  activeId === item.id 
+                    ? 'text-foreground font-medium border-l-2 border-primary' 
+                    : 'text-muted-foreground border-l-2 border-transparent'
+                } ${
+                  item.level === 1 ? 'pl-3' : 
+                  item.level === 2 ? 'pl-7' : 
+                  'pl-11'
+                } py-1.5`}
+              >
+                {item.text}
+              </button>
+            ))}
+          </nav>
+        </details>
+      </div>
+
+      {/* Desktop TOC - sticky sidebar */}
+      <div className="hidden lg:block sticky top-6">
         <h3 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wider">
           On this page
         </h3>

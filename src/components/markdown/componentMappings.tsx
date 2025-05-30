@@ -104,17 +104,17 @@ export const createComponentMappings = () => ({
   ),
 
   h1: ({ children, ...props }: HeadingProps) => (
-    <h1 className="scroll-m-20 text-4xl font-bold tracking-tight" id={generateHeadingId(children)} {...props}>
+    <h1 className="scroll-m-20 text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight leading-tight" id={generateHeadingId(children)} {...props}>
       {children}
     </h1>
   ),
   h2: ({ children, ...props }: HeadingProps) => (
-    <h2 className="scroll-m-20 pb-2 text-3xl font-semibold tracking-tight transition-colors first:mt-0" id={generateHeadingId(children)} {...props}>
+    <h2 className="scroll-m-20 pb-2 text-xl md:text-2xl lg:text-3xl font-semibold tracking-tight transition-colors first:mt-0" id={generateHeadingId(children)} {...props}>
       {children}
     </h2>
   ),
   h3: ({ children, ...props }: HeadingProps) => (
-    <h3 className="scroll-m-20 pb-2 text-2xl font-semibold tracking-tight transition-colors first:mt-0" id={generateHeadingId(children)} {...props}>
+    <h3 className="scroll-m-20 pb-2 text-lg md:text-xl lg:text-2xl font-semibold tracking-tight transition-colors first:mt-0" id={generateHeadingId(children)} {...props}>
       {children}
     </h3>
   ),
