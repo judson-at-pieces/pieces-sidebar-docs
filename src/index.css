@@ -3,7 +3,9 @@
 @tailwind components;
 @tailwind utilities;
 
-/* Import unified markdown styles */
+/* Import design system */
+@import './styles/design-tokens.css';
+@import './styles/utilities.css';
 @import './styles/markdown.css';
 
 @layer base {

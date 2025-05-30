@@ -1,0 +1,247 @@
+/* ===================================
+   Design Tokens
+   Global Design System Variables
+   =================================== */
+
+:root {
+  /* ===================================
+     Colors - Base Palette
+     =================================== */
+  
+  /* Primary Brand Colors */
+  --color-brand-50: 210 40% 98%;
+  --color-brand-100: 210 40% 96.1%;
+  --color-brand-200: 214.3 31.8% 91.4%;
+  --color-brand-300: 213.5 27.3% 83.9%;
+  --color-brand-400: 212.7 26.8% 73.9%;
+  --color-brand-500: 212.7 26.8% 63.9%;
+  --color-brand-600: 222.2 47.4% 51.2%;
+  --color-brand-700: 222.2 47.4% 41.2%;
+  --color-brand-800: 222.2 47.4% 31.2%;
+  --color-brand-900: 222.2 47.4% 21.2%;
+  --color-brand-950: 222.2 47.4% 11.2%;
+
+  /* Semantic Colors */
+  --color-success: 142.1 76.2% 36.3%;
+  --color-warning: 37.7 92.1% 50.2%;
+  --color-error: 0 84.2% 60.2%;
+  --color-info: 199.4 89.2% 48.2%;
+
+  /* ===================================
+     Typography Scale
+     =================================== */
+  
+  /* Font Families */
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono: "Consolas", "Monaco", "Courier New", monospace;
+  
+  /* Font Sizes - Perfect Fourth Scale (1.333) */
+  --font-size-xs: 0.75rem;      /* 12px */
+  --font-size-sm: 0.875rem;     /* 14px */
+  --font-size-base: 1rem;       /* 16px */
+  --font-size-lg: 1.125rem;     /* 18px */
+  --font-size-xl: 1.333rem;     /* 21.33px */
+  --font-size-2xl: 1.777rem;    /* 28.44px */
+  --font-size-3xl: 2.369rem;    /* 37.90px */
+  --font-size-4xl: 3.157rem;    /* 50.52px */
+  --font-size-5xl: 4.209rem;    /* 67.34px */
+
+  /* Line Heights */
+  --line-height-none: 1;
+  --line-height-tight: 1.25;
+  --line-height-snug: 1.375;
+  --line-height-normal: 1.5;
+  --line-height-relaxed: 1.625;
+  --line-height-loose: 2;
+
+  /* Font Weights */
+  --font-weight-thin: 100;
+  --font-weight-light: 300;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+
+  /* Letter Spacing */
+  --letter-spacing-tighter: -0.05em;
+  --letter-spacing-tight: -0.025em;
+  --letter-spacing-normal: 0;
+  --letter-spacing-wide: 0.025em;
+  --letter-spacing-wider: 0.05em;
+  --letter-spacing-widest: 0.1em;
+
+  /* ===================================
+     Spacing Scale
+     =================================== */
+  
+  --space-0: 0;
+  --space-px: 1px;
+  --space-0\.5: 0.125rem;    /* 2px */
+  --space-1: 0.25rem;        /* 4px */
+  --space-1\.5: 0.375rem;    /* 6px */
+  --space-2: 0.5rem;         /* 8px */
+  --space-2\.5: 0.625rem;    /* 10px */
+  --space-3: 0.75rem;        /* 12px */
+  --space-3\.5: 0.875rem;    /* 14px */
+  --space-4: 1rem;           /* 16px */
+  --space-5: 1.25rem;        /* 20px */
+  --space-6: 1.5rem;         /* 24px */
+  --space-7: 1.75rem;        /* 28px */
+  --space-8: 2rem;           /* 32px */
+  --space-9: 2.25rem;        /* 36px */
+  --space-10: 2.5rem;        /* 40px */
+  --space-11: 2.75rem;       /* 44px */
+  --space-12: 3rem;          /* 48px */
+  --space-14: 3.5rem;        /* 56px */
+  --space-16: 4rem;          /* 64px */
+  --space-20: 5rem;          /* 80px */
+  --space-24: 6rem;          /* 96px */
+  --space-28: 7rem;          /* 112px */
+  --space-32: 8rem;          /* 128px */
+
+  /* ===================================
+     Border Radius
+     =================================== */
+  
+  --radius-none: 0;
+  --radius-sm: 0.125rem;     /* 2px */
+  --radius-base: 0.25rem;    /* 4px */
+  --radius-md: 0.375rem;     /* 6px */
+  --radius-lg: 0.5rem;       /* 8px */
+  --radius-xl: 0.75rem;      /* 12px */
+  --radius-2xl: 1rem;        /* 16px */
+  --radius-3xl: 1.5rem;      /* 24px */
+  --radius-full: 9999px;
+
+  /* ===================================
+     Shadows
+     =================================== */
+  
+  --shadow-xs: 0 1px 2px 0 rgb(0 0 0 / 0.05);
+  --shadow-sm: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+  --shadow-md: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+  --shadow-lg: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+  --shadow-xl: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  --shadow-2xl: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+  --shadow-inner: inset 0 2px 4px 0 rgb(0 0 0 / 0.05);
+  
+  /* ===================================
+     Animation & Transitions
+     =================================== */
+  
+  /* Durations */
+  --duration-75: 75ms;
+  --duration-100: 100ms;
+  --duration-150: 150ms;
+  --duration-200: 200ms;
+  --duration-300: 300ms;
+  --duration-500: 500ms;
+  --duration-700: 700ms;
+  --duration-1000: 1000ms;
+
+  /* Timing Functions */
+  --ease-linear: linear;
+  --ease-in: cubic-bezier(0.4, 0, 1, 1);
+  --ease-out: cubic-bezier(0, 0, 0.2, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+  --ease-bounce: cubic-bezier(0.68, -0.55, 0.265, 1.55);
+
+  /* ===================================
+     Z-Index Scale
+     =================================== */
+  
+  --z-0: 0;
+  --z-10: 10;
+  --z-20: 20;
+  --z-30: 30;
+  --z-40: 40;
+  --z-50: 50;
+  --z-sticky: 100;
+  --z-fixed: 200;
+  --z-modal-backdrop: 300;
+  --z-modal: 400;
+  --z-popover: 500;
+  --z-tooltip: 600;
+
+  /* ===================================
+     Breakpoints
+     =================================== */
+  
+  --screen-sm: 640px;
+  --screen-md: 768px;
+  --screen-lg: 1024px;
+  --screen-xl: 1280px;
+  --screen-2xl: 1536px;
+
+  /* ===================================
+     Container Widths
+     =================================== */
+  
+  --container-sm: 640px;
+  --container-md: 768px;
+  --container-lg: 1024px;
+  --container-xl: 1280px;
+  --container-2xl: 1536px;
+  --container-prose: 65ch;
+
+  /* ===================================
+     Aspect Ratios
+     =================================== */
+  
+  --aspect-square: 1 / 1;
+  --aspect-video: 16 / 9;
+  --aspect-4-3: 4 / 3;
+  --aspect-5-4: 5 / 4;
+  --aspect-golden: 1.618 / 1;
+}
+
+/* ===================================
+   Theme-specific tokens
+   =================================== */
+
+:root {
+  /* Light Theme Colors */
+  --color-background: hsl(var(--color-brand-50));
+  --color-foreground: hsl(222.2 84% 4.9%);
+  --color-card: hsl(var(--color-brand-50));
+  --color-card-foreground: hsl(222.2 84% 4.9%);
+  --color-popover: hsl(var(--color-brand-50));
+  --color-popover-foreground: hsl(222.2 84% 4.9%);
+  --color-primary: hsl(var(--color-brand-950));
+  --color-primary-foreground: hsl(var(--color-brand-50));
+  --color-secondary: hsl(var(--color-brand-100));
+  --color-secondary-foreground: hsl(var(--color-brand-950));
+  --color-muted: hsl(var(--color-brand-100));
+  --color-muted-foreground: hsl(215.4 16.3% 46.9%);
+  --color-accent: hsl(var(--color-brand-100));
+  --color-accent-foreground: hsl(var(--color-brand-950));
+  --color-destructive: hsl(var(--color-error));
+  --color-destructive-foreground: hsl(var(--color-brand-50));
+  --color-border: hsl(var(--color-brand-200));
+  --color-input: hsl(var(--color-brand-200));
+  --color-ring: hsl(222.2 84% 4.9%);
+}
+
+.dark {
+  /* Dark Theme Colors */
+  --color-background: hsl(222.2 84% 4.9%);
+  --color-foreground: hsl(var(--color-brand-50));
+  --color-card: hsl(222.2 84% 4.9%);
+  --color-card-foreground: hsl(var(--color-brand-50));
+  --color-popover: hsl(222.2 84% 4.9%);
+  --color-popover-foreground: hsl(var(--color-brand-50));
+  --color-primary: hsl(var(--color-brand-50));
+  --color-primary-foreground: hsl(var(--color-brand-950));
+  --color-secondary: hsl(217.2 32.6% 17.5%);
+  --color-secondary-foreground: hsl(var(--color-brand-50));
+  --color-muted: hsl(217.2 32.6% 17.5%);
+  --color-muted-foreground: hsl(215 20.2% 65.1%);
+  --color-accent: hsl(217.2 32.6% 17.5%);
+  --color-accent-foreground: hsl(var(--color-brand-50));
+  --color-destructive: hsl(0 62.8% 30.6%);
+  --color-destructive-foreground: hsl(var(--color-brand-50));
+  --color-border: hsl(217.2 32.6% 17.5%);
+  --color-input: hsl(217.2 32.6% 17.5%);
+  --color-ring: hsl(212.7 26.8% 83.9%);
+}
