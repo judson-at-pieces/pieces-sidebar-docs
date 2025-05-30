@@ -7,15 +7,27 @@ import { FileNode } from "@/utils/fileSystem";
 import { toast } from "sonner";
 import { AvailableFilesPanel } from "./AvailableFilesPanel";
 import { NavigationStructurePanel } from "./NavigationStructurePanel";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 
 interface NavigationEditorProps {
   fileStructure: FileNode[];
   onNavigationChange: () => void;
 }
 
+interface PendingChange {
+  type: 'folder' | 'file';
+  sectionId: string;
+  folderNode?: FileNode;
+  fileNode?: FileNode;
+  previewItems: NavigationItem[];
+}
+
 export function NavigationEditor({ fileStructure, onNavigationChange }: NavigationEditorProps) {
   const { navigation } = useNavigation();
   const [sections, setSections] = useState<NavigationSection[]>([]);
+  const [pendingChange, setPendingChange] = useState<PendingChange | null>(null);
+  const [showConfirmDialog, setShowConfirmDialog] = useState(false);
 
   useEffect(() => {
     if (navigation?.sections) {
@@ -28,6 +40,92 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
     return sections.some(section => 
       section.items?.some(item => item.file_path === filePath)
     );
+  };
+
+  // Create navigation items from folder structure (preserving hierarchy)
+  const createNavigationItemsFromFolder = (folderNode: FileNode, parentId?: string): NavigationItem[] => {
+    const items: NavigationItem[] = [];
+    
+    // Check if this folder has an index file
+    const indexFileName = `${folderNode.name}.md`;
+    const indexFile = folderNode.children?.find(child => 
+      child.type === 'file' && child.name === indexFileName
+    );
+    
+    // Create the main folder item
+    const folderId = `temp-${Date.now()}-${Math.random()}`;
+    const folderItem: NavigationItem = {
+      id: folderId,
+      title: folderNode.name.replace(/-/g, ' '),
+      href: indexFile ? `/${indexFile.path.replace('.md', '')}` : `/${folderNode.path}`,
+      file_path: indexFile?.path || folderNode.path,
+      order_index: 0,
+      parent_id: parentId,
+      is_auto_generated: true,
+      items: []
+    };
+
+    // Process children
+    if (folderNode.children) {
+      let childOrder = 0;
+      
+      for (const child of folderNode.children) {
+        if (child.type === 'file' && !isFileUsed(child.path)) {
+          // Skip the index file since it's already represented by the folder itself
+          if (child.name !== indexFileName) {
+            const childItem: NavigationItem = {
+              id: `temp-${Date.now()}-${Math.random()}`,
+              title: child.name.replace('.md', '').replace(/-/g, ' '),
+              href: `/${child.path.replace('.md', '')}`,
+              file_path: child.path,
+              order_index: childOrder++,
+              parent_id: folderId,
+              is_auto_generated: true
+            };
+            
+            folderItem.items!.push(childItem);
+          }
+        } else if (child.type === 'folder') {
+          // Recursively process subfolders
+          const subFolderItems = createNavigationItemsFromFolder(child, folderId);
+          folderItem.items!.push(...subFolderItems);
+        }
+      }
+    }
+    
+    items.push(folderItem);
+    return items;
+  };
+
+  // Save pending changes to database
+  const savePendingChanges = async () => {
+    if (!pendingChange) return;
+
+    try {
+      if (pendingChange.type === 'folder' && pendingChange.folderNode) {
+        const addedItems = await addFolderStructureToDb(pendingChange.folderNode, pendingChange.sectionId);
+        toast.success(`Added ${pendingChange.folderNode.name} folder with ${addedItems.length} items to navigation`);
+      } else if (pendingChange.type === 'file' && pendingChange.fileNode) {
+        const newItemData: Omit<NavigationItem, 'id'> = {
+          title: pendingChange.fileNode.name.replace('.md', '').replace(/-/g, ' '),
+          href: `/${pendingChange.fileNode.path.replace('.md', '')}`,
+          file_path: pendingChange.fileNode.path,
+          order_index: 0,
+          parent_id: undefined,
+          is_auto_generated: true
+        };
+        
+        await addNavigationItemToDb(newItemData, pendingChange.sectionId);
+        toast.success(`Added ${pendingChange.fileNode.name.replace('.md', '')} to navigation`);
+      }
+      
+      onNavigationChange();
+      setPendingChange(null);
+      setShowConfirmDialog(false);
+    } catch (error) {
+      console.error('Error saving changes:', error);
+      toast.error("Failed to save changes to navigation");
+    }
   };
 
   // Add a single navigation item to the database
@@ -71,7 +169,6 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
       is_auto_generated: true
     };
 
-    console.log('Adding folder to database:', folderItemData.title);
     const folderItem = await addNavigationItemToDb(folderItemData, sectionId);
     addedItems.push(folderItem);
 
@@ -92,13 +189,11 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
               is_auto_generated: true
             };
             
-            console.log('Adding file to database:', childItemData.title);
             const childItem = await addNavigationItemToDb(childItemData, sectionId);
             addedItems.push(childItem);
           }
         } else if (child.type === 'folder') {
           // Recursively process subfolders
-          console.log('Processing subfolder:', child.name);
           const subFolderItems = await addFolderStructureToDb(child, sectionId, folderItem.id);
           addedItems.push(...subFolderItems);
         }
@@ -111,22 +206,17 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
   const handleDragEnd = async (result: DropResult) => {
     const { destination, source, draggableId } = result;
 
-    console.log('Drag ended:', { destination, source, draggableId });
-
     if (!destination) {
-      console.log('No destination, drag cancelled');
       return;
     }
 
     // Handle dragging from available files to navigation sections
     if (source.droppableId === 'available-files' && destination.droppableId.startsWith('section-')) {
       const destSectionId = destination.droppableId.replace('section-', '');
-      console.log('Dragging from available files to section:', destSectionId);
       
       try {
         // Handle both files and folders
         if (draggableId.startsWith('folder-')) {
-          console.log('Processing folder drag:', draggableId);
           // Handle folder drag
           const folderPath = draggableId.replace('folder-', '');
           const findFolderByPath = (nodes: FileNode[], path: string): FileNode | null => {
@@ -143,32 +233,30 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
           };
 
           const folder = findFolderByPath(fileStructure, folderPath);
-          console.log('Found folder:', folder);
           
           if (!folder) {
-            console.error('Folder not found for path:', folderPath);
             toast.error("Folder not found");
             return;
           }
 
-          // Add the complete folder structure to the database
-          console.log('Adding folder structure to database...');
-          const addedItems = await addFolderStructureToDb(folder, destSectionId);
+          // Create preview items
+          const previewItems = createNavigationItemsFromFolder(folder);
           
-          if (addedItems.length === 0) {
+          if (previewItems.length === 0) {
             toast.info("No available files in this folder");
             return;
           }
 
-          console.log('Successfully added items to database:', addedItems.length);
-          
-          // Refresh navigation data
-          onNavigationChange();
-          
-          toast.success(`Added ${folder.name} folder with ${addedItems.length} items to navigation`);
+          // Set up pending change for confirmation
+          setPendingChange({
+            type: 'folder',
+            sectionId: destSectionId,
+            folderNode: folder,
+            previewItems
+          });
+          setShowConfirmDialog(true);
           
         } else {
-          console.log('Processing file drag:', draggableId);
           // Handle single file drag
           const findFileByPath = (nodes: FileNode[], path: string): FileNode | null => {
             for (const node of nodes) {
@@ -186,12 +274,12 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
           const file = findFileByPath(fileStructure, draggableId);
           
           if (!file) {
-            console.error('File not found for path:', draggableId);
             toast.error("File not found");
             return;
           }
           
-          const newItemData: Omit<NavigationItem, 'id'> = {
+          const previewItem: NavigationItem = {
+            id: `temp-${Date.now()}-${Math.random()}`,
             title: file.name.replace('.md', '').replace(/-/g, ' '),
             href: `/${file.path.replace('.md', '')}`,
             file_path: file.path,
@@ -200,15 +288,18 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
             is_auto_generated: true
           };
           
-          console.log('Adding file to database:', newItemData.title);
-          await addNavigationItemToDb(newItemData, destSectionId);
-          
-          onNavigationChange();
-          toast.success(`Added ${file.name.replace('.md', '')} to navigation`);
+          // Set up pending change for confirmation
+          setPendingChange({
+            type: 'file',
+            sectionId: destSectionId,
+            fileNode: file,
+            previewItems: [previewItem]
+          });
+          setShowConfirmDialog(true);
         }
       } catch (error) {
-        console.error('Error adding items to navigation:', error);
-        toast.error("Failed to add items to navigation");
+        console.error('Error processing drag:', error);
+        toast.error("Failed to process drag operation");
       }
       return;
     }
@@ -331,13 +422,27 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
     onNavigationChange();
   };
 
+  const renderPreviewItems = (items: NavigationItem[], depth = 0): React.ReactNode => {
+    return items.map((item, index) => (
+      <div key={item.id} className={`py-1 ${depth > 0 ? 'ml-4 border-l pl-2' : ''}`}>
+        <div className="text-sm font-medium">{item.title}</div>
+        <div className="text-xs text-muted-foreground">{item.href}</div>
+        {item.items && item.items.length > 0 && (
+          <div className="mt-1">
+            {renderPreviewItems(item.items, depth + 1)}
+          </div>
+        )}
+      </div>
+    ));
+  };
+
   return (
     <div className="h-full flex flex-col">
       <div className="p-4 border-b">
         <h2 className="text-lg font-semibold mb-2">Navigation Editor</h2>
         <p className="text-sm text-muted-foreground">
           Drag files or entire folders from the "Available Files" section into navigation sections to organize your documentation. 
-          Folder structures will be preserved and saved to the database.
+          You'll be asked to confirm before changes are saved to the database.
         </p>
       </div>
       
@@ -357,6 +462,46 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
           </div>
         </DragDropContext>
       </div>
+
+      {/* Confirmation Dialog */}
+      <Dialog open={showConfirmDialog} onOpenChange={setShowConfirmDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              Confirm Navigation Changes
+            </DialogTitle>
+          </DialogHeader>
+          
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              You're about to add the following items to the navigation:
+            </p>
+            
+            <div className="border rounded-lg p-4 bg-muted/50 max-h-60 overflow-y-auto">
+              {pendingChange && renderPreviewItems(pendingChange.previewItems)}
+            </div>
+            
+            <p className="text-xs text-muted-foreground">
+              This will {pendingChange?.type === 'folder' ? 'preserve the folder structure' : 'add the file'} to your navigation.
+            </p>
+          </div>
+          
+          <DialogFooter>
+            <Button 
+              variant="outline" 
+              onClick={() => {
+                setPendingChange(null);
+                setShowConfirmDialog(false);
+              }}
+            >
+              Cancel
+            </Button>
+            <Button onClick={savePendingChanges}>
+              Confirm & Save
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
