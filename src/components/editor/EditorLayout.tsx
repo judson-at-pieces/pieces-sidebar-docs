@@ -7,8 +7,42 @@ import { EditorMain } from "./EditorMain";
 import { EditorTabs } from "./EditorTabs";
 
 export function EditorLayout() {
-  const [activeTab, setActiveTab] = useState<'navigation' | 'content'>('navigation');
   const { fileStructure, isLoading, error, refetch } = useFileStructure();
+  const [selectedFile, setSelectedFile] = useState<string>();
+  const [content, setContent] = useState("");
+  const [hasChanges, setHasChanges] = useState(false);
+  const [modifiedFiles, setModifiedFiles] = useState<Set<string>>(new Set());
+
+  const handleFileSelect = (filePath: string) => {
+    setSelectedFile(filePath);
+    // Load file content here if needed
+    setContent(""); // Reset content for now
+    setHasChanges(false);
+  };
+
+  const handleContentChange = (newContent: string) => {
+    setContent(newContent);
+    setHasChanges(true);
+    if (selectedFile) {
+      setModifiedFiles(prev => new Set(prev).add(selectedFile));
+    }
+  };
+
+  const handleSave = () => {
+    setHasChanges(false);
+    if (selectedFile) {
+      setModifiedFiles(prev => {
+        const newSet = new Set(prev);
+        newSet.delete(selectedFile);
+        return newSet;
+      });
+    }
+  };
+
+  const handleCreateFile = (fileName: string, parentPath?: string) => {
+    // Handle file creation logic here
+    console.log('Creating file:', fileName, 'in:', parentPath);
+  };
 
   if (isLoading) {
     return (
@@ -48,21 +82,27 @@ export function EditorLayout() {
       </div>
       
       <div className="flex h-[calc(100vh-4rem)]">
-        <EditorSidebar activeTab={activeTab} onTabChange={setActiveTab} />
+        <div className="w-64 border-r">
+          <EditorSidebar
+            selectedFile={selectedFile}
+            onFileSelect={handleFileSelect}
+            modifiedFiles={modifiedFiles}
+            onCreateFile={handleCreateFile}
+            fileStructure={fileStructure}
+            isLoading={isLoading}
+          />
+        </div>
         
         <div className="flex-1 flex flex-col">
-          <EditorTabs activeTab={activeTab} onTabChange={setActiveTab} />
-          
-          <div className="flex-1 overflow-hidden">
-            {activeTab === 'navigation' ? (
-              <NavigationEditor 
-                fileStructure={fileStructure} 
-                onNavigationChange={refetch}
-              />
-            ) : (
-              <EditorMain />
-            )}
-          </div>
+          <EditorTabs
+            selectedFile={selectedFile}
+            content={content}
+            onContentChange={handleContentChange}
+            onSave={handleSave}
+            hasChanges={hasChanges}
+            fileStructure={fileStructure}
+            onNavigationChange={refetch}
+          />
         </div>
       </div>
     </div>
