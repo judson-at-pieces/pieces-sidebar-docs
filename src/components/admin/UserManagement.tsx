@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,7 +26,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Trash2, UserPlus, Shield, User } from 'lucide-react';
+import { Trash2, UserPlus, Shield, User, RefreshCw, UserCheck } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
 interface UserProfile {
@@ -36,6 +35,7 @@ interface UserProfile {
   full_name: string | null;
   created_at: string;
   roles: string[];
+  has_profile: boolean;
 }
 
 export function UserManagement() {
@@ -103,7 +103,8 @@ export function UserManagement() {
           email: profile?.email || null,
           full_name: profile?.full_name || null,
           created_at: profile?.created_at || new Date().toISOString(),
-          roles: userRolesList
+          roles: userRolesList,
+          has_profile: !!profile
         };
       });
 
@@ -120,6 +121,41 @@ export function UserManagement() {
       setError(err.message || 'Failed to fetch users');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const createMissingProfile = async (userId: string) => {
+    try {
+      // Try to get user info from auth.users first
+      const { data: authData, error: authError } = await supabase.auth.admin.getUserById(userId);
+      
+      if (authError) {
+        console.log('Could not fetch auth user data:', authError);
+      }
+
+      const { error } = await supabase
+        .from('profiles')
+        .insert({
+          id: userId,
+          email: authData?.user?.email || null,
+          full_name: authData?.user?.user_metadata?.full_name || null
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: "Profile Created",
+        description: "Successfully created missing user profile.",
+      });
+      
+      fetchUsers(); // Refresh the list
+    } catch (err: any) {
+      console.error('Error creating profile:', err);
+      toast({
+        title: "Error",
+        description: err.message || 'Failed to create profile',
+        variant: "destructive",
+      });
     }
   };
 
@@ -240,6 +276,7 @@ export function UserManagement() {
                 <TableHead>User</TableHead>
                 <TableHead>Email</TableHead>
                 <TableHead>Roles</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Joined</TableHead>
                 <TableHead>Actions</TableHead>
               </TableRow>
@@ -247,7 +284,7 @@ export function UserManagement() {
             <TableBody>
               {users.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center text-muted-foreground">
                     No users found
                   </TableCell>
                 </TableRow>
@@ -256,7 +293,7 @@ export function UserManagement() {
                   <TableRow key={user.id}>
                     <TableCell>
                       <div className="font-medium">
-                        {user.full_name || 'Unknown User'}
+                        {user.full_name || (user.has_profile ? 'No name set' : 'Unknown User')}
                       </div>
                       <div className="text-sm text-muted-foreground">
                         {user.id.substring(0, 8)}...
@@ -289,21 +326,45 @@ export function UserManagement() {
                       </div>
                     </TableCell>
                     <TableCell>
+                      {user.has_profile ? (
+                        <Badge variant="default" className="flex items-center gap-1 w-fit">
+                          <UserCheck className="h-3 w-3" />
+                          Active
+                        </Badge>
+                      ) : (
+                        <Badge variant="destructive" className="flex items-center gap-1 w-fit">
+                          Missing Profile
+                        </Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
                       {new Date(user.created_at).toLocaleDateString()}
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        <Select
-                          onValueChange={(role) => assignRole(user.id, role)}
-                        >
-                          <SelectTrigger className="w-32">
-                            <SelectValue placeholder="Add role" />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="editor">Editor</SelectItem>
-                            <SelectItem value="admin">Admin</SelectItem>
-                          </SelectContent>
-                        </Select>
+                        {!user.has_profile ? (
+                          <Button
+                            onClick={() => createMissingProfile(user.id)}
+                            variant="outline"
+                            size="sm"
+                            className="flex items-center gap-1"
+                          >
+                            <UserPlus className="h-3 w-3" />
+                            Create Profile
+                          </Button>
+                        ) : (
+                          <Select
+                            onValueChange={(role) => assignRole(user.id, role)}
+                          >
+                            <SelectTrigger className="w-32">
+                              <SelectValue placeholder="Add role" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="editor">Editor</SelectItem>
+                              <SelectItem value="admin">Admin</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
@@ -318,6 +379,7 @@ export function UserManagement() {
             {users.length} total users
           </div>
           <Button onClick={fetchUsers} variant="outline" size="sm">
+            <RefreshCw className="h-3 w-3 mr-1" />
             Refresh
           </Button>
         </div>
