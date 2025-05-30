@@ -197,7 +197,7 @@ Start editing this file...`;
       // Use the enhanced createBranchAndPR method
       const result = await githubService.createBranchAndPR({
         title: `Update documentation files`,
-        body: `Updated ${modifiedFiles.size} file(s) by ${user.email}:\n\n${Array.from(modifiedFiles).map(f => `- ${f}`).join('\n')}\n\n**Branch:** ${result.branchName}\n**Auto-created by Lovable Editor**`,
+        body: `Updated ${modifiedFiles.size} file(s) by ${user.email}:\n\n${Array.from(modifiedFiles).map(f => `- ${f}`).join('\n')}\n\n**Auto-created by Lovable Editor**`,
         files,
       }, githubToken, repoConfig);
 
