@@ -2,6 +2,7 @@
 import React, { useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { logger } from '@/utils/logger';
 
 export default function AuthCallback() {
   const { user, loading } = useAuth();
@@ -13,7 +14,9 @@ export default function AuthCallback() {
       const accessToken = hashParams.get('access_token');
       
       if (accessToken) {
-        // Clear the hash from URL for security
+        logger.debug('OAuth callback processing', { hasToken: !!accessToken });
+        
+        // Clear the hash from URL for security - prevents token exposure in browser history
         window.history.replaceState(null, '', window.location.pathname);
       }
     };

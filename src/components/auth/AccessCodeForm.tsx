@@ -7,6 +7,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from '@/components/ui/use-toast';
+import { logger } from '@/utils/logger';
+import { accessCodeRateLimiter, auditLog, getErrorMessage, sanitizeInput } from '@/utils/security';
 
 interface AccessCodeFormProps {
   onSuccess: () => void;
@@ -23,18 +25,39 @@ export function AccessCodeForm({ onSuccess }: AccessCodeFormProps) {
     setLoading(true);
     setError('');
 
+    const sanitizedCode = sanitizeInput(code);
+    const identifier = user?.id || 'anonymous';
+
+    // Rate limiting check
+    if (accessCodeRateLimiter.isRateLimited(identifier)) {
+      setError('Too many attempts. Please try again later.');
+      setLoading(false);
+      return;
+    }
+
     try {
+      logger.debug('Attempting to use access code', { 
+        codeLength: sanitizedCode.length,
+        userAuthenticated: !!user 
+      });
+
       const { data, error } = await supabase.rpc('use_admin_access_code', {
-        access_code: code
+        access_code: sanitizedCode
       });
 
       if (error) {
+        logger.error('Access code validation error', { error: error.message });
+        auditLog.accessCodeUsed(false, user?.id);
         throw error;
       }
 
       if (data) {
+        auditLog.accessCodeUsed(true, user?.id);
+        
         // If user is already signed in, they now have editor access
         if (user) {
+          auditLog.roleChanged(user.id, 'editor', user.id);
+          
           toast({
             title: "Editor Access Granted",
             description: "You now have editor permissions. Refreshing the page...",
@@ -52,11 +75,16 @@ export function AccessCodeForm({ onSuccess }: AccessCodeFormProps) {
           });
           onSuccess();
         }
+        
+        // Reset rate limiter on success
+        accessCodeRateLimiter.reset(identifier);
       } else {
-        setError('Invalid or expired access code');
+        auditLog.accessCodeUsed(false, user?.id);
+        setError(getErrorMessage(null, 'access_code'));
       }
     } catch (error: any) {
-      setError(error.message || 'Failed to validate access code');
+      logger.error('Access code form error', { error: error.message });
+      setError(getErrorMessage(error, 'access_code'));
     } finally {
       setLoading(false);
     }

@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 const queryClient = new QueryClient();
 
@@ -21,37 +22,39 @@ const GettingStarted = lazy(() => import("./pages/docs/GettingStarted"));
 
 function App() {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
-        <TooltipProvider>
-          <Toaster />
-          <BrowserRouter>
-            <AuthProvider>
-              <Suspense fallback={<div>Loading...</div>}>
-                <Routes>
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/auth/callback" element={<AuthCallback />} />
-                  <Route path="/admin" element={<Admin />} />
-                  <Route
-                    path="/edit"
-                    element={
-                      <ProtectedRoute>
-                        <Editor />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route path="/" element={<Index />} />
-                  <Route path="/docs/*" element={<DocsLayout />}>
-                    <Route path="getting-started" element={<GettingStarted />} />
-                    <Route path="*" element={<DynamicDocPage />} />
-                  </Route>
-                </Routes>
-              </Suspense>
-            </AuthProvider>
-          </BrowserRouter>
-        </TooltipProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+          <TooltipProvider>
+            <Toaster />
+            <BrowserRouter>
+              <AuthProvider>
+                <Suspense fallback={<div>Loading...</div>}>
+                  <Routes>
+                    <Route path="/auth" element={<Auth />} />
+                    <Route path="/auth/callback" element={<AuthCallback />} />
+                    <Route path="/admin" element={<Admin />} />
+                    <Route
+                      path="/edit"
+                      element={
+                        <ProtectedRoute>
+                          <Editor />
+                        </ProtectedRoute>
+                      }
+                    />
+                    <Route path="/" element={<Index />} />
+                    <Route path="/docs/*" element={<DocsLayout />}>
+                      <Route path="getting-started" element={<GettingStarted />} />
+                      <Route path="*" element={<DynamicDocPage />} />
+                    </Route>
+                  </Routes>
+                </Suspense>
+              </AuthProvider>
+            </BrowserRouter>
+          </TooltipProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

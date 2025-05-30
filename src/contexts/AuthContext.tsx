@@ -2,6 +2,8 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
+import { logger } from '@/utils/logger';
+import { auditLog } from '@/utils/security';
 
 interface AuthContextType {
   user: User | null;
@@ -34,11 +36,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        console.log('Auth state change:', event, session?.user?.email);
+        logger.debug('Auth state change', { event, userEmail: session?.user?.email });
         setSession(session);
         setUser(session?.user ?? null);
         
         if (session?.user) {
+          // Audit log for authentication
+          auditLog.authAttempt(session.user.email || '', true, 'github');
+          
           // Only fetch roles, don't assign any automatically
           setTimeout(async () => {
             await fetchUserRoles(session.user.id);
@@ -55,42 +60,54 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUserRoles = async (userId: string) => {
     try {
-      console.log('Fetching roles for user:', userId);
+      logger.debug('Fetching roles for user', { userId: userId.substring(0, 8) + '***' });
       const { data, error } = await supabase
         .from('user_roles')
         .select('role')
         .eq('user_id', userId);
 
       if (error) {
-        console.error('Error fetching user roles:', error);
+        logger.error('Error fetching user roles', { error: error.message });
         return;
       }
 
       const roles = data?.map(r => r.role) || [];
-      console.log('User roles:', roles);
+      logger.debug('User roles fetched', { roles });
       setUserRoles(roles);
-    } catch (error) {
-      console.error('Error fetching user roles:', error);
+    } catch (error: any) {
+      logger.error('Error fetching user roles', { error: error.message });
     }
   };
 
   const signInWithGitHub = async () => {
-    const { error } = await supabase.auth.signInWithOAuth({
-      provider: 'github',
-      options: {
-        redirectTo: `${window.location.origin}/`
+    try {
+      const { error } = await supabase.auth.signInWithOAuth({
+        provider: 'github',
+        options: {
+          redirectTo: `${window.location.origin}/`
+        }
+      });
+      if (error) {
+        logger.error('GitHub sign in error', { error: error.message });
+        auditLog.authAttempt('', false, 'github');
+        throw error;
       }
-    });
-    if (error) {
-      console.error('Error signing in with GitHub:', error);
+    } catch (error: any) {
+      logger.error('GitHub sign in error', { error: error.message });
       throw error;
     }
   };
 
   const signOut = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) {
-      console.error('Error signing out:', error);
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        logger.error('Sign out error', { error: error.message });
+        throw error;
+      }
+      logger.info('User signed out');
+    } catch (error: any) {
+      logger.error('Sign out error', { error: error.message });
       throw error;
     }
   };
