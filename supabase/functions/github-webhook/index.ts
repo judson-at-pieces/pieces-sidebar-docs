@@ -3,7 +3,7 @@ import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-github-event, x-hub-signature-256',
 }
 
 async function verifyWebhookSignature(payload: string, signature: string, secret: string): Promise<boolean> {
@@ -25,6 +25,8 @@ async function verifyWebhookSignature(payload: string, signature: string, secret
 }
 
 Deno.serve(async (req) => {
+  console.log('GitHub webhook called:', req.method, req.url)
+  
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders })
   }
@@ -38,26 +40,42 @@ Deno.serve(async (req) => {
     const webhookSecret = Deno.env.get('GITHUB_WEBHOOK_SECRET')
     if (!webhookSecret) {
       console.error('GITHUB_WEBHOOK_SECRET not configured')
-      return new Response('Webhook secret not configured', { status: 500 })
+      return new Response('Webhook secret not configured', { 
+        status: 500,
+        headers: corsHeaders 
+      })
     }
 
     const signature = req.headers.get('x-hub-signature-256')
+    const eventType = req.headers.get('x-github-event')
     const payload = await req.text()
 
-    if (!signature || !await verifyWebhookSignature(payload, signature, webhookSecret)) {
+    console.log('Webhook event type:', eventType)
+    console.log('Signature present:', !!signature)
+    console.log('Payload length:', payload.length)
+
+    if (!signature) {
+      console.error('No signature provided')
+      return new Response('No signature provided', { 
+        status: 401,
+        headers: corsHeaders 
+      })
+    }
+
+    if (!await verifyWebhookSignature(payload, signature, webhookSecret)) {
       console.error('Invalid webhook signature')
-      return new Response('Invalid signature', { status: 401 })
+      return new Response('Invalid signature', { 
+        status: 401,
+        headers: corsHeaders 
+      })
     }
 
     const event = JSON.parse(payload)
-    const eventType = req.headers.get('x-github-event')
-
-    console.log('GitHub webhook event:', eventType, event.action)
+    console.log('Processing webhook event:', eventType, event.action)
 
     // Handle installation events
     if (eventType === 'installation') {
       if (event.action === 'created') {
-        // App was installed
         console.log('App installed by:', event.installation.account.login)
         console.log('Installation ID:', event.installation.id)
         
@@ -73,9 +91,14 @@ Deno.serve(async (req) => {
 
         if (error) {
           console.error('Error storing installation:', error)
+          return new Response('Error storing installation', { 
+            status: 500,
+            headers: corsHeaders 
+          })
         }
+
+        console.log('Successfully stored installation')
       } else if (event.action === 'deleted') {
-        // App was uninstalled
         console.log('App uninstalled from:', event.installation.account.login)
         
         // Remove installation info
@@ -86,7 +109,13 @@ Deno.serve(async (req) => {
 
         if (error) {
           console.error('Error removing installation:', error)
+          return new Response('Error removing installation', { 
+            status: 500,
+            headers: corsHeaders 
+          })
         }
+
+        console.log('Successfully removed installation')
       }
     }
 
@@ -96,13 +125,13 @@ Deno.serve(async (req) => {
       // Could update which repositories are available for each installation
     }
 
-    return new Response('Webhook processed', { 
+    return new Response('Webhook processed successfully', { 
       status: 200,
       headers: corsHeaders 
     })
   } catch (error) {
     console.error('Webhook error:', error)
-    return new Response('Internal error', { 
+    return new Response(`Internal error: ${error.message}`, { 
       status: 500,
       headers: corsHeaders 
     })
