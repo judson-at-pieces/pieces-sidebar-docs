@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/integrations/supabase/client';
@@ -24,6 +23,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userRoles, setUserRoles] = useState<string[]>([]);
 
   useEffect(() => {
+    console.log('AuthProvider initializing, isSupabaseConfigured:', isSupabaseConfigured);
+    
     // If Supabase is not configured, just set loading to false and return
     if (!isSupabaseConfigured) {
       setLoading(false);
@@ -40,6 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (error) {
           logger.error('Error getting initial session', { error: error.message });
         } else if (mounted) {
+          console.log('Initial session:', { hasSession: !!session, userEmail: session?.user?.email });
           setSession(session);
           setUser(session?.user ?? null);
           if (session?.user) {
@@ -61,6 +63,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (!mounted) return;
         
         try {
+          console.log('Auth state change:', { event, userEmail: session?.user?.email });
           logger.debug('Auth state change', { event, userEmail: session?.user?.email });
           setSession(session);
           setUser(session?.user ?? null);
@@ -151,6 +154,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const roles = data?.map(r => r.role) || [];
+      console.log('User roles fetched:', { roles });
       logger.debug('User roles fetched', { roles });
       setUserRoles(roles);
     } catch (error: any) {
@@ -164,13 +168,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     }
     
     try {
+      console.log('Initiating GitHub sign in...');
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'github',
         options: {
-          redirectTo: `${window.location.origin}/`
+          redirectTo: `${window.location.origin}/auth/callback`
         }
       });
       if (error) {
+        console.error('GitHub sign in error:', error);
         logger.error('GitHub sign in error', { error: error.message });
         auditLog.authAttempt('', false, 'github');
         throw error;

@@ -13,13 +13,20 @@ function AuthContent() {
   const { user, loading, hasRole, signOut, isSupabaseConfigured } = useAuth();
   const [hasValidCode, setHasValidCode] = useState(false);
 
+  console.log('Auth page state:', { 
+    user: !!user, 
+    loading, 
+    isSupabaseConfigured,
+    userEmail: user?.email 
+  });
+
   // Show loading state
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
-          <div>Loading...</div>
+          <div>Loading authentication...</div>
         </div>
       </div>
     );
@@ -31,14 +38,21 @@ function AuthContent() {
       <div className="min-h-screen flex items-center justify-center p-4">
         <Card className="w-full max-w-md">
           <CardHeader>
-            <CardTitle>Authentication Unavailable</CardTitle>
+            <CardTitle>Authentication Setup Required</CardTitle>
             <CardDescription>
-              Authentication is not configured. Please contact an administrator.
+              The authentication system is initializing. Please wait a moment and refresh the page.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
+            <Button 
+              onClick={() => window.location.reload()}
+              className="w-full"
+            >
+              Refresh Page
+            </Button>
             <Button 
               onClick={() => window.location.href = '/'}
+              variant="outline"
               className="w-full"
             >
               Return Home
@@ -49,40 +63,9 @@ function AuthContent() {
     );
   }
 
-  // If user is signed in and has proper permissions, show already signed in message
+  // If user is signed in and has proper permissions, redirect to home
   if (user && (hasRole('admin') || hasRole('editor'))) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Already Signed In</CardTitle>
-            <CardDescription>
-              You are already signed in with proper permissions.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Signed in as: {user.email}
-            </p>
-            <div className="flex space-x-2">
-              <Button 
-                onClick={() => window.location.href = '/'}
-                className="flex-1"
-              >
-                Go to Home
-              </Button>
-              <Button 
-                onClick={signOut}
-                variant="outline"
-                className="flex-1"
-              >
-                Sign Out
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <Navigate to="/" replace />;
   }
 
   // If user is signed in but doesn't have proper permissions, show access code form
@@ -94,6 +77,9 @@ function AuthContent() {
             <h1 className="text-3xl font-bold">Documentation Editor</h1>
             <p className="text-muted-foreground mt-2">
               You need editor permissions to access this application
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Signed in as: {user.email}
             </p>
           </div>
 
@@ -113,7 +99,7 @@ function AuthContent() {
     );
   }
 
-  // If user is not signed in, show the auth forms (without access code tab)
+  // If user is not signed in, show the auth forms
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
@@ -135,7 +121,7 @@ function AuthContent() {
               <CardHeader>
                 <CardTitle>Sign In</CardTitle>
                 <CardDescription>
-                  Already have an account? Sign in with your GitHub account.
+                  Sign in with your GitHub account to access the documentation editor.
                 </CardDescription>
               </CardHeader>
               <CardContent>
