@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -5,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { RefreshCw, GitBranch, FileText, Clock, CheckCircle, XCircle, AlertTriangle, Settings } from 'lucide-react';
 import { contentSyncService, ContentSyncResult } from '@/services/contentSyncService';
+import { isSupabaseConfigured } from '@/integrations/supabase/client';
 
 interface SyncLog {
   id: number;
@@ -31,31 +33,13 @@ export function ContentSyncPanel() {
   const [isLoading, setIsLoading] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [syncResult, setSyncResult] = useState<ContentSyncResult | null>(null);
-  const [isSupabaseConfigured, setIsSupabaseConfigured] = useState(true);
 
   useEffect(() => {
-    checkSupabaseConfig();
-  }, []);
-
-  const checkSupabaseConfig = async () => {
-    try {
-      // Check if Supabase is properly configured
-      const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-      const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
-      
-      if (!supabaseUrl || !supabaseKey) {
-        setIsSupabaseConfigured(false);
-        return;
-      }
-
-      // If configured, load data
-      await loadRepoConfig();
-      await loadSyncLogs();
-    } catch (error) {
-      console.error('Supabase configuration error:', error);
-      setIsSupabaseConfigured(false);
+    if (isSupabaseConfigured) {
+      loadRepoConfig();
+      loadSyncLogs();
     }
-  };
+  }, []);
 
   const loadRepoConfig = async () => {
     try {
@@ -169,14 +153,14 @@ export function ContentSyncPanel() {
           </CardHeader>
           <CardContent className="text-center space-y-4">
             <p className="text-sm text-muted-foreground">
-              To use the content sync features, please configure your Supabase environment variables:
+              To use the content sync features, please configure your Supabase environment variables in Lovable's project settings.
             </p>
             <div className="text-left bg-gray-100 dark:bg-gray-800 p-3 rounded text-sm font-mono">
-              <div>VITE_SUPABASE_URL=your_supabase_url</div>
-              <div>VITE_SUPABASE_ANON_KEY=your_anon_key</div>
+              <div>VITE_SUPABASE_URL</div>
+              <div>VITE_SUPABASE_ANON_KEY</div>
             </div>
             <p className="text-sm text-muted-foreground">
-              Add these to your <code>.env</code> file and restart the development server.
+              Add these environment variables in your Lovable project settings and refresh the page.
             </p>
           </CardContent>
         </Card>
