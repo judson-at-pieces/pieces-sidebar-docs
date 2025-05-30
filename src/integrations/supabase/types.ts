@@ -155,6 +155,105 @@ export type Database = {
         }
         Relationships: []
       }
+      navigation_items: {
+        Row: {
+          created_at: string
+          description: string | null
+          file_path: string | null
+          href: string
+          icon: string | null
+          id: string
+          is_active: boolean
+          is_auto_generated: boolean
+          order_index: number
+          parent_id: string | null
+          section_id: string | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          file_path?: string | null
+          href: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          is_auto_generated?: boolean
+          order_index?: number
+          parent_id?: string | null
+          section_id?: string | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          file_path?: string | null
+          href?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          is_auto_generated?: boolean
+          order_index?: number
+          parent_id?: string | null
+          section_id?: string | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "navigation_items_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "navigation_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "navigation_items_section_id_fkey"
+            columns: ["section_id"]
+            isOneToOne: false
+            referencedRelation: "navigation_sections"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      navigation_sections: {
+        Row: {
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean
+          order_index: number
+          slug: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          order_index?: number
+          slug: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          order_index?: number
+          slug?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -216,12 +315,20 @@ export type Database = {
           repo_name: string
         }[]
       }
+      get_navigation_structure: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       has_role: {
         Args: {
           _user_id: string
           _role: Database["public"]["Enums"]["app_role"]
         }
         Returns: boolean
+      }
+      sync_navigation_from_content: {
+        Args: Record<PropertyKey, never>
+        Returns: string
       }
       use_admin_access_code: {
         Args: { access_code: string }
