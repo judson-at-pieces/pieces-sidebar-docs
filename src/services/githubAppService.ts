@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 interface GitHubInstallation {
@@ -213,12 +214,14 @@ class GitHubAppService {
         console.log('Successfully updated file:', file.path);
       }
 
-      // Create the pull request
+      // Create the pull request with updated body
+      const prBody = `${body}\n\n---\n*Pieces Documentation Bot*`;
+      
       const pr = await this.makeRequest(`/repos/${owner}/${repo}/pulls`, token, {
         method: 'POST',
         body: JSON.stringify({
           title,
-          body,
+          body: prBody,
           head: branchName,
           base: baseBranch,
         }),
