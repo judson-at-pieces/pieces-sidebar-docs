@@ -25,30 +25,52 @@ export function EditorLayout() {
     setLoadingContent(true);
     
     try {
-      console.log('Loading markdown content for file:', filePath);
-      console.log('Fetching from URL:', `/content/${filePath}`);
+      console.log('=== FILE SELECTION DEBUG ===');
+      console.log('Original filePath:', filePath);
       
-      // Load from the public/content directory where the actual markdown files are
-      const response = await fetch(`/content/${filePath}`, {
+      // Ensure the file path has .md extension and is properly formatted
+      let markdownPath = filePath;
+      if (!markdownPath.endsWith('.md')) {
+        markdownPath = `${filePath}.md`;
+      }
+      
+      // Remove any leading slashes and ensure it's relative to content directory
+      markdownPath = markdownPath.replace(/^\/+/, '');
+      
+      const fetchUrl = `/content/${markdownPath}`;
+      console.log('Constructed fetch URL:', fetchUrl);
+      console.log('Full URL will be:', window.location.origin + fetchUrl);
+      
+      const response = await fetch(fetchUrl, {
         method: 'GET',
         headers: {
-          'Accept': 'text/plain, text/markdown, */*'
+          'Accept': 'text/plain, text/markdown, */*',
+          'Cache-Control': 'no-cache'
         }
       });
       
       console.log('Response status:', response.status);
       console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      console.log('Response content-type:', response.headers.get('content-type'));
       
-      if (response.ok) {
-        const markdownContent = await response.text();
-        console.log('Successfully loaded markdown content for:', filePath);
-        console.log('Content length:', markdownContent.length);
-        console.log('Content preview (first 200 chars):', markdownContent.substring(0, 200));
-        setContent(markdownContent);
+      const responseText = await response.text();
+      console.log('Response text length:', responseText.length);
+      console.log('Response text preview (first 500 chars):', responseText.substring(0, 500));
+      
+      // Check if response looks like HTML (indicating wrong file was served)
+      if (responseText.trim().startsWith('<!DOCTYPE html>') || responseText.trim().startsWith('<html')) {
+        console.error('ERROR: Received HTML instead of markdown!');
+        console.error('This means the server is serving index.html instead of the markdown file');
+        throw new Error('Server returned HTML instead of markdown file');
+      }
+      
+      if (response.ok && responseText.length > 0) {
+        console.log('Successfully loaded markdown content for:', markdownPath);
+        setContent(responseText);
       } else {
-        console.log(`Markdown file not found at /content/${filePath}, response:`, response.status, response.statusText);
+        console.log(`Markdown file not found or empty at ${fetchUrl}`);
         // Create default markdown content for new files
-        const cleanPath = filePath.replace(/\.md$/, '');
+        const cleanPath = markdownPath.replace(/\.md$/, '');
         const fileName = cleanPath.split('/').pop()?.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
         
         const defaultContent = `---
@@ -68,11 +90,13 @@ This is an information callout. Type "/" to see more available components.
 
 Start editing to see the live preview!
 `;
-        console.log('Setting default markdown content');
+        console.log('Setting default markdown content for new file');
         setContent(defaultContent);
       }
     } catch (error) {
-      console.error('Error loading markdown content:', error);
+      console.error('=== ERROR LOADING MARKDOWN ===');
+      console.error('Error details:', error);
+      
       // Create default markdown content for new files
       const cleanPath = filePath.replace(/\.md$/, '');
       const fileName = cleanPath.split('/').pop()?.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
