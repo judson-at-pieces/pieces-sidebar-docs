@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -134,31 +133,34 @@ Start editing this file...`;
       return;
     }
 
-    const repoConfig = await githubService.getRepoConfig();
-    if (!repoConfig) {
-      toast.error('No GitHub repository configured. Please contact an admin to set up the repository.');
-      return;
-    }
-
-    if (!user) {
-      toast.error('You must be logged in to create pull requests');
-      return;
-    }
-
     setIsLoading(true);
     try {
       console.log('Starting PR creation process...');
       
+      // Get repository configuration
+      const repoConfig = await githubService.getRepoConfig();
+      if (!repoConfig) {
+        toast.error('No GitHub repository configured. Please contact an admin to set up the repository.');
+        return;
+      }
+
+      console.log('Repository configuration loaded:', repoConfig);
+
+      if (!user) {
+        toast.error('You must be logged in to create pull requests');
+        return;
+      }
+
       // Get the user's GitHub access token from their session
       const { data: { session } } = await supabase.auth.getSession();
       const githubToken = session?.provider_token;
 
       if (!githubToken) {
-        toast.error('GitHub access token not found. Please sign out and sign back in.');
+        toast.error('GitHub access token not found. Please sign out and sign back in to refresh your GitHub authentication.');
         return;
       }
 
-      console.log('GitHub token found, repository config:', repoConfig);
+      console.log('GitHub token found, preparing files for PR...');
 
       const files = Array.from(modifiedFiles).map(fileName => {
         // Map the file name to the correct content path in public/content
@@ -206,22 +208,8 @@ Start editing this file...`;
     } catch (error: any) {
       console.error('Error creating pull request:', error);
       
-      // Provide more specific error messages based on the error
-      let errorMessage = 'Failed to create pull request. ';
-      
-      if (error.message.includes('401')) {
-        errorMessage += 'Authentication failed. Please sign out and sign back in.';
-      } else if (error.message.includes('403')) {
-        errorMessage += 'You don\'t have permission to write to this repository.';
-      } else if (error.message.includes('404')) {
-        errorMessage += 'Repository not found. Please check the repository configuration.';
-      } else if (error.message.includes('422')) {
-        errorMessage += 'Invalid data provided. Please check the repository structure.';
-      } else {
-        errorMessage += error.message || 'Please try again.';
-      }
-      
-      toast.error(errorMessage);
+      // The GitHubService now provides more specific error messages
+      toast.error(error.message || 'Failed to create pull request. Please try again.');
     }
     setIsLoading(false);
   };

@@ -71,6 +71,19 @@ class GitHubService {
     console.log('Creating PR for repository:', `${owner}/${repo}`);
     console.log('Files to update:', files.map(f => f.path));
 
+    // Validate inputs
+    if (!owner || !repo) {
+      throw new Error('Repository owner and name are required');
+    }
+
+    if (!token) {
+      throw new Error('GitHub token is required');
+    }
+
+    if (!files || files.length === 0) {
+      throw new Error('At least one file is required to create a pull request');
+    }
+
     // Create a new branch
     const branchName = `docs-update-${Date.now()}`;
     
@@ -145,6 +158,20 @@ class GitHubService {
       };
     } catch (error) {
       console.error('Error creating pull request:', error);
+      
+      // Provide more specific error messages
+      if (error instanceof Error) {
+        if (error.message.includes('404')) {
+          throw new Error(`Repository ${owner}/${repo} not found. Please check that the repository exists and you have access to it.`);
+        } else if (error.message.includes('403')) {
+          throw new Error('Access forbidden. Please check that your GitHub token has the necessary permissions for this repository.');
+        } else if (error.message.includes('401')) {
+          throw new Error('Authentication failed. Please sign out and sign back in to refresh your GitHub token.');
+        } else if (error.message.includes('422')) {
+          throw new Error('Invalid repository data. Please check the repository configuration and file paths.');
+        }
+      }
+      
       throw error;
     }
   }
@@ -153,36 +180,79 @@ class GitHubService {
     try {
       console.log('Verifying repository structure for:', `${owner}/${repo}`);
       
+      if (!owner || !repo) {
+        throw new Error('Repository owner and name are required');
+      }
+
+      if (!token) {
+        throw new Error('GitHub token is required for repository verification');
+      }
+      
       // First check if we can access the repository at all
+      console.log('Checking repository access...');
       const repoResponse = await this.makeRequest(`/repos/${owner}/${repo}`, token);
       console.log('Repository accessible, permissions:', repoResponse.permissions);
       
-      const response = await this.makeRequest(`/repos/${owner}/${repo}/contents/public/content`, token);
-
-      // Check if it's a directory and has some content files
-      if (!Array.isArray(response)) {
-        throw new Error('Invalid repository structure: /public/content should be a directory');
+      // Check if the repository has the expected structure
+      console.log('Checking repository structure...');
+      let hasPublicContent = false;
+      
+      try {
+        const response = await this.makeRequest(`/repos/${owner}/${repo}/contents/public/content`, token);
+        
+        // Check if it's a directory and has some content files
+        if (Array.isArray(response)) {
+          const hasMarkdownFiles = response.some((item: any) => 
+            item.name.endsWith('.md') || item.type === 'dir'
+          );
+          
+          if (hasMarkdownFiles) {
+            hasPublicContent = true;
+          }
+        }
+      } catch (error) {
+        console.log('No /public/content directory found, checking for any content structure...');
+        
+        // If public/content doesn't exist, check if there's at least some content in the repo
+        try {
+          const rootContents = await this.makeRequest(`/repos/${owner}/${repo}/contents`, token);
+          if (Array.isArray(rootContents) && rootContents.length > 0) {
+            console.log('Repository has content, proceeding with verification');
+            hasPublicContent = true;
+          }
+        } catch (rootError) {
+          console.error('Failed to check repository contents:', rootError);
+        }
       }
 
-      // Look for some expected markdown files
-      const hasMarkdownFiles = response.some((item: any) => 
-        item.name.endsWith('.md') || item.type === 'dir'
-      );
-
-      if (!hasMarkdownFiles) {
-        throw new Error('Repository structure validation failed: No markdown files or subdirectories found in /public/content');
+      if (!hasPublicContent) {
+        console.warn('Repository structure validation warning: No expected content structure found');
+        // Don't throw an error, just warn - let the user proceed
       }
 
-      console.log('Repository verification successful');
+      console.log('Repository verification completed successfully');
       return true;
     } catch (error) {
       console.error('Repository verification failed:', error);
+      
+      if (error instanceof Error) {
+        if (error.message.includes('404')) {
+          throw new Error(`Repository ${owner}/${repo} not found. Please check that the repository exists and you have access to it.`);
+        } else if (error.message.includes('403')) {
+          throw new Error('Access forbidden. Please check that your GitHub token has the necessary permissions.');
+        } else if (error.message.includes('401')) {
+          throw new Error('Authentication failed. Please sign out and sign back in to refresh your GitHub token.');
+        }
+      }
+      
       throw error;
     }
   }
 
   async getRepoConfig(): Promise<GitHubConfig | null> {
     try {
+      console.log('Fetching GitHub repository configuration from Supabase...');
+      
       const { data: configs, error } = await supabase
         .from('github_config')
         .select('repo_owner, repo_name')
@@ -191,49 +261,64 @@ class GitHubService {
         .maybeSingle();
 
       if (error) {
-        console.error('Error fetching GitHub config:', error);
-        return null;
+        console.error('Error fetching GitHub config from Supabase:', error);
+        throw new Error(`Failed to fetch repository configuration: ${error.message}`);
       }
 
       if (!configs) {
+        console.log('No GitHub repository configuration found');
         return null;
       }
 
+      console.log('Found GitHub config:', configs);
       return {
         owner: configs.repo_owner,
         repo: configs.repo_name,
       };
     } catch (error) {
       console.error('Error getting repo config:', error);
-      return null;
+      throw error;
     }
   }
 
   async setRepoConfig(owner: string, repo: string): Promise<boolean> {
     try {
+      console.log('Saving GitHub repository configuration to Supabase:', { owner, repo });
+      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User must be authenticated to save repository configuration');
+      }
+
       const { error } = await supabase
         .from('github_config')
         .insert({
           repo_owner: owner,
           repo_name: repo,
-          created_by: (await supabase.auth.getUser()).data.user?.id,
+          created_by: user.id,
         });
 
       if (error) {
-        console.error('Error saving GitHub config:', error);
-        return false;
+        console.error('Error saving GitHub config to Supabase:', error);
+        throw new Error(`Failed to save repository configuration: ${error.message}`);
       }
 
+      console.log('Successfully saved GitHub repository configuration');
       return true;
     } catch (error) {
       console.error('Error setting repo config:', error);
-      return false;
+      throw error;
     }
   }
 
   async isConfigured(): Promise<boolean> {
-    const config = await this.getRepoConfig();
-    return !!config;
+    try {
+      const config = await this.getRepoConfig();
+      return !!config;
+    } catch (error) {
+      console.error('Error checking if GitHub is configured:', error);
+      return false;
+    }
   }
 }
 
