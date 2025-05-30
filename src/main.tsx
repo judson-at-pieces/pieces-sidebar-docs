@@ -1,3 +1,4 @@
+
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
@@ -19,5 +20,18 @@ window.addEventListener('unhandledrejection', (event) => {
     return false;
   }
 });
+
+// Suppress postMessage origin mismatch errors
+const originalError = console.error;
+console.error = (...args) => {
+  const message = args.join(' ');
+  if (message.includes('postMessage') && 
+      message.includes('target origin') && 
+      message.includes('does not match')) {
+    // Silently ignore postMessage origin mismatch errors
+    return;
+  }
+  originalError.apply(console, args);
+};
 
 createRoot(document.getElementById("root")!).render(<App />);
