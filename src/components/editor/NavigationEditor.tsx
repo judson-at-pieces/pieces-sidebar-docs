@@ -158,15 +158,19 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
   };
 
   const handleDragEnd = async (result: DropResult) => {
-    const { destination, source, draggableId, type } = result;
+    const { destination, source, draggableId } = result;
 
-    if (!destination) return;
+    console.log('Drag ended:', { source, destination, draggableId });
 
-    console.log('Drag ended:', { source, destination, draggableId, type });
+    if (!destination) {
+      console.log('No destination - drag cancelled');
+      return;
+    }
 
     // Handle dragging from available files to navigation sections
     if (source.droppableId === 'available-files' && destination.droppableId.startsWith('section-')) {
       const destSectionId = destination.droppableId.replace('section-', '');
+      console.log('Dropping into section:', destSectionId);
       
       // Handle both files and folders
       if (draggableId.startsWith('folder-')) {
@@ -250,7 +254,10 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
 
         const file = findFileByPath(fileStructure, draggableId);
         
-        if (!file) return;
+        if (!file) {
+          console.log('File not found:', draggableId);
+          return;
+        }
         
         const newItem: NavigationItem = {
           id: `temp-${Date.now()}`,
@@ -282,7 +289,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
     }
 
     // Handle section reordering
-    if (type === 'section') {
+    if (source.droppableId === 'sections' && destination.droppableId === 'sections') {
       const newSections = Array.from(sections);
       const [reorderedSection] = newSections.splice(source.index, 1);
       newSections.splice(destination.index, 0, reorderedSection);
@@ -298,7 +305,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
     }
 
     // Handle item reordering within sections or moving between sections
-    if (type === 'item') {
+    if (source.droppableId.startsWith('section-') && destination.droppableId.startsWith('section-')) {
       const sourceSectionId = source.droppableId.replace('section-', '');
       const destSectionId = destination.droppableId.replace('section-', '');
       
@@ -428,7 +435,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex-1 overflow-hidden">
-                <Droppable droppableId="available-files" type="file">
+                <Droppable droppableId="available-files">
                   {(provided) => (
                     <ScrollArea className="h-full">
                       <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-1">
@@ -499,7 +506,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
                 )}
               </CardHeader>
               <CardContent className="flex-1 overflow-hidden">
-                <Droppable droppableId="sections" type="section">
+                <Droppable droppableId="sections">
                   {(provided) => (
                     <ScrollArea className="h-full">
                       <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-4">
@@ -565,13 +572,15 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
                                   </div>
                                 </div>
                                 
-                                <Droppable droppableId={`section-${section.id}`} type="item">
+                                <Droppable droppableId={`section-${section.id}`}>
                                   {(provided, snapshot) => (
                                     <div
                                       {...provided.droppableProps}
                                       ref={provided.innerRef}
-                                      className={`p-3 min-h-[80px] transition-colors ${
-                                        snapshot.isDraggingOver ? 'bg-primary/10 border-primary border-2 border-dashed' : ''
+                                      className={`p-3 min-h-[80px] transition-colors border-2 border-dashed ${
+                                        snapshot.isDraggingOver 
+                                          ? 'bg-primary/10 border-primary' 
+                                          : 'border-transparent'
                                       }`}
                                     >
                                       {section.items?.length ? (
@@ -617,7 +626,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
                                           ))}
                                         </div>
                                       ) : (
-                                        <div className="text-center text-muted-foreground text-sm py-8 border-2 border-dashed border-muted-foreground/20 rounded">
+                                        <div className="text-center text-muted-foreground text-sm py-8">
                                           Drop files or folders here to add them to this section
                                         </div>
                                       )}
