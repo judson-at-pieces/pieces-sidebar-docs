@@ -8,6 +8,7 @@ import { AccessCodeForm } from '@/components/auth/AccessCodeForm';
 import { GitHubAuthButton } from '@/components/auth/GitHubAuthButton';
 import { useAuth } from '@/contexts/AuthContext';
 import { AuthErrorBoundary } from '@/components/auth/AuthErrorBoundary';
+import { Link } from 'react-router-dom';
 
 function AuthContent() {
   const { user, loading, hasRole, signOut, isSupabaseConfigured } = useAuth();
@@ -63,9 +64,45 @@ function AuthContent() {
     );
   }
 
-  // If user is signed in and has proper permissions, redirect to home
+  // If user is signed in and has proper permissions, show signed-in state
   if (user && (hasRole('admin') || hasRole('editor'))) {
-    return <Navigate to="/" replace />;
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="w-full max-w-md space-y-6">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold">Already Signed In</h1>
+            <p className="text-muted-foreground mt-2">
+              You are currently signed in to the documentation editor
+            </p>
+            <p className="text-sm text-muted-foreground mt-1">
+              Signed in as: {user.email}
+            </p>
+          </div>
+
+          <Card>
+            <CardContent className="pt-6 space-y-4">
+              <Link to="/">
+                <Button className="w-full" size="lg">
+                  Go to Home
+                </Button>
+              </Link>
+              <Link to="/edit">
+                <Button variant="outline" className="w-full" size="lg">
+                  Go to Editor
+                </Button>
+              </Link>
+              <Button 
+                onClick={signOut}
+                variant="ghost"
+                className="w-full"
+              >
+                Sign Out
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+    );
   }
 
   // If user is signed in but doesn't have proper permissions, show access code form
@@ -85,10 +122,15 @@ function AuthContent() {
 
           <AccessCodeForm onSuccess={() => {}} />
           
-          <div className="text-center">
+          <div className="text-center space-y-2">
+            <Link to="/">
+              <Button variant="outline" className="w-full">
+                Go to Home
+              </Button>
+            </Link>
             <Button 
               onClick={signOut}
-              variant="outline"
+              variant="ghost"
               className="w-full"
             >
               Sign Out
@@ -148,6 +190,14 @@ function AuthContent() {
             )}
           </TabsContent>
         </Tabs>
+
+        <div className="text-center">
+          <Link to="/">
+            <Button variant="ghost" className="text-sm">
+              Return to Home
+            </Button>
+          </Link>
+        </div>
       </div>
     </div>
   );
