@@ -63,7 +63,7 @@ export function Card({ title, image, icon, href, external, children, className }
               </div>
             ) : image && (
               // Full image display
-              <div className="relative w-full md:w-48 h-32 md:h-full overflow-hidden rounded-lg">
+              <div className="relative w-full md:w-48 h-48 sm:h-32 md:h-full overflow-hidden rounded-lg">
                 <img 
                   src={image} 
                   alt={title || ''} 
@@ -78,7 +78,7 @@ export function Card({ title, image, icon, href, external, children, className }
         <div className="flex-grow space-y-2">
           {/* Title */}
           {title && (
-            <h3 className="text-lg font-semibold flex items-center justify-between transition-colors duration-300 group-hover:text-primary">
+            <h3 className="text-base sm:text-lg font-semibold flex items-center justify-between transition-colors duration-300 group-hover:text-primary">
               <span className="line-clamp-2">{title}</span>
               {isClickable && (
                 <ArrowUpRight className={cn(
@@ -92,7 +92,7 @@ export function Card({ title, image, icon, href, external, children, className }
           
           {/* Content */}
           {children && (
-            <div className="text-base text-muted-foreground mt-2">
+            <div className="text-sm sm:text-base text-muted-foreground mt-2">
               {processedChildren}
             </div>
           )}

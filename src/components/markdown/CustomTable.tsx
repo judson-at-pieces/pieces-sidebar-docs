@@ -8,10 +8,12 @@ interface CustomTableProps {
 
 export function CustomTable({ children, ...props }: CustomTableProps) {
   return (
-    <div className="my-6 overflow-x-auto">
-      <Table {...props}>
-        {children}
-      </Table>
+    <div className="my-6 -mx-4 sm:mx-0">
+      <div className="overflow-x-auto px-4 sm:px-0">
+        <Table className="min-w-[600px]" {...props}>
+          {children}
+        </Table>
+      </div>
     </div>
   );
 }

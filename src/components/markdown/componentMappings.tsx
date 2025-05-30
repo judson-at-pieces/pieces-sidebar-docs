@@ -105,27 +105,27 @@ export const createComponentMappings = () => ({
   ),
 
   h1: ({ children, ...props }: HeadingProps) => (
-    <h1 className="scroll-m-20 text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight leading-tight" id={generateHeadingId(children)} {...props}>
+    <h1 className="scroll-m-20 text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight leading-tight" id={generateHeadingId(children)} {...props}>
       {children}
     </h1>
   ),
   h2: ({ children, ...props }: HeadingProps) => (
-    <h2 className="scroll-m-20 pb-2 text-xl md:text-2xl lg:text-3xl font-semibold tracking-tight transition-colors first:mt-0" id={generateHeadingId(children)} {...props}>
+    <h2 className="scroll-m-20 pb-2 text-lg sm:text-xl md:text-2xl lg:text-3xl font-semibold tracking-tight transition-colors first:mt-0" id={generateHeadingId(children)} {...props}>
       {children}
     </h2>
   ),
   h3: ({ children, ...props }: HeadingProps) => (
-    <h3 className="scroll-m-20 pb-2 text-lg md:text-xl lg:text-2xl font-semibold tracking-tight transition-colors first:mt-0" id={generateHeadingId(children)} {...props}>
+    <h3 className="scroll-m-20 pb-2 text-base sm:text-lg md:text-xl lg:text-2xl font-semibold tracking-tight transition-colors first:mt-0" id={generateHeadingId(children)} {...props}>
       {children}
     </h3>
   ),
   h4: ({ children, ...props }: HeadingProps) => (
-    <h4 className="scroll-m-20 pb-2 text-xl font-semibold tracking-tight transition-colors first:mt-0" id={generateHeadingId(children)} {...props}>
+    <h4 className="scroll-m-20 pb-2 text-base sm:text-lg font-semibold tracking-tight transition-colors first:mt-0" id={generateHeadingId(children)} {...props}>
       {children}
     </h4>
   ),
   pre: ({ children, ...props }: CodeProps) => (
-    <pre className="rounded-md border bg-secondary text-sm text-secondary-foreground" {...props}>
+    <pre className="rounded-md border bg-secondary text-sm text-secondary-foreground overflow-x-auto max-w-full" {...props}>
       {children}
     </pre>
   ),

@@ -102,9 +102,9 @@ export function DynamicDocPage() {
         {/* Page header - hide for getting-started page */}
         {!isGettingStartedPage && (
           <div className="mb-8 pb-6 border-b border-border">
-            <h1 className="text-2xl md:text-3xl lg:text-4xl font-bold mb-2 leading-tight">{content.metadata.title}</h1>
+            <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-2 leading-tight">{content.metadata.title}</h1>
             {content.metadata.description && (
-              <p className="text-base md:text-lg lg:text-xl text-muted-foreground mb-4">{content.metadata.description}</p>
+              <p className="text-sm sm:text-base md:text-lg lg:text-xl text-muted-foreground mb-4">{content.metadata.description}</p>
             )}
             
             {/* Metadata */}

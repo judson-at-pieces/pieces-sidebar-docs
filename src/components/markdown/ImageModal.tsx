@@ -20,8 +20,9 @@ export function ImageModal({ src, alt, isOpen, onClose }: ImageModalProps) {
           <div className="relative flex items-center justify-center">
             <DialogPrimitive.Close asChild>
               <button
-                className="absolute -top-10 right-0 rounded-full bg-white/10 backdrop-blur-md p-2 text-white hover:bg-white/20 transition-all duration-200 z-50 focus:outline-none focus:ring-2 focus:ring-white/50"
+                className="fixed top-4 right-4 sm:top-8 sm:right-8 rounded-full bg-background/90 backdrop-blur-md p-3 text-foreground hover:bg-background transition-all duration-200 z-50 focus:outline-none focus:ring-2 focus:ring-foreground/50 shadow-lg"
                 aria-label="Close"
+                style={{ paddingTop: 'env(safe-area-inset-top, 1rem)' }}
               >
                 <X className="w-5 h-5" />
               </button>
