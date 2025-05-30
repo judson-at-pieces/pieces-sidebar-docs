@@ -1,3 +1,4 @@
+
 name: Deploy to Supabase
 
 on:
@@ -30,12 +31,12 @@ jobs:
     - name: Verify Supabase project
       run: |
         supabase --version
-        echo "Project ID: ${{ secrets.SUPABASE_PROJECT_ID }}"
+        echo "Project ID: yqchxlpigndrmjbtyvhu"
       env:
         SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
     - name: Link Supabase project
-      run: supabase link --project-ref ${{ secrets.SUPABASE_PROJECT_ID }}
+      run: supabase link --project-ref yqchxlpigndrmjbtyvhu
       env:
         SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
 
@@ -52,8 +53,8 @@ jobs:
     - name: Build project
       run: npm run build:mdx && npm run build
       env:
-        VITE_SUPABASE_URL: ${{ secrets.VITE_SUPABASE_URL }}
-        VITE_SUPABASE_ANON_KEY: ${{ secrets.VITE_SUPABASE_ANON_KEY }}
+        VITE_SUPABASE_URL: https://yqchxlpigndrmjbtyvhu.supabase.co
+        VITE_SUPABASE_ANON_KEY: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxY2h4bHBpZ25kcm1qYnR5dmh1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg1MzgwMTksImV4cCI6MjA2NDExNDAxOX0.Hniwe87ef6V22Y-g4N7AxsOSn4Ea5TUuDFujVfaIMuc
 
     - name: Deploy to GitHub Pages
       uses: peaceiris/actions-gh-pages@v3
