@@ -43,7 +43,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
 
   // Create navigation items from folder structure (preserving hierarchy)
   const createNavigationItemsFromFolder = (folderNode: FileNode, parentId?: string): NavigationItem[] => {
-    const items: NavigationItem[] = [];
+    console.log(`Creating navigation items for folder: ${folderNode.name} with children:`, folderNode.children);
     
     // Check if this folder has an index file
     const indexFileName = `${folderNode.name}.md`;
@@ -64,7 +64,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
       items: []
     };
 
-    // Process children
+    // Process children and maintain hierarchy
     if (folderNode.children) {
       let childOrder = 0;
       
@@ -85,15 +85,23 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
             folderItem.items!.push(childItem);
           }
         } else if (child.type === 'folder') {
-          // Recursively process subfolders
+          // Recursively process subfolders - but keep them as nested children
           const subFolderItems = createNavigationItemsFromFolder(child, folderId);
-          folderItem.items!.push(...subFolderItems);
+          console.log(`Created folder item: ${child.name} with children count: ${subFolderItems[0]?.items?.length || 0}`);
+          
+          // Add the subfolder as a child of the current folder
+          if (subFolderItems.length > 0) {
+            const subFolder = subFolderItems[0];
+            subFolder.order_index = childOrder++;
+            subFolder.parent_id = folderId;
+            folderItem.items!.push(subFolder);
+          }
         }
       }
     }
     
-    items.push(folderItem);
-    return items;
+    console.log(`Created folder item: ${folderNode.name} with children count: ${folderItem.items?.length || 0}`);
+    return [folderItem];
   };
 
   // Save pending changes to database
@@ -148,7 +156,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
     }
   };
 
-  // Recursively add folder structure to database
+  // Recursively add folder structure to database while preserving hierarchy
   const addFolderStructureToDb = async (folderNode: FileNode, sectionId: string, parentId?: string): Promise<NavigationItem[]> => {
     const addedItems: NavigationItem[] = [];
     
@@ -171,7 +179,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
     const folderItem = await addNavigationItemToDb(folderItemData, sectionId);
     addedItems.push(folderItem);
 
-    // Process children
+    // Process children and maintain proper parent-child relationships
     if (folderNode.children) {
       let childOrder = 0;
       
@@ -184,7 +192,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
               href: `/${child.path.replace('.md', '')}`,
               file_path: child.path,
               order_index: childOrder++,
-              parent_id: folderItem.id,
+              parent_id: folderItem.id, // Set correct parent
               is_auto_generated: true
             };
             
@@ -192,9 +200,10 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
             addedItems.push(childItem);
           }
         } else if (child.type === 'folder') {
-          // Recursively process subfolders
+          // Recursively process subfolders with correct parent ID
           const subFolderItems = await addFolderStructureToDb(child, sectionId, folderItem.id);
           addedItems.push(...subFolderItems);
+          childOrder++;
         }
       }
     }
@@ -238,8 +247,14 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
             return;
           }
 
-          // Create preview items
+          console.log(`Processing folder drag: ${draggableId}`);
+          console.log('Found folder:', folder);
+
+          // Create preview items maintaining hierarchy
           const previewItems = createNavigationItemsFromFolder(folder);
+          console.log('Created navigation items:', previewItems);
+          console.log('Main folder item:', previewItems[0]);
+          console.log('Main folder children:', previewItems[0]?.items);
           
           if (previewItems.length === 0) {
             toast.info("No available files in this folder");
