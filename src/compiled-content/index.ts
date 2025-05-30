@@ -22,8 +22,18 @@ export const contentRegistry: Record<string, CompiledContentModule> = {};
 export function getCompiledContent(path: string): CompiledContentModule | null {
   // Normalize the path to match registry keys
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  return contentRegistry[normalizedPath] || null;
+  const content = contentRegistry[normalizedPath];
+  
+  if (!content) {
+    console.log('getCompiledContent: Path not found:', normalizedPath);
+    console.log('getCompiledContent: Available paths:', Object.keys(contentRegistry));
+  }
+  
+  return content || null;
 }
+
+// Expose registry for debugging
+getCompiledContent.registry = contentRegistry;
 
 // Register content function (used by build script)
 export function registerContent(path: string, module: CompiledContentModule): void {

@@ -1,44 +1,55 @@
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useLocation } from 'react-router-dom';
 import { getCompiledContent, CompiledContentModule } from '@/compiled-content';
 import { DynamicDocPage } from './DynamicDocPage';
 
 export function CompiledDocPage() {
-  const { '*': path } = useParams();
+  const location = useLocation();
   const [compiledContent, setCompiledContent] = useState<CompiledContentModule | null>(null);
   const [shouldUseFallback, setShouldUseFallback] = useState(false);
 
   useEffect(() => {
-    if (!path) {
-      setShouldUseFallback(true);
-      return;
+    const currentPath = location.pathname;
+    
+    console.log('CompiledDocPage: Current location.pathname:', currentPath);
+    
+    // Try multiple path variations to find the content
+    const pathsToTry = [
+      currentPath, // exact path
+      currentPath.startsWith('/docs/') ? currentPath : `/docs${currentPath}`, // add /docs prefix if missing
+      currentPath.replace(/\/+/g, '/'), // clean up double slashes
+    ];
+    
+    // If path doesn't start with /docs/, also try it with /docs/ prefix
+    if (!currentPath.startsWith('/docs/')) {
+      pathsToTry.push(`/docs${currentPath}`);
     }
-
-    // The router gives us paths like "desktop/copilot" but we need "/desktop/copilot"
-    let normalizedPath = path;
-    if (!normalizedPath.startsWith('/')) {
-      normalizedPath = `/${normalizedPath}`;
+    
+    console.log('CompiledDocPage: Trying paths:', pathsToTry);
+    
+    let foundContent = null;
+    let foundPath = '';
+    
+    for (const tryPath of pathsToTry) {
+      const content = getCompiledContent(tryPath);
+      if (content) {
+        foundContent = content;
+        foundPath = tryPath;
+        break;
+      }
     }
     
-    // Clean up any double slashes
-    normalizedPath = normalizedPath.replace(/\/+/g, '/');
-    
-    console.log('CompiledDocPage: Router path:', path);
-    console.log('CompiledDocPage: Normalized path:', normalizedPath);
-    console.log('CompiledDocPage: Looking for compiled content at:', normalizedPath);
-    
-    const content = getCompiledContent(normalizedPath);
-    
-    if (content) {
-      console.log('CompiledDocPage: Found compiled content for:', normalizedPath);
-      setCompiledContent(content);
+    if (foundContent) {
+      console.log('CompiledDocPage: Found compiled content at path:', foundPath);
+      setCompiledContent(foundContent);
       setShouldUseFallback(false);
     } else {
-      console.log('CompiledDocPage: No compiled content found, using fallback for:', normalizedPath);
+      console.log('CompiledDocPage: No compiled content found, using fallback for:', currentPath);
+      console.log('CompiledDocPage: Available paths in registry:', Object.keys(getCompiledContent.registry || {}));
       setShouldUseFallback(true);
     }
-  }, [path]);
+  }, [location.pathname]);
 
   // Use fallback (DynamicDocPage) if no compiled content is available
   if (shouldUseFallback || !compiledContent) {

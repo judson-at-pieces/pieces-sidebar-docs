@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -25,85 +26,130 @@ interface NavigationSection {
 }
 
 function buildNavigationFromRegistry(): NavigationSection[] {
-  const pathMap = new Map<string, NavigationItem>();
-  const rootSections = new Map<string, NavigationSection>();
-
+  console.log('Building navigation from registry with', Object.keys(contentRegistry).length, 'items');
+  
+  const sections = new Map<string, NavigationSection>();
+  
   // Process all compiled content paths
   Object.entries(contentRegistry).forEach(([path, module]) => {
-    const pathParts = path.split('/').filter(Boolean);
+    console.log('Processing path:', path, 'with title:', module.frontmatter.title);
+    
+    // Skip /docs/ prefix for processing
+    const cleanPath = path.replace(/^\/docs\//, '');
+    const pathParts = cleanPath.split('/').filter(Boolean);
     
     if (pathParts.length === 0) return;
 
+    // Get the title from frontmatter or generate from path
+    const title = module.frontmatter.title || pathParts[pathParts.length - 1].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+
     // Create navigation item
     const item: NavigationItem = {
-      title: module.frontmatter.title || pathParts[pathParts.length - 1].replace(/-/g, ' '),
+      title,
       href: path
     };
 
-    // Organize by sections
     if (pathParts.length === 1) {
-      // Root level item
+      // Root level item - create or update section
       const sectionKey = pathParts[0];
-      if (!rootSections.has(sectionKey)) {
-        rootSections.set(sectionKey, {
-          title: item.title,
+      const sectionTitle = title;
+      
+      if (!sections.has(sectionKey)) {
+        sections.set(sectionKey, {
+          title: sectionTitle,
           href: path,
           isSection: true,
           items: []
         });
+      } else {
+        // Update section with href if it didn't have one
+        const section = sections.get(sectionKey)!;
+        if (!section.href) {
+          section.href = path;
+          section.title = sectionTitle;
+        }
       }
     } else {
-      // Nested item - organize under parent section
+      // Nested item
       const sectionKey = pathParts[0];
-      if (!rootSections.has(sectionKey)) {
-        rootSections.set(sectionKey, {
-          title: sectionKey.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+      const sectionTitle = sectionKey.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+      
+      // Ensure section exists
+      if (!sections.has(sectionKey)) {
+        sections.set(sectionKey, {
+          title: sectionTitle,
           isSection: true,
           items: []
         });
       }
 
-      const section = rootSections.get(sectionKey)!;
+      const section = sections.get(sectionKey)!;
       if (!section.items) section.items = [];
 
-      // Handle nested structure
       if (pathParts.length === 2) {
-        // Direct child
+        // Direct child of section
         section.items.push(item);
       } else {
-        // Find or create parent item
-        const parentPath = `/${pathParts.slice(0, -1).join('/')}`;
-        let parentItem = section.items.find(i => i.href === parentPath);
+        // Deeply nested - find or create parent hierarchy
+        let currentItems = section.items;
         
-        if (!parentItem) {
-          parentItem = {
-            title: pathParts[pathParts.length - 2].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-            href: parentPath,
-            items: []
-          };
-          section.items.push(parentItem);
+        // Build the hierarchy for nested paths
+        for (let i = 1; i < pathParts.length - 1; i++) {
+          const parentPath = `/${pathParts.slice(0, i + 1).join('/')}`;
+          const parentTitle = pathParts[i].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
+          
+          let parentItem = currentItems.find(item => item.href === parentPath);
+          
+          if (!parentItem) {
+            parentItem = {
+              title: parentTitle,
+              href: parentPath,
+              items: []
+            };
+            currentItems.push(parentItem);
+          }
+          
+          if (!parentItem.items) parentItem.items = [];
+          currentItems = parentItem.items;
         }
         
-        if (!parentItem.items) parentItem.items = [];
-        parentItem.items.push(item);
+        // Add the final item
+        currentItems.push(item);
       }
     }
   });
 
-  // Convert to array and sort
-  const sections = Array.from(rootSections.values()).sort((a, b) => {
+  // Convert to array and sort by priority
+  const sectionsArray = Array.from(sections.values()).sort((a, b) => {
     // Define custom order for main sections
-    const order = ['meet-pieces', 'quick-guides', 'desktop', 'core-dependencies', 'mcp', 'extensions-plugins', 'productivity', 'large-language-models', 'more', 'help'];
-    const aIndex = order.findIndex(o => a.title.toLowerCase().includes(o) || a.href?.includes(o));
-    const bIndex = order.findIndex(o => b.title.toLowerCase().includes(o) || b.href?.includes(o));
+    const order = [
+      'meet-pieces', 'quick-guides', 'desktop', 'core-dependencies', 
+      'mcp', 'extensions-plugins', 'productivity', 'large-language-models', 
+      'web-extension', 'cli', 'obsidian', 'more', 'help'
+    ];
     
-    if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
-    if (aIndex !== -1) return -1;
-    if (bIndex !== -1) return 1;
+    const getOrderIndex = (section: NavigationSection) => {
+      const lowerTitle = section.title.toLowerCase();
+      const href = section.href?.toLowerCase() || '';
+      
+      for (let i = 0; i < order.length; i++) {
+        if (lowerTitle.includes(order[i]) || href.includes(order[i])) {
+          return i;
+        }
+      }
+      return order.length; // Put unknown sections at the end
+    };
+    
+    const aIndex = getOrderIndex(a);
+    const bIndex = getOrderIndex(b);
+    
+    if (aIndex !== bIndex) return aIndex - bIndex;
     return a.title.localeCompare(b.title);
   });
 
-  return sections;
+  console.log('Built navigation sections:', sectionsArray.map(s => ({ title: s.title, href: s.href, itemCount: s.items?.length || 0 })));
+  
+  return sectionsArray;
 }
 
 function DocsSidebar({ className, onNavigate }: { className?: string; onNavigate?: () => void }) {
