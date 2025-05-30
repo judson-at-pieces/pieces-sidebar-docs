@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -82,7 +81,7 @@ export default function Admin() {
           <Alert className="mb-6">
             <Info className="h-4 w-4" />
             <AlertDescription>
-              <strong>Important:</strong> Before configuring a repository, make sure the Lovable GitHub App is installed on your repository. 
+              <strong>Important:</strong> Before configuring a repository, make sure the Pieces Documentation Bot is installed on your repository. 
               The app is required for creating branches and pull requests automatically.
             </AlertDescription>
           </Alert>
@@ -95,19 +94,19 @@ export default function Admin() {
                   <span>Step 1: Install GitHub App</span>
                 </CardTitle>
                 <CardDescription>
-                  Install the Lovable GitHub App on your repository
+                  Install the Pieces Documentation Bot on your repositories
                 </CardDescription>
               </CardHeader>
               <CardContent>
                 <p className="text-sm text-muted-foreground mb-4">
-                  The Lovable GitHub App must be installed on your repository to enable automatic branch creation and pull request management.
+                  The Pieces Documentation Bot must be installed on your repositories to enable automatic branch creation and pull request management.
                 </p>
                 <Button 
-                  onClick={() => window.open('https://github.com/apps/lovable-editor', '_blank')}
+                  onClick={() => window.open('https://github.com/apps/piecesdocumentationbot/installations/new', '_blank')}
                   className="w-full"
                 >
                   <ExternalLink className="h-4 w-4 mr-2" />
-                  Install Lovable GitHub App
+                  Install Pieces Documentation Bot
                 </Button>
               </CardContent>
             </Card>
