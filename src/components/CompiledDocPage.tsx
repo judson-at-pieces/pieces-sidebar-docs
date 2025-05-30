@@ -14,57 +14,51 @@ export function CompiledDocPage() {
     
     console.log('CompiledDocPage: Current location.pathname:', currentPath);
     
-    // Remove /docs prefix and normalize
-    const routerPath = currentPath.replace(/^\/docs\//, '').replace(/^\//, '');
-    console.log('CompiledDocPage: Router path:', routerPath);
-    
     // Get all available paths from compiled content registry
     const availablePaths = Object.keys(contentRegistry);
     console.log('CompiledDocPage: Available compiled paths:', availablePaths);
     
-    // Find matching content by checking if any compiled path ends with our router path
+    // Find matching content by checking multiple strategies
     let foundContent = null;
     let foundPath = '';
     
-    // First try exact match
-    const exactPath = `/${routerPath}`;
-    foundContent = getCompiledContent(exactPath);
+    // Strategy 1: Exact match
+    foundContent = getCompiledContent(currentPath);
     if (foundContent) {
-      foundPath = exactPath;
+      foundPath = currentPath;
       console.log('CompiledDocPage: Found exact match:', foundPath);
     } else {
-      // Try to find a path that ends with our route
-      for (const availablePath of availablePaths) {
-        // Check if the available path ends with our router path
-        if (availablePath.endsWith(`/${routerPath}`) || availablePath === `/${routerPath}`) {
-          foundContent = getCompiledContent(availablePath);
-          if (foundContent) {
-            foundPath = availablePath;
-            console.log('CompiledDocPage: Found matching path:', foundPath, 'for route:', routerPath);
-            break;
-          }
-        }
-        
-        // Also check for partial matches (e.g., "actions" should match "desktop/actions")
-        if (routerPath && availablePath.includes(`/${routerPath}`)) {
-          foundContent = getCompiledContent(availablePath);
-          if (foundContent) {
-            foundPath = availablePath;
-            console.log('CompiledDocPage: Found partial match:', foundPath, 'for route:', routerPath);
-            break;
-          }
+      // Strategy 2: Try different path formats
+      const pathVariations = [
+        currentPath,
+        currentPath.replace(/^\/docs\//, '/'),
+        currentPath.replace(/^\//, '/docs/'),
+        `/docs${currentPath}`,
+        currentPath.replace(/^\/docs/, ''),
+      ].filter((path, index, arr) => arr.indexOf(path) === index); // Remove duplicates
+      
+      for (const variation of pathVariations) {
+        foundContent = getCompiledContent(variation);
+        if (foundContent) {
+          foundPath = variation;
+          console.log('CompiledDocPage: Found variation match:', foundPath, 'for route:', currentPath);
+          break;
         }
       }
       
-      // If still no match, try looking for the route as a segment in any path
+      // Strategy 3: Try to match segments
       if (!foundContent) {
         for (const availablePath of availablePaths) {
-          const pathSegments = availablePath.split('/').filter(Boolean);
-          if (pathSegments.includes(routerPath)) {
+          const currentSegments = currentPath.split('/').filter(Boolean);
+          const availableSegments = availablePath.split('/').filter(Boolean);
+          
+          // Check if the last segment matches
+          if (currentSegments.length > 0 && availableSegments.length > 0 && 
+              currentSegments[currentSegments.length - 1] === availableSegments[availableSegments.length - 1]) {
             foundContent = getCompiledContent(availablePath);
             if (foundContent) {
               foundPath = availablePath;
-              console.log('CompiledDocPage: Found segment match:', foundPath, 'for route:', routerPath);
+              console.log('CompiledDocPage: Found segment match:', foundPath, 'for route:', currentPath);
               break;
             }
           }
@@ -78,7 +72,6 @@ export function CompiledDocPage() {
       setShouldUseFallback(false);
     } else {
       console.log('CompiledDocPage: No compiled content found, using fallback for:', currentPath);
-      console.log('CompiledDocPage: Tried to match route:', routerPath);
       setShouldUseFallback(true);
     }
   }, [location.pathname]);

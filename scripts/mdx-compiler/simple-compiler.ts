@@ -1,3 +1,4 @@
+
 import fs from 'fs/promises';
 import path from 'path';
 import matter from 'gray-matter';
@@ -75,11 +76,18 @@ export class SimpleMarkdownCompiler {
 
   private getRoutePath(relativePath: string): string {
     // Convert file path to route path
-    const routePath = relativePath
+    let routePath = relativePath
       .replace(/\.md$/, '')
       .replace(/\\/g, '/'); // Normalize path separators
     
-    return `/${routePath}`;
+    // Handle special cases for root-level files
+    if (!routePath.includes('/')) {
+      routePath = `/docs/${routePath}`;
+    } else {
+      routePath = `/${routePath}`;
+    }
+    
+    return routePath;
   }
 
   private async compileFile(filePath: string, routePath: string): Promise<string | null> {
@@ -87,8 +95,20 @@ export class SimpleMarkdownCompiler {
       const content = await fs.readFile(filePath, 'utf-8');
       const { data: frontmatter, content: markdownContent } = matter(content);
       
+      // Clean up the markdown content
+      let cleanContent = markdownContent
+        .replace(/^---[\s\S]*?---\s*/, '') // Remove any remaining frontmatter
+        .replace(/^\*\*\*\s*/, '') // Remove *** separator
+        .trim();
+      
+      // If content is empty or very minimal, create a basic structure
+      if (!cleanContent || cleanContent.length < 10) {
+        const title = frontmatter.title || 'Documentation Page';
+        cleanContent = `# ${title}\n\nThis page is currently under development. Please check back soon for more content.`;
+      }
+      
       // Process custom syntax (Steps, Cards, Callouts, etc.)
-      const processedContent = processCustomSyntax(markdownContent);
+      const processedContent = processCustomSyntax(cleanContent);
       
       // Generate TSX component
       const tsxContent = this.generateTSXComponent(processedContent, frontmatter, routePath);
@@ -111,17 +131,22 @@ export class SimpleMarkdownCompiler {
   }
 
   private generateTSXComponent(content: string, frontmatter: any, routePath: string): string {
-    // Escape content for TSX
+    // Escape content for TSX - be more careful with escaping
     const escapedContent = content
       .replace(/\\/g, '\\\\')
       .replace(/`/g, '\\`')
-      .replace(/\${/g, '\\${');
+      .replace(/\${/g, '\\${')
+      .replace(/"/g, '\\"'); // Also escape double quotes
+
+    // Ensure we have a proper title
+    const title = frontmatter.title || routePath.split('/').pop()?.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'Documentation';
 
     return `import React from 'react';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 
 const frontmatter = ${JSON.stringify({
   ...frontmatter,
+  title: title,
   path: routePath,
 }, null, 2)};
 
@@ -179,6 +204,11 @@ export function getCompiledContent(path: string): CompiledContentModule | null {
   console.log('Looking for compiled content at path:', normalizedPath);
   console.log('Available paths:', Object.keys(contentRegistry));
   return contentRegistry[normalizedPath] || null;
+}
+
+// Get all available compiled content paths
+export function getAllCompiledPaths(): string[] {
+  return Object.keys(contentRegistry);
 }
 
 // Register content function (used by build script)

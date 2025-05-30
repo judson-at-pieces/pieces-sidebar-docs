@@ -1,18 +1,23 @@
 
+// Client-side processor for custom markdown syntax
+
 // Security utilities for safe HTML attribute handling
 function escapeHtml(text: string): string {
-  const div = document.createElement('div');
-  div.textContent = text;
-  return div.innerHTML;
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
 }
 
-function sanitizeAttribute(value: string): string {
+function sanitizeAttribute(value?: string): string {
   if (!value || typeof value !== 'string') return '';
   // Remove any potential XSS vectors and limit length
   return escapeHtml(value.slice(0, 500).replace(/[<>"'&]/g, ''));
 }
 
-function validateUrl(url: string): string {
+function validateUrl(url?: string): string {
   if (!url || typeof url !== 'string') return '';
   
   try {
