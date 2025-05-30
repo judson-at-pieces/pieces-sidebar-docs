@@ -5,7 +5,6 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { AccessCodeForm } from '@/components/auth/AccessCodeForm';
 import { GitHubAuthButton } from '@/components/auth/GitHubAuthButton';
-import { AdminPortal } from '@/components/auth/AdminPortal';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function Auth() {
@@ -53,10 +52,9 @@ export default function Auth() {
         </div>
 
         <Tabs defaultValue="signin" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-2">
             <TabsTrigger value="signin">Sign In</TabsTrigger>
             <TabsTrigger value="signup">Sign Up</TabsTrigger>
-            <TabsTrigger value="admin">Admin</TabsTrigger>
           </TabsList>
           
           <TabsContent value="signin" className="space-y-4">
@@ -89,10 +87,6 @@ export default function Auth() {
                 </CardContent>
               </Card>
             )}
-          </TabsContent>
-          
-          <TabsContent value="admin">
-            <AdminPortal />
           </TabsContent>
         </Tabs>
       </div>

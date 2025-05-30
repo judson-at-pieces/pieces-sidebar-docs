@@ -1,41 +1,58 @@
 
-import React from "react";
-import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
+import { Suspense, lazy } from "react";
+import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { ThemeProvider } from "next-themes";
 import { AuthProvider } from "@/contexts/AuthContext";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
-import { ThemeProvider } from "@/components/ThemeProvider";
-import { Toaster } from "@/components/ui/sonner";
-import Index from "@/pages/Index";
-import NotFound from "@/pages/NotFound";
-import Auth from "@/pages/Auth";
-import AuthCallback from "@/pages/AuthCallback";
-import GettingStarted from "@/pages/docs/GettingStarted";
-import { DynamicDocPage } from "@/components/DynamicDocPage";
-import DocsLayout from "@/components/DocsLayout";
-import "./App.css";
 
 const queryClient = new QueryClient();
+
+const Index = lazy(() => import("./pages/Index"));
+const Auth = lazy(() => import("./pages/Auth"));
+const AuthCallback = lazy(() => import("./pages/AuthCallback"));
+const Admin = lazy(() => import("./pages/Admin"));
+const DocsLayout = lazy(() => import("./components/DocsLayout"));
+const DynamicDocPage = lazy(() => import("./components/DynamicDocPage"));
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-        <AuthProvider>
-          <Router>
-            <Routes>
-              <Route path="/" element={<Index />} />
-              <Route path="/auth" element={<Auth />} />
-              <Route path="/auth/callback" element={<AuthCallback />} />
-              <Route path="/docs/*" element={<DocsLayout />}>
-                <Route path="getting-started" element={<GettingStarted />} />
-                <Route path="*" element={<DynamicDocPage />} />
-              </Route>
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Router>
+      <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+        <TooltipProvider>
           <Toaster />
-        </AuthProvider>
+          <BrowserRouter>
+            <AuthProvider>
+              <Suspense fallback={<div>Loading...</div>}>
+                <Routes>
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/auth/callback" element={<AuthCallback />} />
+                  <Route path="/admin" element={<Admin />} />
+                  <Route
+                    path="/"
+                    element={
+                      <ProtectedRoute>
+                        <Index />
+                      </ProtectedRoute>
+                    }
+                  />
+                  <Route
+                    path="/docs/*"
+                    element={
+                      <ProtectedRoute>
+                        <DocsLayout />
+                      </ProtectedRoute>
+                    }
+                  >
+                    <Route path="*" element={<DynamicDocPage />} />
+                  </Route>
+                </Routes>
+              </Suspense>
+            </AuthProvider>
+          </BrowserRouter>
+        </TooltipProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );
