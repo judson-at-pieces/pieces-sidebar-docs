@@ -14,13 +14,10 @@ export interface CompiledContentModule {
   };
 }
 
-// Dynamic imports for all compiled content - using eager loading to ensure all files are included
+// Use eager loading to ensure all files are included in the build
 const contentModules = import.meta.glob([
   './**/*.tsx',
-  './desktop/**/*.tsx',
-  './extensions-plugins/**/*.tsx',
-  './quick-guides/**/*.tsx',
-  './meet-pieces/**/*.tsx'
+  '!./index.ts'
 ], { eager: true }) as Record<string, CompiledContentModule>;
 
 // Create a path-to-module mapping
@@ -28,8 +25,6 @@ export const contentRegistry: Record<string, CompiledContentModule> = {};
 
 // Process all modules and create normalized path mappings
 Object.entries(contentModules).forEach(([filePath, module]) => {
-  console.log('Processing compiled content file:', filePath);
-  
   // Convert file path to content path
   // ./desktop/download.tsx -> desktop/download
   // ./quick-guides/quick-guides/copilot-with-context.tsx -> quick-guides/copilot-with-context
@@ -45,14 +40,12 @@ Object.entries(contentModules).forEach(([filePath, module]) => {
     normalizedPath = pathParts.join('/');
   }
 
-  console.log('Registering content at path:', normalizedPath);
   contentRegistry[normalizedPath] = module;
   
   // Also register with frontmatter path if it exists and differs
   if (module.frontmatter?.path) {
     const frontmatterPath = module.frontmatter.path.replace(/^\//, ''); // Remove leading slash
     if (frontmatterPath !== normalizedPath) {
-      console.log('Also registering at frontmatter path:', frontmatterPath);
       contentRegistry[frontmatterPath] = module;
     }
   }
@@ -63,19 +56,14 @@ export function getCompiledContent(path: string): CompiledContentModule | null {
   // Normalize the input path
   const normalizedPath = path.replace(/^\//, '').replace(/\/$/, '');
   
-  console.log('Looking for compiled content at path:', normalizedPath);
-  console.log('Available paths:', Object.keys(contentRegistry));
-  
   // Try exact match first
   if (contentRegistry[normalizedPath]) {
-    console.log('Found exact match for:', normalizedPath);
     return contentRegistry[normalizedPath];
   }
   
   // Try with index suffix
   const indexPath = `${normalizedPath}/index`;
   if (contentRegistry[indexPath]) {
-    console.log('Found index match for:', indexPath);
     return contentRegistry[indexPath];
   }
   
@@ -87,17 +75,12 @@ export function getCompiledContent(path: string): CompiledContentModule | null {
   
   for (const altPath of altPaths) {
     if (contentRegistry[altPath]) {
-      console.log('Found alternative match:', altPath, 'for:', normalizedPath);
       return contentRegistry[altPath];
     }
   }
   
-  console.log('No compiled content found for:', normalizedPath);
   return null;
 }
 
 // Export the registry for debugging
 export { contentRegistry as debugRegistry };
-
-// Log all registered content on module load
-console.log('Content registry initialized with paths:', Object.keys(contentRegistry));

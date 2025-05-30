@@ -1,34 +1,20 @@
 
 import { useEffect } from 'react';
-import { contentRegistry } from '@/compiled-content';
 
 export function useContentPreloader() {
   useEffect(() => {
-    // Log all available compiled content on app startup
-    const availablePaths = Object.keys(contentRegistry);
-    console.log('🚀 Content preloader initialized');
-    console.log('📚 Available compiled content paths:', availablePaths.length);
-    console.log('📋 Paths list:', availablePaths.sort());
-    
-    // Check for common missing paths
-    const expectedPaths = [
-      'quick-guides/copilot-with-context',
-      'desktop/copilot',
-      'extensions-plugins/visual-studio-code/get-started',
-      'meet-pieces/windows-installation-guide'
-    ];
-    
-    expectedPaths.forEach(path => {
-      if (contentRegistry[path]) {
-        console.log(`✅ Found expected path: ${path}`);
-      } else {
-        console.log(`❌ Missing expected path: ${path}`);
-        // Try to find similar paths
-        const similar = availablePaths.filter(p => p.includes(path.split('/').pop() || ''));
-        if (similar.length > 0) {
-          console.log(`🔍 Similar paths found:`, similar);
-        }
-      }
-    });
+    // Simple content preloader that just logs initialization
+    // This ensures the compiled content is loaded when the app starts
+    try {
+      // Import the content registry to trigger loading
+      import('@/compiled-content').then((module) => {
+        const availablePaths = Object.keys(module.contentRegistry || {});
+        console.log('Content preloader initialized with', availablePaths.length, 'pages');
+      }).catch(() => {
+        console.log('Content preloader: compiled content not available');
+      });
+    } catch (error) {
+      console.log('Content preloader: initialization failed');
+    }
   }, []);
 }

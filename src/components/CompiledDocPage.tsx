@@ -16,9 +16,6 @@ function ErrorFallback({ error }: { error: Error }) {
       <p className="text-muted-foreground mb-4">
         There was an issue loading this documentation page.
       </p>
-      <pre className="text-sm text-muted-foreground bg-muted p-4 rounded mb-4">
-        {error.message}
-      </pre>
       <Link to="/docs">
         <Button>
           <ArrowLeft className="mr-2 w-4 h-4" />
@@ -44,35 +41,28 @@ export function CompiledDocPage() {
   const { '*': path } = useParams();
   const [content, setContent] = useState<CompiledContentModule | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const [useFallback, setUseFallback] = useState(false);
 
   useEffect(() => {
-    async function loadContent() {
+    function loadContent() {
       if (!path) {
         setLoading(false);
         return;
       }
       
       setLoading(true);
-      setError(null);
       setUseFallback(false);
       
       try {
-        console.log(`Loading compiled content for path: ${path}`);
         const compiledContent = getCompiledContent(path);
         
         if (compiledContent) {
-          console.log(`✅ Successfully loaded compiled content: ${path}`);
           setContent(compiledContent);
         } else {
-          console.log(`❌ Compiled content not found for: ${path}, using fallback to markdown...`);
           setUseFallback(true);
         }
       } catch (err) {
-        console.error('❌ Error loading compiled content:', err);
-        console.log('Using fallback to markdown due to error...');
-        setError(err instanceof Error ? err.message : 'Unknown error');
+        console.error('Error loading compiled content:', err);
         setUseFallback(true);
       } finally {
         setLoading(false);
@@ -87,22 +77,16 @@ export function CompiledDocPage() {
   }
 
   if (useFallback) {
-    console.log('📄 Rendering fallback markdown page for:', path);
     return <DynamicDocPage />;
   }
 
-  if (error || !content) {
+  if (!content) {
     return (
       <div className="text-center py-12">
         <h1 className="text-2xl font-bold mb-4">Page Not Found</h1>
         <p className="text-muted-foreground mb-6">
           The documentation page you're looking for doesn't exist.
         </p>
-        {error && (
-          <pre className="text-sm text-muted-foreground bg-muted p-4 rounded mb-4">
-            {error}
-          </pre>
-        )}
         <Link to="/docs">
           <Button>
             <ArrowLeft className="mr-2 w-4 h-4" />
@@ -118,8 +102,6 @@ export function CompiledDocPage() {
   
   const isGettingStartedPage = path === 'getting-started';
   const shouldShowTOC = false;
-
-  console.log('🎯 Rendering compiled content for:', path);
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>

@@ -1,5 +1,4 @@
 
-
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
@@ -22,50 +21,4 @@ window.addEventListener('unhandledrejection', (event) => {
   }
 });
 
-// Comprehensive postMessage error suppression
-const originalError = console.error;
-const originalWarn = console.warn;
-
-console.error = (...args) => {
-  const message = args.join(' ');
-  
-  // Suppress various postMessage related errors
-  if (message.includes('postMessage') || 
-      message.includes('target origin') ||
-      message.includes('does not match') ||
-      message.includes('recipient window\'s origin') ||
-      message.includes('gptengineer.app') ||
-      message.includes('localhost:3000')) {
-    // Silently ignore these cross-origin errors
-    return;
-  }
-  
-  originalError.apply(console, args);
-};
-
-console.warn = (...args) => {
-  const message = args.join(' ');
-  
-  // Also suppress postMessage warnings
-  if (message.includes('postMessage') || 
-      message.includes('target origin') ||
-      message.includes('cross-origin')) {
-    return;
-  }
-  
-  originalWarn.apply(console, args);
-};
-
-// Intercept and suppress cross-origin postMessage attempts
-const originalPostMessage = window.postMessage;
-window.postMessage = function(message: any, targetOrigin: string, transfer?: Transferable[]): void {
-  // Only allow same-origin or wildcard postMessage
-  if (targetOrigin !== '*' && targetOrigin !== window.location.origin) {
-    console.debug('Blocked cross-origin postMessage attempt to:', targetOrigin);
-    return;
-  }
-  return originalPostMessage.call(this, message, targetOrigin, transfer);
-};
-
 createRoot(document.getElementById("root")!).render(<App />);
-

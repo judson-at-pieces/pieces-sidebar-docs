@@ -24,51 +24,64 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useContentPreloader } from '@/hooks/useContentPreloader';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
-function App() {
-  // Preload content immediately when app starts
+function AppContent() {
+  // Preload content when app starts
   useContentPreloader();
 
+  return (
+    <Router>
+      <div className="min-h-screen bg-background font-sans antialiased">
+        <Toaster />
+        <Routes>
+          {/* Public routes */}
+          <Route path="/" element={<Index />} />
+          <Route path="/auth" element={<Auth />} />
+          <Route path="/auth/callback" element={<AuthCallback />} />
+          
+          {/* Documentation routes */}
+          <Route path="/docs" element={<DocsLayout />}>
+            <Route index element={<Navigate to="/docs/getting-started" replace />} />
+            <Route path="getting-started" element={<GettingStarted />} />
+            <Route path="quick-guides" element={<QuickGuides />} />
+            <Route path="installation" element={<Installation />} />
+            <Route path="troubleshooting" element={<Troubleshooting />} />
+            <Route path="long-term-memory-guide" element={<LongTermMemoryGuide />} />
+            <Route path="meet-pieces" element={<MeetPieces />} />
+            <Route path="quick-start" element={<QuickStart />} />
+            <Route path="integrations" element={<Integrations />} />
+            <Route path="api-reference" element={<ApiReference />} />
+            <Route path="examples" element={<Examples />} />
+            <Route path="*" element={<CompiledDocPage />} />
+          </Route>
+
+          {/* Protected routes - temporarily disabled */}
+          <Route path="/admin" element={<div className="p-8 text-center">Admin panel temporarily unavailable</div>} />
+          <Route path="/editor" element={<div className="p-8 text-center">Editor temporarily unavailable</div>} />
+
+          {/* 404 */}
+          <Route path="*" element={<NotFound />} />
+        </Routes>
+      </div>
+    </Router>
+  );
+}
+
+function App() {
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
           <AuthProvider>
-            <Router>
-              <div className="min-h-screen bg-background font-sans antialiased">
-                <Toaster />
-                <Routes>
-                  {/* Public routes */}
-                  <Route path="/" element={<Index />} />
-                  <Route path="/auth" element={<Auth />} />
-                  <Route path="/auth/callback" element={<AuthCallback />} />
-                  
-                  {/* Documentation routes */}
-                  <Route path="/docs" element={<DocsLayout />}>
-                    <Route index element={<Navigate to="/docs/getting-started" replace />} />
-                    <Route path="getting-started" element={<GettingStarted />} />
-                    <Route path="quick-guides" element={<QuickGuides />} />
-                    <Route path="installation" element={<Installation />} />
-                    <Route path="troubleshooting" element={<Troubleshooting />} />
-                    <Route path="long-term-memory-guide" element={<LongTermMemoryGuide />} />
-                    <Route path="meet-pieces" element={<MeetPieces />} />
-                    <Route path="quick-start" element={<QuickStart />} />
-                    <Route path="integrations" element={<Integrations />} />
-                    <Route path="api-reference" element={<ApiReference />} />
-                    <Route path="examples" element={<Examples />} />
-                    <Route path="*" element={<CompiledDocPage />} />
-                  </Route>
-
-                  {/* Protected routes - temporarily disabled */}
-                  <Route path="/admin" element={<div className="p-8 text-center">Admin panel temporarily unavailable</div>} />
-                  <Route path="/editor" element={<div className="p-8 text-center">Editor temporarily unavailable</div>} />
-
-                  {/* 404 */}
-                  <Route path="*" element={<NotFound />} />
-                </Routes>
-              </div>
-            </Router>
+            <AppContent />
           </AuthProvider>
         </ThemeProvider>
       </QueryClientProvider>
