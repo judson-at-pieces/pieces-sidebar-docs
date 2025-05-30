@@ -54,9 +54,27 @@ export function AccessCodeForm({ onSuccess }: AccessCodeFormProps) {
       if (data) {
         auditLog.accessCodeUsed(true, user?.id);
         
+        // Store the validated code temporarily so we can use it after sign-in
+        if (!user) {
+          sessionStorage.setItem('validated_access_code', sanitizedCode);
+        }
+        
         // If user is already signed in, they now have editor access
         if (user) {
-          auditLog.roleChanged(user.id, 'editor', user.id);
+          // Check if user already has roles
+          const { data: existingRoles } = await supabase
+            .from('user_roles')
+            .select('role')
+            .eq('user_id', user.id);
+          
+          if (!existingRoles || existingRoles.length === 0) {
+            // User has no roles, assign editor
+            await supabase
+              .from('user_roles')
+              .insert({ user_id: user.id, role: 'editor' });
+            
+            auditLog.roleChanged(user.id, 'editor', user.id);
+          }
           
           toast({
             title: "Editor Access Granted",

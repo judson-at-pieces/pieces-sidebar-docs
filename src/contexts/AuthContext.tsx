@@ -44,9 +44,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           // Audit log for authentication
           auditLog.authAttempt(session.user.email || '', true, 'github');
           
-          // Simply fetch user roles without any automatic assignment
+          // Check for validated access code and handle role assignment
           setTimeout(async () => {
-            await fetchUserRoles(session.user.id);
+            await handlePostSignIn(session.user);
           }, 500);
         } else {
           setUserRoles([]);
@@ -57,6 +57,47 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const handlePostSignIn = async (user: User) => {
+    try {
+      // First fetch current roles
+      await fetchUserRoles(user.id);
+      
+      // Check if there's a validated access code in session storage
+      const validatedCode = sessionStorage.getItem('validated_access_code');
+      
+      if (validatedCode) {
+        // Clear the stored code
+        sessionStorage.removeItem('validated_access_code');
+        
+        // Check if user has any roles
+        const { data: existingRoles } = await supabase
+          .from('user_roles')
+          .select('role')
+          .eq('user_id', user.id);
+        
+        if (!existingRoles || existingRoles.length === 0) {
+          // User has no roles and used a valid access code, assign editor role
+          const { error } = await supabase
+            .from('user_roles')
+            .insert({ user_id: user.id, role: 'editor' });
+          
+          if (!error) {
+            auditLog.roleChanged(user.id, 'editor', user.id);
+            logger.info('Editor role assigned to user after access code validation');
+            
+            // Refresh roles
+            await fetchUserRoles(user.id);
+          }
+        }
+      } else {
+        // No access code, just fetch roles normally
+        await fetchUserRoles(user.id);
+      }
+    } catch (error: any) {
+      logger.error('Error handling post sign-in', { error: error.message });
+    }
+  };
 
   const fetchUserRoles = async (userId: string) => {
     try {
@@ -100,6 +141,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
+      // Clear any stored access code on sign out
+      sessionStorage.removeItem('validated_access_code');
+      
       const { error } = await supabase.auth.signOut();
       if (error) {
         logger.error('Sign out error', { error: error.message });
