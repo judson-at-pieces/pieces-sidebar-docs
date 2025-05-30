@@ -1,6 +1,4 @@
-
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -9,427 +7,120 @@ import { Menu, Search, ChevronDown, ChevronRight, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./ThemeToggle";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import { contentRegistry } from "@/compiled-content";
 
-const navigation = [
-  {
-    title: "Meet Pieces",
-    href: "/docs/meet-pieces",
-    isBold: true,
-    items: [
-      { title: "Fundamentals", href: "/docs/meet-pieces/fundamentals" },
-      { title: "Windows Installation Guide", href: "/docs/meet-pieces/windows-installation-guide" },
-      { title: "macOS Installation Guide", href: "/docs/meet-pieces/macos-installation-guide" },
-      { title: "Linux Installation Guide", href: "/docs/meet-pieces/linux-installation-guide" },
-      {
-        title: "Troubleshooting",
-        href: "/docs/meet-pieces/troubleshooting",
-        items: [
-          { title: "Cross-Platform", href: "/docs/meet-pieces/troubleshooting/cross-platform" },
-          { title: "macOS", href: "/docs/meet-pieces/troubleshooting/macos" },
-          { title: "Windows", href: "/docs/meet-pieces/troubleshooting/windows" },
-          { title: "Linux", href: "/docs/meet-pieces/troubleshooting/linux" },
-        ],
-      },
-    ],
-  },
-  {
-    title: "Quick Guides",
-    href: "/docs/quick-guides",
-    isSection: true,
-    items: [
-      { title: "Overview", href: "/docs/quick-guides/overview" },
-      { title: "Using Long-Term Memory Context", href: "/docs/quick-guides/ltm-context" },
-      { title: "Using Pieces Copilot with Context", href: "/docs/quick-guides/copilot-with-context" },
-      {
-        title: "Long-Term Memory Prompting Guide",
-        href: "/docs/quick-guides/ltm-prompting",
-        items: [
-          { title: "Use Cases and Example Prompts", href: "/docs/quick-guides/ltm-prompting/examples" },
-          { title: "Use Cases for the Pieces Workstream Activity View", href: "/docs/quick-guides/ltm-prompting/workstream-activity" },
-          { title: "General Long-Term Memory Prompting Tips", href: "/docs/quick-guides/ltm-prompting/tips" },
-        ],
-      },
-    ],
-  },
-  {
-    title: "Desktop App",
-    href: "/docs/desktop",
-    isSection: true,
-    items: [
-      { title: "Download & Install", href: "/docs/desktop/download" },
-      { title: "Onboarding", href: "/docs/desktop/onboarding" },
-      {
-        title: "Pieces Copilot",
-        href: "/docs/desktop/copilot",
-        items: [
-          { title: "Interacting with Pieces Copilot", href: "/docs/desktop/copilot/interaction" },
-          { title: "Context & Project Integration", href: "/docs/desktop/copilot/integration" },
-          { title: "Configuring Pieces Copilot", href: "/docs/desktop/copilot/configuration" },
-          { title: "Multiple Environments", href: "/docs/desktop/copilot/multiple-environments" },
-        ],
-      },
-      {
-        title: "Pieces Drive",
-        href: "/docs/desktop/drive",
-        items: [
-          { title: "Saving & Organizing Materials", href: "/docs/desktop/drive/save-and-organize" },
-          { title: "Searching & Filtering", href: "/docs/desktop/drive/search-and-filter" },
-          { title: "Enrichment & Metadata", href: "/docs/desktop/drive/enrichment-and-metadata" },
-          { title: "Transforming Code", href: "/docs/desktop/drive/transforming-code" },
-          { title: "Sharing", href: "/docs/desktop/drive/sharing" },
-        ],
-      },
-      { title: "Workstream Activity", href: "/docs/desktop/workstream-activity" },
-      {
-        title: "Navigation",
-        href: "/docs/desktop/navigation",
-        items: [
-          { title: "Settings", href: "/docs/desktop/navigation/settings" },
-          { title: "Captured Context", href: "/docs/desktop/navigation/captured-context" },
-          { title: "Updates & Upcoming", href: "/docs/desktop/navigation/updates" },
-          { title: "Snippet Discovery", href: "/docs/desktop/navigation/snippet-discovery" },
-          { title: "Workflow Activity", href: "/docs/desktop/navigation/workflow-activity" },
-          { title: "Global Search", href: "/docs/desktop/navigation/global-search" },
-        ],
-      },
-      {
-        title: "Configuration",
-        href: "/docs/desktop/configuration",
-        items: [
-          { title: "Account & Cloud", href: "/docs/desktop/configuration/account-and-cloud" },
-          { title: "Pieces Copilot & Machine Learning", href: "/docs/desktop/configuration/copilot-and-machine-learning" },
-          { title: "Model Context Protocol (MCP)", href: "/docs/desktop/configuration/mcp" },
-          { title: "Aesthetics & Layouts", href: "/docs/desktop/configuration/aesthetics-layout" },
-          { title: "Additional Settings", href: "/docs/desktop/configuration/additional-settings" },
-          { title: "Support & Information", href: "/docs/desktop/configuration/support" },
-        ],
-      },
-      {
-        title: "Actions & Keyboard Shortcuts",
-        href: "/docs/desktop/actions",
-        items: [
-          { title: "Power Menu", href: "/docs/desktop/actions/power-menu" },
-          { title: "Keyboard Shortcuts", href: "/docs/desktop/actions/keyboard-shortcuts" },
-        ],
-      },
-      {
-        title: "Troubleshooting",
-        href: "/docs/desktop/troubleshooting",
-        items: [
-          { title: "Cross-Platform", href: "/docs/desktop/troubleshooting/cross-platform" },
-          { title: "macOS", href: "/docs/desktop/troubleshooting/macos" },
-          { title: "Windows", href: "/docs/desktop/troubleshooting/windows" },
-          { title: "Linux", href: "/docs/desktop/troubleshooting/linux" },
-        ],
-      },
-    ],
-  },
-  {
-    title: "Core Dependencies",
-    href: "/docs/core-dependencies",
-    isSection: true,
-    items: [
-      {
-        title: "PiecesOS",
-        href: "/docs/core-dependencies/pieces-os",
-        items: [
-          { title: "Manual Installation", href: "/docs/core-dependencies/pieces-os/manual-installation" },
-          { title: "Quick Menu", href: "/docs/core-dependencies/pieces-os/quick-menu" },
-          { title: "Troubleshooting", href: "/docs/core-dependencies/pieces-os/troubleshooting" },
-        ],
-      },
-      {
-        title: "Ollama",
-        href: "/docs/core-dependencies/ollama",
-        items: [
-          { title: "Manual Installation", href: "/docs/core-dependencies/ollama/manual-installation" },
-          { title: "Supported Models", href: "/docs/core-dependencies/ollama/supported-models" },
-          { title: "Troubleshooting", href: "/docs/core-dependencies/ollama/troubleshooting" },
-        ],
-      },
-      { title: "On-Device Storage", href: "/docs/core-dependencies/on-device-storage" },
-    ],
-  },
-  {
-    title: "Model Context Protocol (MCP)",
-    href: "/docs/mcp",
-    isSection: true,
-    items: [
-      { title: "Get Started", href: "/docs/mcp/get-started" },
-      { title: "MCP Prompting", href: "/docs/mcp/prompting" },
-      { title: "MCP → Cursor", href: "/docs/mcp/cursor" },
-      { title: "MCP → GitHub Copilot", href: "/docs/mcp/github-copilot" },
-      { title: "MCP → Goose", href: "/docs/mcp/goose" },
-    ],
-  },
-  {
-    title: "Extensions & Plugins",
-    href: "/docs/extensions-plugins",
-    isSection: true,
-    items: [
-      {
-        title: "Visual Studio Code",
-        href: "/docs/extensions-plugins/extensions-plugins/visual-studio-code",
-        items: [
-          { title: "Get Started", href: "/docs/extensions-plugins/extensions-plugins/visual-studio-code/get-started" },
-          { title: "Commands", href: "/docs/extensions-plugins/extensions-plugins/visual-studio-code/commands" },
-          { title: "Configuration", href: "/docs/extensions-plugins/extensions-plugins/visual-studio-code/configuration" },
-          {
-            title: "Pieces Copilot",
-            href: "/docs/extensions-plugins/extensions-plugins/visual-studio-code/copilot",
-            items: [
-              { title: "Chat", href: "/docs/extensions-plugins/extensions-plugins/visual-studio-code/copilot/chat" },
-              { title: "Debugging Errors", href: "/docs/extensions-plugins/extensions-plugins/visual-studio-code/copilot/debugging-errors" },
-              { title: "Documenting Code", href: "/docs/extensions-plugins/extensions-plugins/visual-studio-code/copilot/documenting-code" },
-              { title: "LLM Settings", href: "/docs/extensions-plugins/extensions-plugins/visual-studio-code/copilot/llm-settings" },
-              { title: "Refactoring", href: "/docs/extensions-plugins/extensions-plugins/visual-studio-code/copilot/refactoring" },
-            ],
-          },
-          {
-            title: "Pieces Drive",
-            href: "/docs/extensions-plugins/extensions-plugins/visual-studio-code/drive",
-            items: [
-              { title: "Edit & Update", href: "/docs/extensions-plugins/extensions-plugins/visual-studio-code/drive/edit-update" },
-              { title: "Save Snippets", href: "/docs/extensions-plugins/extensions-plugins/visual-studio-code/drive/save-snippets" },
-              { title: "Search & Reuse", href: "/docs/extensions-plugins/extensions-plugins/visual-studio-code/drive/search-reuse" },
-              { title: "Sharing", href: "/docs/extensions-plugins/extensions-plugins/visual-studio-code/drive/sharing" },
-            ],
-          },
-          { title: "Forks", href: "/docs/extensions-plugins/extensions-plugins/visual-studio-code/forks" },
-          { title: "Troubleshooting", href: "/docs/extensions-plugins/extensions-plugins/visual-studio-code/troubleshooting" },
-        ],
-      },
-      {
-        title: "JetBrains",
-        href: "/docs/extensions-plugins/extensions-plugins/jetbrains",
-        items: [
-          { title: "Get Started", href: "/docs/extensions-plugins/extensions-plugins/jetbrains/get-started" },
-          { title: "Commands", href: "/docs/extensions-plugins/extensions-plugins/jetbrains/commands" },
-          { title: "Configuration", href: "/docs/extensions-plugins/extensions-plugins/jetbrains/configuration" },
-          {
-            title: "Pieces Copilot",
-            href: "/docs/extensions-plugins/extensions-plugins/jetbrains/copilot",
-            items: [
-              { title: "Chat", href: "/docs/extensions-plugins/extensions-plugins/jetbrains/copilot/chat" },
-              { title: "Debugging Errors", href: "/docs/extensions-plugins/extensions-plugins/jetbrains/copilot/debugging-errors" },
-              { title: "Documenting Code", href: "/docs/extensions-plugins/extensions-plugins/jetbrains/copilot/documenting-code" },
-              { title: "LLM Settings", href: "/docs/extensions-plugins/extensions-plugins/jetbrains/copilot/llm-settings" },
-              { title: "Refactoring", href: "/docs/extensions-plugins/extensions-plugins/jetbrains/copilot/refactoring" },
-            ],
-          },
-          {
-            title: "Pieces Drive",
-            href: "/docs/extensions-plugins/extensions-plugins/jetbrains/drive",
-            items: [
-              { title: "Edit & Update", href: "/docs/extensions-plugins/extensions-plugins/jetbrains/drive/edit-update" },
-              { title: "Save Snippets", href: "/docs/extensions-plugins/extensions-plugins/jetbrains/drive/save-snippets" },
-              { title: "Search & Reuse", href: "/docs/extensions-plugins/extensions-plugins/jetbrains/drive/search-reuse" },
-              { title: "Sharing", href: "/docs/extensions-plugins/extensions-plugins/jetbrains/drive/sharing" },
-            ],
-          },
-          { title: "Troubleshooting", href: "/docs/extensions-plugins/extensions-plugins/jetbrains/troubleshooting" },
-        ],
-      },
-      {
-        title: "Visual Studio",
-        href: "/docs/extensions-plugins/extensions-plugins/visual-studio",
-        items: [
-          { title: "Get Started", href: "/docs/extensions-plugins/extensions-plugins/visual-studio/get-started" },
-          { title: "Commands", href: "/docs/extensions-plugins/extensions-plugins/visual-studio/commands" },
-          { title: "Configuration", href: "/docs/extensions-plugins/extensions-plugins/visual-studio/configuration" },
-          {
-            title: "Pieces Copilot",
-            href: "/docs/extensions-plugins/extensions-plugins/visual-studio/copilot",
-            items: [
-              { title: "Chat", href: "/docs/extensions-plugins/extensions-plugins/visual-studio/copilot/chat" },
-              { title: "Documenting Code", href: "/docs/extensions-plugins/extensions-plugins/visual-studio/copilot/documenting-code" },
-              { title: "LLM Settings", href: "/docs/extensions-plugins/extensions-plugins/visual-studio/copilot/llm-settings" },
-              { title: "Refactoring", href: "/docs/extensions-plugins/extensions-plugins/visual-studio/copilot/refactoring" },
-            ],
-          },
-          {
-            title: "Pieces Drive",
-            href: "/docs/extensions-plugins/extensions-plugins/visual-studio/drive",
-            items: [
-              { title: "Edit & Update", href: "/docs/extensions-plugins/extensions-plugins/visual-studio/drive/edit-update" },
-              { title: "Save Snippets", href: "/docs/extensions-plugins/extensions-plugins/visual-studio/drive/save-snippets" },
-              { title: "Search & Reuse", href: "/docs/extensions-plugins/extensions-plugins/visual-studio/drive/search-reuse" },
-              { title: "Sharing", href: "/docs/extensions-plugins/extensions-plugins/visual-studio/drive/sharing" },
-            ],
-          },
-          { title: "Troubleshooting", href: "/docs/extensions-plugins/extensions-plugins/visual-studio/troubleshooting" },
-        ],
-      },
-      {
-        title: "Sublime Text",
-        href: "/docs/extensions-plugins/extensions-plugins/sublime",
-        items: [
-          { title: "Get Started", href: "/docs/extensions-plugins/extensions-plugins/sublime/get-started" },
-          { title: "Commands", href: "/docs/extensions-plugins/extensions-plugins/sublime/commands" },
-          { title: "Configuration", href: "/docs/extensions-plugins/extensions-plugins/sublime/configuration" },
-          {
-            title: "Pieces Copilot",
-            href: "/docs/extensions-plugins/extensions-plugins/sublime/copilot",
-            items: [
-              { title: "Chat", href: "/docs/extensions-plugins/extensions-plugins/sublime/copilot/chat" },
-              { title: "Debugging Errors", href: "/docs/extensions-plugins/extensions-plugins/sublime/copilot/debugging-errors" },
-              { title: "Documenting Code", href: "/docs/extensions-plugins/extensions-plugins/sublime/copilot/documenting-code" },
-              { title: "LLM Settings", href: "/docs/extensions-plugins/extensions-plugins/sublime/copilot/llm-settings" },
-              { title: "Refactoring", href: "/docs/extensions-plugins/extensions-plugins/sublime/copilot/refactoring" },
-            ],
-          },
-          {
-            title: "Pieces Drive",
-            href: "/docs/extensions-plugins/extensions-plugins/sublime/drive",
-            items: [
-              { title: "Edit & Update", href: "/docs/extensions-plugins/extensions-plugins/sublime/drive/edit-update" },
-              { title: "Save Snippets", href: "/docs/extensions-plugins/extensions-plugins/sublime/drive/save-snippets" },
-              { title: "Search & Reuse", href: "/docs/extensions-plugins/extensions-plugins/sublime/drive/search-reuse" },
-              { title: "Sharing", href: "/docs/extensions-plugins/extensions-plugins/sublime/drive/sharing" },
-            ],
-          },
-          { title: "Troubleshooting", href: "/docs/extensions-plugins/extensions-plugins/sublime/troubleshooting" },
-        ],
-      },
-      { title: "JupyterLab", href: "/docs/extensions-plugins/extensions-plugins/jupyterlab" },
-      { title: "Neovim Plugin", href: "/docs/extensions-plugins/extensions-plugins/neovim-plugin" },
-    ],
-  },
-  {
-    title: "Productivity Tools",
-    href: "/docs/productivity",
-    isSection: true,
-    items: [
-      {
-        title: "Obsidian",
-        href: "/docs/obsidian",
-        items: [
-          { title: "Get Started", href: "/docs/obsidian/get-started" },
-          { title: "Commands", href: "/docs/obsidian/commands" },
-          { title: "Configuration", href: "/docs/obsidian/configuration" },
-          {
-            title: "Pieces Copilot",
-            href: "/docs/obsidian/copilot",
-            items: [
-              { title: "Chat", href: "/docs/obsidian/copilot/chat" },
-              { title: "LLM Settings", href: "/docs/obsidian/copilot/llm-settings" },
-            ],
-          },
-          {
-            title: "Pieces Drive",
-            href: "/docs/obsidian/drive",
-            items: [
-              { title: "Edit & Update", href: "/docs/obsidian/drive/edit-update" },
-              { title: "Save Snippets", href: "/docs/obsidian/drive/save-snippets" },
-              { title: "Search & Reuse", href: "/docs/obsidian/drive/search-reuse" },
-              { title: "Sharing", href: "/docs/obsidian/drive/sharing" },
-            ],
-          },
-          { title: "Troubleshooting", href: "/docs/obsidian/troubleshooting" },
-        ],
-      },
-      {
-        title: "Web Extension",
-        href: "/docs/web-extension",
-        items: [
-          { title: "Get Started", href: "/docs/web-extension/get-started" },
-          { title: "Configuration", href: "/docs/web-extension/configuration" },
-          { title: "Shortcuts", href: "/docs/web-extension/shortcuts" },
-          {
-            title: "Pieces Copilot",
-            href: "/docs/web-extension/copilot",
-            items: [
-              { title: "Chat", href: "/docs/web-extension/copilot/chat" },
-              { title: "LLM Settings", href: "/docs/web-extension/copilot/llm-settings" },
-            ],
-          },
-          {
-            title: "Pieces Drive",
-            href: "/docs/web-extension/drive",
-            items: [
-              { title: "Edit & Update", href: "/docs/web-extension/drive/edit-update" },
-              { title: "Save Snippets", href: "/docs/web-extension/drive/save-snippets" },
-              { title: "Search & Reuse", href: "/docs/web-extension/drive/search-reuse" },
-              { title: "Sharing", href: "/docs/web-extension/drive/sharing" },
-            ],
-          },
-          { title: "Troubleshooting", href: "/docs/web-extension/troubleshooting" },
-        ],
-      },
-      {
-        title: "Pieces CLI",
-        href: "/docs/cli",
-        items: [
-          { title: "Get Started", href: "/docs/cli/get-started" },
-          { title: "Commands", href: "/docs/cli/commands" },
-          { title: "Configuration", href: "/docs/cli/configuration" },
-          {
-            title: "Pieces Copilot",
-            href: "/docs/cli/copilot",
-            items: [
-              { title: "Chat", href: "/docs/cli/copilot/chat" },
-              { title: "LLMs Settings", href: "/docs/cli/copilot/llms-settings" },
-            ],
-          },
-          {
-            title: "Pieces Drive",
-            href: "/docs/cli/drive",
-            items: [
-              { title: "Edit & Update", href: "/docs/cli/drive/edit-and-update" },
-              { title: "Saving Materials", href: "/docs/cli/drive/saving-materials" },
-              { title: "Search & Reuse", href: "/docs/cli/drive/search-and-reuse" },
-              { title: "Sharing", href: "/docs/cli/drive/sharing" },
-            ],
-          },
-          { title: "Troubleshooting", href: "/docs/cli/troubleshooting" },
-        ],
-      },
-      { title: "Raycast", href: "/docs/raycast" },
-    ],
-  },
-  {
-    title: "Large Language Models",
-    href: "/docs/large-language-models",
-    isSection: true,
-    items: [
-      { title: "Cloud Models", href: "/docs/large-language-models/cloud-models" },
-      { title: "Local Models", href: "/docs/large-language-models/local-models" },
-    ],
-  },
-  {
-    title: "More",
-    href: "/docs/more",
-    isSection: true,
-    items: [
-      { title: "Privacy, Security & Your Data", href: "/docs/privacy-security-your-data" },
-      { title: "Glossary", href: "/docs/glossary" },
-    ],
-  },
-  {
-    title: "Get Help",
-    href: "/docs/help",
-    isSection: true,
-    items: [
-      { title: "Support", href: "/docs/support" },
-    ],
-  },
-];
+interface NavigationItem {
+  title: string;
+  href: string;
+  items?: NavigationItem[];
+  isBold?: boolean;
+  isSection?: boolean;
+}
+
+interface NavigationSection {
+  title: string;
+  href?: string;
+  isSection?: boolean;
+  items?: NavigationItem[];
+}
+
+function buildNavigationFromRegistry(): NavigationSection[] {
+  const pathMap = new Map<string, NavigationItem>();
+  const rootSections = new Map<string, NavigationSection>();
+
+  // Process all compiled content paths
+  Object.entries(contentRegistry).forEach(([path, module]) => {
+    const pathParts = path.split('/').filter(Boolean);
+    
+    if (pathParts.length === 0) return;
+
+    // Create navigation item
+    const item: NavigationItem = {
+      title: module.frontmatter.title || pathParts[pathParts.length - 1].replace(/-/g, ' '),
+      href: path
+    };
+
+    // Organize by sections
+    if (pathParts.length === 1) {
+      // Root level item
+      const sectionKey = pathParts[0];
+      if (!rootSections.has(sectionKey)) {
+        rootSections.set(sectionKey, {
+          title: item.title,
+          href: path,
+          isSection: true,
+          items: []
+        });
+      }
+    } else {
+      // Nested item - organize under parent section
+      const sectionKey = pathParts[0];
+      if (!rootSections.has(sectionKey)) {
+        rootSections.set(sectionKey, {
+          title: sectionKey.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+          isSection: true,
+          items: []
+        });
+      }
+
+      const section = rootSections.get(sectionKey)!;
+      if (!section.items) section.items = [];
+
+      // Handle nested structure
+      if (pathParts.length === 2) {
+        // Direct child
+        section.items.push(item);
+      } else {
+        // Find or create parent item
+        const parentPath = `/${pathParts.slice(0, -1).join('/')}`;
+        let parentItem = section.items.find(i => i.href === parentPath);
+        
+        if (!parentItem) {
+          parentItem = {
+            title: pathParts[pathParts.length - 2].replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+            href: parentPath,
+            items: []
+          };
+          section.items.push(parentItem);
+        }
+        
+        if (!parentItem.items) parentItem.items = [];
+        parentItem.items.push(item);
+      }
+    }
+  });
+
+  // Convert to array and sort
+  const sections = Array.from(rootSections.values()).sort((a, b) => {
+    // Define custom order for main sections
+    const order = ['meet-pieces', 'quick-guides', 'desktop', 'core-dependencies', 'mcp', 'extensions-plugins', 'productivity', 'large-language-models', 'more', 'help'];
+    const aIndex = order.findIndex(o => a.title.toLowerCase().includes(o) || a.href?.includes(o));
+    const bIndex = order.findIndex(o => b.title.toLowerCase().includes(o) || b.href?.includes(o));
+    
+    if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex;
+    if (aIndex !== -1) return -1;
+    if (bIndex !== -1) return 1;
+    return a.title.localeCompare(b.title);
+  });
+
+  return sections;
+}
 
 function DocsSidebar({ className, onNavigate }: { className?: string; onNavigate?: () => void }) {
   const location = useLocation();
-  const [openSections, setOpenSections] = useState<string[]>([
-    "Meet Pieces", 
-    "Quick Guides", 
-    "Desktop App", 
-    "Core Dependencies", 
-    "Model Context Protocol (MCP)", 
-    "Extensions & Plugins", 
-    "Productivity Tools", 
-    "Large Language Models", 
-    "More", 
-    "Get Help"
-  ]);
+  const [openSections, setOpenSections] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
+  const [navigation, setNavigation] = useState<NavigationSection[]>([]);
+
+  useEffect(() => {
+    // Build navigation from compiled content registry
+    const dynamicNavigation = buildNavigationFromRegistry();
+    setNavigation(dynamicNavigation);
+    
+    // Auto-open all sections by default
+    const allSectionTitles = dynamicNavigation.map(section => section.title);
+    setOpenSections(allSectionTitles);
+  }, []);
 
   const toggleSection = (sectionTitle: string) => {
     setOpenSections(prev => 
@@ -442,7 +133,7 @@ function DocsSidebar({ className, onNavigate }: { className?: string; onNavigate
   const isActive = (href: string) => location.pathname === href;
   const isSectionOpen = (sectionTitle: string) => openSections.includes(sectionTitle);
 
-  const filterItems = (items: any[], searchTerm: string): any[] => {
+  const filterItems = (items: NavigationItem[], searchTerm: string): NavigationItem[] => {
     return items.filter(item => {
       const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase());
       if (item.items) {
@@ -471,7 +162,7 @@ function DocsSidebar({ className, onNavigate }: { className?: string; onNavigate
       )
     : navigation;
 
-  const renderNavItem = (item: any, depth = 0) => {
+  const renderNavItem = (item: NavigationItem, depth = 0) => {
     const hasSubItems = item.items && item.items.length > 0;
     const paddingClass = depth === 0 ? "px-3" : depth === 1 ? "px-5" : depth === 2 ? "px-7" : "px-9";
 
@@ -519,7 +210,7 @@ function DocsSidebar({ className, onNavigate }: { className?: string; onNavigate
               </CollapsibleTrigger>
             </div>
             <CollapsibleContent className="space-y-1">
-              {item.items.map((subItem: any) => renderNavItem(subItem, depth + 1))}
+              {item.items!.map((subItem: NavigationItem) => renderNavItem(subItem, depth + 1))}
             </CollapsibleContent>
           </Collapsible>
         </div>
@@ -585,7 +276,7 @@ function DocsSidebar({ className, onNavigate }: { className?: string; onNavigate
                     </div>
                   </div>
                 ) : (
-                  renderNavItem(section)
+                  renderNavItem(section as NavigationItem)
                 )}
               </div>
             ))}
@@ -653,4 +344,3 @@ export default function DocsLayout() {
     </div>
   );
 }
-
