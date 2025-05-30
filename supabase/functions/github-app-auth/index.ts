@@ -16,21 +16,34 @@ async function getJWT(): Promise<string> {
     throw new Error('GITHUB_APP_PRIVATE_KEY not configured')
   }
 
-  // Clean up the private key format - handle both base64 and PEM formats
+  console.log('Private key length:', privateKeyPem.length)
+  console.log('Private key starts with:', privateKeyPem.substring(0, 50))
+  console.log('Private key ends with:', privateKeyPem.substring(privateKeyPem.length - 50))
+
+  // Clean up the private key format - handle both base64 and raw PEM
   let cleanKey = privateKeyPem.trim()
+  
+  // Replace any \n literals with actual newlines
+  cleanKey = cleanKey.replace(/\\n/g, '\n')
+  
+  console.log('After replacing \\n, key starts with:', cleanKey.substring(0, 50))
   
   // If it doesn't have PEM headers, assume it's base64 encoded
   if (!cleanKey.includes('-----BEGIN')) {
+    console.log('No PEM headers found, treating as base64')
     try {
       // Try to decode from base64
       cleanKey = atob(cleanKey)
+      console.log('Successfully decoded from base64')
     } catch (e) {
       console.error('Failed to decode base64 private key:', e)
+      throw new Error('Invalid base64 private key format')
     }
   }
   
   // Ensure proper PEM format
   if (!cleanKey.includes('-----BEGIN PRIVATE KEY-----')) {
+    console.log('Formatting as proper PEM')
     // Remove any existing headers/footers and whitespace
     const keyContent = cleanKey
       .replace(/-----BEGIN[^-]+-----/g, '')
@@ -40,9 +53,14 @@ async function getJWT(): Promise<string> {
     cleanKey = `-----BEGIN PRIVATE KEY-----\n${keyContent.match(/.{1,64}/g)?.join('\n') || keyContent}\n-----END PRIVATE KEY-----`
   }
 
+  console.log('Final key format check - starts with:', cleanKey.substring(0, 50))
+  console.log('Final key format check - ends with:', cleanKey.substring(cleanKey.length - 50))
+
   try {
     // Import the private key for RS256
     const keyData = new TextEncoder().encode(cleanKey)
+    console.log('Attempting to import key...')
+    
     const privateKey = await crypto.subtle.importKey(
       'pkcs8',
       keyData,
@@ -53,6 +71,8 @@ async function getJWT(): Promise<string> {
       false,
       ['sign']
     )
+
+    console.log('Key imported successfully')
 
     // Create JWT payload
     const now = Math.floor(Date.now() / 1000)
@@ -90,9 +110,11 @@ async function getJWT(): Promise<string> {
       .replace(/\//g, '_')
       .replace(/=/g, '')
 
+    console.log('JWT created successfully')
     return `${encodedHeader}.${encodedPayload}.${signatureBase64}`
   } catch (error) {
     console.error('Error creating JWT:', error)
+    console.error('Error details:', error.message)
     throw new Error(`Failed to create JWT: ${error.message}`)
   }
 }
