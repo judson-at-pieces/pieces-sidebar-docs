@@ -17,6 +17,7 @@ const Admin = lazy(() => import("./pages/Admin"));
 const Editor = lazy(() => import("./pages/Editor"));
 const DocsLayout = lazy(() => import("./components/DocsLayout"));
 const DynamicDocPage = lazy(() => import("./components/DynamicDocPage").then(module => ({ default: module.DynamicDocPage })));
+const GettingStarted = lazy(() => import("./pages/docs/GettingStarted"));
 
 function App() {
   return (
@@ -41,6 +42,7 @@ function App() {
                   />
                   <Route path="/" element={<Index />} />
                   <Route path="/docs/*" element={<DocsLayout />}>
+                    <Route path="getting-started" element={<GettingStarted />} />
                     <Route path="*" element={<DynamicDocPage />} />
                   </Route>
                 </Routes>
