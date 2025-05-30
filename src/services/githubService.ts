@@ -1,4 +1,6 @@
 
+import { supabase } from '@/integrations/supabase/client';
+
 interface GitHubFile {
   path: string;
   content: string;
@@ -179,24 +181,59 @@ class GitHubService {
     }
   }
 
-  getRepoConfig(): GitHubConfig | null {
-    const owner = localStorage.getItem('github_repo_owner');
-    const repo = localStorage.getItem('github_repo_name');
-    
-    if (!owner || !repo) {
+  async getRepoConfig(): Promise<GitHubConfig | null> {
+    try {
+      const { data: configs, error } = await supabase
+        .from('github_config')
+        .select('repo_owner, repo_name')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error fetching GitHub config:', error);
+        return null;
+      }
+
+      if (!configs) {
+        return null;
+      }
+
+      return {
+        owner: configs.repo_owner,
+        repo: configs.repo_name,
+      };
+    } catch (error) {
+      console.error('Error getting repo config:', error);
       return null;
     }
-    
-    return { owner, repo };
   }
 
-  setRepoConfig(owner: string, repo: string) {
-    localStorage.setItem('github_repo_owner', owner);
-    localStorage.setItem('github_repo_name', repo);
+  async setRepoConfig(owner: string, repo: string): Promise<boolean> {
+    try {
+      const { error } = await supabase
+        .from('github_config')
+        .insert({
+          repo_owner: owner,
+          repo_name: repo,
+          created_by: (await supabase.auth.getUser()).data.user?.id,
+        });
+
+      if (error) {
+        console.error('Error saving GitHub config:', error);
+        return false;
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error setting repo config:', error);
+      return false;
+    }
   }
 
-  isConfigured(): boolean {
-    return !!this.getRepoConfig();
+  async isConfigured(): Promise<boolean> {
+    const config = await this.getRepoConfig();
+    return !!config;
   }
 }
 

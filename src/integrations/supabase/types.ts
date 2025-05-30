@@ -87,6 +87,33 @@ export type Database = {
         }
         Relationships: []
       }
+      github_config: {
+        Row: {
+          created_at: string
+          created_by: string
+          id: string
+          repo_name: string
+          repo_owner: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by: string
+          id?: string
+          repo_name: string
+          repo_owner: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string
+          id?: string
+          repo_name?: string
+          repo_owner?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           created_at: string
@@ -140,6 +167,13 @@ export type Database = {
       generate_admin_access_code: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      get_current_github_config: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          repo_owner: string
+          repo_name: string
+        }[]
       }
       has_role: {
         Args: {

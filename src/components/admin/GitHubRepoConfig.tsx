@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -16,8 +15,29 @@ export function GitHubRepoConfig() {
   const [repo, setRepo] = useState('');
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
-  const [isConfigured, setIsConfigured] = useState(githubService.isConfigured());
+  const [isConfigured, setIsConfigured] = useState(false);
+  const [currentConfig, setCurrentConfig] = useState<{ owner: string; repo: string } | null>(null);
   const { user } = useAuth();
+
+  // Load current configuration on component mount
+  useEffect(() => {
+    loadCurrentConfig();
+  }, []);
+
+  const loadCurrentConfig = async () => {
+    try {
+      const config = await githubService.getRepoConfig();
+      if (config) {
+        setCurrentConfig(config);
+        setIsConfigured(true);
+      } else {
+        setIsConfigured(false);
+        setCurrentConfig(null);
+      }
+    } catch (error) {
+      console.error('Error loading GitHub config:', error);
+    }
+  };
 
   const handleSave = async () => {
     if (!owner || !repo) {
@@ -46,15 +66,20 @@ export function GitHubRepoConfig() {
       // Verify the repository structure
       await githubService.verifyRepository(owner, repo, githubToken);
       
-      // Save the repository configuration
-      githubService.setRepoConfig(owner, repo);
-      setIsConfigured(true);
+      // Save the repository configuration to Supabase
+      const success = await githubService.setRepoConfig(owner, repo);
       
-      toast.success('GitHub repository configured successfully!');
-      
-      // Clear the form
-      setOwner('');
-      setRepo('');
+      if (success) {
+        setIsConfigured(true);
+        setCurrentConfig({ owner, repo });
+        toast.success('GitHub repository configured successfully!');
+        
+        // Clear the form
+        setOwner('');
+        setRepo('');
+      } else {
+        toast.error('Failed to save repository configuration');
+      }
     } catch (error: any) {
       toast.error(error.message || 'Failed to configure GitHub repository');
     } finally {
@@ -63,16 +88,28 @@ export function GitHubRepoConfig() {
     }
   };
 
-  const handleDisconnect = () => {
-    localStorage.removeItem('github_repo_owner');
-    localStorage.removeItem('github_repo_name');
-    setIsConfigured(false);
-    toast.success('GitHub repository configuration removed');
+  const handleDisconnect = async () => {
+    try {
+      // Delete all GitHub configurations (we only keep the latest one anyway)
+      const { error } = await supabase
+        .from('github_config')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all records
+
+      if (error) {
+        toast.error('Failed to remove repository configuration');
+        return;
+      }
+
+      setIsConfigured(false);
+      setCurrentConfig(null);
+      toast.success('GitHub repository configuration removed');
+    } catch (error) {
+      toast.error('Failed to remove repository configuration');
+    }
   };
 
-  if (isConfigured) {
-    const currentConfig = githubService.getRepoConfig();
-    
+  if (isConfigured && currentConfig) {
     return (
       <Card>
         <CardHeader>
@@ -89,7 +126,7 @@ export function GitHubRepoConfig() {
           <div className="p-4 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded-lg">
             <div className="flex items-center space-x-2 text-green-800 dark:text-green-200">
               <Check className="h-4 w-4" />
-              <span className="font-medium">Connected to {currentConfig?.owner}/{currentConfig?.repo}</span>
+              <span className="font-medium">Connected to {currentConfig.owner}/{currentConfig.repo}</span>
             </div>
           </div>
           

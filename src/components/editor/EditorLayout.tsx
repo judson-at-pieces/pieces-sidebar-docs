@@ -134,7 +134,7 @@ Start editing this file...`;
       return;
     }
 
-    const repoConfig = githubService.getRepoConfig();
+    const repoConfig = await githubService.getRepoConfig();
     if (!repoConfig) {
       toast.error('No GitHub repository configured. Please contact an admin to set up the repository.');
       return;
