@@ -10,6 +10,7 @@ import { EditorMain } from "./EditorMain";
 import { githubAppService } from "@/services/githubAppService";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface FileContent {
   [fileName: string]: string;
@@ -111,6 +112,32 @@ Start editing this file...`;
     if (selectedFile) {
       setFileContents(prev => ({ ...prev, [selectedFile]: content }));
     }
+  };
+
+  const handleCreateFile = (fileName: string, parentPath?: string) => {
+    const fullPath = parentPath ? `${parentPath}/${fileName}` : fileName;
+    const cleanFileName = fileName.endsWith('.md') ? fileName : `${fileName}.md`;
+    
+    // Create default content for new file
+    const defaultContent = `---
+title: "${cleanFileName.replace('.md', '').replace('-', ' ')}"
+path: "/${fullPath.replace('.md', '')}"
+visibility: "PUBLIC"
+---
+***
+
+# ${cleanFileName.replace('.md', '').replace('-', ' ')}
+
+Start editing this file...`;
+
+    // Add to file contents
+    setFileContents(prev => ({ ...prev, [cleanFileName]: defaultContent }));
+    setOriginalContents(prev => ({ ...prev, [cleanFileName]: defaultContent }));
+    
+    // Select the new file
+    setSelectedFile(cleanFileName);
+    
+    toast.success(`Created new file: ${cleanFileName}`);
   };
 
   const getModifiedFiles = (): Set<string> => {
@@ -285,12 +312,15 @@ Start editing this file...`;
             </div>
           </div>
         </div>
-        <SheetContent side="left" className="p-0 w-64">
-          <EditorSidebar 
-            selectedFile={selectedFile}
-            onFileSelect={handleFileSelect}
-            modifiedFiles={getModifiedFiles()}
-          />
+        <SheetContent side="left" className="p-0 w-[85vw] max-w-sm">
+          <ScrollArea className="h-full">
+            <EditorSidebar 
+              selectedFile={selectedFile}
+              onFileSelect={handleFileSelect}
+              modifiedFiles={getModifiedFiles()}
+              onCreateFile={handleCreateFile}
+            />
+          </ScrollArea>
         </SheetContent>
       </Sheet>
 
@@ -312,6 +342,7 @@ Start editing this file...`;
                 selectedFile={selectedFile}
                 onFileSelect={handleFileSelect}
                 modifiedFiles={getModifiedFiles()}
+                onCreateFile={handleCreateFile}
               />
             </div>
           </div>
