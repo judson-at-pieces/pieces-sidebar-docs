@@ -74,20 +74,24 @@ export class SimpleMarkdownCompiler {
         return;
       }
 
-      // Generate the path key
+      // Generate the path key - normalize path separators and avoid double slashes
       const baseName = fileName.replace(/\.(md|mdx)$/, '');
       let pathKey: string;
       
       if (relativePath) {
-        pathKey = `/docs/${relativePath}/${baseName}`.replace(/\\/g, '/');
+        const normalizedRelativePath = relativePath.replace(/\\/g, '/');
+        pathKey = `/docs/${normalizedRelativePath}/${baseName}`;
       } else {
         pathKey = `/docs/${baseName}`;
       }
 
-      // Use frontmatter path if available
+      // Use frontmatter path if available, but ensure it starts with /
       if (frontmatter.path) {
         pathKey = frontmatter.path.startsWith('/') ? frontmatter.path : `/${frontmatter.path}`;
       }
+
+      // Clean up any double slashes
+      pathKey = pathKey.replace(/\/+/g, '/');
 
       // Process the markdown content
       const processedContent = markdown.trim().replace(/^---[\s\S]*?---\s*/, '').replace(/^\*\*\*\s*/, '');
@@ -139,9 +143,10 @@ export class SimpleMarkdownCompiler {
   private generateTsxComponent(data: any, outputPath: string): string {
     // Calculate the correct relative path to MarkdownRenderer
     const outputDir = path.dirname(outputPath);
-    const srcDir = path.join(process.cwd(), 'src');
-    const relativePath = path.relative(outputDir, path.join(srcDir, 'components', 'MarkdownRenderer'));
-    const importPath = './' + relativePath.replace(/\\/g, '/').replace(/\.tsx?$/, '');
+    const srcComponentsDir = path.join(this.options.outputDir, '..', 'components');
+    const relativePath = path.relative(outputDir, srcComponentsDir);
+    const importPath = (relativePath ? relativePath + '/' : '') + 'MarkdownRenderer';
+    const normalizedImportPath = importPath.replace(/\\/g, '/');
 
     // Escape content for JSX template literal
     const escapedContent = data.content
@@ -150,7 +155,7 @@ export class SimpleMarkdownCompiler {
       .replace(/\${/g, '\\${');
 
     return `import React from 'react';
-import { MarkdownRenderer } from '${importPath}';
+import { MarkdownRenderer } from '${normalizedImportPath}';
 
 export const frontmatter = ${JSON.stringify(data.frontmatter, null, 2)};
 
@@ -203,6 +208,8 @@ ${registryEntries.join(',\n')}
 // Function to get compiled content from registry
 export function getCompiledContent(path: string): CompiledContentModule | null {
   const normalizedPath = path.startsWith('/') ? path : \`/\${path}\`;
+  console.log('Looking for compiled content at path:', normalizedPath);
+  console.log('Available paths:', Object.keys(contentRegistry));
   return contentRegistry[normalizedPath] || null;
 }
 

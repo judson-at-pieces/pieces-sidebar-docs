@@ -15,20 +15,30 @@ export function CompiledDocPage() {
       return;
     }
 
-    // Try to get compiled content first
-    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-    const docPath = normalizedPath.startsWith('/docs/') ? normalizedPath : `/docs/${normalizedPath}`;
+    // Clean up the path - remove any double slashes and normalize
+    let normalizedPath = path.replace(/\/+/g, '/');
+    if (!normalizedPath.startsWith('/')) {
+      normalizedPath = `/${normalizedPath}`;
+    }
     
-    console.log('CompiledDocPage: Looking for compiled content at:', docPath);
+    // Ensure it starts with /docs/ if it doesn't already
+    if (!normalizedPath.startsWith('/docs/')) {
+      normalizedPath = `/docs${normalizedPath}`;
+    }
     
-    const content = getCompiledContent(docPath);
+    // Clean up any double slashes again
+    normalizedPath = normalizedPath.replace(/\/+/g, '/');
+    
+    console.log('CompiledDocPage: Looking for compiled content at:', normalizedPath);
+    
+    const content = getCompiledContent(normalizedPath);
     
     if (content) {
-      console.log('CompiledDocPage: Found compiled content for:', docPath);
+      console.log('CompiledDocPage: Found compiled content for:', normalizedPath);
       setCompiledContent(content);
       setShouldUseFallback(false);
     } else {
-      console.log('CompiledDocPage: No compiled content found, using fallback for:', docPath);
+      console.log('CompiledDocPage: No compiled content found, using fallback for:', normalizedPath);
       setShouldUseFallback(true);
     }
   }, [path]);
