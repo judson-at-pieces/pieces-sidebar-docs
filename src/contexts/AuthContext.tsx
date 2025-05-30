@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -72,24 +71,23 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       // If user has no roles, assign editor role
       if (!roles || roles.length === 0) {
-        console.log('User has no roles, assigning editor role...');
-        const { error: insertError } = await supabase
+        console.log('User has no roles, inserting editor role into user_roles table...');
+        const { data: insertData, error: insertError } = await supabase
           .from('user_roles')
-          .insert({ user_id: userId, role: 'editor' });
+          .insert({ user_id: userId, role: 'editor' })
+          .select();
 
         if (insertError) {
-          console.error('Error assigning editor role:', insertError);
+          console.error('Error inserting editor role:', insertError);
+          return;
         } else {
-          console.log('Successfully assigned editor role');
+          console.log('Successfully inserted editor role:', insertData);
+          setUserRoles(['editor']);
         }
-      }
-
-      // Update local state with current roles
-      const rolesList = roles?.map(r => r.role) || [];
-      if (rolesList.length === 0) {
-        // If we just assigned editor role, add it to local state
-        setUserRoles(['editor']);
       } else {
+        // Update local state with current roles
+        const rolesList = roles.map(r => r.role);
+        console.log('Setting user roles to:', rolesList);
         setUserRoles(rolesList);
       }
     } catch (error) {
