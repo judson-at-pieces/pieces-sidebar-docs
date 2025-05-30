@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { 
   Plus, 
@@ -9,7 +8,8 @@ import {
   ExternalLink,
   Folder,
   ChevronDown,
-  ChevronRight
+  ChevronRight,
+  Settings
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -54,6 +54,28 @@ export function NavigationStructurePanel({
     onUpdateSectionTitle(sectionId, editingSectionTitle);
     setEditingSection(null);
     setEditingSectionTitle("");
+  };
+
+  const handleDeleteSection = async (sectionId: string, sectionTitle: string) => {
+    try {
+      // First delete all items in the section
+      const section = sections.find(s => s.id === sectionId);
+      if (section?.items) {
+        for (const item of section.items) {
+          await navigationService.deleteNavigationItem(item.id);
+        }
+      }
+      
+      // Then delete the section itself
+      const { error } = await navigationService.updateNavigationSection(sectionId, { is_active: false });
+      if (error) throw error;
+      
+      onNavigationChange();
+      toast.success(`Deleted section: ${sectionTitle}`);
+    } catch (error) {
+      console.error('Error deleting section:', error);
+      toast.error("Failed to delete section");
+    }
   };
 
   const handleRemoveItemFromDb = async (sectionId: string, itemId: string) => {
@@ -123,15 +145,15 @@ export function NavigationStructurePanel({
       
       return (
         <div key={item.id} className="space-y-1">
-          <div className={`p-2 border rounded flex items-center justify-between transition-colors hover:bg-accent/50 ${
+          <div className={`p-3 border rounded-lg flex items-center justify-between transition-all hover:bg-accent/50 hover:border-primary/20 ${
             depth > 0 ? 'ml-4 border-l-2 border-l-primary/20' : ''
           }`}>
-            <div className="flex items-center gap-2 flex-1">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
               {hasChildren && (
                 <Button
                   variant="ghost"
                   size="sm"
-                  className="h-6 w-6 p-0"
+                  className="h-6 w-6 p-0 hover:bg-primary/10"
                   onClick={() => toggleItemExpansion(item.id)}
                 >
                   {isExpanded ? (
@@ -143,31 +165,33 @@ export function NavigationStructurePanel({
               )}
               
               {hasChildren ? (
-                <Folder className="h-3 w-3 text-blue-600" />
+                <Folder className="h-4 w-4 text-blue-600 flex-shrink-0" />
               ) : (
-                <FileText className="h-3 w-3" />
+                <FileText className="h-4 w-4 text-muted-foreground flex-shrink-0" />
               )}
               
-              <span className="text-sm flex-1">{item.title}</span>
+              <span className="text-sm flex-1 truncate font-medium">{item.title}</span>
               
-              {item.is_auto_generated && (
-                <Badge variant="secondary" className="text-xs">Auto</Badge>
-              )}
-              
-              {hasChildren && (
-                <Badge variant="outline" className="text-xs">
-                  {item.items!.length} items
-                </Badge>
-              )}
+              <div className="flex items-center gap-2 flex-shrink-0">
+                {item.is_auto_generated && (
+                  <Badge variant="secondary" className="text-xs">Auto</Badge>
+                )}
+                
+                {hasChildren && (
+                  <Badge variant="outline" className="text-xs">
+                    {item.items!.length}
+                  </Badge>
+                )}
+              </div>
             </div>
             
-            <div className="flex items-center gap-1">
+            <div className="flex items-center gap-1 flex-shrink-0">
               {item.href && (
                 <Button
                   size="sm"
                   variant="ghost"
                   onClick={() => window.open(item.href, '_blank')}
-                  className="h-6 w-6 p-0"
+                  className="h-7 w-7 p-0 hover:bg-primary/10"
                 >
                   <ExternalLink className="h-3 w-3" />
                 </Button>
@@ -176,7 +200,7 @@ export function NavigationStructurePanel({
                 size="sm"
                 variant="ghost"
                 onClick={() => handleRemoveItemFromDb(sectionId, item.id)}
-                className="h-6 w-6 p-0"
+                className="h-7 w-7 p-0 hover:bg-destructive/10 hover:text-destructive"
               >
                 <Trash2 className="h-3 w-3" />
               </Button>
@@ -194,25 +218,26 @@ export function NavigationStructurePanel({
   };
 
   return (
-    <Card className="h-full flex flex-col overflow-hidden">
-      <CardHeader className="pb-3 flex-shrink-0">
+    <Card className="h-full flex flex-col overflow-hidden border-border/50">
+      <CardHeader className="pb-4 flex-shrink-0 border-b border-border/50">
         <div className="flex items-center justify-between">
-          <CardTitle className="text-base flex items-center gap-2">
-            <FolderOpen className="h-4 w-4" />
+          <CardTitle className="text-lg flex items-center gap-2">
+            <FolderOpen className="h-5 w-5" />
             Navigation Structure
           </CardTitle>
           <Button 
             size="sm" 
             onClick={() => setIsAddingSection(true)}
             disabled={isAddingSection}
+            className="gap-2"
           >
-            <Plus className="h-4 w-4 mr-1" />
+            <Plus className="h-4 w-4" />
             Add Section
           </Button>
         </div>
         
         {isAddingSection && (
-          <div className="flex gap-2 mt-3">
+          <div className="flex gap-2 mt-4 p-3 bg-muted/30 rounded-lg border">
             <Input
               placeholder="Section title..."
               value={newSectionTitle}
@@ -224,6 +249,7 @@ export function NavigationStructurePanel({
                   setNewSectionTitle("");
                 }
               }}
+              className="flex-1"
               autoFocus
             />
             <Button size="sm" onClick={handleAddSection} disabled={!newSectionTitle.trim()}>
@@ -249,8 +275,8 @@ export function NavigationStructurePanel({
               const hierarchicalItems = buildHierarchy(section.items || []);
               
               return (
-                <div key={section.id} className="border rounded-lg">
-                  <div className="p-3 border-b bg-muted/50">
+                <div key={section.id} className="border rounded-lg overflow-hidden border-border/50">
+                  <div className="p-4 border-b bg-muted/30 border-border/50">
                     <div className="flex items-center justify-between">
                       {editingSection === section.id ? (
                         <div className="flex gap-2 flex-1">
@@ -264,6 +290,7 @@ export function NavigationStructurePanel({
                                 setEditingSectionTitle("");
                               }
                             }}
+                            className="flex-1"
                             autoFocus
                           />
                           <Button size="sm" onClick={() => handleUpdateSection(section.id)}>
@@ -282,39 +309,62 @@ export function NavigationStructurePanel({
                         </div>
                       ) : (
                         <>
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">{section.title}</span>
-                            <Badge variant="outline">{section.items?.length || 0} items</Badge>
+                          <div className="flex items-center gap-3">
+                            <span className="font-semibold text-lg">{section.title}</span>
+                            <Badge variant="outline" className="text-xs">
+                              {section.items?.length || 0} items
+                            </Badge>
                           </div>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              setEditingSection(section.id);
-                              setEditingSectionTitle(section.title);
-                            }}
-                          >
-                            <Edit2 className="h-4 w-4" />
-                          </Button>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => {
+                                setEditingSection(section.id);
+                                setEditingSectionTitle(section.title);
+                              }}
+                              className="h-8 w-8 p-0 hover:bg-primary/10"
+                            >
+                              <Edit2 className="h-3 w-3" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              onClick={() => handleDeleteSection(section.id, section.title)}
+                              className="h-8 w-8 p-0 hover:bg-destructive/10 hover:text-destructive"
+                            >
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </div>
                         </>
                       )}
                     </div>
                   </div>
                   
-                  <div className="p-3 min-h-[100px]">
+                  <div className="p-4 min-h-[120px]">
                     {hierarchicalItems.length ? (
                       <div className="space-y-2">
                         {renderNavigationItems(hierarchicalItems, 0, section.id)}
                       </div>
                     ) : (
-                      <div className="text-center text-muted-foreground text-sm py-8">
-                        No items in this section yet. Use the + button next to files to add them here.
+                      <div className="text-center text-muted-foreground text-sm py-8 bg-muted/20 rounded-lg border-2 border-dashed border-border/30">
+                        <FileText className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                        <p className="font-medium mb-1">No items in this section</p>
+                        <p className="text-xs">Use the + button next to files to add them here</p>
                       </div>
                     )}
                   </div>
                 </div>
               );
             })}
+            
+            {sections.length === 0 && (
+              <div className="text-center text-muted-foreground py-12">
+                <FolderOpen className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p className="text-lg font-medium mb-2">No sections yet</p>
+                <p className="text-sm">Create your first section to organize your navigation</p>
+              </div>
+            )}
           </div>
         </ScrollArea>
       </CardContent>

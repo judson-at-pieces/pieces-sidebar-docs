@@ -3,9 +3,15 @@ import { useFileStructure } from "@/hooks/useFileStructure";
 import { NavigationEditor } from "./NavigationEditor";
 import { EditorSidebar } from "./EditorSidebar";
 import { EditorMain } from "./EditorMain";
+import { Button } from "@/components/ui/button";
+import { UserMenu } from "@/components/auth/UserMenu";
+import { Settings, FileText, Navigation, Home } from "lucide-react";
+import { Link } from "react-router-dom";
+import { useAuth } from "@/contexts/AuthContext";
 
 export function EditorLayout() {
   const { fileStructure, isLoading, error, refetch } = useFileStructure();
+  const { hasRole } = useAuth();
   const [selectedFile, setSelectedFile] = useState<string>();
   const [content, setContent] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
@@ -93,7 +99,7 @@ Add your content here...
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
           <p className="mt-2 text-muted-foreground">Loading editor...</p>
@@ -104,15 +110,12 @@ Add your content here...
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center">
-          <p className="text-destructive">Failed to load editor: {error.message}</p>
-          <button 
-            onClick={() => refetch()} 
-            className="mt-2 px-4 py-2 bg-primary text-primary-foreground rounded"
-          >
+          <p className="text-destructive mb-4">Failed to load editor: {error.message}</p>
+          <Button onClick={() => refetch()} variant="outline">
             Retry
-          </button>
+          </Button>
         </div>
       </div>
     );
@@ -120,16 +123,43 @@ Add your content here...
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="border-b">
-        <div className="flex h-16 items-center px-4">
-          <div className="flex items-center space-x-4">
-            <h1 className="text-xl font-semibold">Documentation Editor</h1>
+      {/* Header */}
+      <div className="border-b border-border/50 bg-background/80 backdrop-blur-sm">
+        <div className="flex h-16 items-center justify-between px-6">
+          <div className="flex items-center space-x-6">
+            <Link to="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
+              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+                <span className="text-white font-bold text-sm">P</span>
+              </div>
+              <span className="font-semibold text-lg">Pieces Docs</span>
+            </Link>
+            <div className="h-6 w-px bg-border/50"></div>
+            <h1 className="text-xl font-semibold text-muted-foreground">Editor</h1>
+          </div>
+          
+          <div className="flex items-center space-x-3">
+            <Link to="/">
+              <Button variant="ghost" size="sm" className="gap-2">
+                <Home className="h-4 w-4" />
+                Home
+              </Button>
+            </Link>
+            {hasRole('admin') && (
+              <Link to="/admin">
+                <Button variant="outline" size="sm" className="gap-2">
+                  <Settings className="h-4 w-4" />
+                  Admin
+                </Button>
+              </Link>
+            )}
+            <UserMenu />
           </div>
         </div>
       </div>
       
       <div className="flex h-[calc(100vh-4rem)]">
-        <div className="w-64 border-r">
+        {/* Sidebar */}
+        <div className="w-72 border-r border-border/50 bg-muted/20">
           <EditorSidebar
             selectedFile={selectedFile}
             onFileSelect={handleFileSelect}
@@ -140,32 +170,33 @@ Add your content here...
           />
         </div>
         
+        {/* Main Content */}
         <div className="flex-1 flex flex-col">
-          <div className="border-b p-2">
-            <div className="flex space-x-2">
-              <button
+          {/* Tab Navigation */}
+          <div className="border-b border-border/50 p-3 bg-background">
+            <div className="flex space-x-1">
+              <Button
                 onClick={() => setActiveTab('navigation')}
-                className={`px-4 py-2 rounded ${
-                  activeTab === 'navigation' 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                }`}
+                variant={activeTab === 'navigation' ? 'default' : 'ghost'}
+                size="sm"
+                className="gap-2"
               >
+                <Navigation className="h-4 w-4" />
                 Navigation
-              </button>
-              <button
+              </Button>
+              <Button
                 onClick={() => setActiveTab('content')}
-                className={`px-4 py-2 rounded ${
-                  activeTab === 'content' 
-                    ? 'bg-primary text-primary-foreground' 
-                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
-                }`}
+                variant={activeTab === 'content' ? 'default' : 'ghost'}
+                size="sm"
+                className="gap-2"
               >
+                <FileText className="h-4 w-4" />
                 Content
-              </button>
+              </Button>
             </div>
           </div>
           
+          {/* Tab Content */}
           <div className="flex-1 overflow-hidden">
             {activeTab === 'navigation' ? (
               <NavigationEditor 

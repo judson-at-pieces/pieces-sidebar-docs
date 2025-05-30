@@ -81,6 +81,24 @@ export class NavigationService {
     return data;
   }
 
+  async deleteNavigationSection(id: string) {
+    // First delete all items in the section
+    const { error: itemsError } = await supabase
+      .from('navigation_items')
+      .delete()
+      .eq('section_id', id);
+    
+    if (itemsError) throw itemsError;
+
+    // Then delete the section
+    const { error } = await supabase
+      .from('navigation_sections')
+      .delete()
+      .eq('id', id);
+    
+    if (error) throw error;
+  }
+
   async addNavigationItem(item: {
     section_id: string;
     parent_id?: string;

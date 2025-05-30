@@ -1,10 +1,10 @@
-
 import { useState } from "react";
 import { FileText, Folder, FolderOpen, Plus, ChevronDown, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Badge } from "@/components/ui/badge";
 import { FileNode } from "@/utils/fileSystem";
 import { NavigationSection, NavigationItem } from "@/services/navigationService";
 
@@ -156,14 +156,16 @@ function FileTreeItem({ node, depth, isUsed, sections, onAddToSection, onShowPre
 
     return (
       <div
-        className="p-2 mb-1 border rounded-lg flex items-center gap-2 hover:bg-accent/50"
+        className="p-3 mb-2 border rounded-lg flex items-center gap-3 hover:bg-accent/50 hover:border-primary/20 transition-all"
         style={{ marginLeft: paddingLeft }}
       >
-        <FileText className="h-4 w-4 flex-shrink-0" />
-        <span className="text-sm font-medium truncate flex-1">
-          {node.name.replace('.md', '')}
-        </span>
-        <div className="flex items-center gap-2">
+        <FileText className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
+        <div className="flex-1 min-w-0">
+          <span className="text-sm font-medium truncate block">
+            {node.name.replace('.md', '')}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
           <Select value={selectedSection} onValueChange={setSelectedSection}>
             <SelectTrigger className="w-32 h-8 text-xs">
               <SelectValue placeholder="Section" />
@@ -181,7 +183,7 @@ function FileTreeItem({ node, depth, isUsed, sections, onAddToSection, onShowPre
             variant="outline"
             onClick={handleAddItem}
             disabled={!selectedSection}
-            className="h-8 w-8 p-0"
+            className="h-8 w-8 p-0 hover:bg-primary hover:text-primary-foreground"
           >
             <Plus className="h-3 w-3" />
           </Button>
@@ -194,14 +196,21 @@ function FileTreeItem({ node, depth, isUsed, sections, onAddToSection, onShowPre
   const showFolder = hasIndexFile(node) || hasAvailableChildren(node);
   if (!showFolder) return null;
 
+  const availableChildCount = node.children?.filter(child => {
+    if (child.type === 'file') {
+      return child.name !== `${node.name}.md` && !isUsed(child.path);
+    }
+    return hasAvailableChildren(child);
+  }).length || 0;
+
   return (
-    <div style={{ marginLeft: paddingLeft }}>
-      <div className="mb-2">
-        <div className="p-2 flex items-center gap-2 hover:bg-accent/30 rounded">
+    <div style={{ marginLeft: paddingLeft }} className="mb-2">
+      <div className="p-3 border rounded-lg hover:bg-accent/30 transition-all">
+        <div className="flex items-center gap-3">
           <Button
             variant="ghost"
             size="sm"
-            className="h-6 w-6 p-0"
+            className="h-6 w-6 p-0 hover:bg-primary/10"
             onClick={() => setIsExpanded(!isExpanded)}
           >
             {hasAvailableChildren(node) ? (
@@ -215,12 +224,19 @@ function FileTreeItem({ node, depth, isUsed, sections, onAddToSection, onShowPre
             )}
           </Button>
           {isExpanded ? (
-            <FolderOpen className="h-4 w-4 flex-shrink-0" />
+            <FolderOpen className="h-4 w-4 flex-shrink-0 text-blue-600" />
           ) : (
-            <Folder className="h-4 w-4 flex-shrink-0" />
+            <Folder className="h-4 w-4 flex-shrink-0 text-blue-600" />
           )}
-          <span className="text-sm font-medium flex-1">{node.name}</span>
-          <div className="flex items-center gap-2">
+          <div className="flex-1 min-w-0">
+            <span className="text-sm font-medium">{node.name}</span>
+            {availableChildCount > 0 && (
+              <Badge variant="outline" className="ml-2 text-xs">
+                {availableChildCount} available
+              </Badge>
+            )}
+          </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
             <Select value={selectedSection} onValueChange={setSelectedSection}>
               <SelectTrigger className="w-32 h-8 text-xs">
                 <SelectValue placeholder="Section" />
@@ -238,14 +254,14 @@ function FileTreeItem({ node, depth, isUsed, sections, onAddToSection, onShowPre
               variant="outline"
               onClick={handleAddItem}
               disabled={!selectedSection}
-              className="h-8 w-8 p-0"
+              className="h-8 w-8 p-0 hover:bg-primary hover:text-primary-foreground"
             >
               <Plus className="h-3 w-3" />
             </Button>
           </div>
         </div>
         {isExpanded && hasAvailableChildren(node) && node.children && (
-          <div className="mt-1">
+          <div className="mt-2 space-y-1">
             {node.children
               .filter(child => {
                 if (child.type === 'file') {
@@ -272,28 +288,60 @@ function FileTreeItem({ node, depth, isUsed, sections, onAddToSection, onShowPre
 }
 
 export function AvailableFilesPanel({ fileStructure, isFileUsed, sections, onAddToSection, onShowPreview }: AvailableFilesPanelProps) {
+  const availableFiles = fileStructure.filter(node => {
+    const hasAvailableChildren = (node: FileNode): boolean => {
+      if (!node.children) return false;
+      
+      const indexFileName = `${node.name}.md`;
+      return node.children.some(child => {
+        if (child.type === 'file') {
+          return child.name !== indexFileName && !isFileUsed(child.path);
+        }
+        return hasAvailableChildren(child);
+      });
+    };
+
+    if (node.type === 'file') {
+      return !isFileUsed(node.path);
+    }
+    return hasAvailableChildren(node);
+  });
+
   return (
-    <Card className="h-full flex flex-col overflow-hidden">
-      <CardHeader className="pb-3 flex-shrink-0">
-        <CardTitle className="text-base flex items-center gap-2">
-          <FileText className="h-4 w-4" />
+    <Card className="h-full flex flex-col overflow-hidden border-border/50">
+      <CardHeader className="pb-4 flex-shrink-0 border-b border-border/50">
+        <CardTitle className="text-lg flex items-center gap-2">
+          <FileText className="h-5 w-5" />
           Available Files
+          <Badge variant="outline" className="ml-auto text-xs">
+            {availableFiles.length} available
+          </Badge>
         </CardTitle>
       </CardHeader>
       <CardContent className="flex-1 min-h-0 p-0">
         <ScrollArea className="h-full w-full">
-          <div className="space-y-1 p-4">
-            {fileStructure.map((node) => (
-              <FileTreeItem 
-                key={node.path} 
-                node={node} 
-                depth={0} 
-                isUsed={isFileUsed}
-                sections={sections}
-                onAddToSection={onAddToSection}
-                onShowPreview={onShowPreview}
-              />
-            ))}
+          <div className="p-4">
+            {availableFiles.length > 0 ? (
+              <div className="space-y-2">
+                {availableFiles.map((node) => (
+                  <FileTreeItem 
+                    key={node.path} 
+                    node={node} 
+                    depth={0} 
+                    isUsed={isFileUsed}
+                    sections={sections}
+                    onAddToSection={onAddToSection}
+                    onShowPreview={onShowPreview}
+                  />
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-muted-foreground py-12">
+                <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p className="text-lg font-medium mb-2">All files are in use</p>
+                <p className="text-sm">All available files have been added to navigation sections</p>
+              </div>
+            )}
           </div>
         </ScrollArea>
       </CardContent>
