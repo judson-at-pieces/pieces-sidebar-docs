@@ -18,6 +18,35 @@ export function processCustomSyntax(content: string): string {
     }
   );
 
+  // Transform CardGroup components to HTML
+  content = content.replace(/<CardGroup\s+cols=\{(\d+)\}>/gi, (_, cols) => {
+    return `<div data-cardgroup="true" data-cols="${cols}">`;
+  });
+  content = content.replace(/<CardGroup>/gi, () => {
+    return '<div data-cardgroup="true" data-cols="2">';
+  });
+  content = content.replace(/<\/CardGroup>/gi, () => {
+    return '</div>';
+  });
+
+  // Transform Card components to HTML - handle multiple attributes
+  content = content.replace(/<Card\s+([^>]*)>/gi, (match, attributes) => {
+    const titleMatch = attributes.match(/title="([^"]*)"/);
+    const imageMatch = attributes.match(/image="([^"]*)"/);
+    const hrefMatch = attributes.match(/href="([^"]*)"/);
+    const externalMatch = attributes.match(/external="([^"]*)"/);
+    
+    const title = titleMatch ? titleMatch[1] : '';
+    const image = imageMatch ? imageMatch[1] : '';
+    const href = hrefMatch ? hrefMatch[1] : '';
+    const external = externalMatch ? externalMatch[1] : '';
+    
+    return `<div data-card="true" data-title="${title}" data-image="${image}" data-href="${href}" data-external="${external}">`;
+  });
+  content = content.replace(/<\/Card>/gi, () => {
+    return '</div>';
+  });
+
   // Transform Steps and Step components to HTML
   content = content.replace(/<Steps>/gi, () => {
     return '<div data-steps="true">';

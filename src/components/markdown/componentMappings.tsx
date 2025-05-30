@@ -4,6 +4,8 @@ import { Link } from 'react-router-dom';
 import { ExpandableImage as ExpandableImageComponent } from './ExpandableImage';
 import { Callout } from './Callout';
 import { Steps, Step } from './Steps';
+import { Card } from './Card';
+import { CardGroup } from './CardGroup';
 import { CustomTable, CustomTableHeader, CustomTableBody, CustomTableRow, CustomTableHead, CustomTableCell } from './CustomTable';
 import { 
   CustomTableComponentProps, 
@@ -22,13 +24,19 @@ export const createComponentMappings = () => ({
     return <ExpandableImageComponent src={src} alt={alt} caption={(caption as string) || ''} {...props} />;
   },
 
-  // Custom div handler for callouts
+  // Custom div handler for callouts, steps, cards, and card groups
   div: ({ children, ...props }: DivProps) => {
     const calloutType = props['data-callout'];
     const title = props['data-title'];
     const isSteps = props['data-steps'];
     const stepNumber = props['data-step'];
     const stepTitle = props['data-step-title'];
+    const isCard = props['data-card'];
+    const isCardGroup = props['data-cardgroup'];
+    const cols = props['data-cols'];
+    const image = props['data-image'];
+    const href = props['data-href'];
+    const external = props['data-external'];
     
     if (calloutType) {
       return <Callout type={calloutType as 'info' | 'warning' | 'tip' | 'error' | 'success' | 'alert'} title={title} {...props}>{children}</Callout>;
@@ -40,6 +48,14 @@ export const createComponentMappings = () => ({
     
     if (stepNumber) {
       return <Step number={parseInt(stepNumber)} title={stepTitle} {...props}>{children}</Step>;
+    }
+    
+    if (isCardGroup) {
+      return <CardGroup cols={cols} {...props}>{children}</CardGroup>;
+    }
+    
+    if (isCard) {
+      return <Card title={title} image={image} href={href} external={external} {...props}>{children}</Card>;
     }
     
     return <div {...props}>{children}</div>;
