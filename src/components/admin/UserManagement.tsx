@@ -101,7 +101,10 @@ export function UserManagement() {
     try {
       const { error } = await supabase
         .from('user_roles')
-        .insert({ user_id: userId, role });
+        .insert({ 
+          user_id: userId, 
+          role: role as 'admin' | 'editor' | 'user'
+        });
 
       if (error) {
         if (error.message.includes('duplicate key')) {
@@ -137,7 +140,7 @@ export function UserManagement() {
         .from('user_roles')
         .delete()
         .eq('user_id', userId)
-        .eq('role', role);
+        .eq('role', role as 'admin' | 'editor' | 'user');
 
       if (error) throw error;
 
@@ -160,11 +163,11 @@ export function UserManagement() {
   const getRoleBadgeVariant = (role: string) => {
     switch (role) {
       case 'admin':
-        return 'destructive';
+        return 'destructive' as const;
       case 'editor':
-        return 'default';
+        return 'default' as const;
       default:
-        return 'secondary';
+        return 'secondary' as const;
     }
   };
 
