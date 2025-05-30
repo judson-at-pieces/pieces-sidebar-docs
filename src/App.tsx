@@ -3,6 +3,7 @@ import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { Toaster } from '@/components/ui/toaster';
+import { AuthProvider } from '@/contexts/AuthContext';
 import Index from '@/pages/Index';
 import DocsLayout from '@/components/DocsLayout';
 import GettingStarted from '@/pages/docs/GettingStarted';
@@ -33,40 +34,42 @@ function App() {
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
         <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-          <Router>
-            <div className="min-h-screen bg-background font-sans antialiased">
-              <Toaster />
-              <Routes>
-                {/* Public routes */}
-                <Route path="/" element={<Index />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/auth/callback" element={<AuthCallback />} />
-                
-                {/* Documentation routes */}
-                <Route path="/docs" element={<DocsLayout />}>
-                  <Route index element={<Navigate to="/docs/getting-started" replace />} />
-                  <Route path="getting-started" element={<GettingStarted />} />
-                  <Route path="quick-guides" element={<QuickGuides />} />
-                  <Route path="installation" element={<Installation />} />
-                  <Route path="troubleshooting" element={<Troubleshooting />} />
-                  <Route path="long-term-memory-guide" element={<LongTermMemoryGuide />} />
-                  <Route path="meet-pieces" element={<MeetPieces />} />
-                  <Route path="quick-start" element={<QuickStart />} />
-                  <Route path="integrations" element={<Integrations />} />
-                  <Route path="api-reference" element={<ApiReference />} />
-                  <Route path="examples" element={<Examples />} />
-                  <Route path="*" element={<CompiledDocPage />} />
-                </Route>
+          <AuthProvider>
+            <Router>
+              <div className="min-h-screen bg-background font-sans antialiased">
+                <Toaster />
+                <Routes>
+                  {/* Public routes */}
+                  <Route path="/" element={<Index />} />
+                  <Route path="/auth" element={<Auth />} />
+                  <Route path="/auth/callback" element={<AuthCallback />} />
+                  
+                  {/* Documentation routes */}
+                  <Route path="/docs" element={<DocsLayout />}>
+                    <Route index element={<Navigate to="/docs/getting-started" replace />} />
+                    <Route path="getting-started" element={<GettingStarted />} />
+                    <Route path="quick-guides" element={<QuickGuides />} />
+                    <Route path="installation" element={<Installation />} />
+                    <Route path="troubleshooting" element={<Troubleshooting />} />
+                    <Route path="long-term-memory-guide" element={<LongTermMemoryGuide />} />
+                    <Route path="meet-pieces" element={<MeetPieces />} />
+                    <Route path="quick-start" element={<QuickStart />} />
+                    <Route path="integrations" element={<Integrations />} />
+                    <Route path="api-reference" element={<ApiReference />} />
+                    <Route path="examples" element={<Examples />} />
+                    <Route path="*" element={<CompiledDocPage />} />
+                  </Route>
 
-                {/* Protected routes - temporarily disabled */}
-                <Route path="/admin" element={<div className="p-8 text-center">Admin panel temporarily unavailable</div>} />
-                <Route path="/editor" element={<div className="p-8 text-center">Editor temporarily unavailable</div>} />
+                  {/* Protected routes - temporarily disabled */}
+                  <Route path="/admin" element={<div className="p-8 text-center">Admin panel temporarily unavailable</div>} />
+                  <Route path="/editor" element={<div className="p-8 text-center">Editor temporarily unavailable</div>} />
 
-                {/* 404 */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </div>
-          </Router>
+                  {/* 404 */}
+                  <Route path="*" element={<NotFound />} />
+                </Routes>
+              </div>
+            </Router>
+          </AuthProvider>
         </ThemeProvider>
       </QueryClientProvider>
     </ErrorBoundary>
