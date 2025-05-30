@@ -21,11 +21,7 @@ export function CompiledDocPage() {
       normalizedPath = `/${normalizedPath}`;
     }
     
-    // Ensure it starts with /docs/ if it doesn't already
-    if (!normalizedPath.startsWith('/docs/')) {
-      normalizedPath = `/docs${normalizedPath}`;
-    }
-    
+    // Don't add /docs/ prefix - the compiled content uses the frontmatter paths directly
     // Clean up any double slashes again
     normalizedPath = normalizedPath.replace(/\/+/g, '/');
     
