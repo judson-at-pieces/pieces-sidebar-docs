@@ -33,16 +33,17 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
   const createNavigationItemsFromFolder = (folderNode: FileNode, parentId?: string): NavigationItem[] => {
     const items: NavigationItem[] = [];
     
-    // First, check if this folder has an index file (e.g., cli.md for cli folder)
+    // Check if this folder has an index file (e.g., cli.md for cli folder)
     const indexFileName = `${folderNode.name}.md`;
     const indexFile = folderNode.children?.find(child => 
       child.type === 'file' && child.name === indexFileName
     );
     
-    // Create the folder item (which may represent the index file)
+    // Create the folder item (which represents both the folder and its index file)
     const folderItem: NavigationItem = {
       id: `temp-${Date.now()}-${Math.random()}`,
       title: folderNode.name.replace(/-/g, ' '),
+      // If there's an index file, use its path for the href, otherwise use folder path
       href: indexFile ? `/${indexFile.path.replace('.md', '')}` : `/${folderNode.path}`,
       file_path: indexFile?.path || folderNode.path,
       order_index: 0,
@@ -305,7 +306,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
       <div className="p-4 border-b">
         <h2 className="text-lg font-semibold mb-2">Navigation Editor</h2>
         <p className="text-sm text-muted-foreground">
-          Drag files or entire folders from the "Available Files" section into navigation sections to organize your documentation. Folders will maintain their structure.
+          Drag files or entire folders from the "Available Files" section into navigation sections to organize your documentation. Folders will maintain their structure and folders with index files (like cli.md for cli folder) will be treated as single navigational entities.
         </p>
       </div>
       
