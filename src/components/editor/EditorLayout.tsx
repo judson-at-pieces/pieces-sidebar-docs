@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, FileText, GitPullRequest } from "lucide-react";
+import { Menu, FileText, GitPullRequest, ExternalLink } from "lucide-react";
 import { ThemeToggle } from "../ThemeToggle";
 import { useAuth } from "@/contexts/AuthContext";
 import { EditorSidebar } from "./EditorSidebar";
@@ -231,14 +231,26 @@ Start editing this file...`;
       );
 
       if (result.success) {
-        toast.success(`Pull request created successfully! PR #${result.prNumber} on branch ${result.branchName}`);
+        // Show success toast with clickable PR link - NO automatic opening
+        toast.success(
+          <div className="flex items-center justify-between w-full">
+            <span>Pull request created successfully! PR #{result.prNumber}</span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => window.open(result.prUrl, '_blank')}
+              className="ml-2"
+            >
+              <ExternalLink className="h-3 w-3 mr-1" />
+              View PR
+            </Button>
+          </div>,
+          {
+            duration: 10000, // Show for 10 seconds
+          }
+        );
         // Update original contents to match current
         setOriginalContents({ ...fileContents });
-        
-        // Optionally open the PR in a new tab
-        if (result.prUrl) {
-          window.open(result.prUrl, '_blank');
-        }
       } else {
         throw new Error('Failed to create pull request');
       }
