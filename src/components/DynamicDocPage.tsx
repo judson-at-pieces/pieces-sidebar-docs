@@ -1,7 +1,8 @@
+
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { MarkdownRenderer } from './MarkdownRenderer';
-import { loadMarkdownContent, ContentPage } from '@/lib/content';
+import { loadMarkdownContent, getContentFromCache, ContentPage } from '@/lib/content';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Calendar, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
@@ -10,19 +11,30 @@ import { TableOfContents } from './markdown/TableOfContents';
 export function DynamicDocPage() {
   const { '*': path } = useParams();
   const [content, setContent] = useState<ContentPage | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadContent() {
       if (!path) return;
       
+      // For getting-started, use the direct path without /docs/ prefix
+      const contentPath = path === 'getting-started' ? 'getting-started' : `/docs/${path}`;
+      
+      // Try to get content from cache first (synchronous)
+      const cachedContent = getContentFromCache(contentPath);
+      if (cachedContent) {
+        setContent(cachedContent);
+        setLoading(false);
+        setError(null);
+        return;
+      }
+      
+      // If not in cache, show loading and fetch
       setLoading(true);
       setError(null);
       
       try {
-        // For getting-started, use the direct path without /docs/ prefix
-        const contentPath = path === 'getting-started' ? 'getting-started' : `/docs/${path}`;
         console.log('Attempting to load content for path:', contentPath);
         
         const contentPage = await loadMarkdownContent(contentPath);
@@ -30,8 +42,6 @@ export function DynamicDocPage() {
         
         if (contentPage) {
           console.log('Content loaded successfully:', contentPage.metadata.title);
-          console.log('Content preview:', contentPage.content.substring(0, 200));
-          console.log('Full content length:', contentPage.content.length);
           setContent(contentPage);
         } else {
           console.log('No content found for path:', contentPath);
@@ -48,7 +58,8 @@ export function DynamicDocPage() {
     loadContent();
   }, [path]);
 
-  if (loading) {
+  // Only show loading if we're actually loading and don't have content yet
+  if (loading && !content) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
