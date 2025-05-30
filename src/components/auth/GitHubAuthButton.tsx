@@ -16,7 +16,7 @@ export function GitHubAuthButton() {
     setLoading(true);
     setError('');
     
-    const identifier = 'github-auth'; // Use a generic identifier for rate limiting
+    const identifier = 'github-auth';
 
     if (authRateLimiter.isRateLimited(identifier)) {
       setError('Too many authentication attempts. Please try again later.');
@@ -25,8 +25,11 @@ export function GitHubAuthButton() {
     }
 
     try {
+      console.log('Starting GitHub OAuth sign in...');
       await signInWithGitHub();
+      // Don't set loading to false here - the redirect will happen
     } catch (error: any) {
+      console.error('GitHub auth error:', error);
       logger.error('GitHub auth button error', { error: error.message });
       setError(getErrorMessage(error, 'auth'));
       setLoading(false);
@@ -42,7 +45,7 @@ export function GitHubAuthButton() {
         size="lg"
       >
         <Github className="mr-2 h-5 w-5" />
-        {loading ? 'Signing in...' : 'Sign in with GitHub'}
+        {loading ? 'Redirecting to GitHub...' : 'Sign in with GitHub'}
       </Button>
       
       {error && (

@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/integrations/supabase/client';
@@ -25,7 +26,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     console.log('AuthProvider initializing, isSupabaseConfigured:', isSupabaseConfigured);
     
-    // If Supabase is not configured, just set loading to false and return
     if (!isSupabaseConfigured) {
       setLoading(false);
       return;
@@ -69,10 +69,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setUser(session?.user ?? null);
           
           if (session?.user) {
-            // Audit log for authentication
             auditLog.authAttempt(session.user.email || '', true, 'github');
             
-            // Handle post sign in with a small delay to avoid blocking
             setTimeout(async () => {
               if (mounted) {
                 await handlePostSignIn(session.user);
@@ -97,24 +95,19 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const handlePostSignIn = async (user: User) => {
     try {
-      // First fetch current roles
       await fetchUserRoles(user.id);
       
-      // Check if there's a validated access code in session storage
       const validatedCode = sessionStorage.getItem('validated_access_code');
       
       if (validatedCode) {
-        // Clear the stored code
         sessionStorage.removeItem('validated_access_code');
         
-        // Check if user has any roles
         const { data: existingRoles } = await supabase
           .from('user_roles')
           .select('role')
           .eq('user_id', user.id);
         
         if (!existingRoles || existingRoles.length === 0) {
-          // User has no roles and used a valid access code, assign editor role
           const { error } = await supabase
             .from('user_roles')
             .insert({ user_id: user.id, role: 'editor' });
@@ -122,13 +115,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           if (!error) {
             auditLog.roleChanged(user.id, 'editor', user.id);
             logger.info('Editor role assigned to user after access code validation');
-            
-            // Refresh roles
             await fetchUserRoles(user.id);
           }
         }
       } else {
-        // No access code, just fetch roles normally
         await fetchUserRoles(user.id);
       }
     } catch (error: any) {
@@ -169,19 +159,29 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     
     try {
       console.log('Initiating GitHub sign in...');
+      console.log('Current URL:', window.location.href);
+      console.log('Origin:', window.location.origin);
+      
+      const redirectTo = `${window.location.origin}/auth/callback`;
+      console.log('Redirect URL:', redirectTo);
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'github',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`
+          redirectTo: redirectTo
         }
       });
+      
       if (error) {
         console.error('GitHub sign in error:', error);
         logger.error('GitHub sign in error', { error: error.message });
         auditLog.authAttempt('', false, 'github');
         throw error;
       }
+      
+      console.log('GitHub OAuth initiated successfully');
     } catch (error: any) {
+      console.error('GitHub sign in error:', error);
       logger.error('GitHub sign in error', { error: error.message });
       throw error;
     }
@@ -189,7 +189,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = async () => {
     try {
-      // Clear any stored access code on sign out
       sessionStorage.removeItem('validated_access_code');
       
       const { error } = await supabase.auth.signOut();
