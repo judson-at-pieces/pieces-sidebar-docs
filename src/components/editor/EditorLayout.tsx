@@ -9,6 +9,7 @@ import { EditorSidebar } from "./EditorSidebar";
 import { EditorMain } from "./EditorMain";
 import { githubService } from "@/services/githubService";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface FileContent {
   [fileName: string]: string;
@@ -129,27 +130,67 @@ Start editing this file...`;
     const modifiedFiles = getModifiedFiles();
     
     if (modifiedFiles.size === 0) {
-      toast.info('No changes to save');
+      toast.error('No changes to save');
       return;
     }
 
-    if (!githubService.isConfigured()) {
-      toast.error('GitHub not configured. Please set up your GitHub integration first.');
+    const repoConfig = githubService.getRepoConfig();
+    if (!repoConfig) {
+      toast.error('No GitHub repository configured. Please contact an admin to set up the repository.');
+      return;
+    }
+
+    if (!user) {
+      toast.error('You must be logged in to create pull requests');
       return;
     }
 
     setIsLoading(true);
     try {
-      const files = Array.from(modifiedFiles).map(fileName => ({
-        path: `public/content/${fileName}`,
-        content: fileContents[fileName],
-      }));
+      // Get the user's GitHub access token from their session
+      const { data: { session } } = await supabase.auth.getSession();
+      const githubToken = session?.provider_token;
+
+      if (!githubToken) {
+        toast.error('GitHub access token not found. Please sign out and sign back in.');
+        return;
+      }
+
+      const files = Array.from(modifiedFiles).map(fileName => {
+        // Map the file name to the correct content path in public/content
+        let contentPath = fileName;
+        
+        const pathMappings: Record<string, string> = {
+          'fundamentals.md': 'meet-pieces/fundamentals.md',
+          'windows-installation-guide.md': 'meet-pieces/windows-installation-guide.md',
+          'macos-installation-guide.md': 'meet-pieces/macos-installation-guide.md',
+          'linux-installation-guide.md': 'meet-pieces/linux-installation-guide.md',
+          'cross-platform.md': 'meet-pieces/troubleshooting/cross-platform.md',
+          'macos.md': 'meet-pieces/troubleshooting/macos.md',
+          'windows.md': 'meet-pieces/troubleshooting/windows.md',
+          'linux.md': 'meet-pieces/troubleshooting/linux.md',
+          'overview.md': 'quick-guides/overview.md',
+          'ltm-context.md': 'quick-guides/ltm-context.md',
+          'copilot-with-context.md': 'quick-guides/copilot-with-context.md',
+          'download.md': 'desktop/download.md',
+          'onboarding.md': 'desktop/onboarding.md',
+        };
+        
+        if (pathMappings[fileName]) {
+          contentPath = pathMappings[fileName];
+        }
+
+        return {
+          path: `public/content/${contentPath}`,
+          content: fileContents[fileName],
+        };
+      });
 
       const result = await githubService.createPullRequest({
         title: `Update documentation files`,
-        body: `Updated ${modifiedFiles.size} file(s):\n\n${Array.from(modifiedFiles).map(f => `- ${f}`).join('\n')}`,
+        body: `Updated ${modifiedFiles.size} file(s) by ${user.email}:\n\n${Array.from(modifiedFiles).map(f => `- ${f}`).join('\n')}`,
         files,
-      });
+      }, githubToken, repoConfig);
 
       if (result.success) {
         toast.success(`Pull request created successfully! PR #${result.prNumber}`);

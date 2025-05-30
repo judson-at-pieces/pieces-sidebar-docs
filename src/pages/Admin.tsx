@@ -3,7 +3,7 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { AdminPortal } from '@/components/auth/AdminPortal';
-import { GitHubConfig } from '@/components/admin/GitHubConfig';
+import { GitHubRepoConfig } from '@/components/admin/GitHubRepoConfig';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Users, UserPlus, Github } from 'lucide-react';
@@ -104,7 +104,7 @@ export default function Admin() {
         </div>
         
         <div className="mt-6">
-          <GitHubConfig />
+          <GitHubRepoConfig />
         </div>
       </main>
     </div>
