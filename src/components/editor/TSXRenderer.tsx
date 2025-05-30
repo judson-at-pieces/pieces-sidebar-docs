@@ -66,17 +66,17 @@ export function TSXRenderer({ content }: TSXRendererProps) {
       // Handle Card components
       if (line.includes('<Card')) {
         const titleMatch = line.match(/title="([^"]+)"/);
-        const descMatch = line.match(/description="([^"]+)"/);
         const hrefMatch = line.match(/href="([^"]+)"/);
         
         elements.push(
           <Card 
             key={i}
             title={titleMatch ? titleMatch[1] : 'Card Title'}
-            description={descMatch ? descMatch[1] : 'Card description'}
             href={hrefMatch ? hrefMatch[1] : '#'}
             className="mb-4"
-          />
+          >
+            Card description goes here
+          </Card>
         );
         continue;
       }
@@ -86,16 +86,22 @@ export function TSXRenderer({ content }: TSXRendererProps) {
         // Look ahead for Step components
         const stepsContent: React.ReactNode[] = [];
         let j = i + 1;
+        let stepNumber = 1;
         while (j < lines.length && !lines[j].includes('</Steps>')) {
           const stepLine = lines[j];
           if (stepLine.includes('<Step')) {
             const titleMatch = stepLine.match(/title="([^"]+)"/);
             const contentMatch = stepLine.match(/>([^<]+)</);
             stepsContent.push(
-              <Step key={j} title={titleMatch ? titleMatch[1] : 'Step'}>
+              <Step 
+                key={j} 
+                number={stepNumber}
+                title={titleMatch ? titleMatch[1] : 'Step'}
+              >
                 {contentMatch ? contentMatch[1].trim() : 'Step content'}
               </Step>
             );
+            stepNumber++;
           }
           j++;
         }
