@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -6,7 +7,7 @@ import { ThemeToggle } from "../ThemeToggle";
 import { useAuth } from "@/contexts/AuthContext";
 import { EditorSidebar } from "./EditorSidebar";
 import { EditorMain } from "./EditorMain";
-import { githubService } from "@/services/githubService";
+import { githubAppService } from "@/services/githubAppService";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -135,32 +136,55 @@ Start editing this file...`;
 
     setIsLoading(true);
     try {
-      console.log('Starting enhanced PR creation process...');
+      console.log('Starting GitHub App PR creation process...');
       
-      // Get repository configuration
-      const repoConfig = await githubService.getRepoConfig();
-      if (!repoConfig) {
-        toast.error('No GitHub repository configured. Please go to the Admin panel to set up the repository.');
+      // Get GitHub configuration
+      const { data: configData, error: configError } = await supabase.rpc('get_current_github_config');
+      
+      console.log('GitHub config from database:', configData);
+      console.log('Config error:', configError);
+      
+      if (configError) {
+        throw new Error(`Failed to get GitHub config: ${configError.message}`);
+      }
+      
+      if (!configData || configData.length === 0) {
+        toast.error('No GitHub repository configured. Please configure a repository in the admin panel.');
         return;
       }
 
-      console.log('Repository configuration loaded:', repoConfig);
+      const { repo_owner, repo_name } = configData[0];
+      console.log('Repository from config:', `${repo_owner}/${repo_name}`);
+
+      // Get the installation ID for this repository
+      const { data: githubConfig, error: installationError } = await supabase
+        .from('github_config')
+        .select('installation_id')
+        .eq('repo_owner', repo_owner)
+        .eq('repo_name', repo_name)
+        .single();
+
+      console.log('Installation config:', githubConfig);
+      console.log('Installation error:', installationError);
+
+      if (installationError) {
+        throw new Error(`Failed to get installation config: ${installationError.message}`);
+      }
+
+      if (!githubConfig?.installation_id) {
+        toast.error('GitHub App installation not found. Please reconfigure the repository in the admin panel.');
+        return;
+      }
+
+      console.log('Using installation ID:', githubConfig.installation_id);
+      console.log('Creating PR for repository:', `${repo_owner}/${repo_name}`);
 
       if (!user) {
         toast.error('You must be logged in to create pull requests');
         return;
       }
 
-      // Get the user's GitHub access token from their session
-      const { data: { session } } = await supabase.auth.getSession();
-      const githubToken = session?.provider_token;
-
-      if (!githubToken) {
-        toast.error('GitHub access token not found. Please sign out and sign back in to refresh your GitHub authentication.');
-        return;
-      }
-
-      console.log('GitHub token found, preparing files for PR...');
+      console.log('GitHub App token found, preparing files for PR...');
 
       const files = Array.from(modifiedFiles).map(fileName => {
         // Map the file name to the correct content path in public/content
@@ -194,24 +218,36 @@ Start editing this file...`;
 
       console.log('Prepared files for PR:', files.map(f => f.path));
 
-      // Use the enhanced createBranchAndPR method
-      const result = await githubService.createBranchAndPR({
-        title: `Update documentation files`,
-        body: `Updated ${modifiedFiles.size} file(s) by ${user.email}:\n\n${Array.from(modifiedFiles).map(f => `- ${f}`).join('\n')}\n\n**Auto-created by Lovable Editor**`,
-        files,
-      }, githubToken, repoConfig);
+      // Use the GitHub App service to create branch and PR
+      const result = await githubAppService.createBranchAndPR(
+        githubConfig.installation_id,
+        repo_owner,
+        repo_name,
+        {
+          title: `Update documentation files`,
+          body: `Updated ${modifiedFiles.size} file(s) by ${user.email}:\n\n${Array.from(modifiedFiles).map(f => `- ${f}`).join('\n')}\n\n**Auto-created by Lovable Editor**`,
+          files,
+        }
+      );
 
       if (result.success) {
         toast.success(`Pull request created successfully! PR #${result.prNumber} on branch ${result.branchName}`);
         // Update original contents to match current
         setOriginalContents({ ...fileContents });
+        
+        // Optionally open the PR in a new tab
+        if (result.prUrl) {
+          window.open(result.prUrl, '_blank');
+        }
+      } else {
+        throw new Error('Failed to create pull request');
       }
     } catch (error: any) {
       console.error('Error creating pull request:', error);
       
-      // The GitHubService now provides more specific error messages
-      if (error.message.includes('GitHub app')) {
-        toast.error('Please ensure the Lovable GitHub app is installed on your repository. Check the Admin panel for setup instructions.');
+      // The GitHubAppService now provides more specific error messages
+      if (error.message.includes('GitHub app') || error.message.includes('installation')) {
+        toast.error('Please ensure the Pieces Documentation Bot is installed on your repository. Check the Admin panel for setup instructions.');
       } else {
         toast.error(error.message || 'Failed to create pull request. Please try again.');
       }
