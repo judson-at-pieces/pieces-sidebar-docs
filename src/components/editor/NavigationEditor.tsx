@@ -81,14 +81,21 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
   const handleDragEnd = async (result: DropResult) => {
     const { destination, source, draggableId } = result;
 
-    if (!destination) return;
+    console.log('Drag ended:', { destination, source, draggableId });
+
+    if (!destination) {
+      console.log('No destination, drag cancelled');
+      return;
+    }
 
     // Handle dragging from available files to navigation sections
     if (source.droppableId === 'available-files' && destination.droppableId.startsWith('section-')) {
       const destSectionId = destination.droppableId.replace('section-', '');
+      console.log('Dragging from available files to section:', destSectionId);
       
       // Handle both files and folders
       if (draggableId.startsWith('folder-')) {
+        console.log('Processing folder drag:', draggableId);
         // Handle folder drag - preserve complete folder structure including index file
         const folderPath = draggableId.replace('folder-', '');
         const findFolderByPath = (nodes: FileNode[], path: string): FileNode | null => {
@@ -105,10 +112,16 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
         };
 
         const folder = findFolderByPath(fileStructure, folderPath);
-        if (!folder) return;
+        console.log('Found folder:', folder);
+        
+        if (!folder) {
+          console.error('Folder not found for path:', folderPath);
+          return;
+        }
 
         // Create nested navigation items that preserve complete folder structure
         const newItems = createNavigationItemsFromFolder(folder);
+        console.log('Created navigation items:', newItems);
         
         if (newItems.length === 0) {
           toast.info("No available files in this folder");
@@ -131,6 +144,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
         toast.success(`Added ${folder.name} folder with complete structure to navigation`);
         
       } else {
+        console.log('Processing file drag:', draggableId);
         // Handle single file drag
         const findFileByPath = (nodes: FileNode[], path: string): FileNode | null => {
           for (const node of nodes) {
@@ -147,7 +161,10 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
 
         const file = findFileByPath(fileStructure, draggableId);
         
-        if (!file) return;
+        if (!file) {
+          console.error('File not found for path:', draggableId);
+          return;
+        }
         
         const newItem: NavigationItem = {
           id: `temp-${Date.now()}`,
