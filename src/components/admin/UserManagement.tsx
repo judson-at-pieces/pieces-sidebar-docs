@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -27,7 +26,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Trash2, Shield, User, RefreshCw, UserCheck, UserPlus } from 'lucide-react';
+import { Trash2, Shield, User, RefreshCw, UserCheck, Info } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
 interface UserProfile {
@@ -62,12 +61,19 @@ export function UserManagement() {
       setLoading(true);
       setError('');
 
+      console.log('Fetching user roles and profiles...');
+
       // Get all user roles
       const { data: userRoles, error: rolesError } = await supabase
         .from('user_roles')
         .select('user_id, role');
 
-      if (rolesError) throw rolesError;
+      if (rolesError) {
+        console.error('Error fetching user roles:', rolesError);
+        throw rolesError;
+      }
+
+      console.log('User roles:', userRoles);
 
       // Get all profiles
       const { data: profiles, error: profilesError } = await supabase
@@ -75,21 +81,35 @@ export function UserManagement() {
         .select('id, email, full_name, created_at')
         .order('created_at', { ascending: false });
 
-      if (profilesError) throw profilesError;
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+        throw profilesError;
+      }
+
+      console.log('Profiles:', profiles);
 
       // Create a map of profiles by ID for quick lookup
       const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
+      console.log('Profiles map:', profilesMap);
 
       // Get unique user IDs from roles and profiles
       const roleUserIds = new Set(userRoles?.map(role => role.user_id) || []);
       const profileUserIds = new Set(profiles?.map(p => p.id) || []);
       const allUserIds = new Set([...roleUserIds, ...profileUserIds]);
 
+      console.log('All user IDs:', Array.from(allUserIds));
+
       // Build user list with profile and role information
       const usersWithRoles = Array.from(allUserIds).map(userId => {
         const profile = profilesMap.get(userId);
         const userRolesList = userRoles?.filter(role => role.user_id === userId)
           .map(role => role.role) || [];
+
+        console.log(`User ${userId}:`, {
+          profile,
+          hasProfile: !!profile,
+          roles: userRolesList
+        });
 
         return {
           id: userId,
@@ -100,6 +120,8 @@ export function UserManagement() {
           has_profile: !!profile
         };
       });
+
+      console.log('Users with roles:', usersWithRoles);
 
       // Sort by roles (users with roles first) then by creation date
       usersWithRoles.sort((a, b) => {
@@ -196,7 +218,7 @@ export function UserManagement() {
       case 'admin':
         return <Shield className="h-3 w-3" />;
       case 'editor':
-        return <UserPlus className="h-3 w-3" />;
+        return <User className="h-3 w-3" />;
       default:
         return <User className="h-3 w-3" />;
     }
