@@ -3,8 +3,8 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
-const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
+const SUPABASE_URL = "https://yqchxlpigndrmjbtyvhu.supabase.co";
+const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxY2h4bHBpZ25kcm1qYnR5dmh1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg1MzgwMTksImV4cCI6MjA2NDExNDAxOX0.Hniwe87ef6V22Y-g4N7AxsOSn4Ea5TUuDFujVfaIMuc";
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
@@ -12,8 +12,6 @@ const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 // Check if we have valid configuration
 const hasValidConfig = SUPABASE_URL && 
                        SUPABASE_PUBLISHABLE_KEY && 
-                       SUPABASE_URL !== 'undefined' &&
-                       SUPABASE_PUBLISHABLE_KEY !== 'undefined' &&
                        SUPABASE_URL.includes('supabase.co') &&
                        SUPABASE_PUBLISHABLE_KEY.length > 50;
 
@@ -51,7 +49,7 @@ if (hasValidConfig) {
     supabaseClient = nullClient;
   }
 } else {
-  console.warn('Supabase configuration invalid or missing:', { 
+  console.warn('Supabase configuration invalid:', { 
     hasUrl: !!SUPABASE_URL, 
     hasKey: !!SUPABASE_PUBLISHABLE_KEY,
     urlValid: SUPABASE_URL?.includes('supabase.co'),
