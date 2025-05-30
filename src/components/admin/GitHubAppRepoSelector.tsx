@@ -1,10 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Github, Loader2, ExternalLink, GitBranch, Check, RefreshCw } from 'lucide-react';
+import { Github, Loader2, ExternalLink, GitBranch, Check, RefreshCw, Info } from 'lucide-react';
 import { githubAppService } from '@/services/githubAppService';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
@@ -78,8 +77,9 @@ export function GitHubAppRepoSelector({ onRepoConfigured }: GitHubAppRepoSelecto
         setInstallations(formattedInstallations);
         console.log('Found installations:', formattedInstallations);
       } else {
-        console.log('No installations found in database');
-        setInstallations([]);
+        console.log('No installations found in database - trying manual sync...');
+        // Try to manually sync installations if webhook didn't work
+        await syncInstallationsManually();
       }
     } catch (error: any) {
       console.error('Error loading installations:', error);
@@ -88,6 +88,45 @@ export function GitHubAppRepoSelector({ onRepoConfigured }: GitHubAppRepoSelecto
     } finally {
       setLoading(false);
       setInitialLoading(false);
+    }
+  };
+
+  const syncInstallationsManually = async () => {
+    try {
+      console.log('Attempting manual installation sync...');
+      
+      // Call our webhook function to try to detect installations
+      const response = await fetch('/api/github/sync-installations', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+      });
+
+      if (!response.ok) {
+        console.log('Manual sync endpoint not available, this is expected');
+        return;
+      }
+
+      // Reload installations after sync
+      const { data: dbInstallations, error: dbError } = await supabase
+        .from('github_installations')
+        .select('*')
+        .order('installed_at', { ascending: false });
+
+      if (!dbError && dbInstallations && dbInstallations.length > 0) {
+        const formattedInstallations: GitHubInstallation[] = dbInstallations.map(install => ({
+          installation_id: install.installation_id,
+          account_login: install.account_login,
+          account_type: install.account_type,
+          installed_at: install.installed_at
+        }));
+        
+        setInstallations(formattedInstallations);
+        toast.success('Found GitHub App installations!');
+      }
+    } catch (error) {
+      console.log('Manual sync failed, this is expected:', error);
     }
   };
 
@@ -176,6 +215,9 @@ export function GitHubAppRepoSelector({ onRepoConfigured }: GitHubAppRepoSelecto
   }
 
   if (installations.length === 0) {
+    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
+    const correctWebhookUrl = `${supabaseUrl}/functions/v1/github-webhook`;
+    
     return (
       <Card>
         <CardHeader>
@@ -189,9 +231,15 @@ export function GitHubAppRepoSelector({ onRepoConfigured }: GitHubAppRepoSelecto
         </CardHeader>
         <CardContent>
           <Alert className="mb-4">
+            <Info className="h-4 w-4" />
             <AlertDescription>
-              The Pieces Documentation Bot GitHub App needs to be installed on your repositories. 
-              If you've already installed it, try refreshing to check for new installations.
+              <strong>Important:</strong> After installing the GitHub App, make sure the webhook URL in your GitHub App settings is set to:
+              <br />
+              <code className="bg-muted px-1 py-0.5 rounded text-xs mt-1 block">
+                {correctWebhookUrl}
+              </code>
+              <br />
+              This ensures installation events are properly recorded.
             </AlertDescription>
           </Alert>
           
@@ -213,6 +261,17 @@ export function GitHubAppRepoSelector({ onRepoConfigured }: GitHubAppRepoSelecto
               <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
               Refresh Installations
             </Button>
+          </div>
+          
+          <div className="mt-4 p-3 bg-muted rounded-lg">
+            <p className="text-sm text-muted-foreground">
+              <strong>Troubleshooting:</strong> If you've installed the app but don't see it here:
+            </p>
+            <ol className="text-sm text-muted-foreground mt-2 space-y-1">
+              <li>1. Verify the webhook URL is correctly set in your GitHub App settings</li>
+              <li>2. Try clicking "Refresh Installations" above</li>
+              <li>3. Check that the app has access to your target repository</li>
+            </ol>
           </div>
         </CardContent>
       </Card>
