@@ -44,9 +44,18 @@ function FileTreeItem({ node, depth, index, isUsed }: FileTreeItemProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const paddingLeft = depth * 16;
 
+  // Check if any children are available (move this function outside of JSX)
+  const hasAvailableChildren = (node: FileNode): boolean => {
+    if (!node.children) return false;
+    return node.children.some(child => {
+      if (child.type === 'file') return !isUsed(child.path);
+      return hasAvailableChildren(child);
+    });
+  };
+
   if (node.type === 'file') {
     const used = isUsed(node.path);
-    if (used) return null; // Don't show used files
+    if (used) return null;
 
     return (
       <Draggable draggableId={node.path} index={index}>
@@ -70,15 +79,6 @@ function FileTreeItem({ node, depth, index, isUsed }: FileTreeItemProps) {
       </Draggable>
     );
   }
-
-  // For folders, check if any children are available
-  const hasAvailableChildren = (node: FileNode): boolean => {
-    if (!node.children) return false;
-    return node.children.some(child => {
-      if (child.type === 'file') return !isUsed(child.path);
-      return hasAvailableChildren(child);
-    });
-  };
 
   if (!hasAvailableChildren(node)) return null;
 
@@ -132,8 +132,8 @@ function FileTreeItem({ node, depth, index, isUsed }: FileTreeItemProps) {
           </div>
         )}
       </Draggable>
-    );
-  }
+    </div>
+  );
 }
 
 export function NavigationEditor({ fileStructure, onNavigationChange }: NavigationEditorProps) {
