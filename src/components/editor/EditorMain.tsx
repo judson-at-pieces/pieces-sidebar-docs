@@ -26,8 +26,17 @@ export function EditorMain({ selectedFile, content, onContentChange, onSave, has
 
     setSaving(true);
     try {
+      console.log('=== Starting save process ===');
+      
       // Get GitHub configuration
-      const { data: configData } = await supabase.rpc('get_current_github_config');
+      const { data: configData, error: configError } = await supabase.rpc('get_current_github_config');
+      
+      console.log('GitHub config from database:', configData);
+      console.log('Config error:', configError);
+      
+      if (configError) {
+        throw new Error(`Failed to get GitHub config: ${configError.message}`);
+      }
       
       if (!configData || configData.length === 0) {
         toast.error('No GitHub repository configured. Please configure a repository in the admin panel.');
@@ -35,22 +44,49 @@ export function EditorMain({ selectedFile, content, onContentChange, onSave, has
       }
 
       const { repo_owner, repo_name } = configData[0];
+      console.log('Repository from config:', `${repo_owner}/${repo_name}`);
 
       // Get the installation ID for this repository
-      const { data: githubConfig, error: configError } = await supabase
+      const { data: githubConfig, error: installationError } = await supabase
         .from('github_config')
         .select('installation_id')
         .eq('repo_owner', repo_owner)
         .eq('repo_name', repo_name)
         .single();
 
-      if (configError || !githubConfig?.installation_id) {
-        toast.error('GitHub App installation not found. Please reconfigure the repository.');
+      console.log('Installation config:', githubConfig);
+      console.log('Installation error:', installationError);
+
+      if (installationError) {
+        throw new Error(`Failed to get installation config: ${installationError.message}`);
+      }
+
+      if (!githubConfig?.installation_id) {
+        toast.error('GitHub App installation not found. Please reconfigure the repository in the admin panel.');
         return;
       }
 
-      console.log('Creating PR with GitHub App for:', `${repo_owner}/${repo_name}`);
-      console.log('Installation ID:', githubConfig.installation_id);
+      console.log('Using installation ID:', githubConfig.installation_id);
+      console.log('Creating PR for repository:', `${repo_owner}/${repo_name}`);
+      console.log('File path will be:', `public/content/${selectedFile}`);
+
+      // Test if we can access the installation repositories first
+      try {
+        console.log('Testing repository access...');
+        const repos = await githubAppService.getInstallationRepositories(githubConfig.installation_id);
+        console.log('Available repositories:', repos.map(r => r.full_name));
+        
+        const targetRepo = repos.find(r => r.full_name === `${repo_owner}/${repo_name}`);
+        if (!targetRepo) {
+          toast.error(`Repository ${repo_owner}/${repo_name} is not accessible by the GitHub App. Please ensure the app is installed on this repository.`);
+          return;
+        }
+        console.log('Target repository found:', targetRepo);
+      } catch (repoError) {
+        console.error('Error checking repository access:', repoError);
+        toast.error('Failed to verify repository access. Please check the GitHub App installation.');
+        return;
+      }
 
       // Create PR using GitHub App
       const result = await githubAppService.createBranchAndPR(
@@ -79,7 +115,8 @@ export function EditorMain({ selectedFile, content, onContentChange, onSave, has
         throw new Error('Failed to create pull request');
       }
     } catch (error: any) {
-      console.error('Error saving file:', error);
+      console.error('=== Save process failed ===');
+      console.error('Error details:', error);
       toast.error(error.message || 'Failed to save changes');
     } finally {
       setSaving(false);
