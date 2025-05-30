@@ -11,6 +11,7 @@ import NotFound from "@/pages/NotFound";
 import Auth from "@/pages/Auth";
 import AuthCallback from "@/pages/AuthCallback";
 import { DynamicDocPage } from "@/components/DynamicDocPage";
+import DocsLayout from "@/components/DocsLayout";
 import "./App.css";
 
 const queryClient = new QueryClient();
@@ -25,14 +26,9 @@ function App() {
               <Route path="/" element={<Index />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
-              <Route 
-                path="/docs/*" 
-                element={
-                  <ProtectedRoute requireRole="editor">
-                    <DynamicDocPage />
-                  </ProtectedRoute>
-                } 
-              />
+              <Route path="/docs/*" element={<DocsLayout />}>
+                <Route path="*" element={<DynamicDocPage />} />
+              </Route>
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Router>
