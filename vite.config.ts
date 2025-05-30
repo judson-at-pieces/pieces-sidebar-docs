@@ -6,7 +6,8 @@ import { componentTagger } from "lovable-tagger";
 import { exec } from "child_process";
 import { promisify } from "util";
 import type { Plugin, ViteDevServer } from "vite";
-import { watch } from "fs";
+// import { watch } from "fs"; // Disabled due to platform compatibility
+import { mdxCompilerPlugin } from "./scripts/mdx-compiler/vite-plugin";
 
 const execAsync = promisify(exec);
 
@@ -24,30 +25,9 @@ function contentBuilderPlugin(): Plugin {
         console.error('Error building content:', error);
       }
     },
-    configureServer(server: ViteDevServer) {
-      // Watch for markdown file changes in development
-      const contentDir = path.join(process.cwd(), 'public/content');
-      
-      try {
-        watch(contentDir, { recursive: true }, async (eventType, filename) => {
-          if (filename && filename.endsWith('.md')) {
-            console.log(`Detected change in ${filename}, rebuilding content index...`);
-            try {
-              await execAsync('node scripts/build-content.js');
-              console.log('Content index rebuilt successfully');
-              // Notify the browser to reload
-              server.ws.send({
-                type: 'full-reload'
-              });
-            } catch (error) {
-              console.error('Error rebuilding content:', error);
-            }
-          }
-        });
-        console.log('Watching for markdown file changes...');
-      } catch (error) {
-        console.warn('Could not watch content directory:', error);
-      }
+    configureServer(_server: ViteDevServer) {
+      // File watching disabled to prevent platform compatibility issues
+      console.log('File watching disabled. Run `npm run build:mdx` manually after content changes.');
     }
   };
 }
@@ -60,6 +40,7 @@ export default defineConfig(({ mode }) => ({
   },
   plugins: [
     react(),
+    mdxCompilerPlugin(),
     contentBuilderPlugin(),
     mode === 'development' && componentTagger(),
   ].filter(Boolean),

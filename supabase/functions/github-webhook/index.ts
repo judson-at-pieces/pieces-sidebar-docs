@@ -147,6 +147,72 @@ Deno.serve(async (req) => {
       // Could update which repositories are available for each installation
     }
 
+    // Handle push events for content syncing
+    if (eventType === 'push') {
+      console.log('Processing push event...')
+      console.log('Repository:', event.repository.full_name)
+      console.log('Branch:', event.ref)
+      console.log('Commits:', event.commits?.length || 0)
+      
+      // Check if this is the configured repository
+      const { data: repoConfig } = await supabase
+        .from('github_config')
+        .select('repo_owner, repo_name, installation_id')
+        .eq('repo_owner', event.repository.owner.login)
+        .eq('repo_name', event.repository.name)
+        .single()
+      
+      if (repoConfig && event.ref === 'refs/heads/main') {
+        console.log('Push to configured repository main branch - triggering content sync')
+        
+        // Check if any commits affected the /public/content directory
+        const hasContentChanges = event.commits?.some(commit => 
+          commit.modified?.some(file => file.startsWith('public/content/')) ||
+          commit.added?.some(file => file.startsWith('public/content/')) ||
+          commit.removed?.some(file => file.startsWith('public/content/'))
+        )
+        
+        if (hasContentChanges) {
+          console.log('Content changes detected - triggering sync and compilation')
+          
+          // Trigger content sync and compilation
+          try {
+            // Call the content sync function
+            const syncResponse = await fetch(`${Deno.env.get('SUPABASE_URL')}/functions/v1/sync-and-compile`, {
+              method: 'POST',
+              headers: {
+                'Authorization': `Bearer ${Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')}`,
+                'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({
+                repository: {
+                  owner: event.repository.owner.login,
+                  name: event.repository.name,
+                  installation_id: repoConfig.installation_id
+                },
+                webhook_event: {
+                  type: 'push',
+                  commits: event.commits?.length || 0
+                }
+              })
+            })
+            
+            if (syncResponse.ok) {
+              console.log('Content sync and compilation triggered successfully')
+            } else {
+              console.error('Failed to trigger content sync:', await syncResponse.text())
+            }
+          } catch (syncError) {
+            console.error('Error triggering content sync:', syncError)
+          }
+        } else {
+          console.log('No content changes detected in push')
+        }
+      } else {
+        console.log('Push not from configured repository or not main branch')
+      }
+    }
+
     console.log('Webhook processed successfully')
     return new Response('Webhook processed successfully', { 
       status: 200,

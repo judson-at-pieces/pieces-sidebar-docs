@@ -69,5 +69,39 @@ export function processCustomSyntax(content: string): string {
     return `<img src="${src}" alt="${safeAlt}" data-caption="${safeCaption}" />`;
   });
 
+  // Transform Image components to HTML - handle various attribute formats
+  content = content.replace(/<Image\s+([^>]+)\/>/gi, (match, attributes) => {
+    // Parse attributes
+    const srcMatch = attributes.match(/src="([^"]*)"/);
+    const altMatch = attributes.match(/alt="([^"]*)"/);
+    const captionMatch = attributes.match(/caption="([^"]*)"/);
+    const alignMatch = attributes.match(/align="([^"]*)"/);
+    const fullwidthMatch = attributes.match(/fullwidth="([^"]*)"/);
+    const titleMatch = attributes.match(/title="([^"]*)"/);
+    
+    const src = srcMatch ? srcMatch[1] : '';
+    const alt = altMatch ? altMatch[1] : (titleMatch ? titleMatch[1] : '');
+    const caption = captionMatch ? captionMatch[1] : (titleMatch ? titleMatch[1] : '');
+    const align = alignMatch ? alignMatch[1] : 'left';
+    const fullwidth = fullwidthMatch ? fullwidthMatch[1] : 'false';
+    
+    return `<div data-image="true" data-src="${src}" data-alt="${alt}" data-caption="${caption}" data-align="${align}" data-fullwidth="${fullwidth}"></div>`;
+  });
+
+  // Transform pieces-cloud-models component
+  content = content.replace(/<pieces-cloud-models\s*\/>/gi, () => {
+    return '<div data-pieces-cloud-models="true"></div>';
+  });
+
+  // Transform pieces-local-models component
+  content = content.replace(/<pieces-local-models\s*\/>/gi, () => {
+    return '<div data-pieces-local-models="true"></div>';
+  });
+
+  // Transform glossary-all component
+  content = content.replace(/<glossary-all\s*\/>/gi, () => {
+    return '<div data-glossary-all="true"></div>';
+  });
+
   return content;
 }

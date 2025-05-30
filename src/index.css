@@ -1,10 +1,10 @@
 
+/* Import unified markdown styles - must come before @layer */
+@import './styles/markdown.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
-
-/* Import unified markdown styles */
-@import './styles/markdown.css';
 
 @layer base {
   :root {

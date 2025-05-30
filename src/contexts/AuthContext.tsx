@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
-import { supabase } from '@/integrations/supabase/client';
+import { supabase, isSupabaseConfigured } from '@/integrations/supabase/client';
 import { logger } from '@/utils/logger';
 import { auditLog } from '@/utils/security';
 
@@ -12,6 +12,7 @@ interface AuthContextType {
   signInWithGitHub: () => Promise<void>;
   signOut: () => Promise<void>;
   hasRole: (role: string) => boolean;
+  isSupabaseConfigured: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,6 +24,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [userRoles, setUserRoles] = useState<string[]>([]);
 
   useEffect(() => {
+    // If Supabase is not configured, just set loading to false and return
+    if (!isSupabaseConfigured) {
+      setLoading(false);
+      return;
+    }
+
     // Get initial session
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
@@ -30,6 +37,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (session?.user) {
         fetchUserRoles(session.user.id);
       }
+      setLoading(false);
+    }).catch((error) => {
+      logger.error('Error getting initial session', { error: error.message });
       setLoading(false);
     });
 
@@ -100,6 +110,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const fetchUserRoles = async (userId: string) => {
+    if (!isSupabaseConfigured) {
+      return;
+    }
+    
     try {
       logger.debug('Fetching roles for user', { userId: userId.substring(0, 8) + '***' });
       const { data, error } = await supabase
@@ -121,6 +135,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const signInWithGitHub = async () => {
+    if (!isSupabaseConfigured) {
+      throw new Error('Authentication not available - please contact administrator');
+    }
+    
     try {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'github',
@@ -167,7 +185,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       loading,
       signInWithGitHub,
       signOut,
-      hasRole
+      hasRole,
+      isSupabaseConfigured
     }}>
       {children}
     </AuthContext.Provider>

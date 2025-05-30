@@ -11,8 +11,6 @@ import Installation from '@/pages/docs/Installation';
 import Troubleshooting from '@/pages/docs/Troubleshooting';
 import LongTermMemoryGuide from '@/pages/docs/LongTermMemoryGuide';
 import NotFound from '@/pages/NotFound';
-import Admin from '@/pages/Admin';
-import Editor from '@/pages/Editor';
 import Auth from '@/pages/Auth';
 import AuthCallback from '@/pages/AuthCallback';
 import MeetPieces from '@/pages/docs/MeetPieces';
@@ -20,11 +18,10 @@ import QuickStart from '@/pages/docs/QuickStart';
 import Integrations from '@/pages/docs/Integrations';
 import ApiReference from '@/pages/docs/ApiReference';
 import Examples from '@/pages/docs/Examples';
-import { AuthProvider } from '@/contexts/AuthContext';
-import { ProtectedRoute } from '@/components/ProtectedRoute';
-import { DynamicDocPage } from '@/components/DynamicDocPage';
+import { CompiledDocPage } from '@/components/CompiledDocPage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useContentPreloader } from '@/hooks/useContentPreloader';
+import { ErrorBoundary } from '@/components/ErrorBoundary';
 
 const queryClient = new QueryClient();
 
@@ -33,9 +30,9 @@ function App() {
   useContentPreloader();
 
   return (
-    <QueryClientProvider client={queryClient}>
-      <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-        <AuthProvider>
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
           <Router>
             <div className="min-h-screen bg-background font-sans antialiased">
               <Toaster />
@@ -58,30 +55,21 @@ function App() {
                   <Route path="integrations" element={<Integrations />} />
                   <Route path="api-reference" element={<ApiReference />} />
                   <Route path="examples" element={<Examples />} />
-                  <Route path="*" element={<DynamicDocPage />} />
+                  <Route path="*" element={<CompiledDocPage />} />
                 </Route>
 
-                {/* Protected routes */}
-                <Route path="/admin" element={
-                  <ProtectedRoute>
-                    <Admin />
-                  </ProtectedRoute>
-                } />
-                
-                <Route path="/editor" element={
-                  <ProtectedRoute>
-                    <Editor />
-                  </ProtectedRoute>
-                } />
+                {/* Protected routes - temporarily disabled */}
+                <Route path="/admin" element={<div className="p-8 text-center">Admin panel temporarily unavailable</div>} />
+                <Route path="/editor" element={<div className="p-8 text-center">Editor temporarily unavailable</div>} />
 
                 {/* 404 */}
                 <Route path="*" element={<NotFound />} />
               </Routes>
             </div>
           </Router>
-        </AuthProvider>
-      </ThemeProvider>
-    </QueryClientProvider>
+        </ThemeProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
   );
 }
 

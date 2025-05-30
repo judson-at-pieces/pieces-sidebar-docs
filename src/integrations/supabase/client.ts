@@ -2,10 +2,50 @@
 import { createClient } from '@supabase/supabase-js';
 import type { Database } from './types';
 
-const SUPABASE_URL = "https://yqchxlpigndrmjbtyvhu.supabase.co";
-const SUPABASE_PUBLISHABLE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlxY2h4bHBpZ25kcm1qYnR5dmh1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDg1MzgwMTksImV4cCI6MjA2NDExNDAxOX0.Hniwe87ef6V22Y-g4N7AxsOSn4Ea5TUuDFujVfaIMuc";
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL || "";
+const SUPABASE_PUBLISHABLE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY || "";
 
 // Import the supabase client like this:
 // import { supabase } from "@/integrations/supabase/client";
 
-export const supabase = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+// Check if we have valid configuration
+const hasValidConfig = SUPABASE_URL && 
+                       SUPABASE_PUBLISHABLE_KEY && 
+                       SUPABASE_URL !== 'undefined' && 
+                       SUPABASE_PUBLISHABLE_KEY !== 'undefined' &&
+                       SUPABASE_URL.startsWith('http');
+
+// Create a null client for fallback
+const nullClient = {
+  auth: {
+    getSession: () => Promise.resolve({ data: { session: null }, error: null }),
+    onAuthStateChange: () => ({ data: { subscription: { unsubscribe: () => {} } } }),
+    signInWithOAuth: () => Promise.resolve({ data: null, error: new Error('Supabase not configured') }),
+    signOut: () => Promise.resolve({ error: null })
+  },
+  from: () => ({
+    select: () => ({ eq: () => Promise.resolve({ data: null, error: new Error('Supabase not configured') }) }),
+    insert: () => Promise.resolve({ error: new Error('Supabase not configured') }),
+    update: () => ({ eq: () => Promise.resolve({ error: new Error('Supabase not configured') }) }),
+    delete: () => ({ eq: () => Promise.resolve({ error: new Error('Supabase not configured') }) })
+  }),
+  functions: {
+    invoke: () => Promise.resolve({ data: null, error: new Error('Supabase not configured') })
+  }
+} as any;
+
+// Safe client creation with try-catch
+let supabaseClient: any;
+if (hasValidConfig) {
+  try {
+    supabaseClient = createClient<Database>(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY);
+  } catch (error) {
+    console.warn('Failed to create Supabase client:', error);
+    supabaseClient = nullClient;
+  }
+} else {
+  supabaseClient = nullClient;
+}
+
+export const supabase = supabaseClient;
+export const isSupabaseConfigured = hasValidConfig;

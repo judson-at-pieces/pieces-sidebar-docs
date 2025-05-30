@@ -1,9 +1,9 @@
-
 ---
 title: "Getting Started with Pieces"
 path: "/docs/getting-started"
 visibility: "PUBLIC"
 description: "Welcome to Pieces! This guide will help you get up and running with our AI-powered code management platform."
+slug: "welcome"
 ---
 ***
 

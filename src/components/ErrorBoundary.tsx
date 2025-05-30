@@ -4,6 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { AlertTriangle } from 'lucide-react';
 import { logger } from '@/utils/logger';
+import { DebugPage } from './DebugPage';
 
 interface Props {
   children: ReactNode;
@@ -48,6 +49,15 @@ export class ErrorBoundary extends Component<Props, State> {
     if (this.state.hasError) {
       if (this.props.fallback) {
         return this.props.fallback;
+      }
+
+      // Check if this is a Supabase-related error
+      const isSupabaseError = window.location.href.includes('supabaseUrl') || 
+                              this.state.errorId.includes('supabase') ||
+                              document.querySelector('script')?.textContent?.includes('supabaseUrl is required');
+
+      if (isSupabaseError) {
+        return <DebugPage error="Supabase configuration error detected" hasCompiledContent={true} />;
       }
 
       return (

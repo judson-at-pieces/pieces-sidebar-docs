@@ -2,11 +2,15 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ExpandableImage as ExpandableImageComponent } from './ExpandableImage';
+import { Image } from './Image';
 import { Callout } from './Callout';
 import { Steps, Step } from './Steps';
 import { Card } from './Card';
 import { CardGroup } from './CardGroup';
 import { CustomTable, CustomTableHeader, CustomTableBody, CustomTableRow, CustomTableHead, CustomTableCell } from './CustomTable';
+import { PiecesCloudModels } from './PiecesCloudModels';
+import { PiecesLocalModels } from './PiecesLocalModels';
+import { GlossaryAll } from './GlossaryAll';
 import { 
   CustomTableComponentProps, 
   ImageProps, 
@@ -18,6 +22,40 @@ import {
 } from './types';
 
 export const createComponentMappings = () => ({
+  // Handle custom components that are being rendered as raw HTML
+  callout: ({ type, title, children, ...props }: any) => {
+    return <Callout type={type as 'info' | 'warning' | 'tip' | 'error' | 'success' | 'alert'} title={title} {...props}>{children}</Callout>;
+  },
+  
+  steps: ({ children, ...props }: any) => {
+    return <Steps {...props}>{children}</Steps>;
+  },
+  
+  step: ({ number, title, children, ...props }: any) => {
+    const stepNumber = parseInt(number);
+    const validNumber = isNaN(stepNumber) ? 1 : stepNumber;
+    return <Step number={validNumber} title={title} {...props}>{children}</Step>;
+  },
+  
+  card: ({ title, image, href, external, children, ...props }: any) => {
+    return <Card title={title} image={image} href={href} external={external} {...props}>{children}</Card>;
+  },
+  
+  cardgroup: ({ cols, children, ...props }: any) => {
+    return <CardGroup cols={cols} {...props}>{children}</CardGroup>;
+  },
+  
+  'pieces-cloud-models': () => {
+    return <PiecesCloudModels />;
+  },
+  
+  'pieces-local-models': () => {
+    return <PiecesLocalModels />;
+  },
+  
+  'glossary-all': () => {
+    return <GlossaryAll />;
+  },
   // Explicit ExpandableImage component handler
   ExpandableImage: ({ src, alt, caption, ...props }: ImageProps) => {
     console.log('🎯 SUCCESS: Rendering ExpandableImage', { src, alt, caption });
@@ -38,6 +76,19 @@ export const createComponentMappings = () => ({
     const href = props['data-href'] as string;
     const external = props['data-external'] as string;
     
+    // Handle Image component
+    const isImage = props['data-image'] as string;
+    const imageSrc = props['data-src'] as string;
+    const imageAlt = props['data-alt'] as string;
+    const imageCaption = props['data-caption'] as string;
+    const imageAlign = props['data-align'] as string;
+    const imageFullwidth = props['data-fullwidth'] as string;
+    
+    // Handle pieces-cloud-models component
+    const isPiecesCloudModels = props['data-pieces-cloud-models'] as string;
+    const isPiecesLocalModels = props['data-pieces-local-models'] as string;
+    const isGlossaryAll = props['data-glossary-all'] as string;
+    
     if (calloutType) {
       return <Callout type={calloutType as 'info' | 'warning' | 'tip' | 'error' | 'success' | 'alert'} title={title} {...props}>{children}</Callout>;
     }
@@ -47,7 +98,9 @@ export const createComponentMappings = () => ({
     }
     
     if (stepNumber) {
-      return <Step number={parseInt(stepNumber)} title={stepTitle} {...props}>{children}</Step>;
+      const validStepNumber = parseInt(stepNumber);
+      const finalStepNumber = isNaN(validStepNumber) ? 1 : validStepNumber;
+      return <Step number={finalStepNumber} title={stepTitle} {...props}>{children}</Step>;
     }
     
     if (isCardGroup) {
@@ -56,6 +109,22 @@ export const createComponentMappings = () => ({
     
     if (isCard) {
       return <Card title={title} image={image} href={href} external={external} {...props}>{children}</Card>;
+    }
+    
+    if (isImage && imageSrc) {
+      return <Image src={imageSrc} alt={imageAlt} caption={imageCaption} align={imageAlign as any} fullwidth={imageFullwidth} />;
+    }
+    
+    if (isPiecesCloudModels) {
+      return <PiecesCloudModels />;
+    }
+
+    if (isPiecesLocalModels) {
+      return <PiecesLocalModels />;
+    }
+
+    if (isGlossaryAll) {
+      return <GlossaryAll />;
     }
     
     return <div {...props}>{children}</div>;

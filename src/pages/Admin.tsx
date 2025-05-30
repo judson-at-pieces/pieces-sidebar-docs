@@ -6,6 +6,7 @@ import { AdminPortal } from '@/components/auth/AdminPortal';
 import { ActiveAdminCodes } from '@/components/admin/ActiveAdminCodes';
 import { GitHubRepoConfig } from '@/components/admin/GitHubRepoConfig';
 import { UserManagement } from '@/components/admin/UserManagement';
+import { ContentSyncPanel } from '@/components/admin/ContentSyncPanel';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -136,6 +137,18 @@ export default function Admin() {
           </div>
 
           <GitHubRepoConfig />
+        </div>
+
+        {/* Content Sync Section */}
+        <div className="mb-8">
+          <div className="mb-4">
+            <h2 className="text-2xl font-bold mb-2">Content Synchronization</h2>
+            <p className="text-muted-foreground">
+              Manage automatic content syncing from your configured GitHub repository. Content is automatically synced when changes are pushed to the main branch.
+            </p>
+          </div>
+          
+          <ContentSyncPanel />
         </div>
 
         {/* User Management Section */}
