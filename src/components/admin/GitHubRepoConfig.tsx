@@ -1,9 +1,9 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Github, Check } from 'lucide-react';
-import { GitHubRepoSelector } from './GitHubRepoSelector';
-import { githubService } from '@/services/githubService';
+import { GitHubAppRepoSelector } from './GitHubAppRepoSelector';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -21,8 +21,21 @@ export function GitHubRepoConfig() {
       setLoading(true);
       console.log('Loading current GitHub configuration...');
       
-      const config = await githubService.getRepoConfig();
-      if (config) {
+      // Use the RPC function to get current config
+      const { data: configData, error: configError } = await supabase.rpc('get_current_github_config');
+      
+      if (configError) {
+        console.error('Error loading GitHub config:', configError);
+        setIsConfigured(false);
+        setCurrentConfig(null);
+        return;
+      }
+
+      if (configData && configData.length > 0) {
+        const config = {
+          owner: configData[0].repo_owner,
+          repo: configData[0].repo_name
+        };
         console.log('Found GitHub configuration:', config);
         setCurrentConfig(config);
         setIsConfigured(true);
@@ -49,7 +62,7 @@ export function GitHubRepoConfig() {
     try {
       console.log('Disconnecting GitHub repository configuration...');
       
-      // Delete all GitHub configurations (we only keep the latest one anyway)
+      // Delete all GitHub configurations
       const { error } = await supabase
         .from('github_config')
         .delete()
@@ -106,7 +119,7 @@ export function GitHubRepoConfig() {
               <span className="font-medium">Connected to {currentConfig.owner}/{currentConfig.repo}</span>
             </div>
             <p className="text-sm text-green-600 dark:text-green-300 mt-1">
-              Edits will automatically create branches and pull requests
+              Edits will automatically create branches and pull requests using the GitHub App
             </p>
           </div>
           
@@ -118,5 +131,5 @@ export function GitHubRepoConfig() {
     );
   }
 
-  return <GitHubRepoSelector onRepoConfigured={handleRepoConfigured} />;
+  return <GitHubAppRepoSelector onRepoConfigured={handleRepoConfigured} />;
 }
