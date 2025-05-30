@@ -3,12 +3,110 @@ import React from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Book, FileText, Zap, Users, ArrowRight } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
 const Index = () => {
+  const ideEditors = [
+    {
+      name: "VS Code",
+      description: "The flagship extension for Visual Studio Code",
+      icon: "🔵",
+      href: "/docs/extensions-plugins/extensions-plugins/visual-studio-code"
+    },
+    {
+      name: "JetBrains",
+      description: "Plugin for IntelliJ IDEA, PyCharm, WebStorm, and more",
+      icon: "🔶",
+      href: "/docs/extensions-plugins/extensions-plugins/jetbrains"
+    },
+    {
+      name: "Visual Studio",
+      description: "Extension for Microsoft Visual Studio",
+      icon: "🟣",
+      href: "/docs/extensions-plugins/extensions-plugins/visual-studio"
+    },
+    {
+      name: "Sublime Text",
+      description: "Package for Sublime Text editor",
+      icon: "🟠",
+      href: "/docs/extensions-plugins/extensions-plugins/sublime"
+    },
+    {
+      name: "Neovim",
+      description: "Plugin for Neovim text editor",
+      icon: "🟢",
+      href: "/docs/extensions-plugins/extensions-plugins/neovim-plugin"
+    },
+    {
+      name: "JupyterLab",
+      description: "Extension for JupyterLab notebooks",
+      icon: "🟡",
+      href: "/docs/extensions-plugins/extensions-plugins/jupyterlab"
+    }
+  ];
+
+  const webBrowsers = [
+    {
+      name: "Google Chrome",
+      description: "Browser extension for Chrome",
+      icon: "🔴",
+      href: "/docs/web-extension"
+    },
+    {
+      name: "Mozilla Firefox",
+      description: "Add-on for Firefox browser",
+      icon: "🟠",
+      href: "/docs/web-extension"
+    },
+    {
+      name: "Microsoft Edge",
+      description: "Extension for Microsoft Edge",
+      icon: "🔵",
+      href: "/docs/web-extension"
+    }
+  ];
+
+  const productivityTools = [
+    {
+      name: "Obsidian",
+      description: "Plugin for Obsidian knowledge management",
+      icon: "🟣",
+      href: "/docs/obsidian"
+    },
+    {
+      name: "Pieces CLI",
+      description: "Command-line interface for Pieces",
+      icon: "⚫",
+      href: "/docs/cli"
+    },
+    {
+      name: "Microsoft Teams",
+      description: "Bot for Microsoft Teams integration",
+      icon: "🔵",
+      href: "/docs/productivity"
+    }
+  ];
+
+  const ToolCard = ({ tool }: { tool: { name: string; description: string; icon: string; href: string } }) => (
+    <Card className="hover:shadow-lg transition-shadow cursor-pointer" asChild>
+      <Link to={tool.href}>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center space-x-3 text-lg">
+            <span className="text-2xl">{tool.icon}</span>
+            <span>{tool.name}</span>
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <CardDescription className="text-sm">
+            {tool.description}
+          </CardDescription>
+        </CardContent>
+      </Link>
+    </Card>
+  );
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
+    <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-14 items-center justify-between">
@@ -16,127 +114,75 @@ const Index = () => {
             <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold text-sm">P</span>
             </div>
-            <span className="font-bold text-xl">Pieces Documentation</span>
+            <span className="font-bold text-xl">Pieces for Developers</span>
           </div>
           <div className="flex items-center space-x-4">
             <ThemeToggle />
             <Button asChild>
-              <Link to="/docs/meet-pieces">Get Started</Link>
+              <Link to="/docs/meet-pieces">Documentation</Link>
             </Button>
           </div>
         </div>
       </header>
 
-      {/* Hero Section */}
-      <section className="container py-24 text-center">
-        <h1 className="text-4xl font-bold tracking-tight sm:text-6xl mb-6">
-          Pieces for Developers
-          <span className="block text-3xl sm:text-5xl text-muted-foreground mt-2">Documentation</span>
-        </h1>
-        <p className="text-xl text-muted-foreground mb-8 max-w-3xl mx-auto">
-          Your AI-powered productivity tool for saving, enriching, searching, and reusing developer materials.
-        </p>
-        
-        <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          <Button size="lg" asChild>
-            <Link to="/docs/meet-pieces">
-              Browse Documentation <ArrowRight className="ml-2 h-4 w-4" />
-            </Link>
-          </Button>
-          <Button size="lg" variant="outline" asChild>
-            <Link to="/docs/quick-guides">
-              Quick Guides
-            </Link>
-          </Button>
+      <div className="container py-12">
+        {/* Hero Section */}
+        <div className="text-center mb-16">
+          <h1 className="text-4xl font-bold tracking-tight mb-4">
+            🚀 Get Up And Running Faster Than Ever
+          </h1>
+          <h2 className="text-2xl font-semibold mb-6">
+            Welcome to Pieces for Developers
+          </h2>
+          <p className="text-lg text-muted-foreground max-w-4xl mx-auto">
+            Get started with the Pieces for Developers platform and share how to best use and optimize your workflow by selecting your favorite IDE, editor, or productivity tool.
+          </p>
         </div>
-      </section>
 
-      {/* Feature Cards Section */}
-      <section className="container py-12">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {/* Feature Card 1 */}
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Zap className="h-5 w-5 text-primary" />
-                <span>Long-Term Memory Engine</span>
-              </CardTitle>
-              <CardDescription>
-                AI-powered live context framework that understands what you're working on.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Maximizes space for creativity driven by human intent.
-              </p>
-            </CardContent>
-          </Card>
+        {/* IDEs & Editors Section */}
+        <section className="mb-12">
+          <h3 className="text-2xl font-semibold mb-6">IDEs & Editors</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {ideEditors.map((tool) => (
+              <ToolCard key={tool.name} tool={tool} />
+            ))}
+          </div>
+        </section>
 
-          {/* Feature Card 2 */}
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <FileText className="h-5 w-5 text-primary" />
-                <span>Pieces Drive</span>
-              </CardTitle>
-              <CardDescription>
-                Save, search, reference, reuse, and share small developer resources.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Efficient pipeline for referencing and reusing code snippets, screenshots, links, and text notes.
-              </p>
-            </CardContent>
-          </Card>
+        {/* Web Browsers Section */}
+        <section className="mb-12">
+          <h3 className="text-2xl font-semibold mb-6">Web Browsers</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {webBrowsers.map((tool) => (
+              <ToolCard key={tool.name} tool={tool} />
+            ))}
+          </div>
+        </section>
 
-          {/* Feature Card 3 */}
-          <Card className="hover:shadow-lg transition-shadow">
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Book className="h-5 w-5 text-primary" />
-                <span>Pieces Copilot</span>
-              </CardTitle>
-              <CardDescription>
-                Intelligent assistant that helps with generating code and answering questions.
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-sm text-muted-foreground">
-                Utilizes a LLM of your choice with an adjustable context window.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-      </section>
-
-      {/* User Card Section */}
-      <section className="container py-12">
-        <Card className="max-w-3xl mx-auto hover:shadow-lg transition-shadow">
-          <CardHeader>
-            <CardTitle className="flex items-center space-x-2">
-              <Users className="h-5 w-5 text-primary" />
-              <span>Who is Pieces For?</span>
-            </CardTitle>
-            <CardDescription>
-              Built for developers who frequently reference or reuse small developer materials.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
-              <li>Preserving Workflow Context</li>
-              <li>Managing Developer Materials</li>
-              <li>Needing Code Assistance</li>
-            </ul>
-          </CardContent>
-        </Card>
-      </section>
+        {/* Productivity & Communication Section */}
+        <section className="mb-12">
+          <h3 className="text-2xl font-semibold mb-6">Productivity & Communication</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {productivityTools.map((tool) => (
+              <ToolCard key={tool.name} tool={tool} />
+            ))}
+          </div>
+        </section>
+      </div>
 
       {/* Footer */}
-      <footer className="container py-12 text-center">
-        <p className="text-sm text-muted-foreground">
-          © 2024 Pieces for Developers. All rights reserved.
-        </p>
+      <footer className="border-t bg-muted/50 py-8">
+        <div className="container text-center">
+          <div className="flex items-center justify-center space-x-2 mb-4">
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">P</span>
+            </div>
+            <span className="font-bold text-xl">Pieces for Developers</span>
+          </div>
+          <p className="text-sm text-muted-foreground">
+            © 2024 Pieces. Built for developers, by developers.
+          </p>
+        </div>
       </footer>
     </div>
   );
