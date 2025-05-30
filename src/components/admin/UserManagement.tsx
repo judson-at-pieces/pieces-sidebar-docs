@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -26,7 +27,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Trash2, UserPlus, Shield, User, RefreshCw, UserCheck } from 'lucide-react';
+import { Trash2, Shield, User, RefreshCw, UserCheck, UserPlus } from 'lucide-react';
 import { toast } from '@/components/ui/use-toast';
 
 interface UserProfile {
@@ -61,48 +62,34 @@ export function UserManagement() {
       setLoading(true);
       setError('');
 
-      // First get all user IDs from user_roles
+      // Get all user roles
       const { data: userRoles, error: rolesError } = await supabase
         .from('user_roles')
         .select('user_id, role');
 
       if (rolesError) throw rolesError;
 
-      // Get unique user IDs
-      const userIds = [...new Set(userRoles?.map(role => role.user_id) || [])];
-
       // Get all profiles
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
-        .select(`
-          id,
-          email,
-          full_name,
-          created_at
-        `)
+        .select('id, email, full_name, created_at')
         .order('created_at', { ascending: false });
 
       if (profilesError) throw profilesError;
 
-      // Create a set of profile IDs for faster lookup
-      const profileIds = new Set(profiles?.map(p => p.id) || []);
-      
-      // Create a map of existing profiles
+      // Create a map of profiles by ID for quick lookup
       const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
 
-      // Get all user IDs (from both roles and profiles)
-      const allUserIds = new Set([
-        ...userIds,
-        ...(profiles?.map(p => p.id) || [])
-      ]);
+      // Get unique user IDs from roles and profiles
+      const roleUserIds = new Set(userRoles?.map(role => role.user_id) || []);
+      const profileUserIds = new Set(profiles?.map(p => p.id) || []);
+      const allUserIds = new Set([...roleUserIds, ...profileUserIds]);
 
+      // Build user list with profile and role information
       const usersWithRoles = Array.from(allUserIds).map(userId => {
         const profile = profilesMap.get(userId);
         const userRolesList = userRoles?.filter(role => role.user_id === userId)
           .map(role => role.role) || [];
-
-        // Check if profile exists using the profileIds set
-        const hasProfile = profileIds.has(userId);
 
         return {
           id: userId,
@@ -110,7 +97,7 @@ export function UserManagement() {
           full_name: profile?.full_name || null,
           created_at: profile?.created_at || new Date().toISOString(),
           roles: userRolesList,
-          has_profile: hasProfile
+          has_profile: !!profile
         };
       });
 
@@ -127,25 +114,6 @@ export function UserManagement() {
       setError(err.message || 'Failed to fetch users');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const createMissingProfile = async (userId: string) => {
-    try {
-      // For users without profiles, we can't create them directly due to RLS
-      // Instead, we'll show instructions for the user to sign in themselves
-      toast({
-        title: "Profile Creation Limitation",
-        description: "Due to security policies, profiles must be created when users first sign in. Ask the user to sign in to automatically create their profile.",
-        variant: "default",
-      });
-    } catch (err: any) {
-      console.error('Error with profile creation:', err);
-      toast({
-        title: "Information",
-        description: "Profiles are automatically created when users sign in for the first time.",
-        variant: "default",
-      });
     }
   };
 
@@ -283,7 +251,7 @@ export function UserManagement() {
                   <TableRow key={user.id}>
                     <TableCell>
                       <div className="font-medium">
-                        {user.full_name || (user.has_profile ? 'No name set' : 'Unknown User')}
+                        {user.full_name || (user.has_profile ? 'No name set' : 'Profile Pending')}
                       </div>
                       <div className="text-sm text-muted-foreground">
                         {user.id.substring(0, 8)}...
@@ -323,7 +291,7 @@ export function UserManagement() {
                         </Badge>
                       ) : (
                         <Badge variant="secondary" className="flex items-center gap-1 w-fit">
-                          Pending Sign-in
+                          Profile Pending
                         </Badge>
                       )}
                     </TableCell>
@@ -332,29 +300,17 @@ export function UserManagement() {
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
-                        {!user.has_profile ? (
-                          <Button
-                            onClick={() => createMissingProfile(user.id)}
-                            variant="outline"
-                            size="sm"
-                            className="flex items-center gap-1"
-                          >
-                            <UserPlus className="h-3 w-3" />
-                            Info
-                          </Button>
-                        ) : (
-                          <Select
-                            onValueChange={(role) => assignRole(user.id, role)}
-                          >
-                            <SelectTrigger className="w-32">
-                              <SelectValue placeholder="Add role" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="editor">Editor</SelectItem>
-                              <SelectItem value="admin">Admin</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        )}
+                        <Select
+                          onValueChange={(role) => assignRole(user.id, role)}
+                        >
+                          <SelectTrigger className="w-32">
+                            <SelectValue placeholder="Add role" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="editor">Editor</SelectItem>
+                            <SelectItem value="admin">Admin</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </div>
                     </TableCell>
                   </TableRow>
