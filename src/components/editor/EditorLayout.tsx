@@ -135,12 +135,12 @@ Start editing this file...`;
 
     setIsLoading(true);
     try {
-      console.log('Starting PR creation process...');
+      console.log('Starting enhanced PR creation process...');
       
       // Get repository configuration
       const repoConfig = await githubService.getRepoConfig();
       if (!repoConfig) {
-        toast.error('No GitHub repository configured. Please contact an admin to set up the repository.');
+        toast.error('No GitHub repository configured. Please go to the Admin panel to set up the repository.');
         return;
       }
 
@@ -194,14 +194,15 @@ Start editing this file...`;
 
       console.log('Prepared files for PR:', files.map(f => f.path));
 
-      const result = await githubService.createPullRequest({
+      // Use the enhanced createBranchAndPR method
+      const result = await githubService.createBranchAndPR({
         title: `Update documentation files`,
-        body: `Updated ${modifiedFiles.size} file(s) by ${user.email}:\n\n${Array.from(modifiedFiles).map(f => `- ${f}`).join('\n')}`,
+        body: `Updated ${modifiedFiles.size} file(s) by ${user.email}:\n\n${Array.from(modifiedFiles).map(f => `- ${f}`).join('\n')}\n\n**Branch:** ${result?.branchName || 'auto-generated'}\n**Auto-created by Lovable Editor**`,
         files,
       }, githubToken, repoConfig);
 
       if (result.success) {
-        toast.success(`Pull request created successfully! PR #${result.prNumber}`);
+        toast.success(`Pull request created successfully! PR #${result.prNumber} on branch ${result.branchName}`);
         // Update original contents to match current
         setOriginalContents({ ...fileContents });
       }
@@ -209,7 +210,11 @@ Start editing this file...`;
       console.error('Error creating pull request:', error);
       
       // The GitHubService now provides more specific error messages
-      toast.error(error.message || 'Failed to create pull request. Please try again.');
+      if (error.message.includes('GitHub app')) {
+        toast.error('Please ensure the Lovable GitHub app is installed on your repository. Check the Admin panel for setup instructions.');
+      } else {
+        toast.error(error.message || 'Failed to create pull request. Please try again.');
+      }
     }
     setIsLoading(false);
   };

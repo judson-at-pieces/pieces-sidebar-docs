@@ -17,6 +17,19 @@ interface GitHubConfig {
   repo: string;
 }
 
+interface Repository {
+  id: number;
+  name: string;
+  full_name: string;
+  private: boolean;
+  permissions: {
+    admin: boolean;
+    push: boolean;
+    pull: boolean;
+  };
+  default_branch: string;
+}
+
 class GitHubService {
   private baseUrl = 'https://api.github.com';
 
@@ -78,46 +91,82 @@ class GitHubService {
     return JSON.parse(responseText);
   }
 
-  async testRepositoryAccess(owner: string, repo: string, token: string) {
-    console.log('Testing repository access for:', `${owner}/${repo}`);
+  async listUserRepositories(token: string): Promise<Repository[]> {
+    console.log('Fetching user repositories...');
+    
+    try {
+      // Get repositories the user has access to
+      const repos = await this.makeRequest('/user/repos?per_page=100&sort=updated', token);
+      
+      console.log('Found repositories:', repos.length);
+      
+      // Filter repositories where user has push access
+      const accessibleRepos = repos.filter((repo: any) => 
+        repo.permissions && (repo.permissions.push || repo.permissions.admin)
+      );
+      
+      console.log('Accessible repositories:', accessibleRepos.length);
+      
+      return accessibleRepos.map((repo: any) => ({
+        id: repo.id,
+        name: repo.name,
+        full_name: repo.full_name,
+        private: repo.private,
+        permissions: {
+          admin: repo.permissions.admin || false,
+          push: repo.permissions.push || false,
+          pull: repo.permissions.pull || false,
+        },
+        default_branch: repo.default_branch || 'main'
+      }));
+    } catch (error) {
+      console.error('Error fetching repositories:', error);
+      throw error;
+    }
+  }
+
+  async setupRepositoryForEditing(owner: string, repo: string, token: string) {
+    console.log('Setting up repository for editing:', `${owner}/${repo}`);
     
     try {
       // Test basic repository access
       const repoData = await this.makeRequest(`/repos/${owner}/${repo}`, token);
-      console.log('Repository found:', repoData.full_name);
-      console.log('Repository permissions:', repoData.permissions);
+      console.log('Repository access confirmed:', repoData.full_name);
       
-      // Test if we can read repository contents
-      const contentsData = await this.makeRequest(`/repos/${owner}/${repo}/contents`, token);
-      console.log('Repository contents accessible, found', contentsData.length, 'items');
-      
-      // Check if we can create branches (indicates write access)
+      // Test if we can create branches (indicates write access)
       const branchesData = await this.makeRequest(`/repos/${owner}/${repo}/branches`, token);
       console.log('Repository branches accessible, found', branchesData.length, 'branches');
       
+      // Check if the repository has the Lovable app installed
+      try {
+        await this.makeRequest(`/repos/${owner}/${repo}/installation`, token);
+        console.log('Lovable app is installed on repository');
+      } catch (error: any) {
+        if (error.message.includes('404')) {
+          console.log('Lovable app may not be installed on repository');
+          // Don't throw here, as the token might still work
+        }
+      }
+      
       return {
-        hasAccess: true,
-        canRead: true,
-        permissions: repoData.permissions,
-        defaultBranch: repoData.default_branch
+        success: true,
+        defaultBranch: repoData.default_branch,
+        permissions: repoData.permissions
       };
     } catch (error) {
-      console.error('Repository access test failed:', error);
-      return {
-        hasAccess: false,
-        error: error instanceof Error ? error.message : 'Unknown error'
-      };
+      console.error('Repository setup failed:', error);
+      throw error;
     }
   }
 
-  async createPullRequest(
+  async createBranchAndPR(
     { title, body, files, baseBranch = 'main' }: CreatePRRequest,
     token: string,
     config: GitHubConfig
   ) {
     const { owner, repo } = config;
 
-    console.log('Creating PR for repository:', `${owner}/${repo}`);
+    console.log('Creating branch and PR for repository:', `${owner}/${repo}`);
     console.log('Files to update:', files.map(f => f.path));
 
     // Validate inputs
@@ -133,8 +182,9 @@ class GitHubService {
       throw new Error('At least one file is required to create a pull request');
     }
 
-    // Create a new branch
-    const branchName = `docs-update-${Date.now()}`;
+    // Create a descriptive branch name
+    const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
+    const branchName = `docs-update-${timestamp}-${Date.now().toString().slice(-6)}`;
     
     try {
       console.log('Step 1: Getting base branch reference');
@@ -204,16 +254,17 @@ class GitHubService {
         success: true,
         prUrl: pr.html_url,
         prNumber: pr.number,
+        branchName: branchName,
       };
     } catch (error) {
-      console.error('Error creating pull request:', error);
+      console.error('Error creating branch and pull request:', error);
       
       // Provide more specific error messages
       if (error instanceof Error) {
         if (error.message.includes('404')) {
           throw new Error(`Repository ${owner}/${repo} not found. Please check that the repository exists and you have access to it.`);
         } else if (error.message.includes('403')) {
-          throw new Error('Access forbidden. Please check that your GitHub token has the necessary permissions for this repository.');
+          throw new Error('Access forbidden. Please ensure the Lovable GitHub app is installed on this repository and you have the necessary permissions.');
         } else if (error.message.includes('401')) {
           throw new Error('Authentication failed. Please sign out and sign back in to refresh your GitHub token.');
         } else if (error.message.includes('422')) {
@@ -222,6 +273,38 @@ class GitHubService {
       }
       
       throw error;
+    }
+  }
+
+  async testRepositoryAccess(owner: string, repo: string, token: string) {
+    console.log('Testing repository access for:', `${owner}/${repo}`);
+    
+    try {
+      // Test basic repository access
+      const repoData = await this.makeRequest(`/repos/${owner}/${repo}`, token);
+      console.log('Repository found:', repoData.full_name);
+      console.log('Repository permissions:', repoData.permissions);
+      
+      // Test if we can read repository contents
+      const contentsData = await this.makeRequest(`/repos/${owner}/${repo}/contents`, token);
+      console.log('Repository contents accessible, found', contentsData.length, 'items');
+      
+      // Check if we can create branches (indicates write access)
+      const branchesData = await this.makeRequest(`/repos/${owner}/${repo}/branches`, token);
+      console.log('Repository branches accessible, found', branchesData.length, 'branches');
+      
+      return {
+        hasAccess: true,
+        canRead: true,
+        permissions: repoData.permissions,
+        defaultBranch: repoData.default_branch
+      };
+    } catch (error) {
+      console.error('Repository access test failed:', error);
+      return {
+        hasAccess: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
     }
   }
 
@@ -327,6 +410,14 @@ class GitHubService {
       console.error('Error checking if GitHub is configured:', error);
       return false;
     }
+  }
+
+  async createPullRequest(
+    request: CreatePRRequest,
+    token: string,
+    config: GitHubConfig
+  ) {
+    return this.createBranchAndPR(request, token, config);
   }
 }
 
