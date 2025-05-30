@@ -22,11 +22,11 @@ export function Card({ title, image, icon, href, external, children, className }
   const processedChildren = React.useMemo(() => {
     if (typeof children === 'string') {
       return (
-        <ReactMarkdown 
-          className="prose prose-sm dark:prose-invert max-w-none prose-p:text-sm prose-p:mb-2 prose-p:leading-relaxed prose-headings:text-base prose-headings:font-semibold prose-headings:mb-2 prose-ul:my-2 prose-li:my-0 prose-li:text-sm"
-        >
-          {children}
-        </ReactMarkdown>
+        <div className="prose prose-sm dark:prose-invert max-w-none prose-p:text-sm prose-p:mb-2 prose-p:leading-relaxed prose-headings:text-base prose-headings:font-semibold prose-headings:mb-2 prose-ul:my-2 prose-li:my-0 prose-li:text-sm">
+          <ReactMarkdown>
+            {children}
+          </ReactMarkdown>
+        </div>
       );
     }
     return children;

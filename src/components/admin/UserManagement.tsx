@@ -38,6 +38,13 @@ interface UserProfile {
   has_profile: boolean;
 }
 
+interface ProfileData {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  created_at: string;
+}
+
 export function UserManagement() {
   const { hasRole } = useAuth();
   const [users, setUsers] = useState<UserProfile[]>([]);
@@ -75,7 +82,7 @@ export function UserManagement() {
 
       console.log('User roles:', userRoles);
 
-      // Get all profiles
+      // Get all profiles with proper typing
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select('id, email, full_name, created_at')
@@ -89,18 +96,18 @@ export function UserManagement() {
       console.log('Profiles:', profiles);
 
       // Create a map of profiles by ID for quick lookup
-      const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
+      const profilesMap = new Map((profiles as ProfileData[])?.map(p => [p.id, p]) || []);
       console.log('Profiles map:', profilesMap);
 
       // Get unique user IDs from roles and profiles
       const roleUserIds = new Set(userRoles?.map(role => role.user_id) || []);
-      const profileUserIds = new Set(profiles?.map(p => p.id) || []);
+      const profileUserIds = new Set((profiles as ProfileData[])?.map(p => p.id) || []);
       const allUserIds = new Set([...roleUserIds, ...profileUserIds]);
 
       console.log('All user IDs:', Array.from(allUserIds));
 
       // Build user list with profile and role information
-      const usersWithRoles = Array.from(allUserIds).map(userId => {
+      const usersWithRoles: UserProfile[] = Array.from(allUserIds).map(userId => {
         const profile = profilesMap.get(userId);
         const userRolesList = userRoles?.filter(role => role.user_id === userId)
           .map(role => role.role) || [];

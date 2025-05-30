@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 interface GitHubInstallation {
@@ -25,8 +24,8 @@ class GitHubAppService {
   private appId = '1341292';
   private baseUrl = 'https://api.github.com';
 
-  // Get installation access token using the GitHub App
-  private async getInstallationToken(installationId: number): Promise<string> {
+  // Get installation access token using the GitHub App - made public
+  async getInstallationToken(installationId: number): Promise<string> {
     try {
       const { data, error } = await supabase.functions.invoke('github-app-auth', {
         body: { installationId }
