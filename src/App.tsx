@@ -40,14 +40,7 @@ function App() {
                     }
                   />
                   <Route path="/" element={<Index />} />
-                  <Route
-                    path="/docs/*"
-                    element={
-                      <ProtectedRoute>
-                        <DocsLayout />
-                      </ProtectedRoute>
-                    }
-                  >
+                  <Route path="/docs/*" element={<DocsLayout />}>
                     <Route path="*" element={<DynamicDocPage />} />
                   </Route>
                 </Routes>
