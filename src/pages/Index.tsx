@@ -1,32 +1,28 @@
+
 import React from "react";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Book, FileText, Zap, Users, ArrowRight } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
-import { UserMenu } from "@/components/auth/UserMenu";
-import { useAuth } from "@/contexts/AuthContext";
 
 const Index = () => {
-  const { user, hasRole } = useAuth();
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100 dark:from-slate-950 dark:to-slate-900">
       {/* Header */}
       <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
         <div className="container flex h-14 items-center justify-between">
           <div className="flex items-center space-x-2">
+            <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+              <span className="text-white font-bold text-sm">P</span>
+            </div>
             <span className="font-bold text-xl">Pieces Documentation</span>
           </div>
           <div className="flex items-center space-x-4">
             <ThemeToggle />
-            {user ? (
-              <UserMenu />
-            ) : (
-              <Button asChild>
-                <Link to="/auth">Sign In</Link>
-              </Button>
-            )}
+            <Button asChild>
+              <Link to="/docs/meet-pieces">Get Started</Link>
+            </Button>
           </div>
         </div>
       </header>
@@ -42,19 +38,16 @@ const Index = () => {
         </p>
         
         <div className="flex flex-col sm:flex-row gap-4 justify-center">
-          {user && (hasRole('admin') || hasRole('editor')) ? (
-            <Button size="lg" asChild>
-              <Link to="/docs/meet-pieces">
-                Browse Documentation <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-          ) : (
-            <Button size="lg" asChild>
-              <Link to="/auth">
-                Get Started <ArrowRight className="ml-2 h-4 w-4" />
-              </Link>
-            </Button>
-          )}
+          <Button size="lg" asChild>
+            <Link to="/docs/meet-pieces">
+              Browse Documentation <ArrowRight className="ml-2 h-4 w-4" />
+            </Link>
+          </Button>
+          <Button size="lg" variant="outline" asChild>
+            <Link to="/docs/quick-guides">
+              Quick Guides
+            </Link>
+          </Button>
         </div>
       </section>
 
@@ -62,14 +55,14 @@ const Index = () => {
       <section className="container py-12">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {/* Feature Card 1 */}
-          <Card>
+          <Card className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Zap className="h-5 w-5 text-primary" />
                 <span>Long-Term Memory Engine</span>
               </CardTitle>
               <CardDescription>
-                AI-powered live context framework that understands what you’re working on.
+                AI-powered live context framework that understands what you're working on.
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -80,7 +73,7 @@ const Index = () => {
           </Card>
 
           {/* Feature Card 2 */}
-          <Card>
+          <Card className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <FileText className="h-5 w-5 text-primary" />
@@ -98,7 +91,7 @@ const Index = () => {
           </Card>
 
           {/* Feature Card 3 */}
-          <Card>
+          <Card className="hover:shadow-lg transition-shadow">
             <CardHeader>
               <CardTitle className="flex items-center space-x-2">
                 <Book className="h-5 w-5 text-primary" />
@@ -119,7 +112,7 @@ const Index = () => {
 
       {/* User Card Section */}
       <section className="container py-12">
-        <Card className="max-w-3xl mx-auto">
+        <Card className="max-w-3xl mx-auto hover:shadow-lg transition-shadow">
           <CardHeader>
             <CardTitle className="flex items-center space-x-2">
               <Users className="h-5 w-5 text-primary" />
@@ -130,7 +123,7 @@ const Index = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <ul className="list-disc list-inside text-sm text-muted-foreground">
+            <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
               <li>Preserving Workflow Context</li>
               <li>Managing Developer Materials</li>
               <li>Needing Code Assistance</li>
@@ -138,6 +131,13 @@ const Index = () => {
           </CardContent>
         </Card>
       </section>
+
+      {/* Footer */}
+      <footer className="container py-12 text-center">
+        <p className="text-sm text-muted-foreground">
+          © 2024 Pieces for Developers. All rights reserved.
+        </p>
+      </footer>
     </div>
   );
 };
