@@ -23,7 +23,7 @@ interface PendingChange {
 }
 
 export function NavigationEditor({ fileStructure, onNavigationChange }: NavigationEditorProps) {
-  const { navigation } = useNavigation();
+  const { navigation, refetch } = useNavigation();
   const [sections, setSections] = useState<NavigationSection[]>([]);
   const [pendingChange, setPendingChange] = useState<PendingChange | null>(null);
   const [showConfirmDialog, setShowConfirmDialog] = useState(false);
@@ -126,6 +126,8 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
         toast.success(`Added ${pendingChange.fileNode.name.replace('.md', '')} to navigation`);
       }
       
+      // Force refresh the navigation data and local state
+      await refetch();
       onNavigationChange();
       setPendingChange(null);
       setShowConfirmDialog(false);
@@ -157,7 +159,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
   };
 
   // Recursively add folder structure to database while preserving hierarchy
-  const addFolderStructureToDb = async (folderNode: FileNode, sectionId: string, parentId?: string): Promise<NavigationItem[]> => {
+  const addFolderStructureToDb = async (folderNode: FileNode, sectionId: string, parentDbId?: string): Promise<NavigationItem[]> => {
     const addedItems: NavigationItem[] = [];
     
     // Check if this folder has an index file
@@ -172,12 +174,14 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
       href: indexFile ? `/${indexFile.path.replace('.md', '')}` : `/${folderNode.path}`,
       file_path: indexFile?.path || folderNode.path,
       order_index: 0,
-      parent_id: parentId,
+      parent_id: parentDbId,
       is_auto_generated: true
     };
 
+    console.log(`Adding folder to DB: ${folderNode.name}, parent_id: ${parentDbId}`);
     const folderItem = await addNavigationItemToDb(folderItemData, sectionId);
     addedItems.push(folderItem);
+    console.log(`Added folder to DB: ${folderNode.name}, DB ID: ${folderItem.id}`);
 
     // Process children and maintain proper parent-child relationships
     if (folderNode.children) {
@@ -192,15 +196,17 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
               href: `/${child.path.replace('.md', '')}`,
               file_path: child.path,
               order_index: childOrder++,
-              parent_id: folderItem.id, // Set correct parent
+              parent_id: folderItem.id, // Use the actual DB ID from the saved folder
               is_auto_generated: true
             };
             
+            console.log(`Adding file to DB: ${child.name}, parent_id: ${folderItem.id}`);
             const childItem = await addNavigationItemToDb(childItemData, sectionId);
             addedItems.push(childItem);
           }
         } else if (child.type === 'folder') {
-          // Recursively process subfolders with correct parent ID
+          // Recursively process subfolders with the actual DB ID as parent
+          console.log(`Processing subfolder: ${child.name}, parent will be: ${folderItem.id}`);
           const subFolderItems = await addFolderStructureToDb(child, sectionId, folderItem.id);
           addedItems.push(...subFolderItems);
           childOrder++;
@@ -391,7 +397,8 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
         order_index: sections.length
       });
       
-      setSections([...sections, { ...newSection, items: [] }]);
+      // Refresh navigation data instead of manually updating state
+      await refetch();
       onNavigationChange();
       toast.success(`Added section: ${title}`);
     } catch (error) {
@@ -406,12 +413,8 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
         slug: title.toLowerCase().replace(/\s+/g, '-')
       });
       
-      setSections(sections.map(s => 
-        s.id === sectionId 
-          ? { ...s, title, slug: title.toLowerCase().replace(/\s+/g, '-') }
-          : s
-      ));
-      
+      // Refresh navigation data instead of manually updating state
+      await refetch();
       onNavigationChange();
       toast.success("Section updated");
     } catch (error) {
@@ -471,7 +474,10 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
               onAddSection={handleAddSection}
               onUpdateSectionTitle={handleUpdateSectionTitle}
               onRemoveItem={handleRemoveItem}
-              onNavigationChange={onNavigationChange}
+              onNavigationChange={async () => {
+                await refetch();
+                onNavigationChange();
+              }}
             />
           </div>
         </DragDropContext>
