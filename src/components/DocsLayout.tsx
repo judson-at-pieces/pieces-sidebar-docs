@@ -415,7 +415,7 @@ const navigation = [
   },
 ];
 
-function DocsSidebar({ className }: { className?: string }) {
+function DocsSidebar({ className, onNavigate }: { className?: string; onNavigate?: () => void }) {
   const location = useLocation();
   const [openSections, setOpenSections] = useState<string[]>([
     "Meet Pieces", 
@@ -486,6 +486,7 @@ function DocsSidebar({ className }: { className?: string }) {
               {item.href ? (
                 <Link
                   to={item.href}
+                  onClick={onNavigate}
                   className={cn(
                     "flex-1 flex items-center py-2 text-sm rounded-lg transition-colors break-words whitespace-normal leading-tight text-left",
                     paddingClass,
@@ -529,6 +530,7 @@ function DocsSidebar({ className }: { className?: string }) {
       <Link
         key={item.href}
         to={item.href}
+        onClick={onNavigate}
         className={cn(
           "block py-2 text-sm rounded-lg transition-colors break-words whitespace-normal leading-tight text-left",
           paddingClass,
@@ -615,7 +617,7 @@ export default function DocsLayout() {
         </div>
         <SheetContent side="left" className="p-0 w-64">
           <ScrollArea className="h-full">
-            <DocsSidebar />
+            <DocsSidebar onNavigate={() => setSidebarOpen(false)} />
           </ScrollArea>
         </SheetContent>
       </Sheet>

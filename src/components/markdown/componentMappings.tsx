@@ -55,7 +55,8 @@ export const createComponentMappings = () => ({
     }
     
     if (isCard) {
-      return <Card title={title} image={image} href={href} external={external} {...props}>{children}</Card>;
+      const icon = props['data-icon'] as string | undefined;
+      return <Card title={title} image={image} icon={icon} href={href} external={external} {...props}>{children}</Card>;
     }
     
     return <div {...props}>{children}</div>;
