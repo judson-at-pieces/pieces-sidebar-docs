@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { 
   Plus, 
@@ -193,7 +194,7 @@ export function NavigationStructurePanel({
   };
 
   return (
-    <Card className="h-full flex flex-col">
+    <Card className="h-full flex flex-col overflow-hidden">
       <CardHeader className="pb-3 flex-shrink-0">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
@@ -241,8 +242,8 @@ export function NavigationStructurePanel({
           </div>
         )}
       </CardHeader>
-      <CardContent className="flex-1 overflow-hidden p-0">
-        <ScrollArea className="h-full">
+      <CardContent className="flex-1 min-h-0 p-0">
+        <ScrollArea className="h-full w-full">
           <div className="space-y-4 p-4">
             {sections.map((section) => {
               const hierarchicalItems = buildHierarchy(section.items || []);
