@@ -7,13 +7,16 @@ import {
   Trash2, 
   Edit2,
   ExternalLink,
-  Folder
+  Folder,
+  ChevronDown,
+  ChevronRight
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { NavigationSection, NavigationItem } from "@/services/navigationService";
 import { navigationService } from "@/services/navigationService";
 import { toast } from "sonner";
@@ -37,6 +40,7 @@ export function NavigationStructurePanel({
   const [isAddingSection, setIsAddingSection] = useState(false);
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [editingSectionTitle, setEditingSectionTitle] = useState("");
+  const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   const handleAddSection = () => {
     if (!newSectionTitle.trim()) return;
@@ -52,88 +56,134 @@ export function NavigationStructurePanel({
     setEditingSectionTitle("");
   };
 
-  const handleRemoveItemFromDb = async (sectionId: string, itemId: string, parentItems?: NavigationItem[]) => {
+  const handleRemoveItemFromDb = async (sectionId: string, itemId: string) => {
     try {
-      // Find the item in the section
-      const section = sections.find(s => s.id === sectionId);
-      if (!section?.items) {
-        toast.error("Section not found");
-        return;
-      }
-
-      // Find item recursively
-      const findItemRecursive = (items: NavigationItem[], targetId: string): NavigationItem | null => {
-        for (const item of items) {
-          if (item.id === targetId) return item;
-          if (item.items) {
-            const found = findItemRecursive(item.items, targetId);
-            if (found) return found;
-          }
-        }
-        return null;
-      };
-
-      const item = findItemRecursive(section.items, itemId);
-      if (!item) {
-        toast.error("Item not found");
-        return;
-      }
-
       // Delete from database if it's not a temporary item
-      if (!item.id.startsWith('temp-')) {
-        await navigationService.deleteNavigationItem(item.id);
+      if (!itemId.startsWith('temp-')) {
+        await navigationService.deleteNavigationItem(itemId);
       }
       
       // Trigger navigation refresh
       onNavigationChange();
       
-      toast.success(`Removed ${item.title} from navigation`);
+      toast.success("Removed item from navigation");
     } catch (error) {
       console.error('Error removing item:', error);
       toast.error("Failed to remove item from navigation");
     }
   };
 
+  const toggleItemExpansion = (itemId: string) => {
+    const newExpanded = new Set(expandedItems);
+    if (newExpanded.has(itemId)) {
+      newExpanded.delete(itemId);
+    } else {
+      newExpanded.add(itemId);
+    }
+    setExpandedItems(newExpanded);
+  };
+
+  // Build hierarchical structure from flat items
+  const buildHierarchy = (items: NavigationItem[]): NavigationItem[] => {
+    const itemMap = new Map<string, NavigationItem>();
+    const rootItems: NavigationItem[] = [];
+
+    // First pass: create map of all items
+    items.forEach(item => {
+      itemMap.set(item.id, { ...item, items: [] });
+    });
+
+    // Second pass: build hierarchy
+    items.forEach(item => {
+      const mappedItem = itemMap.get(item.id)!;
+      
+      if (item.parent_id && itemMap.has(item.parent_id)) {
+        // This is a child item
+        const parent = itemMap.get(item.parent_id)!;
+        if (!parent.items) parent.items = [];
+        parent.items.push(mappedItem);
+      } else {
+        // This is a root item
+        rootItems.push(mappedItem);
+      }
+    });
+
+    // Sort items by order_index
+    const sortItems = (items: NavigationItem[]) => {
+      items.sort((a, b) => a.order_index - b.order_index);
+      items.forEach(item => {
+        if (item.items && item.items.length > 0) {
+          sortItems(item.items);
+        }
+      });
+    };
+
+    sortItems(rootItems);
+    return rootItems;
+  };
+
   // Recursive function to render navigation items with proper nesting
   const renderNavigationItems = (items: NavigationItem[], depth = 0, sectionId: string): React.ReactNode[] => {
-    return items.map((item, itemIndex) => {
+    return items.map((item) => {
       const hasChildren = item.items && item.items.length > 0;
+      const isExpanded = expandedItems.has(item.id);
       
       return (
-        <div key={`${item.id}-${itemIndex}`} className="space-y-1">
-          <div
-            className={`p-2 border rounded flex items-center justify-between transition-colors hover:bg-accent/50 ${
-              depth > 0 ? 'ml-4 border-l-2 border-l-primary/20' : ''
-            }`}
-          >
-            <div className="flex items-center gap-2">
+        <div key={item.id} className="space-y-1">
+          <div className={`p-2 border rounded flex items-center justify-between transition-colors hover:bg-accent/50 ${
+            depth > 0 ? 'ml-4 border-l-2 border-l-primary/20' : ''
+          }`}>
+            <div className="flex items-center gap-2 flex-1">
+              {hasChildren && (
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-6 w-6 p-0"
+                  onClick={() => toggleItemExpansion(item.id)}
+                >
+                  {isExpanded ? (
+                    <ChevronDown className="h-3 w-3" />
+                  ) : (
+                    <ChevronRight className="h-3 w-3" />
+                  )}
+                </Button>
+              )}
+              
               {hasChildren ? (
                 <Folder className="h-3 w-3 text-blue-600" />
               ) : (
                 <FileText className="h-3 w-3" />
               )}
-              <span className="text-sm">{item.title}</span>
+              
+              <span className="text-sm flex-1">{item.title}</span>
+              
               {item.is_auto_generated && (
                 <Badge variant="secondary" className="text-xs">Auto</Badge>
               )}
+              
               {hasChildren && (
                 <Badge variant="outline" className="text-xs">
                   {item.items!.length} items
                 </Badge>
               )}
             </div>
+            
             <div className="flex items-center gap-1">
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => window.open(item.href, '_blank')}
-              >
-                <ExternalLink className="h-3 w-3" />
-              </Button>
+              {item.href && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  onClick={() => window.open(item.href, '_blank')}
+                  className="h-6 w-6 p-0"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                </Button>
+              )}
               <Button
                 size="sm"
                 variant="ghost"
                 onClick={() => handleRemoveItemFromDb(sectionId, item.id)}
+                className="h-6 w-6 p-0"
               >
                 <Trash2 className="h-3 w-3" />
               </Button>
@@ -141,7 +191,7 @@ export function NavigationStructurePanel({
           </div>
           
           {/* Render nested children */}
-          {hasChildren && (
+          {hasChildren && isExpanded && (
             <div className="space-y-1">
               {renderNavigationItems(item.items!, depth + 1, sectionId)}
             </div>
@@ -203,72 +253,76 @@ export function NavigationStructurePanel({
       <CardContent className="flex-1 overflow-hidden">
         <ScrollArea className="h-full">
           <div className="space-y-4">
-            {sections.map((section) => (
-              <div key={section.id} className="border rounded-lg">
-                <div className="p-3 border-b bg-muted/50">
-                  <div className="flex items-center justify-between">
-                    {editingSection === section.id ? (
-                      <div className="flex gap-2 flex-1">
-                        <Input
-                          value={editingSectionTitle}
-                          onChange={(e) => setEditingSectionTitle(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') handleUpdateSection(section.id);
-                            if (e.key === 'Escape') {
+            {sections.map((section) => {
+              const hierarchicalItems = buildHierarchy(section.items || []);
+              
+              return (
+                <div key={section.id} className="border rounded-lg">
+                  <div className="p-3 border-b bg-muted/50">
+                    <div className="flex items-center justify-between">
+                      {editingSection === section.id ? (
+                        <div className="flex gap-2 flex-1">
+                          <Input
+                            value={editingSectionTitle}
+                            onChange={(e) => setEditingSectionTitle(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter') handleUpdateSection(section.id);
+                              if (e.key === 'Escape') {
+                                setEditingSection(null);
+                                setEditingSectionTitle("");
+                              }
+                            }}
+                            autoFocus
+                          />
+                          <Button size="sm" onClick={() => handleUpdateSection(section.id)}>
+                            Save
+                          </Button>
+                          <Button 
+                            size="sm" 
+                            variant="outline" 
+                            onClick={() => {
                               setEditingSection(null);
                               setEditingSectionTitle("");
-                            }
-                          }}
-                          autoFocus
-                        />
-                        <Button size="sm" onClick={() => handleUpdateSection(section.id)}>
-                          Save
-                        </Button>
-                        <Button 
-                          size="sm" 
-                          variant="outline" 
-                          onClick={() => {
-                            setEditingSection(null);
-                            setEditingSectionTitle("");
-                          }}
-                        >
-                          Cancel
-                        </Button>
+                            }}
+                          >
+                            Cancel
+                          </Button>
+                        </div>
+                      ) : (
+                        <>
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">{section.title}</span>
+                            <Badge variant="outline">{section.items?.length || 0} items</Badge>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setEditingSection(section.id);
+                              setEditingSectionTitle(section.title);
+                            }}
+                          >
+                            <Edit2 className="h-4 w-4" />
+                          </Button>
+                        </>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <div className="p-3 min-h-[100px]">
+                    {hierarchicalItems.length ? (
+                      <div className="space-y-2">
+                        {renderNavigationItems(hierarchicalItems, 0, section.id)}
                       </div>
                     ) : (
-                      <>
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium">{section.title}</span>
-                          <Badge variant="outline">{section.items?.length || 0} items</Badge>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => {
-                            setEditingSection(section.id);
-                            setEditingSectionTitle(section.title);
-                          }}
-                        >
-                          <Edit2 className="h-4 w-4" />
-                        </Button>
-                      </>
+                      <div className="text-center text-muted-foreground text-sm py-8">
+                        No items in this section yet. Use the + button next to files to add them here.
+                      </div>
                     )}
                   </div>
                 </div>
-                
-                <div className="p-3 min-h-[100px]">
-                  {section.items?.length ? (
-                    <div className="space-y-2">
-                      {renderNavigationItems(section.items, 0, section.id)}
-                    </div>
-                  ) : (
-                    <div className="text-center text-muted-foreground text-sm py-8">
-                      No items in this section yet. Use the + button next to files to add them here.
-                    </div>
-                  )}
-                </div>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </ScrollArea>
       </CardContent>

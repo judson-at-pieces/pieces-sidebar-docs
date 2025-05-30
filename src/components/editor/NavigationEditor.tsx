@@ -7,6 +7,7 @@ import { AvailableFilesPanel } from "./AvailableFilesPanel";
 import { NavigationStructurePanel } from "./NavigationStructurePanel";
 import { FolderPreviewDialog } from "./FolderPreviewDialog";
 import { useNavigationActions } from "./hooks/useNavigationActions";
+import { navigationService } from "@/services/navigationService";
 
 interface NavigationEditorProps {
   fileStructure: FileNode[];
@@ -50,8 +51,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
 
   const handleAddSection = async (title: string) => {
     try {
-      const { addNavigationSection } = await import('@/services/navigationService');
-      await addNavigationSection({
+      await navigationService.addNavigationSection({
         title,
         slug: title.toLowerCase().replace(/\s+/g, '-'),
         order_index: sections.length
@@ -67,7 +67,6 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
 
   const handleUpdateSectionTitle = async (sectionId: string, title: string) => {
     try {
-      const { navigationService } = await import('@/services/navigationService');
       await navigationService.updateNavigationSection(sectionId, {
         title,
         slug: title.toLowerCase().replace(/\s+/g, '-')
