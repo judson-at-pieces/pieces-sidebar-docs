@@ -31,7 +31,7 @@ export const createComponentMappings = () => ({
     const stepTitle = props['data-step-title'];
     
     if (calloutType) {
-      return <Callout type={calloutType as 'info' | 'warning' | 'tip' | 'error' | 'success'} title={title} {...props}>{children}</Callout>;
+      return <Callout type={calloutType as 'info' | 'warning' | 'tip' | 'error' | 'success' | 'alert'} title={title} {...props}>{children}</Callout>;
     }
     
     if (isSteps) {

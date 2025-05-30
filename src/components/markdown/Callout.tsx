@@ -1,10 +1,10 @@
 
 import { ReactNode } from 'react';
-import { AlertTriangle, Info, CheckCircle, XCircle, Lightbulb } from 'lucide-react';
+import { AlertTriangle, Info, CheckCircle, XCircle, Lightbulb, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface CalloutProps {
-  type?: 'info' | 'warning' | 'error' | 'success' | 'tip';
+  type?: 'info' | 'warning' | 'error' | 'success' | 'tip' | 'alert';
   title?: string;
   children: ReactNode;
   className?: string;
@@ -22,6 +22,12 @@ const calloutConfig = {
     className: 'border-yellow-200 bg-yellow-50 dark:border-yellow-800 dark:bg-yellow-950/20',
     iconColor: 'text-yellow-600 dark:text-yellow-400',
     titleColor: 'text-yellow-900 dark:text-yellow-100'
+  },
+  alert: {
+    icon: AlertCircle,
+    className: 'border-orange-200 bg-orange-50 dark:border-orange-800 dark:bg-orange-950/20',
+    iconColor: 'text-orange-600 dark:text-orange-400',
+    titleColor: 'text-orange-900 dark:text-orange-100'
   },
   error: {
     icon: XCircle,
