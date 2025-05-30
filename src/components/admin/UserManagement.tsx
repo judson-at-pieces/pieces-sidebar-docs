@@ -132,35 +132,19 @@ export function UserManagement() {
 
   const createMissingProfile = async (userId: string) => {
     try {
-      // Try to get user info from auth.users first
-      const { data: authData, error: authError } = await supabase.auth.admin.getUserById(userId);
-      
-      if (authError) {
-        console.log('Could not fetch auth user data:', authError);
-      }
-
-      const { error } = await supabase
-        .from('profiles')
-        .insert({
-          id: userId,
-          email: authData?.user?.email || null,
-          full_name: authData?.user?.user_metadata?.full_name || null
-        });
-
-      if (error) throw error;
-
+      // For users without profiles, we can't create them directly due to RLS
+      // Instead, we'll show instructions for the user to sign in themselves
       toast({
-        title: "Profile Created",
-        description: "Successfully created missing user profile.",
+        title: "Profile Creation Limitation",
+        description: "Due to security policies, profiles must be created when users first sign in. Ask the user to sign in to automatically create their profile.",
+        variant: "default",
       });
-      
-      fetchUsers(); // Refresh the list
     } catch (err: any) {
-      console.error('Error creating profile:', err);
+      console.error('Error with profile creation:', err);
       toast({
-        title: "Error",
-        description: err.message || 'Failed to create profile',
-        variant: "destructive",
+        title: "Information",
+        description: "Profiles are automatically created when users sign in for the first time.",
+        variant: "default",
       });
     }
   };
@@ -338,8 +322,8 @@ export function UserManagement() {
                           Active
                         </Badge>
                       ) : (
-                        <Badge variant="destructive" className="flex items-center gap-1 w-fit">
-                          Missing Profile
+                        <Badge variant="secondary" className="flex items-center gap-1 w-fit">
+                          Pending Sign-in
                         </Badge>
                       )}
                     </TableCell>
@@ -356,7 +340,7 @@ export function UserManagement() {
                             className="flex items-center gap-1"
                           >
                             <UserPlus className="h-3 w-3" />
-                            Create Profile
+                            Info
                           </Button>
                         ) : (
                           <Select
