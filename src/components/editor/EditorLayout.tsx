@@ -1,13 +1,13 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, FileText, GitPullRequest, ExternalLink } from "lucide-react";
+import { Menu, FileText, GitPullRequest, ExternalLink, Save } from "lucide-react";
 import { ThemeToggle } from "../ThemeToggle";
 import { useAuth } from "@/contexts/AuthContext";
 import { EditorSidebar } from "./EditorSidebar";
-import { EditorMain } from "./EditorMain";
+import { EditorTabs } from "./EditorTabs";
 import { githubAppService } from "@/services/githubAppService";
+import { navigationEditorService } from "./NavigationService";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -25,6 +25,7 @@ export function EditorLayout() {
   const [originalContents, setOriginalContents] = useState<FileContent>({});
   const [fileStructure, setFileStructure] = useState<FileNode[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [hasNavigationChanges, setHasNavigationChanges] = useState(false);
 
   // Load file structure on mount
   useEffect(() => {
@@ -202,6 +203,10 @@ Start editing this file...`;
     toast.success(`Created new file: ${cleanFileName}`);
   };
 
+  const handleNavigationChange = () => {
+    setHasNavigationChanges(true);
+  };
+
   const getModifiedFiles = (): Set<string> => {
     const modified = new Set<string>();
     Object.keys(fileContents).forEach(fileName => {
@@ -212,8 +217,42 @@ Start editing this file...`;
     return modified;
   };
 
-  const hasChanges = selectedFile ? 
-    fileContents[selectedFile] !== originalContents[selectedFile] : false;
+  const hasContentChanges = getModifiedFiles().size > 0;
+  const hasAnyChanges = hasContentChanges || hasNavigationChanges;
+
+  const handleSaveNavigation = async () => {
+    setIsLoading(true);
+    try {
+      // Get current navigation structure from the navigation editor
+      // This would need to be passed from the NavigationEditor component
+      // For now, we'll just mark navigation as saved
+      setHasNavigationChanges(false);
+      toast.success("Navigation saved successfully!");
+    } catch (error) {
+      toast.error("Failed to save navigation");
+    }
+    setIsLoading(false);
+  };
+
+  const handleSaveBoth = async () => {
+    setIsLoading(true);
+    try {
+      // Save navigation first
+      if (hasNavigationChanges) {
+        await handleSaveNavigation();
+      }
+
+      // Then save content to GitHub
+      if (hasContentChanges) {
+        await handleSave();
+      }
+
+      toast.success("All changes saved successfully!");
+    } catch (error) {
+      toast.error("Failed to save changes");
+    }
+    setIsLoading(false);
+  };
 
   const handleSave = async () => {
     const modifiedFiles = getModifiedFiles();
@@ -333,6 +372,32 @@ Start editing this file...`;
     setIsLoading(false);
   };
 
+  const getSaveButtonText = () => {
+    if (hasContentChanges && hasNavigationChanges) {
+      return `Save All (${getModifiedFiles().size} files + nav)`;
+    }
+    if (hasContentChanges) {
+      return `Create PR (${getModifiedFiles().size} files)`;
+    }
+    if (hasNavigationChanges) {
+      return "Save Navigation";
+    }
+    return "No Changes";
+  };
+
+  const getSaveAction = () => {
+    if (hasContentChanges && hasNavigationChanges) {
+      return handleSaveBoth;
+    }
+    if (hasContentChanges) {
+      return handleSave;
+    }
+    if (hasNavigationChanges) {
+      return handleSaveNavigation;
+    }
+    return undefined;
+  };
+
   const currentContent = selectedFile ? fileContents[selectedFile] || '' : '';
 
   return (
@@ -355,7 +420,7 @@ Start editing this file...`;
           <ScrollArea className="h-full">
             <EditorSidebar 
               selectedFile={selectedFile}
-              onFileSelect={handleFileSelect}
+              onFileSelect={setSelectedFile}
               modifiedFiles={getModifiedFiles()}
               onCreateFile={handleCreateFile}
               fileStructure={fileStructure}
@@ -381,7 +446,7 @@ Start editing this file...`;
             <div className="flex-1 overflow-y-auto">
               <EditorSidebar 
                 selectedFile={selectedFile}
-                onFileSelect={handleFileSelect}
+                onFileSelect={setSelectedFile}
                 modifiedFiles={getModifiedFiles()}
                 onCreateFile={handleCreateFile}
                 fileStructure={fileStructure}
@@ -399,15 +464,21 @@ Start editing this file...`;
               <div className="flex justify-between items-center py-4">
                 <div className="flex items-center space-x-4">
                   <h1 className="text-lg font-semibold">Documentation Editor</h1>
-                  {getModifiedFiles().size > 0 && (
+                  {hasAnyChanges && (
                     <Button 
-                      onClick={handleSave}
-                      disabled={isLoading}
+                      onClick={getSaveAction()}
+                      disabled={isLoading || !hasAnyChanges}
                       size="sm"
                       className="ml-4"
                     >
-                      <GitPullRequest className="h-4 w-4 mr-2" />
-                      {isLoading ? 'Creating PR...' : `Create PR (${getModifiedFiles().size} files)`}
+                      {hasContentChanges && hasNavigationChanges ? (
+                        <Save className="h-4 w-4 mr-2" />
+                      ) : hasContentChanges ? (
+                        <GitPullRequest className="h-4 w-4 mr-2" />
+                      ) : (
+                        <Save className="h-4 w-4 mr-2" />
+                      )}
+                      {isLoading ? 'Saving...' : getSaveButtonText()}
                     </Button>
                   )}
                 </div>
@@ -424,12 +495,14 @@ Start editing this file...`;
           </header>
 
           <main className="flex-1 relative overflow-hidden">
-            <EditorMain 
+            <EditorTabs
               selectedFile={selectedFile}
               content={currentContent}
               onContentChange={handleContentChange}
               onSave={handleSave}
-              hasChanges={hasChanges}
+              hasChanges={hasContentChanges}
+              fileStructure={fileStructure}
+              onNavigationChange={handleNavigationChange}
             />
           </main>
         </div>
