@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -71,7 +70,6 @@ export function UserManagement() {
 
       // Get unique user IDs
       const userIds = [...new Set(userRoles?.map(role => role.user_id) || [])];
-      console.log('User IDs from user_roles:', userIds);
 
       // Get all profiles
       const { data: profiles, error: profilesError } = await supabase
@@ -85,11 +83,12 @@ export function UserManagement() {
         .order('created_at', { ascending: false });
 
       if (profilesError) throw profilesError;
-      console.log('Profiles data:', profiles);
 
+      // Create a set of profile IDs for faster lookup
+      const profileIds = new Set(profiles?.map(p => p.id) || []);
+      
       // Create a map of existing profiles
       const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
-      console.log('Profiles map:', profilesMap);
 
       // Get all user IDs (from both roles and profiles)
       const allUserIds = new Set([
@@ -102,11 +101,8 @@ export function UserManagement() {
         const userRolesList = userRoles?.filter(role => role.user_id === userId)
           .map(role => role.role) || [];
 
-        console.log(`User ${userId}:`, {
-          profile,
-          hasProfile: !!profile,
-          roles: userRolesList
-        });
+        // Check if profile exists using the profileIds set
+        const hasProfile = profileIds.has(userId);
 
         return {
           id: userId,
@@ -114,7 +110,7 @@ export function UserManagement() {
           full_name: profile?.full_name || null,
           created_at: profile?.created_at || new Date().toISOString(),
           roles: userRolesList,
-          has_profile: !!profile
+          has_profile: hasProfile
         };
       });
 
@@ -125,7 +121,6 @@ export function UserManagement() {
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       });
 
-      console.log('Final users list:', usersWithRoles);
       setUsers(usersWithRoles);
     } catch (err: any) {
       console.error('Error fetching users:', err);
