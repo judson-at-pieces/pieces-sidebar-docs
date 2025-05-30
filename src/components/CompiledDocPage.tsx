@@ -37,6 +37,8 @@ export function CompiledDocPage() {
         currentPath.replace(/^\/docs/, ''),
       ].filter((path, index, arr) => arr.indexOf(path) === index); // Remove duplicates
       
+      console.log('CompiledDocPage: Trying path variations:', pathVariations);
+      
       for (const variation of pathVariations) {
         foundContent = getCompiledContent(variation);
         if (foundContent) {
