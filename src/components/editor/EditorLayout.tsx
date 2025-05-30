@@ -4,7 +4,6 @@ import { useFileStructure } from "@/hooks/useFileStructure";
 import { NavigationEditor } from "./NavigationEditor";
 import { EditorSidebar } from "./EditorSidebar";
 import { EditorMain } from "./EditorMain";
-import { EditorTabs } from "./EditorTabs";
 
 export function EditorLayout() {
   const { fileStructure, isLoading, error, refetch } = useFileStructure();
@@ -125,7 +124,13 @@ export function EditorLayout() {
                 onNavigationChange={refetch}
               />
             ) : (
-              <EditorMain />
+              <EditorMain 
+                selectedFile={selectedFile}
+                content={content}
+                onContentChange={handleContentChange}
+                onSave={handleSave}
+                hasChanges={hasChanges}
+              />
             )}
           </div>
         </div>
