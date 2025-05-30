@@ -18,6 +18,8 @@ Deno.serve(async (req) => {
     )
 
     const { access_code } = await req.json()
+    
+    console.log('Received access code:', access_code)
 
     // Find valid code
     const { data: codeRecord, error: codeError } = await supabaseAdmin
@@ -29,9 +31,16 @@ Deno.serve(async (req) => {
       .gt('expires_at', new Date().toISOString())
       .single()
 
+    console.log('Code query result:', { codeRecord, codeError })
+
     if (codeError || !codeRecord) {
+      console.log('Code not found or invalid')
       return new Response(
-        JSON.stringify({ success: false }),
+        JSON.stringify({ 
+          success: false, 
+          error: 'Invalid or expired access code',
+          debug: { codeError: codeError?.message, foundRecord: !!codeRecord }
+        }),
         { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       )
     }
@@ -49,10 +58,11 @@ Deno.serve(async (req) => {
       
       const { data: { user } } = await supabaseClient.auth.getUser()
       currentUserId = user?.id
+      console.log('Current user ID:', currentUserId)
     }
 
     // Mark code as used
-    await supabaseAdmin
+    const { error: updateError } = await supabaseAdmin
       .from('admin_access_codes')
       .update({ 
         used_by: currentUserId,
@@ -60,14 +70,22 @@ Deno.serve(async (req) => {
       })
       .eq('id', codeRecord.id)
 
-    // If user is authenticated, try to assign role
-    if (currentUserId) {
-      await supabaseAdmin
-        .from('user_roles')
-        .insert({ user_id: currentUserId, role: 'editor' })
-        .select()
+    if (updateError) {
+      console.error('Error updating code:', updateError)
     }
 
+    // If user is authenticated, try to assign role
+    if (currentUserId) {
+      const { error: roleError } = await supabaseAdmin
+        .from('user_roles')
+        .insert({ user_id: currentUserId, role: 'editor' })
+        
+      if (roleError) {
+        console.log('Role assignment error (might already exist):', roleError.message)
+      }
+    }
+
+    console.log('Success! Code validated.')
     return new Response(
       JSON.stringify({ success: true }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
@@ -76,7 +94,11 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error('Error:', error)
     return new Response(
-      JSON.stringify({ success: false }),
+      JSON.stringify({ 
+        success: false, 
+        error: 'Server error',
+        debug: error.message 
+      }),
       { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     )
   }

@@ -49,9 +49,11 @@ export function AccessCodeForm({ onSuccess }: AccessCodeFormProps) {
       if (error) {
         logger.error('Edge function error', { error: error.message });
         auditLog.accessCodeUsed(false, user?.id);
-        setError(getErrorMessage(error, 'access_code'));
+        setError('Failed to validate access code. Please try again.');
         return;
       }
+
+      console.log('Edge function response:', data);
 
       if (data.success) {
         auditLog.accessCodeUsed(true, user?.id);
@@ -85,11 +87,17 @@ export function AccessCodeForm({ onSuccess }: AccessCodeFormProps) {
         accessCodeRateLimiter.reset(identifier);
       } else {
         auditLog.accessCodeUsed(false, user?.id);
-        setError(getErrorMessage(null, 'access_code'));
+        const errorMessage = data.error || 'Invalid or expired access code';
+        setError(errorMessage);
+        
+        // Log debug info if available
+        if (data.debug) {
+          console.log('Debug info:', data.debug);
+        }
       }
     } catch (error: any) {
       logger.error('Access code form error', { error: error.message });
-      setError(getErrorMessage(error, 'access_code'));
+      setError('An unexpected error occurred. Please try again.');
     } finally {
       setLoading(false);
     }
