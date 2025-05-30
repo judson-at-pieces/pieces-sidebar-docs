@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -41,17 +40,26 @@ export function AccessCodeForm({ onSuccess }: AccessCodeFormProps) {
         userAuthenticated: !!user 
       });
 
-      const { data, error } = await supabase.rpc('use_admin_access_code', {
-        access_code: sanitizedCode
-      });
-
-      if (error) {
-        logger.error('Access code validation error', { error: error.message });
-        auditLog.accessCodeUsed(false, user?.id);
-        throw error;
+      // Get the session token if user is authenticated
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      const headers: Record<string, string> = {
+        'Content-Type': 'application/json'
+      };
+      
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
       }
 
-      if (data) {
+      const response = await fetch('/functions/v1/use-admin-access-code-fix', {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ access_code: sanitizedCode })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
         auditLog.accessCodeUsed(true, user?.id);
         
         // Store the validated code temporarily so we can use it after sign-in
@@ -61,21 +69,6 @@ export function AccessCodeForm({ onSuccess }: AccessCodeFormProps) {
         
         // If user is already signed in, they now have editor access
         if (user) {
-          // Check if user already has roles
-          const { data: existingRoles } = await supabase
-            .from('user_roles')
-            .select('role')
-            .eq('user_id', user.id);
-          
-          if (!existingRoles || existingRoles.length === 0) {
-            // User has no roles, assign editor
-            await supabase
-              .from('user_roles')
-              .insert({ user_id: user.id, role: 'editor' });
-            
-            auditLog.roleChanged(user.id, 'editor', user.id);
-          }
-          
           toast({
             title: "Editor Access Granted",
             description: "You now have editor permissions. Refreshing the page...",
