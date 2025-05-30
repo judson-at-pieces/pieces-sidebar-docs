@@ -20,10 +20,12 @@ export default function Auth() {
     );
   }
 
+  // If user is signed in and has proper permissions, redirect to home
   if (user && (hasRole('admin') || hasRole('editor'))) {
     return <Navigate to="/" replace />;
   }
 
+  // If user is signed in but doesn't have proper permissions, show access required message
   if (user && !hasRole('admin') && !hasRole('editor')) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -39,6 +41,7 @@ export default function Auth() {
     );
   }
 
+  // If user is not signed in, show the auth forms
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
