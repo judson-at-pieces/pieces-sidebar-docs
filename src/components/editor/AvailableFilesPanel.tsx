@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { FileText, Folder, FolderOpen, Plus, ChevronDown, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -274,15 +273,15 @@ function FileTreeItem({ node, depth, isUsed, sections, onAddToSection, onShowPre
 export function AvailableFilesPanel({ fileStructure, isFileUsed, sections, onAddToSection, onShowPreview }: AvailableFilesPanelProps) {
   return (
     <Card className="h-full flex flex-col">
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-3 flex-shrink-0">
         <CardTitle className="text-base flex items-center gap-2">
           <FileText className="h-4 w-4" />
           Available Files
         </CardTitle>
       </CardHeader>
-      <CardContent className="flex-1 overflow-hidden">
+      <CardContent className="flex-1 overflow-hidden p-0">
         <ScrollArea className="h-full">
-          <div className="space-y-1">
+          <div className="space-y-1 p-4">
             {fileStructure.map((node) => (
               <FileTreeItem 
                 key={node.path} 

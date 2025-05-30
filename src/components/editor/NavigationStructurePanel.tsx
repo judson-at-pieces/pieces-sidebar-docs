@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { 
   Plus, 
@@ -83,32 +82,26 @@ export function NavigationStructurePanel({
     setExpandedItems(newExpanded);
   };
 
-  // Build hierarchical structure from flat items
   const buildHierarchy = (items: NavigationItem[]): NavigationItem[] => {
     const itemMap = new Map<string, NavigationItem>();
     const rootItems: NavigationItem[] = [];
 
-    // First pass: create map of all items
     items.forEach(item => {
       itemMap.set(item.id, { ...item, items: [] });
     });
 
-    // Second pass: build hierarchy
     items.forEach(item => {
       const mappedItem = itemMap.get(item.id)!;
       
       if (item.parent_id && itemMap.has(item.parent_id)) {
-        // This is a child item
         const parent = itemMap.get(item.parent_id)!;
         if (!parent.items) parent.items = [];
         parent.items.push(mappedItem);
       } else {
-        // This is a root item
         rootItems.push(mappedItem);
       }
     });
 
-    // Sort items by order_index
     const sortItems = (items: NavigationItem[]) => {
       items.sort((a, b) => a.order_index - b.order_index);
       items.forEach(item => {
@@ -122,7 +115,6 @@ export function NavigationStructurePanel({
     return rootItems;
   };
 
-  // Recursive function to render navigation items with proper nesting
   const renderNavigationItems = (items: NavigationItem[], depth = 0, sectionId: string): React.ReactNode[] => {
     return items.map((item) => {
       const hasChildren = item.items && item.items.length > 0;
@@ -190,7 +182,6 @@ export function NavigationStructurePanel({
             </div>
           </div>
           
-          {/* Render nested children */}
           {hasChildren && isExpanded && (
             <div className="space-y-1">
               {renderNavigationItems(item.items!, depth + 1, sectionId)}
@@ -203,7 +194,7 @@ export function NavigationStructurePanel({
 
   return (
     <Card className="h-full flex flex-col">
-      <CardHeader className="pb-3">
+      <CardHeader className="pb-3 flex-shrink-0">
         <div className="flex items-center justify-between">
           <CardTitle className="text-base flex items-center gap-2">
             <FolderOpen className="h-4 w-4" />
@@ -250,9 +241,9 @@ export function NavigationStructurePanel({
           </div>
         )}
       </CardHeader>
-      <CardContent className="flex-1 overflow-hidden">
+      <CardContent className="flex-1 overflow-hidden p-0">
         <ScrollArea className="h-full">
-          <div className="space-y-4">
+          <div className="space-y-4 p-4">
             {sections.map((section) => {
               const hierarchicalItems = buildHierarchy(section.items || []);
               
