@@ -3,6 +3,9 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Import unified markdown styles */
+@import './styles/markdown.css';
+
 @layer base {
   :root {
     --background: 0 0% 100%;

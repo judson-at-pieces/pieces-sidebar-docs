@@ -23,7 +23,7 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
   const processedContent = processCustomSyntax(finalContent);
 
   return (
-    <div className="prose prose-lg max-w-none dark:prose-invert prose-headings:scroll-mt-20">
+    <div className="markdown-content">
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         rehypePlugins={[
