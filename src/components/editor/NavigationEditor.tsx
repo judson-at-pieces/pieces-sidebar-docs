@@ -85,9 +85,9 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
             folderItem.items!.push(childItem);
           }
         } else if (child.type === 'folder') {
-          // Recursively process subfolders - but keep them as nested children
+          // Recursively process subfolders - keep them as nested children
           const subFolderItems = createNavigationItemsFromFolder(child, folderId);
-          console.log(`Created folder item: ${child.name} with children count: ${subFolderItems[0]?.items?.length || 0}`);
+          console.log(`Created subfolder item: ${child.name} with children count: ${subFolderItems[0]?.items?.length || 0}`);
           
           // Add the subfolder as a child of the current folder
           if (subFolderItems.length > 0) {
@@ -100,7 +100,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
       }
     }
     
-    console.log(`Created folder item: ${folderNode.name} with children count: ${folderItem.items?.length || 0}`);
+    console.log(`Final folder item: ${folderNode.name} with children count: ${folderItem.items?.length || 0}`);
     return [folderItem];
   };
 
@@ -110,7 +110,9 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
 
     try {
       if (pendingChange.type === 'folder' && pendingChange.folderNode) {
+        console.log('Starting to save folder structure to database...');
         const addedItems = await addFolderStructureToDb(pendingChange.folderNode, pendingChange.sectionId);
+        console.log(`Successfully saved ${addedItems.length} items to database`);
         toast.success(`Added ${pendingChange.folderNode.name} folder with ${addedItems.length} items to navigation`);
       } else if (pendingChange.type === 'file' && pendingChange.fileNode) {
         const newItemData: Omit<NavigationItem, 'id'> = {
@@ -127,7 +129,14 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
       }
       
       // Force refresh the navigation data and local state
-      await refetch();
+      console.log('Refreshing navigation data...');
+      const refreshedNavigation = await refetch();
+      console.log('Navigation refreshed:', refreshedNavigation);
+      
+      if (refreshedNavigation.data?.sections) {
+        setSections(refreshedNavigation.data.sections);
+      }
+      
       onNavigationChange();
       setPendingChange(null);
       setShowConfirmDialog(false);
@@ -140,6 +149,12 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
   // Add a single navigation item to the database
   const addNavigationItemToDb = async (item: Omit<NavigationItem, 'id'>, sectionId: string): Promise<NavigationItem> => {
     try {
+      console.log('Adding item to DB:', { 
+        title: item.title, 
+        parent_id: item.parent_id,
+        section_id: sectionId 
+      });
+      
       const dbItem = await navigationService.addNavigationItem({
         section_id: sectionId,
         parent_id: item.parent_id,
@@ -151,6 +166,8 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
         is_auto_generated: item.is_auto_generated,
         file_path: item.file_path
       });
+      
+      console.log('Item added to DB:', { id: dbItem.id, title: dbItem.title, parent_id: dbItem.parent_id });
       return dbItem;
     } catch (error) {
       console.error('Error adding navigation item:', error);
@@ -162,13 +179,15 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
   const addFolderStructureToDb = async (folderNode: FileNode, sectionId: string, parentDbId?: string): Promise<NavigationItem[]> => {
     const addedItems: NavigationItem[] = [];
     
+    console.log(`Processing folder: ${folderNode.name}, parent_id: ${parentDbId}`);
+    
     // Check if this folder has an index file
     const indexFileName = `${folderNode.name}.md`;
     const indexFile = folderNode.children?.find(child => 
       child.type === 'file' && child.name === indexFileName
     );
     
-    // Create the main folder item
+    // Create the main folder item first
     const folderItemData: Omit<NavigationItem, 'id'> = {
       title: folderNode.name.replace(/-/g, ' '),
       href: indexFile ? `/${indexFile.path.replace('.md', '')}` : `/${folderNode.path}`,
@@ -178,34 +197,37 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
       is_auto_generated: true
     };
 
-    console.log(`Adding folder to DB: ${folderNode.name}, parent_id: ${parentDbId}`);
+    console.log(`Creating folder in DB: ${folderNode.name}, parent_id: ${parentDbId}`);
     const folderItem = await addNavigationItemToDb(folderItemData, sectionId);
     addedItems.push(folderItem);
-    console.log(`Added folder to DB: ${folderNode.name}, DB ID: ${folderItem.id}`);
+    console.log(`Folder created in DB: ${folderNode.name}, DB ID: ${folderItem.id}`);
 
-    // Process children and maintain proper parent-child relationships
+    // Process children in order - files first, then subfolders
     if (folderNode.children) {
       let childOrder = 0;
       
+      // First, add all files (except index file)
       for (const child of folderNode.children) {
-        if (child.type === 'file' && !isFileUsed(child.path)) {
-          // Skip the index file since it's already represented by the folder itself
-          if (child.name !== indexFileName) {
-            const childItemData: Omit<NavigationItem, 'id'> = {
-              title: child.name.replace('.md', '').replace(/-/g, ' '),
-              href: `/${child.path.replace('.md', '')}`,
-              file_path: child.path,
-              order_index: childOrder++,
-              parent_id: folderItem.id, // Use the actual DB ID from the saved folder
-              is_auto_generated: true
-            };
-            
-            console.log(`Adding file to DB: ${child.name}, parent_id: ${folderItem.id}`);
-            const childItem = await addNavigationItemToDb(childItemData, sectionId);
-            addedItems.push(childItem);
-          }
-        } else if (child.type === 'folder') {
-          // Recursively process subfolders with the actual DB ID as parent
+        if (child.type === 'file' && !isFileUsed(child.path) && child.name !== indexFileName) {
+          const childItemData: Omit<NavigationItem, 'id'> = {
+            title: child.name.replace('.md', '').replace(/-/g, ' '),
+            href: `/${child.path.replace('.md', '')}`,
+            file_path: child.path,
+            order_index: childOrder++,
+            parent_id: folderItem.id, // Use the actual DB ID from the saved folder
+            is_auto_generated: true
+          };
+          
+          console.log(`Adding file to DB: ${child.name}, parent_id: ${folderItem.id}`);
+          const childItem = await addNavigationItemToDb(childItemData, sectionId);
+          addedItems.push(childItem);
+          console.log(`File added to DB: ${child.name}, DB ID: ${childItem.id}`);
+        }
+      }
+      
+      // Then, recursively process subfolders
+      for (const child of folderNode.children) {
+        if (child.type === 'folder') {
           console.log(`Processing subfolder: ${child.name}, parent will be: ${folderItem.id}`);
           const subFolderItems = await addFolderStructureToDb(child, sectionId, folderItem.id);
           addedItems.push(...subFolderItems);
@@ -214,6 +236,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
       }
     }
     
+    console.log(`Completed processing folder: ${folderNode.name}, total items added: ${addedItems.length}`);
     return addedItems;
   };
 
@@ -475,7 +498,11 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
               onUpdateSectionTitle={handleUpdateSectionTitle}
               onRemoveItem={handleRemoveItem}
               onNavigationChange={async () => {
-                await refetch();
+                console.log('Navigation change requested, refreshing...');
+                const refreshedNavigation = await refetch();
+                if (refreshedNavigation.data?.sections) {
+                  setSections(refreshedNavigation.data.sections);
+                }
                 onNavigationChange();
               }}
             />
