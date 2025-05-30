@@ -1,10 +1,10 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, FileText, FolderOpen, Folder, Plus, Circle, ChevronDown, ChevronRight, X } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { FileNode, loadContentStructure } from "@/utils/fileSystem";
+import { FileNode } from "@/utils/fileSystem";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { ScrollArea } from "@/components/ui/scroll-area";
 
@@ -15,7 +15,7 @@ interface FileTreeProps {
   onFileSelect?: (file: string) => void;
   modifiedFiles?: Set<string>;
   searchTerm?: string;
-  onCreateFile?: (parentPath?: string) => void;
+  onCreateFile?: (fileName: string, parentPath?: string) => void;
 }
 
 function FileTree({ items, depth = 0, selectedFile, onFileSelect, modifiedFiles, searchTerm, onCreateFile }: FileTreeProps) {
@@ -98,7 +98,7 @@ function FileTree({ items, depth = 0, selectedFile, onFileSelect, modifiedFiles,
                         variant="ghost"
                         size="icon"
                         className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity"
-                        onClick={() => onCreateFile?.(item.path)}
+                        onClick={() => onCreateFile?.('', item.path)}
                       >
                         <Plus className="h-3 w-3" />
                       </Button>
@@ -148,42 +148,25 @@ interface EditorSidebarProps {
   onFileSelect: (file: string) => void;
   modifiedFiles?: Set<string>;
   onCreateFile?: (fileName: string, parentPath?: string) => void;
+  fileStructure: FileNode[];
+  isLoading: boolean;
 }
 
-export function EditorSidebar({ selectedFile, onFileSelect, modifiedFiles, onCreateFile }: EditorSidebarProps) {
+export function EditorSidebar({ selectedFile, onFileSelect, modifiedFiles, onCreateFile, fileStructure, isLoading }: EditorSidebarProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [fileStructure, setFileStructure] = useState<FileNode[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [showNewFileInput, setShowNewFileInput] = useState(false);
   const [newFileName, setNewFileName] = useState("");
   const [newFileParent, setNewFileParent] = useState<string>();
 
-  useEffect(() => {
-    const loadFiles = async () => {
-      setIsLoading(true);
-      try {
-        const structure = await loadContentStructure();
-        setFileStructure(structure);
-      } catch (error) {
-        console.error('Failed to load file structure:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-
-    loadFiles();
-  }, []);
-
-  const handleCreateFile = (parentPath?: string) => {
+  const handleCreateFile = (fileName: string = '', parentPath?: string) => {
     setNewFileParent(parentPath);
     setShowNewFileInput(true);
-    setNewFileName("");
+    setNewFileName(fileName);
   };
 
   const handleConfirmNewFile = () => {
     if (newFileName.trim()) {
-      const fileName = newFileName.endsWith('.md') ? newFileName : `${newFileName}.md`;
-      onCreateFile?.(fileName, newFileParent);
+      onCreateFile?.(newFileName, newFileParent);
       setShowNewFileInput(false);
       setNewFileName("");
       setNewFileParent(undefined);
@@ -241,6 +224,11 @@ export function EditorSidebar({ selectedFile, onFileSelect, modifiedFiles, onCre
                 Cancel
               </Button>
             </div>
+            {newFileParent && (
+              <div className="text-xs text-muted-foreground">
+                Creating in: {newFileParent}
+              </div>
+            )}
           </div>
         ) : (
           <Button className="w-full" size="sm" onClick={() => handleCreateFile()}>

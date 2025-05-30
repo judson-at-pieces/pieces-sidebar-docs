@@ -11,6 +11,7 @@ import { githubAppService } from "@/services/githubAppService";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { FileNode, loadContentStructure } from "@/utils/fileSystem";
 
 interface FileContent {
   [fileName: string]: string;
@@ -22,7 +23,25 @@ export function EditorLayout() {
   const [selectedFile, setSelectedFile] = useState<string>();
   const [fileContents, setFileContents] = useState<FileContent>({});
   const [originalContents, setOriginalContents] = useState<FileContent>({});
+  const [fileStructure, setFileStructure] = useState<FileNode[]>([]);
   const [isLoading, setIsLoading] = useState(false);
+
+  // Load file structure on mount
+  useEffect(() => {
+    const loadFiles = async () => {
+      setIsLoading(true);
+      try {
+        const structure = await loadContentStructure();
+        setFileStructure(structure);
+      } catch (error) {
+        console.error('Failed to load file structure:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadFiles();
+  }, []);
 
   // Load file content when a file is selected
   useEffect(() => {
@@ -114,9 +133,49 @@ Start editing this file...`;
     }
   };
 
+  const addFileToStructure = (structure: FileNode[], filePath: string, fileName: string): FileNode[] => {
+    const updatedStructure = [...structure];
+    
+    if (!filePath) {
+      // Add to root
+      const newFile: FileNode = {
+        name: fileName,
+        type: 'file',
+        path: fileName
+      };
+      updatedStructure.push(newFile);
+      return updatedStructure;
+    }
+
+    // Find the parent folder and add the file
+    const findAndAddFile = (nodes: FileNode[], targetPath: string): boolean => {
+      for (const node of nodes) {
+        if (node.type === 'folder' && node.path === targetPath) {
+          if (!node.children) {
+            node.children = [];
+          }
+          const newFile: FileNode = {
+            name: fileName,
+            type: 'file',
+            path: `${targetPath}/${fileName}`
+          };
+          node.children.push(newFile);
+          return true;
+        }
+        if (node.children && findAndAddFile(node.children, targetPath)) {
+          return true;
+        }
+      }
+      return false;
+    };
+
+    findAndAddFile(updatedStructure, filePath);
+    return updatedStructure;
+  };
+
   const handleCreateFile = (fileName: string, parentPath?: string) => {
-    const fullPath = parentPath ? `${parentPath}/${fileName}` : fileName;
     const cleanFileName = fileName.endsWith('.md') ? fileName : `${fileName}.md`;
+    const fullPath = parentPath ? `${parentPath}/${cleanFileName}` : cleanFileName;
     
     // Create default content for new file
     const defaultContent = `---
@@ -131,11 +190,14 @@ visibility: "PUBLIC"
 Start editing this file...`;
 
     // Add to file contents
-    setFileContents(prev => ({ ...prev, [cleanFileName]: defaultContent }));
-    setOriginalContents(prev => ({ ...prev, [cleanFileName]: defaultContent }));
+    setFileContents(prev => ({ ...prev, fullPath: defaultContent }));
+    setOriginalContents(prev => ({ ...prev, fullPath: defaultContent }));
+    
+    // Update file structure in real-time
+    setFileStructure(prev => addFileToStructure(prev, parentPath || '', cleanFileName));
     
     // Select the new file
-    setSelectedFile(cleanFileName);
+    setSelectedFile(fullPath);
     
     toast.success(`Created new file: ${cleanFileName}`);
   };
@@ -214,31 +276,8 @@ Start editing this file...`;
       console.log('GitHub App token found, preparing files for PR...');
 
       const files = Array.from(modifiedFiles).map(fileName => {
-        // Map the file name to the correct content path in public/content
-        let contentPath = fileName;
-        
-        const pathMappings: Record<string, string> = {
-          'fundamentals.md': 'meet-pieces/fundamentals.md',
-          'windows-installation-guide.md': 'meet-pieces/windows-installation-guide.md',
-          'macos-installation-guide.md': 'meet-pieces/macos-installation-guide.md',
-          'linux-installation-guide.md': 'meet-pieces/linux-installation-guide.md',
-          'cross-platform.md': 'meet-pieces/troubleshooting/cross-platform.md',
-          'macos.md': 'meet-pieces/troubleshooting/macos.md',
-          'windows.md': 'meet-pieces/troubleshooting/windows.md',
-          'linux.md': 'meet-pieces/troubleshooting/linux.md',
-          'overview.md': 'quick-guides/overview.md',
-          'ltm-context.md': 'quick-guides/ltm-context.md',
-          'copilot-with-context.md': 'quick-guides/copilot-with-context.md',
-          'download.md': 'desktop/download.md',
-          'onboarding.md': 'desktop/onboarding.md',
-        };
-        
-        if (pathMappings[fileName]) {
-          contentPath = pathMappings[fileName];
-        }
-
         return {
-          path: `public/content/${contentPath}`,
+          path: `public/content/${fileName}`,
           content: fileContents[fileName],
         };
       });
@@ -319,6 +358,8 @@ Start editing this file...`;
               onFileSelect={handleFileSelect}
               modifiedFiles={getModifiedFiles()}
               onCreateFile={handleCreateFile}
+              fileStructure={fileStructure}
+              isLoading={isLoading}
             />
           </ScrollArea>
         </SheetContent>
@@ -343,6 +384,8 @@ Start editing this file...`;
                 onFileSelect={handleFileSelect}
                 modifiedFiles={getModifiedFiles()}
                 onCreateFile={handleCreateFile}
+                fileStructure={fileStructure}
+                isLoading={isLoading}
               />
             </div>
           </div>
