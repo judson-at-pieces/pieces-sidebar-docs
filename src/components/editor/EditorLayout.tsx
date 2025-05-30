@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -135,28 +134,44 @@ Start editing this file...`;
 
     const configured = await githubService.isConfigured();
     if (!configured) {
-      toast.error('GitHub not configured. Please sign in with GitHub and select a repository in the admin panel.');
-      return;
-    }
-
-    const selectedRepo = localStorage.getItem('selected_github_repo');
-    if (!selectedRepo) {
-      toast.error('No repository selected. Please select a repository in the admin panel.');
+      toast.error('GitHub not configured. Please sign in with GitHub to create pull requests.');
       return;
     }
 
     setIsLoading(true);
     try {
-      const files = Array.from(modifiedFiles).map(fileName => ({
-        path: `public/content/${fileName}`,
-        content: fileContents[fileName],
-      }));
+      // Convert file names back to actual paths in the repository
+      const files = Array.from(modifiedFiles).map(fileName => {
+        // Map back to the actual file paths in public/content
+        const pathMappings: Record<string, string> = {
+          'fundamentals.md': 'public/content/meet-pieces/fundamentals.md',
+          'windows-installation-guide.md': 'public/content/meet-pieces/windows-installation-guide.md',
+          'macos-installation-guide.md': 'public/content/meet-pieces/macos-installation-guide.md',
+          'linux-installation-guide.md': 'public/content/meet-pieces/linux-installation-guide.md',
+          'cross-platform.md': 'public/content/meet-pieces/troubleshooting/cross-platform.md',
+          'macos.md': 'public/content/meet-pieces/troubleshooting/macos.md',
+          'windows.md': 'public/content/meet-pieces/troubleshooting/windows.md',
+          'linux.md': 'public/content/meet-pieces/troubleshooting/linux.md',
+          'overview.md': 'public/content/quick-guides/overview.md',
+          'ltm-context.md': 'public/content/quick-guides/ltm-context.md',
+          'copilot-with-context.md': 'public/content/quick-guides/copilot-with-context.md',
+          'download.md': 'public/content/desktop/download.md',
+          'onboarding.md': 'public/content/desktop/onboarding.md',
+        };
+
+        const actualPath = pathMappings[fileName] || `public/content/${fileName}`;
+
+        return {
+          path: actualPath,
+          content: fileContents[fileName],
+        };
+      });
 
       const result = await githubService.createPullRequest({
         title: `Update documentation files`,
         body: `Updated ${modifiedFiles.size} file(s):\n\n${Array.from(modifiedFiles).map(f => `- ${f}`).join('\n')}`,
         files,
-      }, selectedRepo);
+      });
 
       if (result.success) {
         toast.success(`Pull request created successfully! PR #${result.prNumber}`);

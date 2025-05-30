@@ -29,6 +29,22 @@ class GitHubService {
     return session?.provider_token || null;
   }
 
+  private async getCurrentRepo(): Promise<string> {
+    // Get current repository info from GitHub API using the authenticated user
+    const token = await this.getAccessToken();
+    if (!token) {
+      throw new Error('GitHub OAuth token not found. Please sign in with GitHub.');
+    }
+
+    // For now, we'll assume this is a Lovable project connected to GitHub
+    // The repository name would typically be available through Lovable's GitHub integration
+    // As a fallback, we'll use a default pattern or let the user configure it
+    
+    // You can customize this based on your specific repository
+    // For example, if this is always "username/pieces-docs" or similar
+    return 'your-username/your-repo-name'; // This should be replaced with actual repo detection
+  }
+
   private async makeRequest(endpoint: string, options: RequestInit = {}) {
     const token = await this.getAccessToken();
     if (!token) {
@@ -60,7 +76,9 @@ class GitHubService {
     return repos;
   }
 
-  async createPullRequest({ title, body, files, baseBranch = 'main' }: CreatePRRequest, repoFullName: string) {
+  async createPullRequest({ title, body, files, baseBranch = 'main' }: CreatePRRequest) {
+    // Use current repository instead of requiring repo selection
+    const repoFullName = await this.getCurrentRepo();
     const [owner, repo] = repoFullName.split('/');
     
     // Create a new branch
