@@ -12,11 +12,11 @@ export function EditorLayout() {
   const [content, setContent] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
   const [modifiedFiles, setModifiedFiles] = useState<Set<string>>(new Set());
+  const [activeTab, setActiveTab] = useState<'navigation' | 'content'>('navigation');
 
   const handleFileSelect = (filePath: string) => {
     setSelectedFile(filePath);
-    // Load file content here if needed
-    setContent(""); // Reset content for now
+    setContent("");
     setHasChanges(false);
   };
 
@@ -40,7 +40,6 @@ export function EditorLayout() {
   };
 
   const handleCreateFile = (fileName: string, parentPath?: string) => {
-    // Handle file creation logic here
     console.log('Creating file:', fileName, 'in:', parentPath);
   };
 
@@ -59,7 +58,7 @@ export function EditorLayout() {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
-          <p className="text-destructive">Failed to load editor</p>
+          <p className="text-destructive">Failed to load editor: {error.message}</p>
           <button 
             onClick={() => refetch()} 
             className="mt-2 px-4 py-2 bg-primary text-primary-foreground rounded"
@@ -89,20 +88,46 @@ export function EditorLayout() {
             modifiedFiles={modifiedFiles}
             onCreateFile={handleCreateFile}
             fileStructure={fileStructure}
-            isLoading={isLoading}
+            isLoading={false}
           />
         </div>
         
         <div className="flex-1 flex flex-col">
-          <EditorTabs
-            selectedFile={selectedFile}
-            content={content}
-            onContentChange={handleContentChange}
-            onSave={handleSave}
-            hasChanges={hasChanges}
-            fileStructure={fileStructure}
-            onNavigationChange={refetch}
-          />
+          <div className="border-b p-2">
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setActiveTab('navigation')}
+                className={`px-4 py-2 rounded ${
+                  activeTab === 'navigation' 
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                }`}
+              >
+                Navigation
+              </button>
+              <button
+                onClick={() => setActiveTab('content')}
+                className={`px-4 py-2 rounded ${
+                  activeTab === 'content' 
+                    ? 'bg-primary text-primary-foreground' 
+                    : 'bg-secondary text-secondary-foreground hover:bg-secondary/80'
+                }`}
+              >
+                Content
+              </button>
+            </div>
+          </div>
+          
+          <div className="flex-1 overflow-hidden">
+            {activeTab === 'navigation' ? (
+              <NavigationEditor 
+                fileStructure={fileStructure} 
+                onNavigationChange={refetch}
+              />
+            ) : (
+              <EditorMain />
+            )}
+          </div>
         </div>
       </div>
     </div>
