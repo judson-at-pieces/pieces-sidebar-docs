@@ -45,20 +45,27 @@ Deno.serve(async (req) => {
       )
     }
 
-    // Get current user if authenticated
+    // Get current user if authenticated using the regular client with the auth header
     const authHeader = req.headers.get('Authorization')
     let currentUserId = null
     
     if (authHeader) {
       const supabaseClient = createClient(
         Deno.env.get('SUPABASE_URL') ?? '',
-        Deno.env.get('SUPABASE_ANON_KEY') ?? '',
-        { global: { headers: { Authorization: authHeader } } }
+        Deno.env.get('SUPABASE_ANON_KEY') ?? ''
       )
       
-      const { data: { user } } = await supabaseClient.auth.getUser()
-      currentUserId = user?.id
-      console.log('Current user ID:', currentUserId)
+      // Set the auth header for this request
+      const { data: { user }, error: userError } = await supabaseClient.auth.getUser(
+        authHeader.replace('Bearer ', '')
+      )
+      
+      if (user && !userError) {
+        currentUserId = user.id
+        console.log('Current user ID:', currentUserId)
+      } else {
+        console.log('Error getting user:', userError?.message)
+      }
     }
 
     // Mark code as used
@@ -76,13 +83,23 @@ Deno.serve(async (req) => {
 
     // If user is authenticated, try to assign role
     if (currentUserId) {
+      console.log('Attempting to assign editor role to user:', currentUserId)
+      
       const { error: roleError } = await supabaseAdmin
         .from('user_roles')
         .insert({ user_id: currentUserId, role: 'editor' })
         
       if (roleError) {
-        console.log('Role assignment error (might already exist):', roleError.message)
+        console.log('Role assignment error:', roleError.message)
+        // Check if it's a duplicate key error (user already has the role)
+        if (!roleError.message.includes('duplicate key')) {
+          console.error('Unexpected role assignment error:', roleError)
+        }
+      } else {
+        console.log('Successfully assigned editor role to user')
       }
+    } else {
+      console.log('No authenticated user found, skipping role assignment')
     }
 
     console.log('Success! Code validated.')
