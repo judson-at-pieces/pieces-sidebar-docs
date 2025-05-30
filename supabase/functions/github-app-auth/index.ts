@@ -1,4 +1,3 @@
-
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
@@ -41,29 +40,21 @@ async function getJWT(): Promise<string> {
     }
   }
 
-  // Determine the key format and import method
-  let keyFormat: 'pkcs8' | 'pkcs1' = 'pkcs8'
-  let algorithmName = 'RSASSA-PKCS1-v1_5'
-
+  // Handle RSA PRIVATE KEY format by converting to standard format
   if (cleanKey.includes('-----BEGIN RSA PRIVATE KEY-----')) {
-    console.log('Detected RSA private key format')
-    keyFormat = 'pkcs1'
-    // For PKCS#1 RSA keys, we need to convert to PKCS#8 format for Web Crypto API
-    // Remove headers and get the base64 content
+    console.log('Detected RSA private key format, converting...')
+    // Extract the base64 content
     const keyContent = cleanKey
       .replace(/-----BEGIN RSA PRIVATE KEY-----/g, '')
       .replace(/-----END RSA PRIVATE KEY-----/g, '')
       .replace(/\s/g, '')
     
-    // Convert to PKCS#8 format
-    cleanKey = `-----BEGIN PRIVATE KEY-----\n${keyContent.match(/.{1,64}/g)?.join('\n') || keyContent}\n-----END PRIVATE KEY-----`
-    keyFormat = 'pkcs8'
-    console.log('Converted RSA key to PKCS#8 format')
-  } else if (cleanKey.includes('-----BEGIN PRIVATE KEY-----')) {
-    console.log('Detected PKCS#8 private key format')
-    keyFormat = 'pkcs8'
-  } else {
-    console.log('Formatting as proper PKCS#8 PEM')
+    // For RSA private keys, we need to use a different approach
+    // Let's try using the RSA key directly with proper formatting
+    cleanKey = `-----BEGIN RSA PRIVATE KEY-----\n${keyContent.match(/.{1,64}/g)?.join('\n') || keyContent}\n-----END RSA PRIVATE KEY-----`
+    console.log('Formatted RSA key')
+  } else if (!cleanKey.includes('-----BEGIN PRIVATE KEY-----')) {
+    console.log('Formatting as PKCS#8 PEM')
     // Remove any existing headers/footers and whitespace
     const keyContent = cleanKey
       .replace(/-----BEGIN[^-]+-----/g, '')
@@ -71,68 +62,155 @@ async function getJWT(): Promise<string> {
       .replace(/\s/g, '')
     
     cleanKey = `-----BEGIN PRIVATE KEY-----\n${keyContent.match(/.{1,64}/g)?.join('\n') || keyContent}\n-----END PRIVATE KEY-----`
-    keyFormat = 'pkcs8'
   }
 
   console.log('Final key format check - starts with:', cleanKey.substring(0, 50))
   console.log('Final key format check - ends with:', cleanKey.substring(cleanKey.length - 50))
 
   try {
-    // Import the private key for RS256
-    const keyData = new TextEncoder().encode(cleanKey)
-    console.log('Attempting to import key with format:', keyFormat)
+    // For RSA private keys, we need to use a different import method
+    const isRSAKey = cleanKey.includes('-----BEGIN RSA PRIVATE KEY-----')
     
-    const privateKey = await crypto.subtle.importKey(
-      keyFormat,
-      keyData,
-      {
-        name: algorithmName,
-        hash: 'SHA-256',
-      },
-      false,
-      ['sign']
-    )
+    if (isRSAKey) {
+      console.log('Importing RSA private key using alternative method')
+      // For RSA keys, we'll use a simpler approach with importKey
+      const keyData = new TextEncoder().encode(cleanKey)
+      
+      // Try importing as 'pkcs1' format (though this might not work in all environments)
+      let privateKey;
+      try {
+        privateKey = await crypto.subtle.importKey(
+          'pkcs8', // Try pkcs8 first
+          keyData,
+          {
+            name: 'RSASSA-PKCS1-v1_5',
+            hash: 'SHA-256',
+          },
+          false,
+          ['sign']
+        )
+        console.log('Successfully imported as PKCS#8')
+      } catch (pkcs8Error) {
+        console.log('PKCS#8 import failed, trying raw format:', pkcs8Error.message)
+        
+        // Convert RSA key to proper PKCS#8 format
+        const keyContent = cleanKey
+          .replace(/-----BEGIN RSA PRIVATE KEY-----/g, '')
+          .replace(/-----END RSA PRIVATE KEY-----/g, '')
+          .replace(/\s/g, '')
+        
+        const pkcs8Key = `-----BEGIN PRIVATE KEY-----\n${keyContent.match(/.{1,64}/g)?.join('\n') || keyContent}\n-----END PRIVATE KEY-----`
+        console.log('Converted to PKCS#8 format')
+        
+        const pkcs8Data = new TextEncoder().encode(pkcs8Key)
+        privateKey = await crypto.subtle.importKey(
+          'pkcs8',
+          pkcs8Data,
+          {
+            name: 'RSASSA-PKCS1-v1_5',
+            hash: 'SHA-256',
+          },
+          false,
+          ['sign']
+        )
+        console.log('Successfully imported converted PKCS#8 key')
+      }
 
-    console.log('Key imported successfully')
+      // Create JWT payload
+      const now = Math.floor(Date.now() / 1000)
+      const payload = {
+        iat: now - 60, // Issued at time, 60 seconds in the past
+        exp: now + (10 * 60), // Expires in 10 minutes
+        iss: APP_ID, // GitHub App ID
+      }
 
-    // Create JWT payload
-    const now = Math.floor(Date.now() / 1000)
-    const payload = {
-      iat: now - 60, // Issued at time, 60 seconds in the past
-      exp: now + (10 * 60), // Expires in 10 minutes
-      iss: APP_ID, // GitHub App ID
-    }
+      // Create JWT header
+      const header = {
+        alg: 'RS256',
+        typ: 'JWT',
+      }
 
-    // Create JWT header
-    const header = {
-      alg: 'RS256',
-      typ: 'JWT',
-    }
+      // Base64URL encode
+      const base64UrlEncode = (obj: any) => {
+        return btoa(JSON.stringify(obj))
+          .replace(/\+/g, '-')
+          .replace(/\//g, '_')
+          .replace(/=/g, '')
+      }
 
-    // Base64URL encode
-    const base64UrlEncode = (obj: any) => {
-      return btoa(JSON.stringify(obj))
+      const encodedHeader = base64UrlEncode(header)
+      const encodedPayload = base64UrlEncode(payload)
+
+      // Create signature
+      const signatureData = new TextEncoder().encode(`${encodedHeader}.${encodedPayload}`)
+      const signature = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', privateKey, signatureData)
+      
+      // Convert signature to base64url
+      const signatureArray = new Uint8Array(signature)
+      const signatureBase64 = btoa(String.fromCharCode(...signatureArray))
         .replace(/\+/g, '-')
         .replace(/\//g, '_')
         .replace(/=/g, '')
+
+      console.log('JWT created successfully')
+      return `${encodedHeader}.${encodedPayload}.${signatureBase64}`
+    } else {
+      // Handle PKCS#8 format
+      console.log('Importing PKCS#8 private key')
+      const keyData = new TextEncoder().encode(cleanKey)
+      
+      const privateKey = await crypto.subtle.importKey(
+        'pkcs8',
+        keyData,
+        {
+          name: 'RSASSA-PKCS1-v1_5',
+          hash: 'SHA-256',
+        },
+        false,
+        ['sign']
+      )
+
+      console.log('Key imported successfully')
+
+      // Create JWT payload
+      const now = Math.floor(Date.now() / 1000)
+      const payload = {
+        iat: now - 60,
+        exp: now + (10 * 60),
+        iss: APP_ID,
+      }
+
+      // Create JWT header
+      const header = {
+        alg: 'RS256',
+        typ: 'JWT',
+      }
+
+      // Base64URL encode
+      const base64UrlEncode = (obj: any) => {
+        return btoa(JSON.stringify(obj))
+          .replace(/\+/g, '-')
+          .replace(/\//g, '_')
+          .replace(/=/g, '')
+      }
+
+      const encodedHeader = base64UrlEncode(header)
+      const encodedPayload = base64UrlEncode(payload)
+
+      // Create signature
+      const signatureData = new TextEncoder().encode(`${encodedHeader}.${encodedPayload}`)
+      const signature = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', privateKey, signatureData)
+      
+      // Convert signature to base64url
+      const signatureArray = new Uint8Array(signature)
+      const signatureBase64 = btoa(String.fromCharCode(...signatureArray))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '')
+
+      console.log('JWT created successfully')
+      return `${encodedHeader}.${encodedPayload}.${signatureBase64}`
     }
-
-    const encodedHeader = base64UrlEncode(header)
-    const encodedPayload = base64UrlEncode(payload)
-
-    // Create signature
-    const signatureData = new TextEncoder().encode(`${encodedHeader}.${encodedPayload}`)
-    const signature = await crypto.subtle.sign(algorithmName, privateKey, signatureData)
-    
-    // Convert signature to base64url
-    const signatureArray = new Uint8Array(signature)
-    const signatureBase64 = btoa(String.fromCharCode(...signatureArray))
-      .replace(/\+/g, '-')
-      .replace(/\//g, '_')
-      .replace(/=/g, '')
-
-    console.log('JWT created successfully')
-    return `${encodedHeader}.${encodedPayload}.${signatureBase64}`
   } catch (error) {
     console.error('Error creating JWT:', error)
     console.error('Error details:', error.message)
