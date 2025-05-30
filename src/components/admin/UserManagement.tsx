@@ -107,19 +107,21 @@ export function UserManagement() {
       console.log('All user IDs:', Array.from(allUserIds));
 
       // Build user list with profile and role information
-      const usersWithRoles: UserProfile[] = Array.from(allUserIds).map(userId => {
-        const profile = profilesMap.get(userId);
-        const userRolesList = userRoles?.filter(role => role.user_id === userId)
+      const usersWithRoles: UserProfile[] = Array.from(allUserIds).map((userId: unknown) => {
+        // Ensure userId is a string
+        const userIdString = String(userId);
+        const profile = profilesMap.get(userIdString);
+        const userRolesList = userRoles?.filter(role => role.user_id === userIdString)
           .map(role => role.role) || [];
 
-        console.log(`User ${userId}:`, {
+        console.log(`User ${userIdString}:`, {
           profile,
           hasProfile: !!profile,
           roles: userRolesList
         });
 
         return {
-          id: userId,
+          id: userIdString,
           email: profile?.email || null,
           full_name: profile?.full_name || null,
           created_at: profile?.created_at || new Date().toISOString(),
