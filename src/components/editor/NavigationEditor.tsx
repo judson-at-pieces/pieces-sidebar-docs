@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { DragDropContext, DropResult } from "@hello-pangea/dnd";
 import { navigationService, NavigationSection, NavigationItem } from "@/services/navigationService";
@@ -29,56 +30,82 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
     );
   };
 
-  // Create navigation items from folder structure - preserving complete hierarchy
-  const createNavigationItemsFromFolder = (folderNode: FileNode, parentId?: string): NavigationItem[] => {
-    console.log('Creating navigation items for folder:', folderNode.name, 'with children:', folderNode.children);
+  // Add a single navigation item to the database
+  const addNavigationItemToDb = async (item: Omit<NavigationItem, 'id'>, sectionId: string): Promise<NavigationItem> => {
+    try {
+      const dbItem = await navigationService.addNavigationItem({
+        section_id: sectionId,
+        parent_id: item.parent_id,
+        title: item.title,
+        href: item.href,
+        description: item.description,
+        icon: item.icon,
+        order_index: item.order_index,
+        is_auto_generated: item.is_auto_generated,
+        file_path: item.file_path
+      });
+      return dbItem;
+    } catch (error) {
+      console.error('Error adding navigation item:', error);
+      throw error;
+    }
+  };
+
+  // Recursively add folder structure to database
+  const addFolderStructureToDb = async (folderNode: FileNode, sectionId: string, parentId?: string): Promise<NavigationItem[]> => {
+    const addedItems: NavigationItem[] = [];
     
-    // Check if this folder has an index file (e.g., cli.md for cli folder)
+    // Check if this folder has an index file
     const indexFileName = `${folderNode.name}.md`;
     const indexFile = folderNode.children?.find(child => 
       child.type === 'file' && child.name === indexFileName
     );
     
     // Create the main folder item
-    const folderItem: NavigationItem = {
-      id: `temp-${Date.now()}-${Math.random()}`,
+    const folderItemData: Omit<NavigationItem, 'id'> = {
       title: folderNode.name.replace(/-/g, ' '),
-      // If there's an index file, use its path for the href, otherwise use folder path
       href: indexFile ? `/${indexFile.path.replace('.md', '')}` : `/${folderNode.path}`,
       file_path: indexFile?.path || folderNode.path,
       order_index: 0,
       parent_id: parentId,
-      is_auto_generated: true,
-      items: []
+      is_auto_generated: true
     };
-    
-    // Process ALL children and add them to the folder's items array
+
+    console.log('Adding folder to database:', folderItemData.title);
+    const folderItem = await addNavigationItemToDb(folderItemData, sectionId);
+    addedItems.push(folderItem);
+
+    // Process children
     if (folderNode.children) {
-      folderNode.children.forEach(child => {
+      let childOrder = 0;
+      
+      for (const child of folderNode.children) {
         if (child.type === 'file' && !isFileUsed(child.path)) {
           // Skip the index file since it's already represented by the folder itself
           if (child.name !== indexFileName) {
-            const childItem: NavigationItem = {
-              id: `temp-${Date.now()}-${Math.random()}`,
+            const childItemData: Omit<NavigationItem, 'id'> = {
               title: child.name.replace('.md', '').replace(/-/g, ' '),
               href: `/${child.path.replace('.md', '')}`,
               file_path: child.path,
-              order_index: 0,
+              order_index: childOrder++,
               parent_id: folderItem.id,
               is_auto_generated: true
             };
-            folderItem.items!.push(childItem);
+            
+            console.log('Adding file to database:', childItemData.title);
+            const childItem = await addNavigationItemToDb(childItemData, sectionId);
+            addedItems.push(childItem);
           }
         } else if (child.type === 'folder') {
-          // Recursively process subfolders and add them as children
-          const subFolderItems = createNavigationItemsFromFolder(child, folderItem.id);
-          folderItem.items!.push(...subFolderItems);
+          // Recursively process subfolders
+          console.log('Processing subfolder:', child.name);
+          const subFolderItems = await addFolderStructureToDb(child, sectionId, folderItem.id);
+          addedItems.push(...subFolderItems);
         }
-      });
+      }
     }
     
-    console.log('Created folder item:', folderItem.title, 'with children count:', folderItem.items?.length);
-    return [folderItem]; // Return array with single folder item containing all children
+    return addedItems;
   };
 
   const handleDragEnd = async (result: DropResult) => {
@@ -96,112 +123,92 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
       const destSectionId = destination.droppableId.replace('section-', '');
       console.log('Dragging from available files to section:', destSectionId);
       
-      // Handle both files and folders
-      if (draggableId.startsWith('folder-')) {
-        console.log('Processing folder drag:', draggableId);
-        // Handle folder drag - preserve complete folder structure including all children
-        const folderPath = draggableId.replace('folder-', '');
-        const findFolderByPath = (nodes: FileNode[], path: string): FileNode | null => {
-          for (const node of nodes) {
-            if (node.path === path && node.type === 'folder') {
-              return node;
+      try {
+        // Handle both files and folders
+        if (draggableId.startsWith('folder-')) {
+          console.log('Processing folder drag:', draggableId);
+          // Handle folder drag
+          const folderPath = draggableId.replace('folder-', '');
+          const findFolderByPath = (nodes: FileNode[], path: string): FileNode | null => {
+            for (const node of nodes) {
+              if (node.path === path && node.type === 'folder') {
+                return node;
+              }
+              if (node.children) {
+                const found = findFolderByPath(node.children, path);
+                if (found) return found;
+              }
             }
-            if (node.children) {
-              const found = findFolderByPath(node.children, path);
-              if (found) return found;
-            }
-          }
-          return null;
-        };
+            return null;
+          };
 
-        const folder = findFolderByPath(fileStructure, folderPath);
-        console.log('Found folder:', folder);
-        
-        if (!folder) {
-          console.error('Folder not found for path:', folderPath);
-          return;
+          const folder = findFolderByPath(fileStructure, folderPath);
+          console.log('Found folder:', folder);
+          
+          if (!folder) {
+            console.error('Folder not found for path:', folderPath);
+            toast.error("Folder not found");
+            return;
+          }
+
+          // Add the complete folder structure to the database
+          console.log('Adding folder structure to database...');
+          const addedItems = await addFolderStructureToDb(folder, destSectionId);
+          
+          if (addedItems.length === 0) {
+            toast.info("No available files in this folder");
+            return;
+          }
+
+          console.log('Successfully added items to database:', addedItems.length);
+          
+          // Refresh navigation data
+          onNavigationChange();
+          
+          toast.success(`Added ${folder.name} folder with ${addedItems.length} items to navigation`);
+          
+        } else {
+          console.log('Processing file drag:', draggableId);
+          // Handle single file drag
+          const findFileByPath = (nodes: FileNode[], path: string): FileNode | null => {
+            for (const node of nodes) {
+              if (node.path === path && node.type === 'file') {
+                return node;
+              }
+              if (node.children) {
+                const found = findFileByPath(node.children, path);
+                if (found) return found;
+              }
+            }
+            return null;
+          };
+
+          const file = findFileByPath(fileStructure, draggableId);
+          
+          if (!file) {
+            console.error('File not found for path:', draggableId);
+            toast.error("File not found");
+            return;
+          }
+          
+          const newItemData: Omit<NavigationItem, 'id'> = {
+            title: file.name.replace('.md', '').replace(/-/g, ' '),
+            href: `/${file.path.replace('.md', '')}`,
+            file_path: file.path,
+            order_index: destination.index,
+            parent_id: undefined,
+            is_auto_generated: true
+          };
+          
+          console.log('Adding file to database:', newItemData.title);
+          await addNavigationItemToDb(newItemData, destSectionId);
+          
+          onNavigationChange();
+          toast.success(`Added ${file.name.replace('.md', '')} to navigation`);
         }
-
-        // Create complete navigation structure including all children
-        const newItems = createNavigationItemsFromFolder(folder);
-        console.log('Created navigation items:', newItems);
-        console.log('Main folder item:', newItems[0]);
-        console.log('Main folder children:', newItems[0]?.items);
-        
-        if (newItems.length === 0) {
-          toast.info("No available files in this folder");
-          return;
-        }
-
-        // Add the folder structure to the section
-        const updatedSections = sections.map(s => {
-          if (s.id === destSectionId) {
-            const allItems = [...(s.items || []), ...newItems];
-            return { 
-              ...s, 
-              items: allItems.map((item, index) => ({ ...item, order_index: index }))
-            };
-          }
-          return s;
-        });
-        
-        setSections(updatedSections);
-        onNavigationChange();
-        
-        // Count total items added (including children)
-        const mainFolder = newItems[0];
-        const totalItemsAdded = 1 + (mainFolder?.items?.length || 0);
-        
-        toast.success(`Added ${folder.name} folder with ${totalItemsAdded} items to navigation`);
-        
-      } else {
-        console.log('Processing file drag:', draggableId);
-        // Handle single file drag
-        const findFileByPath = (nodes: FileNode[], path: string): FileNode | null => {
-          for (const node of nodes) {
-            if (node.path === path && node.type === 'file') {
-              return node;
-            }
-            if (node.children) {
-              const found = findFileByPath(node.children, path);
-              if (found) return found;
-            }
-          }
-          return null;
-        };
-
-        const file = findFileByPath(fileStructure, draggableId);
-        
-        if (!file) {
-          console.error('File not found for path:', draggableId);
-          return;
-        }
-        
-        const newItem: NavigationItem = {
-          id: `temp-${Date.now()}`,
-          title: file.name.replace('.md', '').replace(/-/g, ' '),
-          href: `/${file.path.replace('.md', '')}`,
-          file_path: file.path,
-          order_index: destination.index,
-          parent_id: undefined,
-          is_auto_generated: true
-        };
-        
-        const updatedSections = sections.map(s => {
-          if (s.id === destSectionId) {
-            const newItems = [...(s.items || [])];
-            newItems.splice(destination.index, 0, newItem);
-            return { 
-              ...s, 
-              items: newItems.map((item, index) => ({ ...item, order_index: index }))
-            };
-          }
-          return s;
-        });
-        
-        setSections(updatedSections);
-        onNavigationChange();
-        toast.success(`Added ${file.name.replace('.md', '')} to navigation`);
+      } catch (error) {
+        console.error('Error adding items to navigation:', error);
+        toast.error("Failed to add items to navigation");
       }
       return;
     }
@@ -329,7 +336,8 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
       <div className="p-4 border-b">
         <h2 className="text-lg font-semibold mb-2">Navigation Editor</h2>
         <p className="text-sm text-muted-foreground">
-          Drag files or entire folders from the "Available Files" section into navigation sections to organize your documentation. Folders will maintain their complete structure including index files and all children.
+          Drag files or entire folders from the "Available Files" section into navigation sections to organize your documentation. 
+          Folder structures will be preserved and saved to the database.
         </p>
       </div>
       
