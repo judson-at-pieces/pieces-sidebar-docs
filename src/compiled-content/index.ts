@@ -17,10 +17,7 @@ export interface CompiledContentModule {
 }
 
 // Content registry populated by the build script
-const contentRegistry: Record<string, CompiledContentModule> = {};
-
-// Export the registry directly so it can be imported by other modules
-export { contentRegistry };
+export const contentRegistry: Record<string, CompiledContentModule> = {};
 
 // Function to get compiled content from registry
 export function getCompiledContent(path: string): CompiledContentModule | null {
