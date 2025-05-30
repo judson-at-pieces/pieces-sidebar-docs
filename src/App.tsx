@@ -4,6 +4,7 @@ import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-d
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { Toaster } from '@/components/ui/toaster';
 import { AuthProvider } from '@/contexts/AuthContext';
+import { ProtectedRoute } from '@/components/ProtectedRoute';
 import Index from '@/pages/Index';
 import DocsLayout from '@/components/DocsLayout';
 import GettingStarted from '@/pages/docs/GettingStarted';
@@ -14,6 +15,7 @@ import LongTermMemoryGuide from '@/pages/docs/LongTermMemoryGuide';
 import NotFound from '@/pages/NotFound';
 import Auth from '@/pages/Auth';
 import AuthCallback from '@/pages/AuthCallback';
+import Admin from '@/pages/Admin';
 import MeetPieces from '@/pages/docs/MeetPieces';
 import QuickStart from '@/pages/docs/QuickStart';
 import Integrations from '@/pages/docs/Integrations';
@@ -47,6 +49,16 @@ function AppContent() {
           <Route path="/auth" element={<Auth />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
           
+          {/* Protected admin route */}
+          <Route 
+            path="/admin" 
+            element={
+              <ProtectedRoute requireRole="admin">
+                <Admin />
+              </ProtectedRoute>
+            } 
+          />
+          
           {/* Documentation routes */}
           <Route path="/docs" element={<DocsLayout />}>
             <Route index element={<Navigate to="/docs/getting-started" replace />} />
@@ -60,19 +72,11 @@ function AppContent() {
             <Route path="integrations" element={<Integrations />} />
             <Route path="api-reference" element={<ApiReference />} />
             <Route path="examples" element={<Examples />} />
+            {/* Catch-all for compiled content within docs */}
             <Route path="*" element={<CompiledDocPage />} />
           </Route>
 
-          {/* Dynamic content routes - catch all paths that aren't explicitly handled above */}
-          <Route path="*" element={<DocsLayout />}>
-            <Route path="*" element={<CompiledDocPage />} />
-          </Route>
-
-          {/* Protected routes - temporarily disabled */}
-          <Route path="/admin" element={<div className="p-8 text-center">Admin panel temporarily unavailable</div>} />
-          <Route path="/editor" element={<div className="p-8 text-center">Editor temporarily unavailable</div>} />
-
-          {/* 404 */}
+          {/* 404 - must be last */}
           <Route path="*" element={<NotFound />} />
         </Routes>
       </div>
