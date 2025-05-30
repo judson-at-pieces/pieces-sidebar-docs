@@ -30,42 +30,66 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setSession(session);
-      setUser(session?.user ?? null);
-      if (session?.user) {
-        fetchUserRoles(session.user.id);
-      }
-      setLoading(false);
-    }).catch((error) => {
-      logger.error('Error getting initial session', { error: error.message });
-      setLoading(false);
-    });
+    let mounted = true;
 
-    // Listen for auth changes
+    const initializeAuth = async () => {
+      try {
+        // Get initial session
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) {
+          logger.error('Error getting initial session', { error: error.message });
+        } else if (mounted) {
+          setSession(session);
+          setUser(session?.user ?? null);
+          if (session?.user) {
+            await fetchUserRoles(session.user.id);
+          }
+        }
+      } catch (error: any) {
+        logger.error('Error initializing auth', { error: error.message });
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    };
+
+    // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
-        logger.debug('Auth state change', { event, userEmail: session?.user?.email });
-        setSession(session);
-        setUser(session?.user ?? null);
+        if (!mounted) return;
         
-        if (session?.user) {
-          // Audit log for authentication
-          auditLog.authAttempt(session.user.email || '', true, 'github');
+        try {
+          logger.debug('Auth state change', { event, userEmail: session?.user?.email });
+          setSession(session);
+          setUser(session?.user ?? null);
           
-          // Check for validated access code and handle role assignment
-          setTimeout(async () => {
-            await handlePostSignIn(session.user);
-          }, 500);
-        } else {
-          setUserRoles([]);
+          if (session?.user) {
+            // Audit log for authentication
+            auditLog.authAttempt(session.user.email || '', true, 'github');
+            
+            // Handle post sign in
+            setTimeout(async () => {
+              if (mounted) {
+                await handlePostSignIn(session.user);
+              }
+            }, 500);
+          } else {
+            setUserRoles([]);
+          }
+        } catch (error: any) {
+          logger.error('Error handling auth state change', { error: error.message });
         }
-        setLoading(false);
       }
     );
 
-    return () => subscription.unsubscribe();
+    initializeAuth();
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const handlePostSignIn = async (user: User) => {
@@ -110,7 +134,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   };
 
   const fetchUserRoles = async (userId: string) => {
-    if (!isSupabaseConfigured) {
+    if (!isSupabaseConfigured || !userId) {
       return;
     }
     

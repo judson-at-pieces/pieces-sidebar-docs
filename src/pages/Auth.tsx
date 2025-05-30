@@ -9,13 +9,37 @@ import { GitHubAuthButton } from '@/components/auth/GitHubAuthButton';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function Auth() {
-  const { user, loading, hasRole, signOut } = useAuth();
+  const { user, loading, hasRole, signOut, isSupabaseConfigured } = useAuth();
   const [hasValidCode, setHasValidCode] = useState(false);
 
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div>Loading...</div>
+      </div>
+    );
+  }
+
+  // If Supabase is not configured, show a message
+  if (!isSupabaseConfigured) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Authentication Unavailable</CardTitle>
+            <CardDescription>
+              Authentication is not configured. Please contact an administrator.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Button 
+              onClick={() => window.location.href = '/'}
+              className="w-full"
+            >
+              Return Home
+            </Button>
+          </CardContent>
+        </Card>
       </div>
     );
   }
