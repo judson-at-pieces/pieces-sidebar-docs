@@ -16,17 +16,36 @@ async function getJWT(): Promise<string> {
     throw new Error('GITHUB_APP_PRIVATE_KEY not configured')
   }
 
-  // Clean up the private key format
-  let cleanKey = privateKeyPem
+  // Clean up the private key format - handle both base64 and PEM formats
+  let cleanKey = privateKeyPem.trim()
+  
+  // If it doesn't have PEM headers, assume it's base64 encoded
   if (!cleanKey.includes('-----BEGIN')) {
-    cleanKey = `-----BEGIN PRIVATE KEY-----\n${cleanKey}\n-----END PRIVATE KEY-----`
+    try {
+      // Try to decode from base64
+      cleanKey = atob(cleanKey)
+    } catch (e) {
+      console.error('Failed to decode base64 private key:', e)
+    }
+  }
+  
+  // Ensure proper PEM format
+  if (!cleanKey.includes('-----BEGIN PRIVATE KEY-----')) {
+    // Remove any existing headers/footers and whitespace
+    const keyContent = cleanKey
+      .replace(/-----BEGIN[^-]+-----/g, '')
+      .replace(/-----END[^-]+-----/g, '')
+      .replace(/\s/g, '')
+    
+    cleanKey = `-----BEGIN PRIVATE KEY-----\n${keyContent.match(/.{1,64}/g)?.join('\n') || keyContent}\n-----END PRIVATE KEY-----`
   }
 
   try {
-    // Import the private key
+    // Import the private key for RS256
+    const keyData = new TextEncoder().encode(cleanKey)
     const privateKey = await crypto.subtle.importKey(
       'pkcs8',
-      new TextEncoder().encode(cleanKey),
+      keyData,
       {
         name: 'RSASSA-PKCS1-v1_5',
         hash: 'SHA-256',
@@ -49,17 +68,29 @@ async function getJWT(): Promise<string> {
       typ: 'JWT',
     }
 
-    // Encode header and payload
-    const encodedHeader = btoa(JSON.stringify(header)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
-    const encodedPayload = btoa(JSON.stringify(payload)).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
+    // Base64URL encode
+    const base64UrlEncode = (obj: any) => {
+      return btoa(JSON.stringify(obj))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=/g, '')
+    }
+
+    const encodedHeader = base64UrlEncode(header)
+    const encodedPayload = base64UrlEncode(payload)
 
     // Create signature
     const signatureData = new TextEncoder().encode(`${encodedHeader}.${encodedPayload}`)
     const signature = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', privateKey, signatureData)
-    const encodedSignature = btoa(String.fromCharCode(...new Uint8Array(signature)))
-      .replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_')
+    
+    // Convert signature to base64url
+    const signatureArray = new Uint8Array(signature)
+    const signatureBase64 = btoa(String.fromCharCode(...signatureArray))
+      .replace(/\+/g, '-')
+      .replace(/\//g, '_')
+      .replace(/=/g, '')
 
-    return `${encodedHeader}.${encodedPayload}.${encodedSignature}`
+    return `${encodedHeader}.${encodedPayload}.${signatureBase64}`
   } catch (error) {
     console.error('Error creating JWT:', error)
     throw new Error(`Failed to create JWT: ${error.message}`)
