@@ -129,14 +129,20 @@ export class SimpleMarkdownCompiler {
       }
 
       // Generate TSX content
-      const tsxContent = this.generateTsxComponent(data);
+      const tsxContent = this.generateTsxComponent(data, outputPath);
       
       fs.writeFileSync(outputPath, tsxContent);
       console.log(`📝 Generated TSX: ${outputPath}`);
     }
   }
 
-  private generateTsxComponent(data: any): string {
+  private generateTsxComponent(data: any, outputPath: string): string {
+    // Calculate the correct relative path to MarkdownRenderer
+    const outputDir = path.dirname(outputPath);
+    const srcDir = path.join(process.cwd(), 'src');
+    const relativePath = path.relative(outputDir, path.join(srcDir, 'components', 'MarkdownRenderer'));
+    const importPath = './' + relativePath.replace(/\\/g, '/').replace(/\.tsx?$/, '');
+
     // Escape content for JSX template literal
     const escapedContent = data.content
       .replace(/\\/g, '\\\\')
@@ -144,7 +150,7 @@ export class SimpleMarkdownCompiler {
       .replace(/\${/g, '\\${');
 
     return `import React from 'react';
-import { MarkdownRenderer } from '../../../components/MarkdownRenderer';
+import { MarkdownRenderer } from '${importPath}';
 
 export const frontmatter = ${JSON.stringify(data.frontmatter, null, 2)};
 
