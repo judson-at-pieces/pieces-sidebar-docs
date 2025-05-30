@@ -30,7 +30,14 @@ function App() {
                 <Routes>
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/auth/callback" element={<AuthCallback />} />
-                  <Route path="/admin" element={<Admin />} />
+                  <Route
+                    path="/admin"
+                    element={
+                      <ProtectedRoute requireRole="admin">
+                        <Admin />
+                      </ProtectedRoute>
+                    }
+                  />
                   <Route
                     path="/edit"
                     element={
@@ -39,22 +46,8 @@ function App() {
                       </ProtectedRoute>
                     }
                   />
-                  <Route
-                    path="/"
-                    element={
-                      <ProtectedRoute>
-                        <Index />
-                      </ProtectedRoute>
-                    }
-                  />
-                  <Route
-                    path="/docs/*"
-                    element={
-                      <ProtectedRoute>
-                        <DocsLayout />
-                      </ProtectedRoute>
-                    }
-                  >
+                  <Route path="/" element={<Index />} />
+                  <Route path="/docs/*" element={<DocsLayout />}>
                     <Route path="*" element={<DynamicDocPage />} />
                   </Route>
                 </Routes>

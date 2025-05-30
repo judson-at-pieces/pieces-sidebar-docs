@@ -111,7 +111,7 @@ const Index = () => {
             </div>
             <nav className="flex items-center space-x-6">
               <div className="hidden md:flex items-center space-x-6">
-                <Link to="/docs/getting-started" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Link to="/docs/meet-pieces/fundamentals" className="text-muted-foreground hover:text-foreground transition-colors">
                   Documentation
                 </Link>
                 <Button variant="outline" size="sm" className="border-border text-muted-foreground hover:text-foreground hover:border-muted-foreground">
@@ -147,7 +147,7 @@ const Index = () => {
           </p>
           
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
-            <Link to="/docs/getting-started">
+            <Link to="/docs/meet-pieces/fundamentals">
               <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg">
                 <BookOpen className="mr-2 w-5 h-5" />
                 Read the Docs
