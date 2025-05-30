@@ -1,11 +1,13 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { logger } from '@/utils/logger';
 
 export default function AuthCallback() {
   const { user, loading } = useAuth();
+  const [processingAuth, setProcessingAuth] = useState(true);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   useEffect(() => {
     const handleAuthCallback = async () => {
@@ -26,36 +28,69 @@ export default function AuthCallback() {
       if (error) {
         console.error('OAuth callback error:', error, errorDescription);
         logger.error('OAuth callback error', { error, errorDescription });
+        setAuthError(errorDescription || error);
+        setProcessingAuth(false);
+        return;
       }
       
       if (accessToken) {
         console.log('OAuth callback processing with access token');
         logger.debug('OAuth callback processing', { hasToken: !!accessToken });
         
+        // Give Supabase extra time to process the OAuth callback
+        setTimeout(() => {
+          console.log('Auth processing timeout reached, checking user state');
+          setProcessingAuth(false);
+        }, 3000); // Wait 3 seconds for auth to complete
+        
         // Clear the hash/search params from URL for security
         window.history.replaceState(null, '', window.location.pathname);
+      } else {
+        console.log('No access token found in callback');
+        setProcessingAuth(false);
       }
     };
 
     handleAuthCallback();
   }, []);
 
-  if (loading) {
+  // Show processing state while auth is being handled
+  if (loading || processingAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <div>Completing sign in...</div>
+          <div className="text-sm text-muted-foreground mt-2">
+            Processing authentication...
+          </div>
         </div>
       </div>
     );
   }
 
+  // Show error state
+  if (authError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-destructive mb-4">Authentication Error</div>
+          <div className="text-sm text-muted-foreground mb-4">{authError}</div>
+          <a href="/auth" className="text-primary hover:underline">
+            Try signing in again
+          </a>
+        </div>
+      </div>
+    );
+  }
+
+  // If user is authenticated, redirect to home
   if (user) {
     console.log('User authenticated, redirecting to home');
     return <Navigate to="/" replace />;
   }
 
-  console.log('No user found, redirecting to auth');
+  // If no user after processing, redirect to auth
+  console.log('No user found after processing, redirecting to auth');
   return <Navigate to="/auth" replace />;
 }
