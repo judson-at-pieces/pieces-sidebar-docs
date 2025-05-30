@@ -32,6 +32,7 @@ Deno.serve(async (req) => {
   }
 
   try {
+    // Create Supabase client using service role key for webhook operations
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL') ?? '',
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
