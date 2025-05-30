@@ -1,12 +1,12 @@
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-
 /* Import design system */
 @import './styles/design-tokens.css';
 @import './styles/utilities.css';
 @import './styles/markdown.css';
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 @layer base {
   :root {
