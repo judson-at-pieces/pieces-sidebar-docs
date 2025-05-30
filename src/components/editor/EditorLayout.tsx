@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { NavigationEditor } from "./NavigationEditor";
@@ -27,20 +26,32 @@ export function EditorLayout() {
     
     try {
       console.log('Loading markdown content for file:', filePath);
+      console.log('Fetching from URL:', `/content/${filePath}`);
       
       // Load from the public/content directory where the actual markdown files are
-      const response = await fetch(`/content/${filePath}`);
+      const response = await fetch(`/content/${filePath}`, {
+        method: 'GET',
+        headers: {
+          'Accept': 'text/plain, text/markdown, */*'
+        }
+      });
+      
+      console.log('Response status:', response.status);
+      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
+      
       if (response.ok) {
         const markdownContent = await response.text();
         console.log('Successfully loaded markdown content for:', filePath);
+        console.log('Content length:', markdownContent.length);
+        console.log('Content preview (first 200 chars):', markdownContent.substring(0, 200));
         setContent(markdownContent);
       } else {
-        console.log(`Markdown file not found at /content/${filePath}, creating new markdown content`);
+        console.log(`Markdown file not found at /content/${filePath}, response:`, response.status, response.statusText);
         // Create default markdown content for new files
         const cleanPath = filePath.replace(/\.md$/, '');
         const fileName = cleanPath.split('/').pop()?.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
         
-        setContent(`---
+        const defaultContent = `---
 title: "${fileName}"
 path: "/${cleanPath}"
 visibility: "PUBLIC"
@@ -56,7 +67,9 @@ This is an information callout. Type "/" to see more available components.
 :::
 
 Start editing to see the live preview!
-`);
+`;
+        console.log('Setting default markdown content');
+        setContent(defaultContent);
       }
     } catch (error) {
       console.error('Error loading markdown content:', error);
@@ -64,7 +77,7 @@ Start editing to see the live preview!
       const cleanPath = filePath.replace(/\.md$/, '');
       const fileName = cleanPath.split('/').pop()?.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
       
-      setContent(`---
+      const defaultContent = `---
 title: "${fileName}"
 path: "/${cleanPath}"
 visibility: "PUBLIC"
@@ -80,7 +93,9 @@ This is an information callout. Type "/" to see more available components.
 :::
 
 Start editing to see the live preview!
-`);
+`;
+      console.log('Setting default content due to error');
+      setContent(defaultContent);
     } finally {
       setLoadingContent(false);
     }
@@ -144,7 +159,7 @@ Start editing to see the live preview!
     <div className="min-h-screen bg-background">
       {/* Header - Hide completely when in navigation tab */}
       {activeTab === 'content' && (
-        <div className="border-b border-border/50 bg-background/80 backdrop-blur-sm sticky top-0 z-10">
+        <div className="border-b border-border/50 bg-background/80 backdrop-blur-sm">
           <div className="flex h-16 items-center justify-between px-6">
             <div className="flex items-center space-x-6">
               <Link to="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
