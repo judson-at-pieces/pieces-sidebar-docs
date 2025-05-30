@@ -50,6 +50,8 @@ export function CompiledDocPage() {
         return;
       }
       
+      console.log('CompiledDocPage loading path:', path);
+      
       setLoading(true);
       setUseFallback(false);
       
@@ -57,8 +59,10 @@ export function CompiledDocPage() {
         const compiledContent = getCompiledContent(path);
         
         if (compiledContent) {
+          console.log('Found compiled content for:', path);
           setContent(compiledContent);
         } else {
+          console.log('No compiled content found, using fallback for:', path);
           setUseFallback(true);
         }
       } catch (err) {
@@ -77,6 +81,7 @@ export function CompiledDocPage() {
   }
 
   if (useFallback) {
+    console.log('Using DynamicDocPage fallback for:', path);
     return <DynamicDocPage />;
   }
 

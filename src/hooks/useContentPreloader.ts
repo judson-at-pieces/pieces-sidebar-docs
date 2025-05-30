@@ -1,20 +1,23 @@
 
 import { useEffect } from 'react';
+import { contentRegistry } from '@/compiled-content';
 
 export function useContentPreloader() {
   useEffect(() => {
-    // Simple content preloader that just logs initialization
-    // This ensures the compiled content is loaded when the app starts
-    try {
-      // Import the content registry to trigger loading
-      import('@/compiled-content').then((module) => {
-        const availablePaths = Object.keys(module.contentRegistry || {});
-        console.log('Content preloader initialized with', availablePaths.length, 'pages');
-      }).catch(() => {
-        console.log('Content preloader: compiled content not available');
-      });
-    } catch (error) {
-      console.log('Content preloader: initialization failed');
+    // Log the available compiled content for debugging
+    const availablePaths = Object.keys(contentRegistry);
+    console.log('Content preloader initialized with', availablePaths.length, 'compiled pages');
+    console.log('Available compiled paths:', availablePaths);
+    
+    // Verify content modules are properly loaded
+    const validModules = availablePaths.filter(path => {
+      const module = contentRegistry[path];
+      return module && typeof module.default === 'function' && module.frontmatter;
+    });
+    
+    console.log('Valid compiled modules:', validModules.length);
+    if (validModules.length !== availablePaths.length) {
+      console.warn('Some compiled modules may be invalid');
     }
   }, []);
 }

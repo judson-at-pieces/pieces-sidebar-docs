@@ -1,6 +1,6 @@
 
 // Auto-generated content registry
-// This file dynamically imports all compiled content and exports a registry
+// This file statically imports all compiled content to ensure proper build inclusion
 
 export interface CompiledContentModule {
   default: React.ComponentType<any>;
@@ -14,38 +14,35 @@ export interface CompiledContentModule {
   };
 }
 
-// Use eager loading to ensure all files are included in the build
-const contentModules = import.meta.glob([
-  './**/*.tsx',
-  '!./index.ts'
-], { eager: true }) as Record<string, CompiledContentModule>;
+// Static imports to ensure all content is included in the build
+import * as cli_commands from './cli/commands';
+import * as cli from './cli';
+import * as obsidian_commands from './obsidian/commands';
+import * as extensions_plugins_jetbrains_drive from './extensions-plugins/extensions-plugins/jetbrains/drive';
+import * as extensions_plugins_jetbrains_commands from './extensions-plugins/extensions-plugins/jetbrains/commands';
+import * as extensions_plugins_sublime_commands from './extensions-plugins/extensions-plugins/sublime/commands';
+import * as extensions_plugins_vscode_commands from './extensions-plugins/extensions-plugins/visual-studio-code/commands';
+import * as extensions_plugins_jupitaleb_commands from './extensions-plugins/extensions-plugins/jupitaleb/commands';
+import * as extensions_plugins_jupitaleb_drive_save from './extensions-plugins/extensions-plugins/jupitaleb/drive/save';
 
-// Create a path-to-module mapping
-export const contentRegistry: Record<string, CompiledContentModule> = {};
+// Create the content registry with static mappings
+export const contentRegistry: Record<string, CompiledContentModule> = {
+  'cli/commands': cli_commands,
+  'cli': cli,
+  'obsidian/commands': obsidian_commands,
+  'extensions-plugins/jetbrains/drive': extensions_plugins_jetbrains_drive,
+  'extensions-plugins/jetbrains/commands': extensions_plugins_jetbrains_commands,
+  'extensions-plugins/sublime/commands': extensions_plugins_sublime_commands,
+  'extensions-plugins/visual-studio-code/commands': extensions_plugins_vscode_commands,
+  'extensions-plugins/jupitaleb/commands': extensions_plugins_jupitaleb_commands,
+  'extensions-plugins/jupitaleb/drive/save': extensions_plugins_jupitaleb_drive_save,
+};
 
-// Process all modules and create normalized path mappings
-Object.entries(contentModules).forEach(([filePath, module]) => {
-  // Convert file path to content path
-  // ./desktop/download.tsx -> desktop/download
-  // ./quick-guides/quick-guides/copilot-with-context.tsx -> quick-guides/copilot-with-context
-  let normalizedPath = filePath
-    .replace(/^\.\//, '') // Remove leading ./
-    .replace(/\.tsx$/, ''); // Remove .tsx extension
-
-  // Handle duplicate directory names (like quick-guides/quick-guides/)
-  const pathParts = normalizedPath.split('/');
-  if (pathParts.length > 1 && pathParts[0] === pathParts[1]) {
-    // Remove the duplicate directory name
-    pathParts.splice(1, 1);
-    normalizedPath = pathParts.join('/');
-  }
-
-  contentRegistry[normalizedPath] = module;
-  
-  // Also register with frontmatter path if it exists and differs
+// Add alternative path mappings based on frontmatter
+Object.entries(contentRegistry).forEach(([key, module]) => {
   if (module.frontmatter?.path) {
-    const frontmatterPath = module.frontmatter.path.replace(/^\//, ''); // Remove leading slash
-    if (frontmatterPath !== normalizedPath) {
+    const frontmatterPath = module.frontmatter.path.replace(/^\//, '');
+    if (frontmatterPath !== key) {
       contentRegistry[frontmatterPath] = module;
     }
   }
@@ -56,29 +53,23 @@ export function getCompiledContent(path: string): CompiledContentModule | null {
   // Normalize the input path
   const normalizedPath = path.replace(/^\//, '').replace(/\/$/, '');
   
+  console.log('Looking for compiled content:', normalizedPath);
+  console.log('Available paths:', Object.keys(contentRegistry));
+  
   // Try exact match first
   if (contentRegistry[normalizedPath]) {
+    console.log('Found exact match for:', normalizedPath);
     return contentRegistry[normalizedPath];
   }
   
   // Try with index suffix
   const indexPath = `${normalizedPath}/index`;
   if (contentRegistry[indexPath]) {
+    console.log('Found index match for:', indexPath);
     return contentRegistry[indexPath];
   }
   
-  // Try alternative path formats
-  const altPaths = [
-    normalizedPath.replace(/^([^\/]+)\//, '$1/$1/'), // Add duplicate directory
-    normalizedPath.replace(/^([^\/]+)\/([^\/]+)\//, '$1/'), // Remove duplicate directory
-  ];
-  
-  for (const altPath of altPaths) {
-    if (contentRegistry[altPath]) {
-      return contentRegistry[altPath];
-    }
-  }
-  
+  console.log('No compiled content found for:', normalizedPath);
   return null;
 }
 
