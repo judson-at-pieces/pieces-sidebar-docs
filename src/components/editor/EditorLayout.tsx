@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { NavigationEditor } from "./NavigationEditor";
@@ -20,18 +19,40 @@ export function EditorLayout() {
     setLoadingContent(true);
     
     try {
-      // Load the actual file content
+      // Load from the public/content directory where the actual markdown files are
       const response = await fetch(`/content/${filePath}`);
       if (response.ok) {
         const fileContent = await response.text();
         setContent(fileContent);
       } else {
-        // If file doesn't exist or can't be loaded, start with empty content
-        setContent("");
+        // If file doesn't exist, try without the extension or create new content
+        const cleanPath = filePath.replace(/\.md$/, '');
+        console.log(`File not found at /content/${filePath}, creating new content for ${cleanPath}`);
+        setContent(`---
+title: "${cleanPath.split('/').pop()?.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page'}"
+path: "/${cleanPath}"
+visibility: "PUBLIC"
+---
+
+# ${cleanPath.split('/').pop()?.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page'}
+
+Add your content here...
+`);
       }
     } catch (error) {
       console.error('Error loading file content:', error);
-      setContent("");
+      // Create default content for new files
+      const cleanPath = filePath.replace(/\.md$/, '');
+      setContent(`---
+title: "${cleanPath.split('/').pop()?.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page'}"
+path: "/${cleanPath}"
+visibility: "PUBLIC"
+---
+
+# ${cleanPath.split('/').pop()?.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page'}
+
+Add your content here...
+`);
     } finally {
       setLoadingContent(false);
     }
@@ -54,10 +75,20 @@ export function EditorLayout() {
         return newSet;
       });
     }
+    
+    // Trigger recompilation after save
+    console.log('Content saved, triggering recompilation...');
+    // This is where you could trigger your MDX compiler
+    // You might want to call your build script or trigger a rebuild
   };
 
   const handleCreateFile = (fileName: string, parentPath?: string) => {
     console.log('Creating file:', fileName, 'in:', parentPath);
+    const fullPath = parentPath ? `${parentPath}/${fileName}` : fileName;
+    const filePath = fullPath.endsWith('.md') ? fullPath : `${fullPath}.md`;
+    
+    // Automatically select the new file and set up initial content
+    handleFileSelect(filePath);
   };
 
   if (isLoading) {
