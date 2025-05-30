@@ -1,8 +1,8 @@
 
 import { useState, useEffect } from 'react';
-import { loadContentStructure, FileNode } from '@/utils/fileSystem';
+import { loadContentStructure, type FileNode } from '@/utils/fileSystem';
 
-export { FileNode };
+export type { FileNode };
 
 export function useFileStructure() {
   const [fileStructure, setFileStructure] = useState<FileNode[]>([]);
