@@ -1,4 +1,5 @@
 
+
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
@@ -57,7 +58,7 @@ console.warn = (...args) => {
 
 // Intercept and suppress cross-origin postMessage attempts
 const originalPostMessage = window.postMessage;
-window.postMessage = function(message, targetOrigin, transfer) {
+window.postMessage = function(message: any, targetOrigin: string, transfer?: Transferable[]): void {
   // Only allow same-origin or wildcard postMessage
   if (targetOrigin !== '*' && targetOrigin !== window.location.origin) {
     console.debug('Blocked cross-origin postMessage attempt to:', targetOrigin);
@@ -67,3 +68,4 @@ window.postMessage = function(message, targetOrigin, transfer) {
 };
 
 createRoot(document.getElementById("root")!).render(<App />);
+
