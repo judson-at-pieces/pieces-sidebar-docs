@@ -1,16 +1,66 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { getCompiledContent, CompiledContentModule } from '@/compiled-content';
 import { DynamicDocPage } from './DynamicDocPage';
 
 export function CompiledDocPage() {
   const { '*': path } = useParams();
+  const [compiledContent, setCompiledContent] = useState<CompiledContentModule | null>(null);
+  const [shouldUseFallback, setShouldUseFallback] = useState(false);
 
   useEffect(() => {
-    // Always log that we're using the fallback to avoid compiled content issues
-    console.log('CompiledDocPage: Always using DynamicDocPage fallback for:', path);
+    if (!path) {
+      setShouldUseFallback(true);
+      return;
+    }
+
+    // Try to get compiled content first
+    const normalizedPath = path.startsWith('/') ? path : `/${path}`;
+    const docPath = normalizedPath.startsWith('/docs/') ? normalizedPath : `/docs/${normalizedPath}`;
+    
+    console.log('CompiledDocPage: Looking for compiled content at:', docPath);
+    
+    const content = getCompiledContent(docPath);
+    
+    if (content) {
+      console.log('CompiledDocPage: Found compiled content for:', docPath);
+      setCompiledContent(content);
+      setShouldUseFallback(false);
+    } else {
+      console.log('CompiledDocPage: No compiled content found, using fallback for:', docPath);
+      setShouldUseFallback(true);
+    }
   }, [path]);
 
-  // Always use DynamicDocPage to avoid TSX parsing issues
-  return <DynamicDocPage />;
+  // Use fallback (DynamicDocPage) if no compiled content is available
+  if (shouldUseFallback || !compiledContent) {
+    return <DynamicDocPage />;
+  }
+
+  // Render the compiled content
+  const ContentComponent = compiledContent.default;
+  
+  return (
+    <div className="max-w-7xl mx-auto">
+      <div className="flex-1 min-w-0">
+        {/* Page header */}
+        <div className="mb-8 pb-6 border-b border-border">
+          <h1 className="text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold mb-2 leading-tight">
+            {compiledContent.frontmatter.title}
+          </h1>
+          {compiledContent.frontmatter.description && (
+            <p className="text-sm sm:text-base md:text-lg lg:text-xl text-muted-foreground mb-4">
+              {compiledContent.frontmatter.description}
+            </p>
+          )}
+        </div>
+
+        {/* Compiled content */}
+        <div className="markdown-content">
+          <ContentComponent />
+        </div>
+      </div>
+    </div>
+  );
 }

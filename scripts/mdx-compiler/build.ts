@@ -1,6 +1,5 @@
+
 import path from 'path';
-import { MDXCompiler } from './compiler';
-import { MarkdownToTSXCompiler } from './markdown-to-tsx';
 import { SimpleMarkdownCompiler } from './simple-compiler';
 import chokidar from 'chokidar';
 
@@ -15,9 +14,9 @@ async function build() {
 
   try {
     await compiler.compile();
-    console.log('✅ Build completed successfully!');
+    console.log('✅ MDX compilation completed successfully!');
   } catch (error) {
-    console.error('❌ Build failed:', error);
+    console.error('❌ MDX compilation failed:', error);
     process.exit(1);
   }
 }
@@ -32,7 +31,7 @@ async function watch() {
   await build();
 
   // Watch for changes
-  console.log('👀 Watching for changes...');
+  console.log('👀 Watching for markdown changes...');
   
   const watcher = chokidar.watch(INPUT_DIR, {
     ignored: /(^|[\/\\])\../,
@@ -46,13 +45,13 @@ async function watch() {
     if (isCompiling) return;
     
     isCompiling = true;
-    console.log('🔄 Changes detected, recompiling...');
+    console.log('🔄 Markdown changes detected, recompiling...');
     
     try {
       await compiler.compile();
-      console.log('✅ Recompilation completed!');
+      console.log('✅ MDX recompilation completed!');
     } catch (error) {
-      console.error('❌ Recompilation failed:', error);
+      console.error('❌ MDX recompilation failed:', error);
     }
     
     isCompiling = false;

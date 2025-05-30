@@ -1,16 +1,10 @@
-import fs from 'fs/promises';
+
+import fs from 'fs';
 import path from 'path';
 import matter from 'gray-matter';
+import { processCustomSyntax } from '../../src/components/markdown/customSyntaxProcessor';
 
-interface FrontMatter {
-  title: string;
-  path: string;
-  visibility?: string;
-  slug?: string; // Custom URL slug for routing
-  [key: string]: any;
-}
-
-interface CompilerOptions {
+export interface CompilerOptions {
   inputDir: string;
   outputDir: string;
 }
@@ -23,204 +17,129 @@ export class SimpleMarkdownCompiler {
   }
 
   async compile(): Promise<void> {
-    console.log('🚀 Starting Simple Markdown to TSX compilation...');
-    
     // Clean output directory
-    await this.cleanOutputDir();
-    
-    // Get all markdown files
-    const files = await this.getAllMarkdownFiles(this.options.inputDir);
-    
-    // Compile each file
-    for (const file of files) {
-      await this.compileFile(file);
+    if (fs.existsSync(this.options.outputDir)) {
+      fs.rmSync(this.options.outputDir, { recursive: true });
     }
-    
-    // Generate index file
-    await this.generateIndex(files);
-    
-    console.log(`✅ Compiled ${files.length} files successfully!`);
+    fs.mkdirSync(this.options.outputDir, { recursive: true });
+
+    // Process all markdown files
+    const contentMap: Record<string, any> = {};
+    await this.processDirectory(this.options.inputDir, '', contentMap);
+
+    // Generate the index file with all compiled content
+    await this.generateIndexFile(contentMap);
+
+    console.log(`📦 Compiled ${Object.keys(contentMap).length} content files`);
   }
 
-  private async cleanOutputDir(): Promise<void> {
-    try {
-      await fs.rm(this.options.outputDir, { recursive: true, force: true });
-    } catch (error) {
-      // Directory might not exist
-    }
-    await fs.mkdir(this.options.outputDir, { recursive: true });
-  }
+  private async processDirectory(
+    dir: string,
+    relativePath: string,
+    contentMap: Record<string, any>
+  ): Promise<void> {
+    const items = fs.readdirSync(dir);
 
-  private async getAllMarkdownFiles(dir: string, files: string[] = []): Promise<string[]> {
-    const entries = await fs.readdir(dir, { withFileTypes: true });
-    
-    for (const entry of entries) {
-      const fullPath = path.join(dir, entry.name);
-      
-      if (entry.isDirectory()) {
-        await this.getAllMarkdownFiles(fullPath, files);
-      } else if (entry.name.endsWith('.md') || entry.name.endsWith('.mdx')) {
-        files.push(fullPath);
+    for (const item of items) {
+      const itemPath = path.join(dir, item);
+      const stat = fs.statSync(itemPath);
+
+      if (stat.isDirectory()) {
+        await this.processDirectory(itemPath, path.join(relativePath, item), contentMap);
+      } else if (item.endsWith('.md') || item.endsWith('.mdx')) {
+        await this.processMarkdownFile(itemPath, relativePath, item, contentMap);
       }
     }
-    
-    return files;
   }
 
-  private async compileFile(filePath: string): Promise<void> {
-    console.log(`📄 Compiling: ${filePath}`);
-    
-    try {
-      // Read file content
-      const content = await fs.readFile(filePath, 'utf-8');
-      
-      // Parse frontmatter
-      const { data: frontmatter, content: markdownContent } = matter(content);
-      
-      // For now, just render the markdown content in a pre tag
-      // This ensures valid JSX while we work on proper parsing
-      const tsxContent = this.escapeForJSX(markdownContent);
-      
-      // Generate TSX component
-      const componentCode = this.generateTSXComponent(
-        filePath,
-        tsxContent,
-        frontmatter as FrontMatter
-      );
-      
-      // Write output file
-      const outputPath = this.getOutputPath(filePath);
-      await fs.mkdir(path.dirname(outputPath), { recursive: true });
-      await fs.writeFile(outputPath, componentCode);
-    } catch (error) {
-      console.error(`Error compiling ${filePath}:`, error);
-      // Create a fallback component
-      const fallbackComponent = this.generateFallbackComponent(filePath, error as Error);
-      const outputPath = this.getOutputPath(filePath);
-      await fs.mkdir(path.dirname(outputPath), { recursive: true });
-      await fs.writeFile(outputPath, fallbackComponent);
-    }
-  }
-
-  private escapeForJSX(content: string): string {
-    // For now, just escape the content to be safe
-    return content
-      .replace(/\\/g, '\\\\')
-      .replace(/`/g, '\\`')
-      .replace(/\$/g, '\\$');
-  }
-
-  private generateTSXComponent(
+  private async processMarkdownFile(
     filePath: string,
-    content: string,
-    frontmatter: FrontMatter
-  ): string {
-    const componentName = this.getComponentName(filePath);
-    
-    // For now, use the MarkdownRenderer component
-    return `import React from 'react';
-import { MarkdownRenderer } from '@/components/MarkdownRenderer';
+    relativePath: string,
+    fileName: string,
+    contentMap: Record<string, any>
+  ): Promise<void> {
+    try {
+      const content = fs.readFileSync(filePath, 'utf8');
+      const { data: frontmatter, content: markdown } = matter(content);
 
-export const frontmatter = ${JSON.stringify(frontmatter, null, 2)};
+      // Skip if not public
+      if (frontmatter.visibility && frontmatter.visibility !== 'PUBLIC') {
+        return;
+      }
 
-const markdownContent = \`${content}\`;
-
-export default function ${componentName}() {
-  return <MarkdownRenderer content={markdownContent} />;
-}
-
-${componentName}.displayName = '${componentName}';
-${componentName}.frontmatter = frontmatter;
-`;
-  }
-
-  private generateFallbackComponent(filePath: string, error: Error): string {
-    const componentName = this.getComponentName(filePath);
-    
-    return `import React from 'react';
-
-export const frontmatter = { title: 'Error', path: '${filePath}' };
-
-export default function ${componentName}() {
-  return (
-    <div className="text-red-600">
-      <h1>Error loading content</h1>
-      <p>Failed to compile: ${filePath}</p>
-      <pre>${error.message}</pre>
-    </div>
-  );
-}
-
-${componentName}.displayName = '${componentName}';
-${componentName}.frontmatter = frontmatter;
-`;
-  }
-
-  private getComponentName(filePath: string): string {
-    const relativePath = path.relative(this.options.inputDir, filePath);
-    const name = relativePath
-      .replace(/[\/\\]/g, '_')
-      .replace(/\.(md|mdx)$/, '')
-      .replace(/[^a-zA-Z0-9_]/g, '_')
-      .replace(/^_+|_+$/g, '');
-    
-    // Ensure it starts with a letter
-    return `MDX_${name}`;
-  }
-
-  private getOutputPath(inputPath: string): string {
-    const relativePath = path.relative(this.options.inputDir, inputPath);
-    const outputPath = path.join(
-      this.options.outputDir,
-      relativePath.replace(/\.(md|mdx)$/, '.tsx')
-    );
-    return outputPath;
-  }
-
-  private async generateIndex(files: string[]): Promise<void> {
-    const imports: string[] = [];
-    const exports: string[] = [];
-    const allPaths: string[] = [];
-    
-    for (const file of files) {
-      const componentName = this.getComponentName(file);
-      const relativePath = path.relative(this.options.inputDir, file);
-      const importPath = './' + relativePath.replace(/\.(md|mdx)$/, '');
-      const outputRelativePath = relativePath.replace(/\.(md|mdx)$/, '');
+      // Generate the path key
+      const baseName = fileName.replace(/\.(md|mdx)$/, '');
+      let pathKey: string;
       
-      imports.push(`import ${componentName}, { frontmatter as ${componentName}_frontmatter } from '${importPath}';`);
-      exports.push(`  '${relativePath}': { component: ${componentName}, frontmatter: ${componentName}_frontmatter },`);
-      allPaths.push(`'${outputRelativePath}'`);
+      if (relativePath) {
+        pathKey = `/docs/${relativePath}/${baseName}`.replace(/\\/g, '/');
+      } else {
+        pathKey = `/docs/${baseName}`;
+      }
+
+      // Use frontmatter path if available
+      if (frontmatter.path) {
+        pathKey = frontmatter.path.startsWith('/') ? frontmatter.path : `/${frontmatter.path}`;
+      }
+
+      // Process the markdown content
+      const processedContent = processCustomSyntax(markdown.trim());
+
+      // Store in content map - we'll generate a single index file
+      contentMap[pathKey] = {
+        frontmatter: {
+          title: frontmatter.title || baseName.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+          description: frontmatter.description || null,
+          author: frontmatter.author || null,
+          lastModified: frontmatter.lastModified || null,
+          path: pathKey,
+          visibility: frontmatter.visibility || 'PUBLIC'
+        },
+        content: processedContent
+      };
+
+      console.log(`✓ Processed: ${pathKey}`);
+    } catch (error) {
+      console.error(`✗ Error processing ${filePath}:`, error);
     }
-    
-    const indexContent = `// Auto-generated file. Do not edit manually.
-${imports.join('\n')}
+  }
 
-export const contentComponents = {
-${exports.join('\n')}
-};
+  private async generateIndexFile(contentMap: Record<string, any>): Promise<void> {
+    const indexContent = `// Auto-generated compiled content index
+// This file is generated by the MDX compiler - do not edit manually
 
-// All available content paths for slug mapping
-export const allContentPaths = [
-  ${allPaths.join(',\n  ')}
-];
+import React from 'react';
+import { MarkdownRenderer } from '../components/MarkdownRenderer';
 
-export type ContentComponent = {
-  component: React.ComponentType<any>;
-  frontmatter: {
-    title: string;
-    path: string;
-    visibility?: string;
-    slug?: string;
-    [key: string]: any;
+// Content data
+const CONTENT_DATA = ${JSON.stringify(contentMap, null, 2)};
+
+// Generate React components for each content piece
+const contentRegistry = {};
+
+Object.keys(CONTENT_DATA).forEach(path => {
+  const data = CONTENT_DATA[path];
+  
+  contentRegistry[path] = {
+    default: function CompiledContent() {
+      return React.createElement(MarkdownRenderer, { content: data.content });
+    },
+    frontmatter: data.frontmatter
   };
-};
+});
 
-export function getContentComponent(path: string): ContentComponent | undefined {
-  return contentComponents[path];
+export { contentRegistry };
+export function getCompiledContent(path) {
+  return contentRegistry[path] || null;
+}
+export function registerContent(path, module) {
+  contentRegistry[path] = module;
 }
 `;
+
+    const indexPath = path.join(this.options.outputDir, 'index.js');
+    fs.writeFileSync(indexPath, indexContent);
     
-    await fs.writeFile(path.join(this.options.outputDir, 'index.ts'), indexContent);
+    console.log('📝 Generated compiled content index');
   }
 }

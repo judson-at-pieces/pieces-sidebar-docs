@@ -3,9 +3,11 @@ import { useEffect } from 'react';
 
 export function useContentPreloader() {
   useEffect(() => {
-    // Content preloader now uses dynamic loading system only
-    console.log('Content preloader initialized with dynamic loading system');
-    console.log('All content will be loaded dynamically through DynamicDocPage');
-    console.log('Static compiled content disabled to prevent TSX parsing errors');
+    // Content preloader now uses the compiled content system when available
+    console.log('Content preloader initialized');
+    console.log('Compiled content will be used when available, fallback to dynamic loading');
+    
+    // The compiled content is already loaded via static imports in the bundle
+    // No additional preloading needed for compiled content
   }, []);
 }
