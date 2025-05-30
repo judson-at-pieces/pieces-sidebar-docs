@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -40,24 +41,17 @@ export function AccessCodeForm({ onSuccess }: AccessCodeFormProps) {
         userAuthenticated: !!user 
       });
 
-      // Get the session token if user is authenticated
-      const { data: { session } } = await supabase.auth.getSession();
-      
-      const headers: Record<string, string> = {
-        'Content-Type': 'application/json'
-      };
-      
-      if (session?.access_token) {
-        headers['Authorization'] = `Bearer ${session.access_token}`;
-      }
-
-      const response = await fetch('/functions/v1/use-admin-access-code-fix', {
-        method: 'POST',
-        headers,
-        body: JSON.stringify({ access_code: sanitizedCode })
+      // Use the Supabase client to call the edge function
+      const { data, error } = await supabase.functions.invoke('use-admin-access-code-fix', {
+        body: { access_code: sanitizedCode }
       });
 
-      const data = await response.json();
+      if (error) {
+        logger.error('Edge function error', { error: error.message });
+        auditLog.accessCodeUsed(false, user?.id);
+        setError(getErrorMessage(error, 'access_code'));
+        return;
+      }
 
       if (data.success) {
         auditLog.accessCodeUsed(true, user?.id);
