@@ -1,8 +1,12 @@
+
 // Check if Supabase is configured without importing the client
 function checkSupabaseConfig(): boolean {
   const url = import.meta.env.VITE_SUPABASE_URL;
   const key = import.meta.env.VITE_SUPABASE_ANON_KEY;
-  return !!(url && key && url !== 'undefined' && key !== 'undefined' && url.startsWith('http'));
+  return !!(url && key && 
+           url !== 'undefined' && key !== 'undefined' && 
+           url.startsWith('http') && url.includes('supabase.co') &&
+           key.length > 50);
 }
 
 // Feature flags for controlling app behavior
