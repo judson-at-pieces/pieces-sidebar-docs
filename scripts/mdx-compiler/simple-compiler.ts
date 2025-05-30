@@ -1,7 +1,8 @@
 
-import fs from 'fs';
+import fs from 'fs/promises';
 import path from 'path';
 import matter from 'gray-matter';
+import { processCustomSyntax } from './custom-syntax-bridge.js';
 
 export interface CompilerOptions {
   inputDir: string;
@@ -9,192 +10,148 @@ export interface CompilerOptions {
 }
 
 export class SimpleMarkdownCompiler {
-  private options: CompilerOptions;
+  private inputDir: string;
+  private outputDir: string;
 
   constructor(options: CompilerOptions) {
-    this.options = options;
+    this.inputDir = options.inputDir;
+    this.outputDir = options.outputDir;
   }
 
   async compile(): Promise<void> {
-    // Clean output directory
-    if (fs.existsSync(this.options.outputDir)) {
-      fs.rmSync(this.options.outputDir, { recursive: true });
-    }
-    fs.mkdirSync(this.options.outputDir, { recursive: true });
-
-    // Process all markdown files
-    const contentMap: Record<string, any> = {};
-    await this.processDirectory(this.options.inputDir, '', contentMap);
-
-    // Generate individual TSX files
-    await this.generateTsxFiles(contentMap);
-
-    // Generate the index file
-    await this.generateIndexFile(contentMap);
-
-    console.log(`📦 Compiled ${Object.keys(contentMap).length} content files to TSX`);
-    console.log('📋 Registry paths:', Object.keys(contentMap).slice(0, 10));
-  }
-
-  private async processDirectory(
-    dir: string,
-    relativePath: string,
-    contentMap: Record<string, any>
-  ): Promise<void> {
-    if (!fs.existsSync(dir)) {
-      console.log(`Directory does not exist: ${dir}`);
-      return;
-    }
-
-    const items = fs.readdirSync(dir);
-
-    for (const item of items) {
-      const itemPath = path.join(dir, item);
-      const stat = fs.statSync(itemPath);
-
-      if (stat.isDirectory()) {
-        await this.processDirectory(itemPath, path.join(relativePath, item), contentMap);
-      } else if (item.endsWith('.md') || item.endsWith('.mdx')) {
-        await this.processMarkdownFile(itemPath, relativePath, item, contentMap);
-      }
-    }
-  }
-
-  private async processMarkdownFile(
-    filePath: string,
-    relativePath: string,
-    fileName: string,
-    contentMap: Record<string, any>
-  ): Promise<void> {
-    try {
-      const content = fs.readFileSync(filePath, 'utf8');
-      const { data: frontmatter, content: markdown } = matter(content);
-
-      // Skip if not public
-      if (frontmatter.visibility && frontmatter.visibility !== 'PUBLIC') {
-        return;
-      }
-
-      // Generate the path key
-      let pathKey: string;
-      
-      // Use frontmatter path if available
-      if (frontmatter.path) {
-        pathKey = frontmatter.path.startsWith('/') ? frontmatter.path : `/${frontmatter.path}`;
-        console.log(`📝 Using frontmatter path for ${fileName}: ${pathKey}`);
-      } else {
-        // Generate path based on file structure
-        const baseName = fileName.replace(/\.(md|mdx)$/, '');
-        if (relativePath) {
-          const normalizedRelativePath = relativePath.replace(/\\/g, '/');
-          pathKey = `/docs/${normalizedRelativePath}/${baseName}`;
-        } else {
-          pathKey = `/docs/${baseName}`;
+    console.log(`🔧 Starting compilation from ${this.inputDir} to ${this.outputDir}`);
+    
+    // Ensure output directory exists
+    await fs.mkdir(this.outputDir, { recursive: true });
+    
+    // Find all markdown files
+    const markdownFiles = await this.findMarkdownFiles(this.inputDir);
+    console.log(`📄 Found ${markdownFiles.length} markdown files`);
+    
+    const registry: Record<string, string> = {};
+    
+    for (const filePath of markdownFiles) {
+      try {
+        const relativePath = path.relative(this.inputDir, filePath);
+        const routePath = this.getRoutePath(relativePath);
+        const tsxPath = await this.compileFile(filePath, routePath);
+        
+        if (tsxPath) {
+          const importPath = path.relative(this.outputDir, tsxPath).replace(/\.tsx$/, '');
+          registry[routePath] = `./${importPath}`;
+          console.log(`✅ Compiled: ${relativePath} -> ${routePath}`);
         }
-        console.log(`📝 Generated path for ${fileName}: ${pathKey}`);
+      } catch (error) {
+        console.error(`❌ Error compiling ${filePath}:`, error);
       }
-
-      // Clean up any double slashes
-      pathKey = pathKey.replace(/\/+/g, '/');
-
-      // Process the markdown content
-      const processedContent = markdown.trim().replace(/^---[\s\S]*?---\s*/, '').replace(/^\*\*\*\s*/, '');
-
-      // Store in content map
-      contentMap[pathKey] = {
-        frontmatter: {
-          title: frontmatter.title || fileName.replace(/\.(md|mdx)$/, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
-          description: frontmatter.description || null,
-          author: frontmatter.author || null,
-          lastModified: frontmatter.lastModified || null,
-          path: pathKey,
-          visibility: frontmatter.visibility || 'PUBLIC'
-        },
-        content: processedContent,
-        filePath: this.getOutputPath(pathKey)
-      };
-
-      console.log(`✓ Processed: ${pathKey}`);
-    } catch (error) {
-      console.error(`✗ Error processing ${filePath}:`, error);
     }
+    
+    // Generate index file
+    await this.generateIndex(registry);
+    console.log(`📦 Generated index with ${Object.keys(registry).length} entries`);
   }
 
-  private getOutputPath(pathKey: string): string {
-    // Convert path to file system structure
-    const cleanPath = pathKey.replace(/^\//, '');
-    return path.join(this.options.outputDir, `${cleanPath}.tsx`);
-  }
-
-  private async generateTsxFiles(contentMap: Record<string, any>): Promise<void> {
-    for (const [pathKey, data] of Object.entries(contentMap)) {
-      const outputPath = data.filePath;
-      const outputDir = path.dirname(outputPath);
-
-      // Ensure directory exists
-      if (!fs.existsSync(outputDir)) {
-        fs.mkdirSync(outputDir, { recursive: true });
-      }
-
-      // Generate TSX content
-      const tsxContent = this.generateTsxComponent(data, outputPath);
+  private async findMarkdownFiles(dir: string): Promise<string[]> {
+    const files: string[] = [];
+    
+    try {
+      const entries = await fs.readdir(dir, { withFileTypes: true });
       
-      fs.writeFileSync(outputPath, tsxContent);
-      console.log(`📝 Generated TSX: ${outputPath}`);
+      for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name);
+        
+        if (entry.isDirectory()) {
+          const subFiles = await this.findMarkdownFiles(fullPath);
+          files.push(...subFiles);
+        } else if (entry.isFile() && entry.name.endsWith('.md')) {
+          files.push(fullPath);
+        }
+      }
+    } catch (error) {
+      console.warn(`Warning: Could not read directory ${dir}:`, error);
+    }
+    
+    return files;
+  }
+
+  private getRoutePath(relativePath: string): string {
+    // Convert file path to route path
+    const routePath = relativePath
+      .replace(/\.md$/, '')
+      .replace(/\\/g, '/'); // Normalize path separators
+    
+    return `/${routePath}`;
+  }
+
+  private async compileFile(filePath: string, routePath: string): Promise<string | null> {
+    try {
+      const content = await fs.readFile(filePath, 'utf-8');
+      const { data: frontmatter, content: markdownContent } = matter(content);
+      
+      // Process custom syntax (Steps, Cards, Callouts, etc.)
+      const processedContent = processCustomSyntax(markdownContent);
+      
+      // Generate TSX component
+      const tsxContent = this.generateTSXComponent(processedContent, frontmatter, routePath);
+      
+      // Determine output path
+      const relativePath = path.relative(this.inputDir, filePath);
+      const outputPath = path.join(this.outputDir, relativePath.replace(/\.md$/, '.tsx'));
+      
+      // Ensure output directory exists
+      await fs.mkdir(path.dirname(outputPath), { recursive: true });
+      
+      // Write TSX file
+      await fs.writeFile(outputPath, tsxContent, 'utf-8');
+      
+      return outputPath;
+    } catch (error) {
+      console.error(`Error compiling ${filePath}:`, error);
+      return null;
     }
   }
 
-  private generateTsxComponent(data: any, outputPath: string): string {
-    // Calculate the correct relative path to MarkdownRenderer
-    const outputDir = path.dirname(outputPath);
-    const srcComponentsDir = path.join(this.options.outputDir, '..', 'components');
-    const relativePath = path.relative(outputDir, srcComponentsDir);
-    const importPath = (relativePath ? relativePath + '/' : '') + 'MarkdownRenderer';
-    const normalizedImportPath = importPath.replace(/\\/g, '/');
-
-    // Escape content for JSX template literal
-    const escapedContent = data.content
+  private generateTSXComponent(content: string, frontmatter: any, routePath: string): string {
+    // Escape content for TSX
+    const escapedContent = content
       .replace(/\\/g, '\\\\')
       .replace(/`/g, '\\`')
       .replace(/\${/g, '\\${');
 
     return `import React from 'react';
-import { MarkdownRenderer } from '${normalizedImportPath}';
+import { MarkdownRenderer } from '../../components/MarkdownRenderer';
 
-export const frontmatter = ${JSON.stringify(data.frontmatter, null, 2)};
+const frontmatter = ${JSON.stringify({
+  ...frontmatter,
+  path: routePath,
+}, null, 2)};
 
-const content = \`${escapedContent}\`;
+export { frontmatter };
 
-export default function CompiledContent() {
-  return React.createElement(MarkdownRenderer, { content });
+export default function CompiledMarkdownContent() {
+  const content = \`${escapedContent}\`;
+  
+  return <MarkdownRenderer content={content} />;
 }
 `;
   }
 
-  private async generateIndexFile(contentMap: Record<string, any>): Promise<void> {
-    const imports: string[] = [];
-    const registryEntries: string[] = [];
+  private async generateIndex(registry: Record<string, string>): Promise<void> {
+    const imports = Object.entries(registry)
+      .map(([routePath, importPath], index) => 
+        `import * as content${index} from '${importPath}';`
+      )
+      .join('\n');
 
-    console.log(`📋 Generating index for ${Object.keys(contentMap).length} entries`);
+    const registrations = Object.entries(registry)
+      .map(([routePath, importPath], index) => 
+        `  registerContent('${routePath}', content${index} as CompiledContentModule);`
+      )
+      .join('\n');
 
-    Object.entries(contentMap).forEach(([pathKey, data], index) => {
-      const variableName = `content${index}`;
-      const relativePath = path.relative(this.options.outputDir, data.filePath).replace(/\.tsx$/, '');
-      const importPath = `./${relativePath.replace(/\\/g, '/')}`;
-      
-      imports.push(`import ${variableName}, { frontmatter as frontmatter${index} } from '${importPath}';`);
-      registryEntries.push(`  '${pathKey}': {
-    default: ${variableName},
-    frontmatter: frontmatter${index}
-  }`);
-      
-      console.log(`📋 Registry entry: ${pathKey} -> ${importPath}`);
-    });
-
-    const indexContent = `// Auto-generated compiled content index
+    const indexContent = `
+// Auto-generated compiled content index
 // This file is generated by the MDX compiler - do not edit manually
-
-${imports.join('\n')}
 
 export interface CompiledContentModule {
   default: React.ComponentType;
@@ -208,10 +165,14 @@ export interface CompiledContentModule {
   };
 }
 
+// Import all compiled content
+${imports}
+
 // Content registry populated by the build script
-export const contentRegistry: Record<string, CompiledContentModule> = {
-${registryEntries.join(',\n')}
-};
+export const contentRegistry: Record<string, CompiledContentModule> = {};
+
+// Register all content
+${registrations}
 
 // Function to get compiled content from registry
 export function getCompiledContent(path: string): CompiledContentModule | null {
@@ -227,9 +188,7 @@ export function registerContent(path: string, module: CompiledContentModule): vo
 }
 `;
 
-    const indexPath = path.join(this.options.outputDir, 'index.ts');
-    fs.writeFileSync(indexPath, indexContent);
-    
-    console.log('📝 Generated compiled content index with TSX imports');
+    const indexPath = path.join(this.outputDir, 'index.ts');
+    await fs.writeFile(indexPath, indexContent, 'utf-8');
   }
 }
