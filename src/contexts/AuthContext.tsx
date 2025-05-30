@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -25,7 +26,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setSession(session);
       setUser(session?.user ?? null);
       if (session?.user) {
-        checkAndEnsureUserRole(session.user.id);
+        fetchUserRoles(session.user.id);
       }
       setLoading(false);
     });
@@ -38,9 +39,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Check roles and assign editor if user has no roles
+          // Only fetch roles, don't assign any automatically
           setTimeout(async () => {
-            await checkAndEnsureUserRole(session.user.id);
+            await fetchUserRoles(session.user.id);
           }, 500);
         } else {
           setUserRoles([]);
@@ -51,49 +52,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, []);
-
-  const checkAndEnsureUserRole = async (userId: string) => {
-    try {
-      console.log('Checking roles for user:', userId);
-      
-      // Fetch current user roles
-      const { data: roles, error } = await supabase
-        .from('user_roles')
-        .select('role')
-        .eq('user_id', userId);
-
-      if (error) {
-        console.error('Error fetching user roles:', error);
-        return;
-      }
-
-      console.log('Current user roles:', roles);
-
-      // If user has no roles, assign editor role
-      if (!roles || roles.length === 0) {
-        console.log('User has no roles, inserting editor role into user_roles table...');
-        const { data: insertData, error: insertError } = await supabase
-          .from('user_roles')
-          .insert({ user_id: userId, role: 'editor' })
-          .select();
-
-        if (insertError) {
-          console.error('Error inserting editor role:', insertError);
-          return;
-        } else {
-          console.log('Successfully inserted editor role:', insertData);
-          setUserRoles(['editor']);
-        }
-      } else {
-        // Update local state with current roles
-        const rolesList = roles.map(r => r.role);
-        console.log('Setting user roles to:', rolesList);
-        setUserRoles(rolesList);
-      }
-    } catch (error) {
-      console.error('Error in checkAndEnsureUserRole:', error);
-    }
-  };
 
   const fetchUserRoles = async (userId: string) => {
     try {
