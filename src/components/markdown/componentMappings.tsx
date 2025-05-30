@@ -26,17 +26,17 @@ export const createComponentMappings = () => ({
 
   // Custom div handler for callouts, steps, cards, and card groups
   div: ({ children, ...props }: DivProps) => {
-    const calloutType = props['data-callout'];
-    const title = props['data-title'];
-    const isSteps = props['data-steps'];
-    const stepNumber = props['data-step'];
-    const stepTitle = props['data-step-title'];
-    const isCard = props['data-card'];
-    const isCardGroup = props['data-cardgroup'];
-    const cols = props['data-cols'];
-    const image = props['data-image'];
-    const href = props['data-href'];
-    const external = props['data-external'];
+    const calloutType = props['data-callout'] as string;
+    const title = props['data-title'] as string;
+    const isSteps = props['data-steps'] as string;
+    const stepNumber = props['data-step'] as string;
+    const stepTitle = props['data-step-title'] as string;
+    const isCard = props['data-card'] as string;
+    const isCardGroup = props['data-cardgroup'] as string;
+    const cols = props['data-cols'] as string;
+    const image = props['data-image'] as string;
+    const href = props['data-href'] as string;
+    const external = props['data-external'] as string;
     
     if (calloutType) {
       return <Callout type={calloutType as 'info' | 'warning' | 'tip' | 'error' | 'success' | 'alert'} title={title} {...props}>{children}</Callout>;
