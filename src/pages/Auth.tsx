@@ -53,20 +53,35 @@ export default function Auth() {
         </div>
 
         <Tabs defaultValue="signin" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="signin">Sign In</TabsTrigger>
+            <TabsTrigger value="signup">Sign Up</TabsTrigger>
             <TabsTrigger value="admin">Admin</TabsTrigger>
           </TabsList>
           
           <TabsContent value="signin" className="space-y-4">
+            <Card>
+              <CardHeader>
+                <CardTitle>Sign In</CardTitle>
+                <CardDescription>
+                  Already have an account? Sign in with your GitHub account.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <GitHubAuthButton />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          <TabsContent value="signup" className="space-y-4">
             {!hasValidCode ? (
               <AccessCodeForm onSuccess={() => setHasValidCode(true)} />
             ) : (
               <Card>
                 <CardHeader>
-                  <CardTitle>Continue with GitHub</CardTitle>
+                  <CardTitle>Complete Sign Up</CardTitle>
                   <CardDescription>
-                    Access code validated. Sign in with your GitHub account to continue.
+                    Access code validated. Sign up with your GitHub account to continue.
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
