@@ -47,7 +47,16 @@ const contentComponents: Record<string, () => Promise<any>> = {
   'extensions-plugins': () => import('@/compiled-content/extensions-plugins'),
   
   // Desktop
+  'desktop/navigation': () => import('@/compiled-content/desktop/navigation'),
   'desktop/navigation/workflow-activity': () => import('@/compiled-content/desktop/navigation/workflow-activity'),
+  'desktop/navigation/updates': () => import('@/compiled-content/desktop/navigation/updates'),
+  'desktop/navigation/snippet-discovery': () => import('@/compiled-content/desktop/navigation/snippet-discovery'),
+  'desktop/navigation/global-search': () => import('@/compiled-content/desktop/navigation/global-search'),
+  'desktop/navigation/captured-context': () => import('@/compiled-content/desktop/navigation/captured-context'),
+  'desktop/navigation/settings': () => import('@/compiled-content/desktop/navigation/settings'),
+  
+  // CLI
+  'cli/commands': () => import('@/compiled-content/cli/commands'),
 };
 
 // Dynamic import function with comprehensive mapping
