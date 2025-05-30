@@ -1,6 +1,6 @@
 
 import path from 'path';
-import { SimpleMarkdownCompiler } from './simple-compiler';
+import { SimpleMarkdownCompiler } from './simple-compiler.js';
 import chokidar from 'chokidar';
 
 const INPUT_DIR = path.join(process.cwd(), 'public/content');
