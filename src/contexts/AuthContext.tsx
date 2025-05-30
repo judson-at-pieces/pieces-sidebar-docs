@@ -36,16 +36,25 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
+        console.log('Auth state change:', event, session?.user?.email);
         setSession(session);
         setUser(session?.user ?? null);
+        
         if (session?.user) {
-          setTimeout(() => {
-            fetchUserRoles(session.user.id);
+          // Use setTimeout to avoid potential issues with immediate DB calls
+          setTimeout(async () => {
+            await fetchUserRoles(session.user.id);
+            
             // Check if user needs role assignment after GitHub sign-in
             if (event === 'SIGNED_IN') {
-              checkAndAssignPendingRole(session.user.id);
+              console.log('User signed in, checking for pending role assignment...');
+              await checkAndAssignPendingRole(session.user.id);
+              // Refresh roles after potential assignment
+              setTimeout(() => {
+                fetchUserRoles(session.user.id);
+              }, 1000);
             }
-          }, 0);
+          }, 100);
         } else {
           setUserRoles([]);
         }
@@ -58,13 +67,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const checkAndAssignPendingRole = async (userId: string) => {
     try {
-      // Check if there's a recently used access code without a user_id
+      console.log('Checking for pending access codes for user:', userId);
+      
+      // Check if there's a recently used access code without a user_id assigned
       const { data, error } = await supabase
         .from('admin_access_codes')
         .select('*')
         .is('used_by', null)
         .eq('is_active', true)
-        .gte('used_at', new Date(Date.now() - 5 * 60 * 1000).toISOString()) // Within last 5 minutes
+        .gte('used_at', new Date(Date.now() - 10 * 60 * 1000).toISOString()) // Within last 10 minutes (increased window)
         .order('used_at', { ascending: false })
         .limit(1);
 
@@ -73,8 +84,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
+      console.log('Found pending access codes:', data);
+
       if (data && data.length > 0) {
-        // Update the access code with the user_id and assign the role
+        console.log('Assigning role to user from access code:', data[0].code);
+        
+        // Update the access code with the user_id
         const { error: updateError } = await supabase
           .from('admin_access_codes')
           .update({ used_by: userId })
@@ -85,20 +100,34 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           return;
         }
 
-        // Assign editor role
-        const { error: roleError } = await supabase
+        // Check if user already has editor role
+        const { data: existingRoles, error: roleCheckError } = await supabase
           .from('user_roles')
-          .insert({ user_id: userId, role: 'editor' })
-          .select();
+          .select('role')
+          .eq('user_id', userId)
+          .eq('role', 'editor');
 
-        if (roleError) {
-          console.error('Error assigning role:', roleError);
-        } else {
-          // Refresh user roles
-          setTimeout(() => {
-            fetchUserRoles(userId);
-          }, 100);
+        if (roleCheckError) {
+          console.error('Error checking existing roles:', roleCheckError);
+          return;
         }
+
+        if (!existingRoles || existingRoles.length === 0) {
+          // Assign editor role
+          const { error: roleError } = await supabase
+            .from('user_roles')
+            .insert({ user_id: userId, role: 'editor' });
+
+          if (roleError) {
+            console.error('Error assigning role:', roleError);
+          } else {
+            console.log('Successfully assigned editor role to user');
+          }
+        } else {
+          console.log('User already has editor role');
+        }
+      } else {
+        console.log('No pending access codes found');
       }
     } catch (error) {
       console.error('Error in checkAndAssignPendingRole:', error);
@@ -107,6 +136,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const fetchUserRoles = async (userId: string) => {
     try {
+      console.log('Fetching roles for user:', userId);
       const { data, error } = await supabase
         .from('user_roles')
         .select('role')
@@ -117,7 +147,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         return;
       }
 
-      setUserRoles(data?.map(r => r.role) || []);
+      const roles = data?.map(r => r.role) || [];
+      console.log('User roles:', roles);
+      setUserRoles(roles);
     } catch (error) {
       console.error('Error fetching user roles:', error);
     }
