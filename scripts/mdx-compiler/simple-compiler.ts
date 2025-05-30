@@ -40,6 +40,11 @@ export class SimpleMarkdownCompiler {
     relativePath: string,
     contentMap: Record<string, any>
   ): Promise<void> {
+    if (!fs.existsSync(dir)) {
+      console.log(`Directory does not exist: ${dir}`);
+      return;
+    }
+
     const items = fs.readdirSync(dir);
 
     for (const item of items) {
@@ -84,7 +89,7 @@ export class SimpleMarkdownCompiler {
         pathKey = frontmatter.path.startsWith('/') ? frontmatter.path : `/${frontmatter.path}`;
       }
 
-      // Process the markdown content - just clean it up, don't use custom syntax processor
+      // Process the markdown content
       const processedContent = markdown.trim().replace(/^---[\s\S]*?---\s*/, '').replace(/^\*\*\*\s*/, '');
 
       // Store in content map
@@ -184,14 +189,13 @@ export interface CompiledContentModule {
   };
 }
 
-// Content registry will be populated by the build script
+// Content registry populated by the build script
 export const contentRegistry: Record<string, CompiledContentModule> = {
 ${registryEntries.join(',\n')}
 };
 
 // Function to get compiled content from registry
 export function getCompiledContent(path: string): CompiledContentModule | null {
-  // Normalize the path to match registry keys
   const normalizedPath = path.startsWith('/') ? path : \`/\${path}\`;
   return contentRegistry[normalizedPath] || null;
 }
@@ -203,7 +207,7 @@ export function registerContent(path: string, module: CompiledContentModule): vo
 `;
 
     const indexPath = path.join(this.options.outputDir, 'index.ts');
-    fs.writeFileSync(indexContent, indexContent);
+    fs.writeFileSync(indexPath, indexContent);
     
     console.log('📝 Generated compiled content index with TSX imports');
   }

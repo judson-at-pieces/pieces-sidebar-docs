@@ -1,7 +1,6 @@
 
 import path from 'path';
 import { SimpleMarkdownCompiler } from './simple-compiler.js';
-import chokidar from 'chokidar';
 
 const INPUT_DIR = path.join(process.cwd(), 'public/content');
 const OUTPUT_DIR = path.join(process.cwd(), 'src/compiled-content');
@@ -30,37 +29,8 @@ async function watch() {
   // Initial build
   await build();
 
-  // Watch for changes
-  console.log('👀 Watching for markdown changes...');
-  
-  const watcher = chokidar.watch(INPUT_DIR, {
-    ignored: /(^|[\/\\])\../,
-    persistent: true,
-    ignoreInitial: true,
-  });
-
-  let isCompiling = false;
-
-  const recompile = async () => {
-    if (isCompiling) return;
-    
-    isCompiling = true;
-    console.log('🔄 Markdown changes detected, recompiling...');
-    
-    try {
-      await compiler.compile();
-      console.log('✅ MDX recompilation completed!');
-    } catch (error) {
-      console.error('❌ MDX recompilation failed:', error);
-    }
-    
-    isCompiling = false;
-  };
-
-  watcher
-    .on('add', recompile)
-    .on('change', recompile)
-    .on('unlink', recompile);
+  // Note: Watch functionality would require chokidar
+  console.log('📝 Single build completed. For watch mode, install chokidar dependency.');
 }
 
 // CLI handling

@@ -2,9 +2,9 @@
 const { execSync } = require('child_process');
 const path = require('path');
 
-// Run the TypeScript build script
+// Run the TypeScript build script using tsx
 try {
-  execSync(`node --loader ts-node/esm ${path.join(__dirname, 'build.ts')}`, {
+  execSync(`npx tsx ${path.join(__dirname, 'build.ts')}`, {
     stdio: 'inherit',
     cwd: process.cwd()
   });
