@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { DragDropContext, DropResult } from "@hello-pangea/dnd";
 import { navigationService, NavigationSection, NavigationItem } from "@/services/navigationService";
@@ -30,6 +29,59 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
     );
   };
 
+  // Create navigation items from folder structure
+  const createNavigationItemsFromFolder = (folderNode: FileNode, parentId?: string): NavigationItem[] => {
+    const items: NavigationItem[] = [];
+    
+    // First, check if this folder has an index file (e.g., cli.md for cli folder)
+    const indexFileName = `${folderNode.name}.md`;
+    const indexFile = folderNode.children?.find(child => 
+      child.type === 'file' && child.name === indexFileName
+    );
+    
+    // Create the folder item (which may represent the index file)
+    const folderItem: NavigationItem = {
+      id: `temp-${Date.now()}-${Math.random()}`,
+      title: folderNode.name.replace(/-/g, ' '),
+      href: indexFile ? `/${indexFile.path.replace('.md', '')}` : `/${folderNode.path}`,
+      file_path: indexFile?.path || folderNode.path,
+      order_index: 0,
+      parent_id: parentId,
+      is_auto_generated: true,
+      items: []
+    };
+    
+    items.push(folderItem);
+    
+    // Process children (excluding the index file since it's represented by the folder)
+    if (folderNode.children) {
+      folderNode.children.forEach(child => {
+        // Skip the index file as it's already represented by the folder item
+        if (child.type === 'file' && child.name === indexFileName) {
+          return;
+        }
+        
+        if (child.type === 'file' && !isFileUsed(child.path)) {
+          const childItem: NavigationItem = {
+            id: `temp-${Date.now()}-${Math.random()}`,
+            title: child.name.replace('.md', '').replace(/-/g, ' '),
+            href: `/${child.path.replace('.md', '')}`,
+            file_path: child.path,
+            order_index: 0,
+            parent_id: folderItem.id,
+            is_auto_generated: true
+          };
+          folderItem.items!.push(childItem);
+        } else if (child.type === 'folder') {
+          const subFolderItems = createNavigationItemsFromFolder(child, folderItem.id);
+          folderItem.items!.push(...subFolderItems);
+        }
+      });
+    }
+    
+    return items;
+  };
+
   const handleDragEnd = async (result: DropResult) => {
     const { destination, source, draggableId } = result;
 
@@ -41,7 +93,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
       
       // Handle both files and folders
       if (draggableId.startsWith('folder-')) {
-        // Handle folder drag
+        // Handle folder drag - preserve folder structure
         const folderPath = draggableId.replace('folder-', '');
         const findFolderByPath = (nodes: FileNode[], path: string): FileNode | null => {
           for (const node of nodes) {
@@ -57,32 +109,10 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
         };
 
         const folder = findFolderByPath(fileStructure, folderPath);
-        if (!folder || !folder.children) return;
+        if (!folder) return;
 
-        // Add all files in the folder to the section
-        const addFilesFromFolder = (folderNode: FileNode): NavigationItem[] => {
-          const items: NavigationItem[] = [];
-          
-          folderNode.children?.forEach(child => {
-            if (child.type === 'file' && !isFileUsed(child.path)) {
-              items.push({
-                id: `temp-${Date.now()}-${Math.random()}`,
-                title: child.name.replace('.md', '').replace(/-/g, ' '),
-                href: `/${child.path.replace('.md', '')}`,
-                file_path: child.path,
-                order_index: 0,
-                parent_id: undefined,
-                is_auto_generated: true
-              });
-            } else if (child.type === 'folder') {
-              items.push(...addFilesFromFolder(child));
-            }
-          });
-          
-          return items;
-        };
-
-        const newItems = addFilesFromFolder(folder);
+        // Create nested navigation items that preserve folder structure
+        const newItems = createNavigationItemsFromFolder(folder);
         
         if (newItems.length === 0) {
           toast.info("No available files in this folder");
@@ -102,7 +132,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
         
         setSections(updatedSections);
         onNavigationChange();
-        toast.success(`Added ${newItems.length} files from ${folder.name}`);
+        toast.success(`Added ${folder.name} folder to navigation`);
         
       } else {
         // Handle single file drag
@@ -275,7 +305,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
       <div className="p-4 border-b">
         <h2 className="text-lg font-semibold mb-2">Navigation Editor</h2>
         <p className="text-sm text-muted-foreground">
-          Drag files or entire folders from the "Available Files" section into navigation sections to organize your documentation.
+          Drag files or entire folders from the "Available Files" section into navigation sections to organize your documentation. Folders will maintain their structure.
         </p>
       </div>
       
