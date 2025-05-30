@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Search, FileText, FolderOpen, Folder, Plus } from "lucide-react";
+import { Search, FileText, FolderOpen, Folder, Plus, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 // Mock file structure - this would come from your content management system
@@ -51,9 +51,10 @@ interface FileTreeProps {
   depth?: number;
   selectedFile?: string;
   onFileSelect?: (file: string) => void;
+  modifiedFiles?: Set<string>;
 }
 
-function FileTree({ items, depth = 0, selectedFile, onFileSelect }: FileTreeProps) {
+function FileTree({ items, depth = 0, selectedFile, onFileSelect, modifiedFiles }: FileTreeProps) {
   const [expandedFolders, setExpandedFolders] = useState<string[]>([]);
 
   const toggleFolder = (folderName: string) => {
@@ -93,6 +94,7 @@ function FileTree({ items, depth = 0, selectedFile, onFileSelect }: FileTreeProp
                   depth={depth + 1}
                   selectedFile={selectedFile}
                   onFileSelect={onFileSelect}
+                  modifiedFiles={modifiedFiles}
                 />
               )}
             </div>
@@ -107,7 +109,10 @@ function FileTree({ items, depth = 0, selectedFile, onFileSelect }: FileTreeProp
               onClick={() => onFileSelect?.(item.name)}
             >
               <FileText className="h-4 w-4 mr-2" />
-              <span className="truncate">{item.name}</span>
+              <span className="truncate flex-1">{item.name}</span>
+              {modifiedFiles?.has(item.name) && (
+                <Circle className="h-2 w-2 fill-orange-500 text-orange-500" />
+              )}
             </Button>
           )}
         </div>
@@ -116,9 +121,14 @@ function FileTree({ items, depth = 0, selectedFile, onFileSelect }: FileTreeProp
   );
 }
 
-export function EditorSidebar() {
+interface EditorSidebarProps {
+  selectedFile?: string;
+  onFileSelect: (file: string) => void;
+  modifiedFiles?: Set<string>;
+}
+
+export function EditorSidebar({ selectedFile, onFileSelect, modifiedFiles }: EditorSidebarProps) {
   const [searchTerm, setSearchTerm] = useState("");
-  const [selectedFile, setSelectedFile] = useState<string>();
 
   return (
     <div className="h-full flex flex-col">
@@ -146,7 +156,8 @@ export function EditorSidebar() {
         <FileTree
           items={mockFileStructure}
           selectedFile={selectedFile}
-          onFileSelect={setSelectedFile}
+          onFileSelect={onFileSelect}
+          modifiedFiles={modifiedFiles}
         />
       </div>
     </div>
