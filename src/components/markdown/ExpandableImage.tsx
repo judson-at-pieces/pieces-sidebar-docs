@@ -16,7 +16,6 @@ export function ExpandableImage({ src, alt, caption, className, ...props }: Expa
 
   // Reset states when src changes
   useEffect(() => {
-    console.log('🔄 ExpandableImage mounted/updated:', { src, alt, caption });
     setImageError(false);
     setImageLoaded(false);
   }, [src, alt, caption]);
@@ -27,7 +26,6 @@ export function ExpandableImage({ src, alt, caption, className, ...props }: Expa
     
     const timeout = setTimeout(() => {
       if (!imageLoaded && !imageError) {
-        console.log('⏱️ Image loading timeout, forcing display:', src);
         setImageLoaded(true);
       }
     }, 3000);
@@ -35,30 +33,21 @@ export function ExpandableImage({ src, alt, caption, className, ...props }: Expa
     return () => clearTimeout(timeout);
   }, [src, imageLoaded, imageError]);
 
-  console.log('🔍 ExpandableImage rendered with:', { src, alt, caption, className, props });
-
   if (!src) {
-    console.log('❌ No src provided to ExpandableImage');
     return null;
   }
 
   const handleImageError = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    console.error('❌ Image failed to load:', src);
-    console.error('Error details:', e);
-    console.error('Image element:', e.currentTarget);
     setImageError(true);
     setImageLoaded(false);
   };
 
   const handleImageLoad = (e: React.SyntheticEvent<HTMLImageElement, Event>) => {
-    console.log('✅ Image loaded successfully:', src);
-    console.log('Image dimensions:', e.currentTarget.naturalWidth, 'x', e.currentTarget.naturalHeight);
     setImageLoaded(true);
     setImageError(false);
   };
 
   const handleRetry = () => {
-    console.log('🔄 Retrying image load:', src);
     setImageError(false);
     setImageLoaded(false);
   };

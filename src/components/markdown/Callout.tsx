@@ -61,7 +61,7 @@ export function Callout({ type = 'info', title, children, className }: CalloutPr
 
   return (
     <div className={cn(
-      'border-2 rounded-lg p-4 my-6 shadow-sm transition-all duration-300 hover:shadow-md',
+      'border rounded-lg p-4 my-6 shadow-sm transition-all duration-300 hover:shadow-md',
       config.className,
       className
     )}>

@@ -18,13 +18,13 @@ interface StepsProps {
 
 export function Step({ children, number, title, isLast = false, isCompleted = false }: StepProps) {
   return (
-    <div className="relative flex gap-4 pb-8 last:pb-0">
+    <div className="relative flex gap-4">
       <div className="flex flex-col items-center">
         <div className={cn(
           "relative z-10 flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all duration-300",
           isCompleted 
             ? "border-emerald-500 bg-emerald-500 text-white shadow-lg shadow-emerald-500/25" 
-            : "border-primary/20 bg-primary text-primary-foreground shadow-md hover:shadow-lg hover:scale-105"
+            : "border-primary bg-primary text-primary-foreground shadow-md hover:shadow-lg hover:scale-105"
         )}>
           {isCompleted ? (
             <Check className="w-5 h-5" />
@@ -34,7 +34,7 @@ export function Step({ children, number, title, isLast = false, isCompleted = fa
         </div>
         {!isLast && (
           <div className={cn(
-            "absolute top-10 h-[calc(100%-2.5rem)] w-0.5 transition-all duration-300",
+            "mt-2 w-0.5 h-12 transition-all duration-300",
             isCompleted ? "bg-emerald-500" : "bg-border"
           )} />
         )}
@@ -58,7 +58,7 @@ export function Step({ children, number, title, isLast = false, isCompleted = fa
 
 export function Steps({ children, className }: StepsProps) {
   return (
-    <div className={cn('relative my-8 pl-2', className)}>
+    <div className={cn('relative my-6 space-y-6', className)}>
       {children}
     </div>
   );

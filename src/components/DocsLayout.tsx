@@ -415,7 +415,7 @@ const navigation = [
   },
 ];
 
-function DocsSidebar({ className }: { className?: string }) {
+function DocsSidebar({ className, onNavigate }: { className?: string; onNavigate?: () => void }) {
   const location = useLocation();
   const [openSections, setOpenSections] = useState<string[]>([
     "Meet Pieces", 
@@ -473,7 +473,7 @@ function DocsSidebar({ className }: { className?: string }) {
 
   const renderNavItem = (item: any, depth = 0) => {
     const hasSubItems = item.items && item.items.length > 0;
-    const paddingClass = depth === 0 ? "px-3" : depth === 1 ? "px-6" : depth === 2 ? "px-9" : "px-12";
+    const paddingClass = depth === 0 ? "px-3" : depth === 1 ? "px-5" : depth === 2 ? "px-7" : "px-9";
 
     if (hasSubItems) {
       return (
@@ -486,8 +486,9 @@ function DocsSidebar({ className }: { className?: string }) {
               {item.href ? (
                 <Link
                   to={item.href}
+                  onClick={onNavigate}
                   className={cn(
-                    "flex-1 flex items-center py-2 text-sm rounded-lg transition-colors break-words whitespace-normal leading-tight text-left",
+                    "flex-1 flex items-center py-3 min-h-[44px] text-sm rounded-lg transition-colors break-words whitespace-normal leading-tight text-left",
                     paddingClass,
                     item.isBold && "font-bold",
                     isActive(item.href)
@@ -508,7 +509,7 @@ function DocsSidebar({ className }: { className?: string }) {
                 </div>
               )}
               <CollapsibleTrigger asChild>
-                <Button variant="ghost" size="sm" className="h-auto p-1 flex-shrink-0 mr-2">
+                <Button variant="ghost" size="icon" className="h-9 w-9 min-h-[36px] min-w-[36px] flex-shrink-0 mr-2">
                   {isSectionOpen(item.title) ? (
                     <ChevronDown className="h-4 w-4" />
                   ) : (
@@ -529,8 +530,9 @@ function DocsSidebar({ className }: { className?: string }) {
       <Link
         key={item.href}
         to={item.href}
+        onClick={onNavigate}
         className={cn(
-          "block py-2 text-sm rounded-lg transition-colors break-words whitespace-normal leading-tight text-left",
+          "block py-3 min-h-[44px] text-sm rounded-lg transition-colors break-words whitespace-normal leading-tight text-left",
           paddingClass,
           item.isBold && "font-bold",
           isActive(item.href)
@@ -544,7 +546,7 @@ function DocsSidebar({ className }: { className?: string }) {
   };
 
   return (
-    <ScrollArea className={cn("h-full w-64", className)}>
+    <ScrollArea className={cn("h-full w-full lg:w-64", className)}>
       <div className="space-y-4 py-4">
         <div className="px-3 py-2">
           <div className="mb-6">
@@ -613,9 +615,9 @@ export default function DocsLayout() {
             </div>
           </div>
         </div>
-        <SheetContent side="left" className="p-0 w-64">
+        <SheetContent side="left" className="p-0 w-[85vw] max-w-sm">
           <ScrollArea className="h-full">
-            <DocsSidebar />
+            <DocsSidebar onNavigate={() => setSidebarOpen(false)} className="w-full" />
           </ScrollArea>
         </SheetContent>
       </Sheet>
@@ -640,7 +642,7 @@ export default function DocsLayout() {
         {/* Main content */}
         <div className="flex flex-col flex-1 overflow-hidden">
           <main className="flex-1 relative overflow-y-auto focus:outline-none">
-            <div className="py-8">
+            <div className="py-4 sm:py-6 lg:py-8">
               <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
                 <Outlet />
               </div>

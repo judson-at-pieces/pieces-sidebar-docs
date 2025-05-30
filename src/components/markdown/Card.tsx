@@ -1,60 +1,103 @@
 
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
 import { ExternalLink, ArrowUpRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface CardProps {
   title?: string;
   image?: string;
+  icon?: string;
   href?: string;
   external?: string;
   children?: React.ReactNode;
   className?: string;
 }
 
-export function Card({ title, image, href, external, children, className }: CardProps) {
+export function Card({ title, image, icon, href, external, children, className }: CardProps) {
   const isExternal = external === 'true' || href?.startsWith('http');
   const isClickable = !!href;
   
+  // Process children as markdown if it's a string
+  const processedChildren = React.useMemo(() => {
+    if (typeof children === 'string') {
+      return (
+        <ReactMarkdown 
+          className="prose prose-sm dark:prose-invert max-w-none prose-p:text-sm prose-p:mb-2 prose-p:leading-relaxed prose-headings:text-base prose-headings:font-semibold prose-headings:mb-2 prose-ul:my-2 prose-li:my-0 prose-li:text-sm"
+        >
+          {children}
+        </ReactMarkdown>
+      );
+    }
+    return children;
+  }, [children]);
+  
   const cardContent = (
     <div className={cn(
-      "relative overflow-hidden rounded-lg border-2 p-6 bg-card transition-all duration-300",
-      isClickable && "cursor-pointer",
-      "border-border hover:border-primary/20",
-      "shadow-sm hover:shadow-xl",
-      "hover:-translate-y-0.5",
-      "group",
+      "relative w-full rounded-lg p-6 shadow-md bg-white dark:bg-card",
+      "border border-gray-200 dark:border-border",
+      "transition-all duration-300",
+      isClickable && "cursor-pointer hover:shadow-lg hover:-translate-y-0.5",
+      "group overflow-hidden",
       className
     )}>
       {/* Gradient overlay on hover */}
-      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+      <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none rounded-lg" />
       
-      {image && (
-        <div className="relative mb-4 overflow-hidden rounded-md">
-          <img 
-            src={image} 
-            alt={title || ''} 
-            className="w-full h-32 object-cover transition-transform duration-300 group-hover:scale-105" 
-          />
-        </div>
-      )}
-      {title && (
-        <h3 className="relative text-lg font-semibold mb-2 flex items-center justify-between transition-colors duration-300 group-hover:text-primary">
-          <span>{title}</span>
-          {isClickable && (
-            <ArrowUpRight className={cn(
-              "w-4 h-4 transition-all duration-300",
-              "opacity-0 group-hover:opacity-100",
-              "transform translate-x-1 translate-y-1 group-hover:translate-x-0 group-hover:translate-y-0"
-            )} />
+      <div className="relative flex flex-col md:flex-row gap-y-4 md:gap-x-6 h-full">
+        {/* Icon or Image */}
+        {(icon || image) && (
+          <div className="flex-shrink-0">
+            {icon ? (
+              // Icon display - proper sizing
+              <div className="w-10 h-10 rounded-lg bg-primary/10 dark:bg-primary/20 flex items-center justify-center">
+                {icon.startsWith('/') || icon.startsWith('http') ? (
+                  <img 
+                    src={icon} 
+                    alt={title || ''} 
+                    className="w-8 h-8 object-contain"
+                  />
+                ) : (
+                  <span className="text-xl">{icon}</span>
+                )}
+              </div>
+            ) : image && (
+              // Full image display
+              <div className="relative w-full md:w-48 h-48 sm:h-32 md:h-full overflow-hidden rounded-lg">
+                <img 
+                  src={image} 
+                  alt={title || ''} 
+                  className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" 
+                />
+              </div>
+            )}
+          </div>
+        )}
+        
+        {/* Content wrapper */}
+        <div className="flex-grow space-y-2">
+          {/* Title */}
+          {title && (
+            <h3 className="text-base sm:text-lg font-semibold flex items-center justify-between transition-colors duration-300 group-hover:text-primary">
+              <span className="line-clamp-2">{title}</span>
+              {isClickable && (
+                <ArrowUpRight className={cn(
+                  "w-4 h-4 ml-2 flex-shrink-0 transition-all duration-300",
+                  "opacity-0 group-hover:opacity-100",
+                  "transform translate-x-1 translate-y-1 group-hover:translate-x-0 group-hover:translate-y-0"
+                )} />
+              )}
+            </h3>
           )}
-        </h3>
-      )}
-      {children && (
-        <div className="relative text-sm text-muted-foreground">
-          {children}
+          
+          {/* Content */}
+          {children && (
+            <div className="text-sm sm:text-base text-muted-foreground mt-2">
+              {processedChildren}
+            </div>
+          )}
         </div>
-      )}
+      </div>
     </div>
   );
 
