@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -5,7 +6,7 @@ import { AdminPortal } from '@/components/auth/AdminPortal';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Users, UserPlus } from 'lucide-react';
-import { GitHubRepoSelector } from '@/components/admin/GitHubRepoSelector';
+import { GitHubRepoConfig } from '@/components/admin/GitHubRepoConfig';
 
 export default function Admin() {
   const { user, loading, hasRole, signOut } = useAuth();
@@ -84,7 +85,7 @@ export default function Admin() {
             </CardContent>
           </Card>
 
-          <GitHubRepoSelector />
+          <GitHubRepoConfig />
 
           <Card>
             <CardHeader>
