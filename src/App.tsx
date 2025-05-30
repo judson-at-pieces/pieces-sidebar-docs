@@ -63,6 +63,59 @@ function AppContent() {
             <Route path="*" element={<CompiledDocPage />} />
           </Route>
 
+          {/* Direct routes that should be handled by compiled content */}
+          <Route path="/desktop/*" element={<DocsLayout />}>
+            <Route path="*" element={<CompiledDocPage />} />
+          </Route>
+          <Route path="/extensions-plugins/*" element={<DocsLayout />}>
+            <Route path="*" element={<CompiledDocPage />} />
+          </Route>
+          <Route path="/meet-pieces/*" element={<DocsLayout />}>
+            <Route path="*" element={<CompiledDocPage />} />
+          </Route>
+          <Route path="/core-dependencies/*" element={<DocsLayout />}>
+            <Route path="*" element={<CompiledDocPage />} />
+          </Route>
+          <Route path="/mcp/*" element={<DocsLayout />}>
+            <Route path="*" element={<CompiledDocPage />} />
+          </Route>
+          <Route path="/productivity/*" element={<DocsLayout />}>
+            <Route path="*" element={<CompiledDocPage />} />
+          </Route>
+          <Route path="/large-language-models/*" element={<DocsLayout />}>
+            <Route path="*" element={<CompiledDocPage />} />
+          </Route>
+          <Route path="/quick-guides/*" element={<DocsLayout />}>
+            <Route path="*" element={<CompiledDocPage />} />
+          </Route>
+          <Route path="/help/*" element={<DocsLayout />}>
+            <Route path="*" element={<CompiledDocPage />} />
+          </Route>
+          <Route path="/more/*" element={<DocsLayout />}>
+            <Route path="*" element={<CompiledDocPage />} />
+          </Route>
+          <Route path="/cli/*" element={<DocsLayout />}>
+            <Route path="*" element={<CompiledDocPage />} />
+          </Route>
+          <Route path="/web-extension/*" element={<DocsLayout />}>
+            <Route path="*" element={<CompiledDocPage />} />
+          </Route>
+          <Route path="/obsidian/*" element={<DocsLayout />}>
+            <Route path="*" element={<CompiledDocPage />} />
+          </Route>
+          <Route path="/raycast" element={<DocsLayout />}>
+            <Route index element={<CompiledDocPage />} />
+          </Route>
+          <Route path="/glossary" element={<DocsLayout />}>
+            <Route index element={<CompiledDocPage />} />
+          </Route>
+          <Route path="/support" element={<DocsLayout />}>
+            <Route index element={<CompiledDocPage />} />
+          </Route>
+          <Route path="/privacy-security-your-data" element={<DocsLayout />}>
+            <Route index element={<CompiledDocPage />} />
+          </Route>
+
           {/* Protected routes - temporarily disabled */}
           <Route path="/admin" element={<div className="p-8 text-center">Admin panel temporarily unavailable</div>} />
           <Route path="/editor" element={<div className="p-8 text-center">Editor temporarily unavailable</div>} />
