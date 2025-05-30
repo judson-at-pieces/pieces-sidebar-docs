@@ -43,32 +43,16 @@ class GitHubAppService {
     }
   }
 
-  // Get all installations for the app using raw SQL query
+  // Get all installations for the app
   async getInstallations(): Promise<GitHubInstallation[]> {
     try {
-      // Use raw SQL query to avoid TypeScript issues with new table
       const { data, error } = await supabase
-        .rpc('sql', {
-          query: `
-            SELECT installation_id, account_login, account_type, installed_at
-            FROM github_installations 
-            ORDER BY installed_at DESC
-          `
-        });
+        .from('github_installations')
+        .select('installation_id, account_login, account_type, installed_at')
+        .order('installed_at', { ascending: false });
 
       if (error) {
-        console.error('RPC error:', error);
-        // Fallback: try direct table access
-        const { data: fallbackData, error: fallbackError } = await supabase
-          .from('github_installations' as any)
-          .select('installation_id, account_login, account_type, installed_at')
-          .order('installed_at', { ascending: false });
-
-        if (fallbackError) {
-          throw new Error(`Failed to get installations: ${fallbackError.message}`);
-        }
-
-        return fallbackData || [];
+        throw new Error(`Failed to get installations: ${error.message}`);
       }
 
       return data || [];
