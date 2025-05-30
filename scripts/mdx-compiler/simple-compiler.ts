@@ -33,6 +33,7 @@ export class SimpleMarkdownCompiler {
     await this.generateIndexFile(contentMap);
 
     console.log(`📦 Compiled ${Object.keys(contentMap).length} content files to TSX`);
+    console.log('📋 Registry paths:', Object.keys(contentMap).slice(0, 10));
   }
 
   private async processDirectory(
@@ -80,6 +81,7 @@ export class SimpleMarkdownCompiler {
       // Use frontmatter path if available
       if (frontmatter.path) {
         pathKey = frontmatter.path.startsWith('/') ? frontmatter.path : `/${frontmatter.path}`;
+        console.log(`📝 Using frontmatter path for ${fileName}: ${pathKey}`);
       } else {
         // Generate path based on file structure
         const baseName = fileName.replace(/\.(md|mdx)$/, '');
@@ -89,6 +91,7 @@ export class SimpleMarkdownCompiler {
         } else {
           pathKey = `/docs/${baseName}`;
         }
+        console.log(`📝 Generated path for ${fileName}: ${pathKey}`);
       }
 
       // Clean up any double slashes
@@ -119,7 +122,7 @@ export class SimpleMarkdownCompiler {
 
   private getOutputPath(pathKey: string): string {
     // Convert path to file system structure
-    const cleanPath = pathKey.replace(/^\/docs\//, '').replace(/^\//, '');
+    const cleanPath = pathKey.replace(/^\//, '');
     return path.join(this.options.outputDir, `${cleanPath}.tsx`);
   }
 
@@ -172,6 +175,8 @@ export default function CompiledContent() {
     const imports: string[] = [];
     const registryEntries: string[] = [];
 
+    console.log(`📋 Generating index for ${Object.keys(contentMap).length} entries`);
+
     Object.entries(contentMap).forEach(([pathKey, data], index) => {
       const variableName = `content${index}`;
       const relativePath = path.relative(this.options.outputDir, data.filePath).replace(/\.tsx$/, '');
@@ -182,6 +187,8 @@ export default function CompiledContent() {
     default: ${variableName},
     frontmatter: frontmatter${index}
   }`);
+      
+      console.log(`📋 Registry entry: ${pathKey} -> ${importPath}`);
     });
 
     const indexContent = `// Auto-generated compiled content index
