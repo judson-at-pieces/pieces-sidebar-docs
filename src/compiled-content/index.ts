@@ -22,8 +22,11 @@ import * as extensions_plugins_jetbrains_drive from './extensions-plugins/extens
 import * as extensions_plugins_jetbrains_commands from './extensions-plugins/extensions-plugins/jetbrains/commands';
 import * as extensions_plugins_sublime_commands from './extensions-plugins/extensions-plugins/sublime/commands';
 import * as extensions_plugins_vscode_commands from './extensions-plugins/extensions-plugins/visual-studio-code/commands';
+import * as extensions_plugins_visual_studio_commands from './extensions-plugins/extensions-plugins/visual-studio/commands';
+import * as extensions_plugins_visual_studio_copilot from './extensions-plugins/extensions-plugins/visual-studio/copilot';
 import * as extensions_plugins_jupitaleb_commands from './extensions-plugins/extensions-plugins/jupitaleb/commands';
 import * as extensions_plugins_jupitaleb_drive_save from './extensions-plugins/extensions-plugins/jupitaleb/drive/save';
+import * as extensions_plugins_untitled_pageasd_commands from './extensions-plugins/extensions-plugins/untitled-pageasd/commands';
 
 // Create the content registry with static mappings
 export const contentRegistry: Record<string, CompiledContentModule> = {
@@ -34,8 +37,11 @@ export const contentRegistry: Record<string, CompiledContentModule> = {
   'extensions-plugins/jetbrains/commands': extensions_plugins_jetbrains_commands,
   'extensions-plugins/sublime/commands': extensions_plugins_sublime_commands,
   'extensions-plugins/visual-studio-code/commands': extensions_plugins_vscode_commands,
+  'extensions-plugins/visual-studio/commands': extensions_plugins_visual_studio_commands,
+  'extensions-plugins/visual-studio/copilot': extensions_plugins_visual_studio_copilot,
   'extensions-plugins/jupitaleb/commands': extensions_plugins_jupitaleb_commands,
   'extensions-plugins/jupitaleb/drive/save': extensions_plugins_jupitaleb_drive_save,
+  'extensions-plugins/untitled-pageasd/commands': extensions_plugins_untitled_pageasd_commands,
 };
 
 // Add alternative path mappings based on frontmatter

@@ -10,6 +10,8 @@ import { DynamicDocPage } from './DynamicDocPage';
 import { getCompiledContent, type CompiledContentModule } from '@/compiled-content';
 
 function ErrorFallback({ error }: { error: Error }) {
+  console.error('CompiledDocPage error:', error);
+  
   return (
     <div className="text-center py-12">
       <h2 className="text-xl font-bold mb-4">Content Loading Error</h2>
@@ -58,11 +60,11 @@ export function CompiledDocPage() {
       try {
         const compiledContent = getCompiledContent(path);
         
-        if (compiledContent) {
+        if (compiledContent && compiledContent.default && typeof compiledContent.default === 'function') {
           console.log('Found compiled content for:', path);
           setContent(compiledContent);
         } else {
-          console.log('No compiled content found, using fallback for:', path);
+          console.log('No valid compiled content found, using fallback for:', path);
           setUseFallback(true);
         }
       } catch (err) {
