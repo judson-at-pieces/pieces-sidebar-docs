@@ -1,4 +1,3 @@
-
 import fs from 'fs/promises';
 import path from 'path';
 import matter from 'gray-matter';
@@ -119,7 +118,7 @@ export class SimpleMarkdownCompiler {
       .replace(/\${/g, '\\${');
 
     return `import React from 'react';
-import { MarkdownRenderer } from '../../components/MarkdownRenderer';
+import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 
 const frontmatter = ${JSON.stringify({
   ...frontmatter,
