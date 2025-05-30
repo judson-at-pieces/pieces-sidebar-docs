@@ -15,7 +15,7 @@ const Auth = lazy(() => import("./pages/Auth"));
 const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const Admin = lazy(() => import("./pages/Admin"));
 const DocsLayout = lazy(() => import("./components/DocsLayout"));
-const DynamicDocPage = lazy(() => import("./components/DynamicDocPage"));
+const DynamicDocPage = lazy(() => import("./components/DynamicDocPage").then(module => ({ default: module.DynamicDocPage })));
 
 function App() {
   return (
