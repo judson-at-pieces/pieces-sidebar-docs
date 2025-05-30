@@ -3,12 +3,13 @@ import React, { useState } from 'react';
 import { Navigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Button } from '@/components/ui/button';
 import { AccessCodeForm } from '@/components/auth/AccessCodeForm';
 import { GitHubAuthButton } from '@/components/auth/GitHubAuthButton';
 import { useAuth } from '@/contexts/AuthContext';
 
 export default function Auth() {
-  const { user, loading, hasRole } = useAuth();
+  const { user, loading, hasRole, signOut } = useAuth();
   const [hasValidCode, setHasValidCode] = useState(false);
 
   if (loading) {
@@ -19,12 +20,43 @@ export default function Auth() {
     );
   }
 
-  // If user is signed in and has proper permissions, redirect to home
+  // If user is signed in and has proper permissions, show already signed in message
   if (user && (hasRole('admin') || hasRole('editor'))) {
-    return <Navigate to="/" replace />;
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <Card className="w-full max-w-md">
+          <CardHeader>
+            <CardTitle>Already Signed In</CardTitle>
+            <CardDescription>
+              You are already signed in with proper permissions.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Signed in as: {user.email}
+            </p>
+            <div className="flex space-x-2">
+              <Button 
+                onClick={() => window.location.href = '/'}
+                className="flex-1"
+              >
+                Go to Home
+              </Button>
+              <Button 
+                onClick={signOut}
+                variant="outline"
+                className="flex-1"
+              >
+                Sign Out
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
-  // If user is signed in but doesn't have proper permissions, show access required message
+  // If user is signed in but doesn't have proper permissions, show access required message with sign out
   if (user && !hasRole('admin') && !hasRole('editor')) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
@@ -32,9 +64,21 @@ export default function Auth() {
           <CardHeader>
             <CardTitle>Access Required</CardTitle>
             <CardDescription>
-              You need editor permissions to access this application. Please contact an administrator.
+              You need editor permissions to access this application. Please contact an administrator or sign out to try with a different account.
             </CardDescription>
           </CardHeader>
+          <CardContent className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Signed in as: {user.email}
+            </p>
+            <Button 
+              onClick={signOut}
+              variant="outline"
+              className="w-full"
+            >
+              Sign Out
+            </Button>
+          </CardContent>
         </Card>
       </div>
     );
