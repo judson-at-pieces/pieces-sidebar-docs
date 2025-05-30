@@ -1,17 +1,277 @@
 
-import { Droppable } from "@hello-pangea/dnd";
-import { FileText } from "lucide-react";
+import { useState } from "react";
+import { FileText, Folder, FolderOpen, Plus, ChevronDown, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { FileNode } from "@/utils/fileSystem";
-import { FileTreeItem } from "./FileTreeItem";
+import { NavigationSection, NavigationItem } from "@/services/navigationService";
+
+interface PendingChange {
+  type: 'folder' | 'file';
+  sectionId: string;
+  folderNode?: FileNode;
+  fileNode?: FileNode;
+  previewItems: NavigationItem[];
+}
 
 interface AvailableFilesPanelProps {
   fileStructure: FileNode[];
   isFileUsed: (path: string) => boolean;
+  sections: NavigationSection[];
+  onAddToSection: (change: PendingChange) => void;
+  onShowPreview: (show: boolean) => void;
 }
 
-export function AvailableFilesPanel({ fileStructure, isFileUsed }: AvailableFilesPanelProps) {
+interface FileTreeItemProps {
+  node: FileNode;
+  depth: number;
+  isUsed: (path: string) => boolean;
+  sections: NavigationSection[];
+  onAddToSection: (change: PendingChange) => void;
+  onShowPreview: (show: boolean) => void;
+}
+
+function FileTreeItem({ node, depth, isUsed, sections, onAddToSection, onShowPreview }: FileTreeItemProps) {
+  const [isExpanded, setIsExpanded] = useState(true);
+  const [selectedSection, setSelectedSection] = useState<string>("");
+  const paddingLeft = depth * 16;
+
+  // Create navigation items from folder structure with proper hierarchy
+  const createNavigationItemsFromFolder = (folderNode: FileNode, parentId?: string): NavigationItem[] => {
+    const indexFileName = `${folderNode.name}.md`;
+    const indexFile = folderNode.children?.find(child => 
+      child.type === 'file' && child.name === indexFileName
+    );
+    
+    const folderId = `temp-${Date.now()}-${Math.random()}`;
+    const folderItem: NavigationItem = {
+      id: folderId,
+      title: folderNode.name.replace(/-/g, ' '),
+      href: indexFile ? `/${indexFile.path.replace('.md', '')}` : `/${folderNode.path}`,
+      file_path: indexFile?.path || folderNode.path,
+      order_index: 0,
+      parent_id: parentId,
+      is_auto_generated: true,
+      items: []
+    };
+
+    if (folderNode.children) {
+      let childOrder = 0;
+      
+      // Add files first (except index file)
+      for (const child of folderNode.children) {
+        if (child.type === 'file' && child.name !== indexFileName) {
+          const childItem: NavigationItem = {
+            id: `temp-${Date.now()}-${Math.random()}`,
+            title: child.name.replace('.md', '').replace(/-/g, ' '),
+            href: `/${child.path.replace('.md', '')}`,
+            file_path: child.path,
+            order_index: childOrder++,
+            parent_id: folderId,
+            is_auto_generated: true
+          };
+          
+          folderItem.items!.push(childItem);
+        }
+      }
+      
+      // Add subfolders recursively
+      for (const child of folderNode.children) {
+        if (child.type === 'folder') {
+          const subFolderItems = createNavigationItemsFromFolder(child, folderId);
+          if (subFolderItems.length > 0) {
+            const subFolder = subFolderItems[0];
+            subFolder.order_index = childOrder++;
+            subFolder.parent_id = folderId;
+            folderItem.items!.push(subFolder);
+          }
+        }
+      }
+    }
+    
+    return [folderItem];
+  };
+
+  const handleAddItem = () => {
+    if (!selectedSection) return;
+
+    if (node.type === 'folder') {
+      const previewItems = createNavigationItemsFromFolder(node);
+      onAddToSection({
+        type: 'folder',
+        sectionId: selectedSection,
+        folderNode: node,
+        previewItems
+      });
+    } else {
+      const previewItem: NavigationItem = {
+        id: `temp-${Date.now()}-${Math.random()}`,
+        title: node.name.replace('.md', '').replace(/-/g, ' '),
+        href: `/${node.path.replace('.md', '')}`,
+        file_path: node.path,
+        order_index: 0,
+        parent_id: undefined,
+        is_auto_generated: true
+      };
+      
+      onAddToSection({
+        type: 'file',
+        sectionId: selectedSection,
+        fileNode: node,
+        previewItems: [previewItem]
+      });
+    }
+    
+    onShowPreview(true);
+    setSelectedSection("");
+  };
+
+  // Check if any children are available
+  const hasAvailableChildren = (node: FileNode): boolean => {
+    if (!node.children) return false;
+    
+    const indexFileName = `${node.name}.md`;
+    return node.children.some(child => {
+      if (child.type === 'file') {
+        return child.name !== indexFileName && !isUsed(child.path);
+      }
+      return hasAvailableChildren(child);
+    });
+  };
+
+  // Check if this folder has an index file
+  const hasIndexFile = (node: FileNode): boolean => {
+    if (!node.children) return false;
+    const indexFileName = `${node.name}.md`;
+    return node.children.some(child => 
+      child.type === 'file' && child.name === indexFileName
+    );
+  };
+
+  if (node.type === 'file') {
+    const used = isUsed(node.path);
+    if (used) return null;
+
+    return (
+      <div
+        className="p-2 mb-1 border rounded-lg flex items-center gap-2 hover:bg-accent/50"
+        style={{ marginLeft: paddingLeft }}
+      >
+        <FileText className="h-4 w-4 flex-shrink-0" />
+        <span className="text-sm font-medium truncate flex-1">
+          {node.name.replace('.md', '')}
+        </span>
+        <div className="flex items-center gap-2">
+          <Select value={selectedSection} onValueChange={setSelectedSection}>
+            <SelectTrigger className="w-32 h-8 text-xs">
+              <SelectValue placeholder="Section" />
+            </SelectTrigger>
+            <SelectContent>
+              {sections.map((section) => (
+                <SelectItem key={section.id} value={section.id}>
+                  {section.title}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={handleAddItem}
+            disabled={!selectedSection}
+            className="h-8 w-8 p-0"
+          >
+            <Plus className="h-3 w-3" />
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // For folders, check if they should be shown
+  const showFolder = hasIndexFile(node) || hasAvailableChildren(node);
+  if (!showFolder) return null;
+
+  return (
+    <div style={{ marginLeft: paddingLeft }}>
+      <div className="mb-2">
+        <div className="p-2 flex items-center gap-2 hover:bg-accent/30 rounded">
+          <Button
+            variant="ghost"
+            size="sm"
+            className="h-6 w-6 p-0"
+            onClick={() => setIsExpanded(!isExpanded)}
+          >
+            {hasAvailableChildren(node) ? (
+              isExpanded ? (
+                <ChevronDown className="h-4 w-4" />
+              ) : (
+                <ChevronRight className="h-4 w-4" />
+              )
+            ) : (
+              <div className="h-4 w-4" />
+            )}
+          </Button>
+          {isExpanded ? (
+            <FolderOpen className="h-4 w-4 flex-shrink-0" />
+          ) : (
+            <Folder className="h-4 w-4 flex-shrink-0" />
+          )}
+          <span className="text-sm font-medium flex-1">{node.name}</span>
+          <div className="flex items-center gap-2">
+            <Select value={selectedSection} onValueChange={setSelectedSection}>
+              <SelectTrigger className="w-32 h-8 text-xs">
+                <SelectValue placeholder="Section" />
+              </SelectTrigger>
+              <SelectContent>
+                {sections.map((section) => (
+                  <SelectItem key={section.id} value={section.id}>
+                    {section.title}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleAddItem}
+              disabled={!selectedSection}
+              className="h-8 w-8 p-0"
+            >
+              <Plus className="h-3 w-3" />
+            </Button>
+          </div>
+        </div>
+        {isExpanded && hasAvailableChildren(node) && node.children && (
+          <div className="mt-1">
+            {node.children
+              .filter(child => {
+                if (child.type === 'file') {
+                  return child.name !== `${node.name}.md` && !isUsed(child.path);
+                }
+                return hasAvailableChildren(child);
+              })
+              .map((child) => (
+                <FileTreeItem 
+                  key={child.path} 
+                  node={child} 
+                  depth={depth + 1} 
+                  isUsed={isUsed}
+                  sections={sections}
+                  onAddToSection={onAddToSection}
+                  onShowPreview={onShowPreview}
+                />
+              ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+export function AvailableFilesPanel({ fileStructure, isFileUsed, sections, onAddToSection, onShowPreview }: AvailableFilesPanelProps) {
   return (
     <Card className="h-full flex flex-col">
       <CardHeader className="pb-3">
@@ -21,24 +281,21 @@ export function AvailableFilesPanel({ fileStructure, isFileUsed }: AvailableFile
         </CardTitle>
       </CardHeader>
       <CardContent className="flex-1 overflow-hidden">
-        <Droppable droppableId="available-files" isDropDisabled={true}>
-          {(provided) => (
-            <ScrollArea className="h-full">
-              <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-1">
-                {fileStructure.map((node, index) => (
-                  <FileTreeItem 
-                    key={node.path} 
-                    node={node} 
-                    depth={0} 
-                    index={index}
-                    isUsed={isFileUsed}
-                  />
-                ))}
-                {provided.placeholder}
-              </div>
-            </ScrollArea>
-          )}
-        </Droppable>
+        <ScrollArea className="h-full">
+          <div className="space-y-1">
+            {fileStructure.map((node) => (
+              <FileTreeItem 
+                key={node.path} 
+                node={node} 
+                depth={0} 
+                isUsed={isFileUsed}
+                sections={sections}
+                onAddToSection={onAddToSection}
+                onShowPreview={onShowPreview}
+              />
+            ))}
+          </div>
+        </ScrollArea>
       </CardContent>
     </Card>
   );

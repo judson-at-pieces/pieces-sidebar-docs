@@ -1,9 +1,7 @@
 
 import { useState } from "react";
-import { Droppable, Draggable } from "@hello-pangea/dnd";
 import { 
   Plus, 
-  GripVertical, 
   FileText, 
   FolderOpen,
   Trash2, 
@@ -54,23 +52,37 @@ export function NavigationStructurePanel({
     setEditingSectionTitle("");
   };
 
-  const handleRemoveItemFromDb = async (sectionId: string, itemIndex: number) => {
-    const section = sections.find(s => s.id === sectionId);
-    if (!section?.items || !section.items[itemIndex]) {
-      toast.error("Item not found");
-      return;
-    }
-
-    const item = section.items[itemIndex];
-    
+  const handleRemoveItemFromDb = async (sectionId: string, itemId: string, parentItems?: NavigationItem[]) => {
     try {
+      // Find the item in the section
+      const section = sections.find(s => s.id === sectionId);
+      if (!section?.items) {
+        toast.error("Section not found");
+        return;
+      }
+
+      // Find item recursively
+      const findItemRecursive = (items: NavigationItem[], targetId: string): NavigationItem | null => {
+        for (const item of items) {
+          if (item.id === targetId) return item;
+          if (item.items) {
+            const found = findItemRecursive(item.items, targetId);
+            if (found) return found;
+          }
+        }
+        return null;
+      };
+
+      const item = findItemRecursive(section.items, itemId);
+      if (!item) {
+        toast.error("Item not found");
+        return;
+      }
+
       // Delete from database if it's not a temporary item
       if (!item.id.startsWith('temp-')) {
         await navigationService.deleteNavigationItem(item.id);
       }
-      
-      // Update local state
-      onRemoveItem(sectionId, itemIndex);
       
       // Trigger navigation refresh
       onNavigationChange();
@@ -83,85 +95,60 @@ export function NavigationStructurePanel({
   };
 
   // Recursive function to render navigation items with proper nesting
-  const renderNavigationItems = (items: NavigationItem[], depth = 0): React.ReactNode[] => {
+  const renderNavigationItems = (items: NavigationItem[], depth = 0, sectionId: string): React.ReactNode[] => {
     return items.map((item, itemIndex) => {
       const hasChildren = item.items && item.items.length > 0;
       
       return (
         <div key={`${item.id}-${itemIndex}`} className="space-y-1">
-          <Draggable draggableId={`${item.id}-${itemIndex}`} index={itemIndex}>
-            {(provided, snapshot) => (
-              <div
-                ref={provided.innerRef}
-                {...provided.draggableProps}
-                {...provided.dragHandleProps}
-                className={`p-2 border rounded flex items-center justify-between transition-colors ${
-                  snapshot.isDragging ? 'bg-background shadow-lg' : 'hover:bg-accent/50'
-                } ${depth > 0 ? 'ml-4 border-l-2 border-l-primary/20' : ''}`}
+          <div
+            className={`p-2 border rounded flex items-center justify-between transition-colors hover:bg-accent/50 ${
+              depth > 0 ? 'ml-4 border-l-2 border-l-primary/20' : ''
+            }`}
+          >
+            <div className="flex items-center gap-2">
+              {hasChildren ? (
+                <Folder className="h-3 w-3 text-blue-600" />
+              ) : (
+                <FileText className="h-3 w-3" />
+              )}
+              <span className="text-sm">{item.title}</span>
+              {item.is_auto_generated && (
+                <Badge variant="secondary" className="text-xs">Auto</Badge>
+              )}
+              {hasChildren && (
+                <Badge variant="outline" className="text-xs">
+                  {item.items!.length} items
+                </Badge>
+              )}
+            </div>
+            <div className="flex items-center gap-1">
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => window.open(item.href, '_blank')}
               >
-                <div className="flex items-center gap-2">
-                  <GripVertical className="h-3 w-3 text-muted-foreground" />
-                  {hasChildren ? (
-                    <Folder className="h-3 w-3 text-blue-600" />
-                  ) : (
-                    <FileText className="h-3 w-3" />
-                  )}
-                  <span className="text-sm">{item.title}</span>
-                  {item.is_auto_generated && (
-                    <Badge variant="secondary" className="text-xs">Auto</Badge>
-                  )}
-                  {hasChildren && (
-                    <Badge variant="outline" className="text-xs">
-                      {item.items!.length} items
-                    </Badge>
-                  )}
-                </div>
-                <div className="flex items-center gap-1">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => window.open(item.href, '_blank')}
-                  >
-                    <ExternalLink className="h-3 w-3" />
-                  </Button>
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={() => handleRemoveItemFromDb(sections.find(s => s.items?.includes(item))?.id || '', itemIndex)}
-                  >
-                    <Trash2 className="h-3 w-3" />
-                  </Button>
-                </div>
-              </div>
-            )}
-          </Draggable>
+                <ExternalLink className="h-3 w-3" />
+              </Button>
+              <Button
+                size="sm"
+                variant="ghost"
+                onClick={() => handleRemoveItemFromDb(sectionId, item.id)}
+              >
+                <Trash2 className="h-3 w-3" />
+              </Button>
+            </div>
+          </div>
           
           {/* Render nested children */}
           {hasChildren && (
             <div className="space-y-1">
-              {renderNavigationItems(item.items!, depth + 1)}
+              {renderNavigationItems(item.items!, depth + 1, sectionId)}
             </div>
           )}
         </div>
       );
     });
-  };
-
-  // Flatten items for drag and drop while maintaining visual hierarchy
-  const flattenItemsForDragDrop = (items: NavigationItem[]): NavigationItem[] => {
-    const flattened: NavigationItem[] = [];
-    
-    const flatten = (itemList: NavigationItem[]) => {
-      for (const item of itemList) {
-        flattened.push(item);
-        if (item.items && item.items.length > 0) {
-          flatten(item.items);
-        }
-      }
-    };
-    
-    flatten(items);
-    return flattened;
   };
 
   return (
@@ -214,105 +201,76 @@ export function NavigationStructurePanel({
         )}
       </CardHeader>
       <CardContent className="flex-1 overflow-hidden">
-        <Droppable droppableId="sections" isDropDisabled={true}>
-          {(provided) => (
-            <ScrollArea className="h-full">
-              <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-4">
-                {sections.map((section, sectionIndex) => (
-                  <Draggable key={section.id} draggableId={section.id} index={sectionIndex}>
-                    {(provided, snapshot) => (
-                      <div
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        className={`border rounded-lg ${
-                          snapshot.isDragging ? 'bg-accent' : ''
-                        }`}
-                      >
-                        <div className="p-3 border-b bg-muted/50" {...provided.dragHandleProps}>
-                          <div className="flex items-center justify-between">
-                            {editingSection === section.id ? (
-                              <div className="flex gap-2 flex-1">
-                                <Input
-                                  value={editingSectionTitle}
-                                  onChange={(e) => setEditingSectionTitle(e.target.value)}
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter') handleUpdateSection(section.id);
-                                    if (e.key === 'Escape') {
-                                      setEditingSection(null);
-                                      setEditingSectionTitle("");
-                                    }
-                                  }}
-                                  autoFocus
-                                />
-                                <Button size="sm" onClick={() => handleUpdateSection(section.id)}>
-                                  Save
-                                </Button>
-                                <Button 
-                                  size="sm" 
-                                  variant="outline" 
-                                  onClick={() => {
-                                    setEditingSection(null);
-                                    setEditingSectionTitle("");
-                                  }}
-                                >
-                                  Cancel
-                                </Button>
-                              </div>
-                            ) : (
-                              <>
-                                <div className="flex items-center gap-2">
-                                  <GripVertical className="h-4 w-4 text-muted-foreground" />
-                                  <span className="font-medium">{section.title}</span>
-                                  <Badge variant="outline">{section.items?.length || 0} items</Badge>
-                                </div>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => {
-                                    setEditingSection(section.id);
-                                    setEditingSectionTitle(section.title);
-                                  }}
-                                >
-                                  <Edit2 className="h-4 w-4" />
-                                </Button>
-                              </>
-                            )}
-                          </div>
-                        </div>
-                        
-                        <Droppable droppableId={`section-${section.id}`}>
-                          {(provided, snapshot) => (
-                            <div
-                              {...provided.droppableProps}
-                              ref={provided.innerRef}
-                              className={`p-3 min-h-[100px] transition-all duration-200 rounded-b-lg ${
-                                snapshot.isDraggingOver 
-                                  ? 'bg-primary/5 border-2 border-primary border-dashed' 
-                                  : 'border-2 border-transparent'
-                              }`}
-                            >
-                              {section.items?.length ? (
-                                <div className="space-y-2">
-                                  {renderNavigationItems(section.items)}
-                                </div>
-                              ) : (
-                                <div className="text-center text-muted-foreground text-sm py-8">
-                                  Drop files or folders here to add them to this section
-                                </div>
-                              )}
-                              {provided.placeholder}
-                            </div>
-                          )}
-                        </Droppable>
+        <ScrollArea className="h-full">
+          <div className="space-y-4">
+            {sections.map((section) => (
+              <div key={section.id} className="border rounded-lg">
+                <div className="p-3 border-b bg-muted/50">
+                  <div className="flex items-center justify-between">
+                    {editingSection === section.id ? (
+                      <div className="flex gap-2 flex-1">
+                        <Input
+                          value={editingSectionTitle}
+                          onChange={(e) => setEditingSectionTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter') handleUpdateSection(section.id);
+                            if (e.key === 'Escape') {
+                              setEditingSection(null);
+                              setEditingSectionTitle("");
+                            }
+                          }}
+                          autoFocus
+                        />
+                        <Button size="sm" onClick={() => handleUpdateSection(section.id)}>
+                          Save
+                        </Button>
+                        <Button 
+                          size="sm" 
+                          variant="outline" 
+                          onClick={() => {
+                            setEditingSection(null);
+                            setEditingSectionTitle("");
+                          }}
+                        >
+                          Cancel
+                        </Button>
                       </div>
+                    ) : (
+                      <>
+                        <div className="flex items-center gap-2">
+                          <span className="font-medium">{section.title}</span>
+                          <Badge variant="outline">{section.items?.length || 0} items</Badge>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => {
+                            setEditingSection(section.id);
+                            setEditingSectionTitle(section.title);
+                          }}
+                        >
+                          <Edit2 className="h-4 w-4" />
+                        </Button>
+                      </>
                     )}
-                  </Draggable>
-                ))}
-                {provided.placeholder}
+                  </div>
+                </div>
+                
+                <div className="p-3 min-h-[100px]">
+                  {section.items?.length ? (
+                    <div className="space-y-2">
+                      {renderNavigationItems(section.items, 0, section.id)}
+                    </div>
+                  ) : (
+                    <div className="text-center text-muted-foreground text-sm py-8">
+                      No items in this section yet. Use the + button next to files to add them here.
+                    </div>
+                  )}
+                </div>
               </div>
-            </ScrollArea>
-          )}
-        </Droppable>
+            ))}
+          </div>
+        </ScrollArea>
       </CardContent>
     </Card>
   );

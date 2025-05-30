@@ -39,7 +39,11 @@ export function useNavigationActions(
   };
 
   // Recursively save folder structure maintaining hierarchy
-  const saveFolderStructureToDb = async (folderNode: FileNode, sectionId: string, parentDbId?: string): Promise<NavigationItem[]> => {
+  const saveFolderStructureToDb = async (
+    folderNode: FileNode, 
+    sectionId: string, 
+    parentDbId?: string
+  ): Promise<NavigationItem[]> => {
     const addedItems: NavigationItem[] = [];
     
     // Check if this folder has an index file

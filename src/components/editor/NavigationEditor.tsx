@@ -1,13 +1,11 @@
 
 import { useState, useEffect } from "react";
-import { DragDropContext, DropResult } from "@hello-pangea/dnd";
 import { useNavigation } from "@/hooks/useNavigation";
 import { FileNode } from "@/utils/fileSystem";
 import { toast } from "sonner";
 import { AvailableFilesPanel } from "./AvailableFilesPanel";
 import { NavigationStructurePanel } from "./NavigationStructurePanel";
 import { FolderPreviewDialog } from "./FolderPreviewDialog";
-import { useDragAndDrop } from "./hooks/useDragAndDrop";
 import { useNavigationActions } from "./hooks/useNavigationActions";
 
 interface NavigationEditorProps {
@@ -33,19 +31,20 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
     savePendingChanges
   } = useNavigationActions(sections, setSections, refetch, onNavigationChange);
 
-  const { handleDragEnd } = useDragAndDrop(
-    fileStructure,
-    sections,
-    setSections,
-    setPendingChange,
-    setShowConfirmDialog,
-    onNavigationChange
-  );
-
   // Check if a file is already used in navigation
   const isFileUsed = (filePath: string): boolean => {
     return sections.some(section => 
-      section.items?.some(item => item.file_path === filePath)
+      section.items?.some(item => {
+        // Check if file is used at root level or nested
+        const checkNested = (navItem: any): boolean => {
+          if (navItem.file_path === filePath) return true;
+          if (navItem.items && navItem.items.length > 0) {
+            return navItem.items.some((nestedItem: any) => checkNested(nestedItem));
+          }
+          return false;
+        };
+        return checkNested(item);
+      })
     );
   };
 
@@ -103,32 +102,33 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
       <div className="p-4 border-b">
         <h2 className="text-lg font-semibold mb-2">Navigation Editor</h2>
         <p className="text-sm text-muted-foreground">
-          Drag files or folders to organize your documentation. Changes are saved immediately.
+          Add files or folders to organize your documentation. Folder structure will be preserved.
         </p>
       </div>
       
       <div className="flex-1 overflow-hidden">
-        <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="grid grid-cols-2 gap-4 h-full p-4">
-            <AvailableFilesPanel 
-              fileStructure={fileStructure}
-              isFileUsed={isFileUsed}
-            />
-            <NavigationStructurePanel
-              sections={sections}
-              onAddSection={handleAddSection}
-              onUpdateSectionTitle={handleUpdateSectionTitle}
-              onRemoveItem={handleRemoveItem}
-              onNavigationChange={async () => {
-                const refreshedNavigation = await refetch();
-                if (refreshedNavigation.data?.sections) {
-                  setSections(refreshedNavigation.data.sections);
-                }
-                onNavigationChange();
-              }}
-            />
-          </div>
-        </DragDropContext>
+        <div className="grid grid-cols-2 gap-4 h-full p-4">
+          <AvailableFilesPanel 
+            fileStructure={fileStructure}
+            isFileUsed={isFileUsed}
+            sections={sections}
+            onAddToSection={setPendingChange}
+            onShowPreview={setShowConfirmDialog}
+          />
+          <NavigationStructurePanel
+            sections={sections}
+            onAddSection={handleAddSection}
+            onUpdateSectionTitle={handleUpdateSectionTitle}
+            onRemoveItem={handleRemoveItem}
+            onNavigationChange={async () => {
+              const refreshedNavigation = await refetch();
+              if (refreshedNavigation.data?.sections) {
+                setSections(refreshedNavigation.data.sections);
+              }
+              onNavigationChange();
+            }}
+          />
+        </div>
       </div>
 
       <FolderPreviewDialog
