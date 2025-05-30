@@ -14,6 +14,7 @@ const Index = lazy(() => import("./pages/Index"));
 const Auth = lazy(() => import("./pages/Auth"));
 const AuthCallback = lazy(() => import("./pages/AuthCallback"));
 const Admin = lazy(() => import("./pages/Admin"));
+const Editor = lazy(() => import("./pages/Editor"));
 const DocsLayout = lazy(() => import("./components/DocsLayout"));
 const DynamicDocPage = lazy(() => import("./components/DynamicDocPage").then(module => ({ default: module.DynamicDocPage })));
 
@@ -30,6 +31,14 @@ function App() {
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/auth/callback" element={<AuthCallback />} />
                   <Route path="/admin" element={<Admin />} />
+                  <Route
+                    path="/edit"
+                    element={
+                      <ProtectedRoute>
+                        <Editor />
+                      </ProtectedRoute>
+                    }
+                  />
                   <Route
                     path="/"
                     element={
