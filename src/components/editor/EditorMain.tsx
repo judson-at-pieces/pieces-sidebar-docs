@@ -104,7 +104,7 @@ export function EditorMain({ selectedFile, content, onContentChange, onSave, has
       );
 
       if (result.success) {
-        // Show success toast with clickable PR link
+        // Show success toast with clickable PR link - NO automatic opening
         toast.success(
           <div className="flex items-center justify-between w-full">
             <span>Pull request created successfully! PR #{result.prNumber}</span>
