@@ -39,9 +39,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Simple role fetch - no complex access code logic
-          setTimeout(() => {
-            fetchUserRoles(session.user.id);
+          // Check roles and assign editor if user has no roles
+          setTimeout(async () => {
+            await checkAndEnsureUserRole(session.user.id);
           }, 500);
         } else {
           setUserRoles([]);
@@ -52,6 +52,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const checkAndEnsureUserRole = async (userId: string) => {
+    try {
+      console.log('Checking roles for user:', userId);
+      
+      // Fetch current user roles
+      const { data: roles, error } = await supabase
+        .from('user_roles')
+        .select('role')
+        .eq('user_id', userId);
+
+      if (error) {
+        console.error('Error fetching user roles:', error);
+        return;
+      }
+
+      console.log('Current user roles:', roles);
+
+      // If user has no roles, assign editor role
+      if (!roles || roles.length === 0) {
+        console.log('User has no roles, assigning editor role...');
+        const { error: insertError } = await supabase
+          .from('user_roles')
+          .insert({ user_id: userId, role: 'editor' });
+
+        if (insertError) {
+          console.error('Error assigning editor role:', insertError);
+        } else {
+          console.log('Successfully assigned editor role');
+        }
+      }
+
+      // Update local state with current roles
+      const rolesList = roles?.map(r => r.role) || [];
+      if (rolesList.length === 0) {
+        // If we just assigned editor role, add it to local state
+        setUserRoles(['editor']);
+      } else {
+        setUserRoles(rolesList);
+      }
+    } catch (error) {
+      console.error('Error in checkAndEnsureUserRole:', error);
+    }
+  };
 
   const fetchUserRoles = async (userId: string) => {
     try {
