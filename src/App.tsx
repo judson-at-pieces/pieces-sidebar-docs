@@ -39,14 +39,7 @@ function App() {
                       </ProtectedRoute>
                     }
                   />
-                  <Route
-                    path="/"
-                    element={
-                      <ProtectedRoute>
-                        <Index />
-                      </ProtectedRoute>
-                    }
-                  />
+                  <Route path="/" element={<Index />} />
                   <Route
                     path="/docs/*"
                     element={
