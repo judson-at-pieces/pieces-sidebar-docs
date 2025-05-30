@@ -3,7 +3,7 @@ import { useState, useRef, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Save, Eye, Edit, Maximize2, Minimize2 } from "lucide-react";
-import { MarkdownRenderer } from "@/components/MarkdownRenderer";
+import { TSXRenderer } from "./TSXRenderer";
 import { CommandPalette } from "./CommandPalette";
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from "@/components/ui/resizable";
 
@@ -185,10 +185,10 @@ export function EnhancedEditor({
                 value={content}
                 onChange={handleTextareaChange}
                 className="w-full h-full resize-none font-mono text-sm"
-                placeholder="Start writing your documentation... (Type '/' for quick inserts)"
+                placeholder="Start writing your TSX documentation... (Type '/' for quick inserts)"
               />
               <div className="absolute bottom-4 right-4 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
-                Tip: Type "/" for quick inserts, Ctrl+S to save
+                Tip: Type "/" for TSX fragments, Ctrl+S to save
               </div>
             </div>
           </div>
@@ -197,7 +197,7 @@ export function EnhancedEditor({
         {viewMode === 'preview' && (
           <div className="h-full overflow-y-auto p-4">
             <div className="max-w-none">
-              <MarkdownRenderer content={content} />
+              <TSXRenderer content={content} />
             </div>
           </div>
         )}
@@ -212,10 +212,10 @@ export function EnhancedEditor({
                     value={content}
                     onChange={handleTextareaChange}
                     className="w-full h-full resize-none font-mono text-sm"
-                    placeholder="Start writing your documentation... (Type '/' for quick inserts)"
+                    placeholder="Start writing your TSX documentation... (Type '/' for quick inserts)"
                   />
                   <div className="absolute bottom-4 right-4 text-xs text-muted-foreground bg-background/80 px-2 py-1 rounded">
-                    Type "/" for quick inserts
+                    Type "/" for TSX fragments
                   </div>
                 </div>
               </div>
@@ -224,7 +224,7 @@ export function EnhancedEditor({
             <ResizablePanel defaultSize={50} minSize={30}>
               <div className="h-full overflow-y-auto p-4 border-l border-border">
                 <div className="max-w-none">
-                  <MarkdownRenderer content={content} />
+                  <TSXRenderer content={content} />
                 </div>
               </div>
             </ResizablePanel>
