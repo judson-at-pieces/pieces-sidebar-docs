@@ -1,9 +1,11 @@
+
+
 import { useState } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Menu, Search, ChevronDown, ChevronRight } from "lucide-react";
+import { Menu, Search, ChevronDown, ChevronRight, X } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./ThemeToggle";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -546,6 +548,16 @@ function DocsSidebar({ className }: { className?: string }) {
       <div className="space-y-4 py-4">
         <div className="px-3 py-2">
           <div className="mb-6">
+            {searchTerm && (
+              <div className="flex justify-end mb-2">
+                <button
+                  onClick={() => setSearchTerm("")}
+                  className="h-6 w-6 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors rounded"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+            )}
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <input
@@ -639,3 +651,4 @@ export default function DocsLayout() {
     </div>
   );
 }
+
