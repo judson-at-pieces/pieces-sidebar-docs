@@ -10,6 +10,7 @@ import Index from "@/pages/Index";
 import NotFound from "@/pages/NotFound";
 import Auth from "@/pages/Auth";
 import AuthCallback from "@/pages/AuthCallback";
+import GettingStarted from "@/pages/docs/GettingStarted";
 import { DynamicDocPage } from "@/components/DynamicDocPage";
 import DocsLayout from "@/components/DocsLayout";
 import "./App.css";
@@ -27,6 +28,7 @@ function App() {
               <Route path="/auth" element={<Auth />} />
               <Route path="/auth/callback" element={<AuthCallback />} />
               <Route path="/docs/*" element={<DocsLayout />}>
+                <Route path="getting-started" element={<GettingStarted />} />
                 <Route path="*" element={<DynamicDocPage />} />
               </Route>
               <Route path="*" element={<NotFound />} />
