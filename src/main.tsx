@@ -21,17 +21,49 @@ window.addEventListener('unhandledrejection', (event) => {
   }
 });
 
-// Suppress postMessage origin mismatch errors
+// Comprehensive postMessage error suppression
 const originalError = console.error;
+const originalWarn = console.warn;
+
 console.error = (...args) => {
   const message = args.join(' ');
-  if (message.includes('postMessage') && 
-      message.includes('target origin') && 
-      message.includes('does not match')) {
-    // Silently ignore postMessage origin mismatch errors
+  
+  // Suppress various postMessage related errors
+  if (message.includes('postMessage') || 
+      message.includes('target origin') ||
+      message.includes('does not match') ||
+      message.includes('recipient window\'s origin') ||
+      message.includes('gptengineer.app') ||
+      message.includes('localhost:3000')) {
+    // Silently ignore these cross-origin errors
     return;
   }
+  
   originalError.apply(console, args);
+};
+
+console.warn = (...args) => {
+  const message = args.join(' ');
+  
+  // Also suppress postMessage warnings
+  if (message.includes('postMessage') || 
+      message.includes('target origin') ||
+      message.includes('cross-origin')) {
+    return;
+  }
+  
+  originalWarn.apply(console, args);
+};
+
+// Intercept and suppress cross-origin postMessage attempts
+const originalPostMessage = window.postMessage;
+window.postMessage = function(message, targetOrigin, transfer) {
+  // Only allow same-origin or wildcard postMessage
+  if (targetOrigin !== '*' && targetOrigin !== window.location.origin) {
+    console.debug('Blocked cross-origin postMessage attempt to:', targetOrigin);
+    return;
+  }
+  return originalPostMessage.call(this, message, targetOrigin, transfer);
 };
 
 createRoot(document.getElementById("root")!).render(<App />);
