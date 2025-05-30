@@ -1,7 +1,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { FileText, Hash, List, Quote, Table, Code, Image, AlertCircle, CheckCircle, Info, XCircle, LayoutGrid, ArrowRight } from "lucide-react";
+import { FileText, Hash, List, Quote, Table, Code, Image, AlertCircle, CheckCircle, Info, XCircle, LayoutGrid, ArrowRight, Bold, Italic, Link } from "lucide-react";
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -10,104 +10,153 @@ interface CommandPaletteProps {
   position: { top: number; left: number };
 }
 
-const TSX_FRAGMENTS = [
+const MARKDOWN_FRAGMENTS = [
   {
     id: 'heading',
     title: 'Heading',
-    description: 'Add a heading element',
+    description: 'Add a heading',
     icon: Hash,
-    content: '<h2 className="text-2xl font-bold mb-4">Your Heading Here</h2>\n\n'
+    content: '\n## Your Heading Here\n\n'
+  },
+  {
+    id: 'subheading',
+    title: 'Subheading',
+    description: 'Add a subheading',
+    icon: Hash,
+    content: '\n### Your Subheading Here\n\n'
   },
   {
     id: 'paragraph',
     title: 'Paragraph',
-    description: 'Add a paragraph element',
+    description: 'Add a paragraph',
     icon: FileText,
-    content: '<p className="mb-4">Your paragraph text here.</p>\n\n'
+    content: '\nYour paragraph text here.\n\n'
+  },
+  {
+    id: 'bold',
+    title: 'Bold Text',
+    description: 'Add bold text',
+    icon: Bold,
+    content: '**bold text**'
+  },
+  {
+    id: 'italic',
+    title: 'Italic Text',
+    description: 'Add italic text',
+    icon: Italic,
+    content: '*italic text*'
+  },
+  {
+    id: 'link',
+    title: 'Link',
+    description: 'Add a link',
+    icon: Link,
+    content: '[link text](https://example.com)'
   },
   {
     id: 'list',
     title: 'Bullet List',
     description: 'Add a bullet list',
     icon: List,
-    content: '<ul className="list-disc list-inside mb-4">\n  <li>Item 1</li>\n  <li>Item 2</li>\n  <li>Item 3</li>\n</ul>\n\n'
+    content: '\n- Item 1\n- Item 2\n- Item 3\n\n'
   },
   {
     id: 'ordered-list',
     title: 'Numbered List',
     description: 'Add a numbered list',
     icon: List,
-    content: '<ol className="list-decimal list-inside mb-4">\n  <li>First item</li>\n  <li>Second item</li>\n  <li>Third item</li>\n</ol>\n\n'
+    content: '\n1. First item\n2. Second item\n3. Third item\n\n'
+  },
+  {
+    id: 'code-inline',
+    title: 'Inline Code',
+    description: 'Add inline code',
+    icon: Code,
+    content: '`your code here`'
   },
   {
     id: 'code-block',
     title: 'Code Block',
     description: 'Add a code block',
     icon: Code,
-    content: '<pre className="bg-gray-100 dark:bg-gray-800 p-4 rounded-lg overflow-x-auto mb-4">\n  <code className="text-sm">\n    {`// Your code here\nconsole.log("Hello World");`}\n  </code>\n</pre>\n\n'
+    content: '\n```javascript\n// Your code here\nconsole.log("Hello World");\n```\n\n'
   },
   {
     id: 'callout-info',
     title: 'Info Callout',
     description: 'Add an info callout',
     icon: Info,
-    content: '<Callout type="info" className="mb-4">\n  This is an information callout. Use it to provide helpful context.\n</Callout>\n\n'
+    content: '\n:::info\nThis is an information callout. Use it to provide helpful context.\n:::\n\n'
   },
   {
     id: 'callout-warning',
     title: 'Warning Callout',
     description: 'Add a warning callout',
     icon: AlertCircle,
-    content: '<Callout type="warning" className="mb-4">\n  This is a warning callout. Use it to highlight important notices.\n</Callout>\n\n'
+    content: '\n:::warning\nThis is a warning callout. Use it to highlight important notices.\n:::\n\n'
   },
   {
     id: 'callout-success',
     title: 'Success Callout',
     description: 'Add a success callout',
     icon: CheckCircle,
-    content: '<Callout type="success" className="mb-4">\n  This is a success callout. Use it to highlight positive outcomes.\n</Callout>\n\n'
+    content: '\n:::success\nThis is a success callout. Use it to highlight positive outcomes.\n:::\n\n'
   },
   {
     id: 'callout-error',
     title: 'Error Callout',
     description: 'Add an error callout',
     icon: XCircle,
-    content: '<Callout type="error" className="mb-4">\n  This is an error callout. Use it to highlight problems or issues.\n</Callout>\n\n'
+    content: '\n:::error\nThis is an error callout. Use it to highlight problems or issues.\n:::\n\n'
   },
   {
     id: 'card',
     title: 'Card',
     description: 'Add a single card',
     icon: FileText,
-    content: '<Card \n  title="Card Title"\n  description="Card description goes here"\n  href="/link-to-page"\n  className="mb-4"\n>\n  Additional card content\n</Card>\n\n'
+    content: '\n:::card{title="Card Title" href="/link-to-page"}\nCard description goes here\n:::\n\n'
   },
   {
     id: 'card-group',
     title: 'Card Group',
     description: 'Add a group of cards',
     icon: LayoutGrid,
-    content: '<CardGroup className="mb-6">\n  <Card \n    title="First Card"\n    description="Description for the first card"\n    href="/first-link"\n  />\n  <Card \n    title="Second Card"\n    description="Description for the second card"\n    href="/second-link"\n  />\n  <Card \n    title="Third Card"\n    description="Description for the third card"\n    href="/third-link"\n  />\n</CardGroup>\n\n'
+    content: '\n:::card-group\n:::card{title="First Card" href="/first-link"}\nDescription for the first card\n:::\n:::card{title="Second Card" href="/second-link"}\nDescription for the second card\n:::\n:::card{title="Third Card" href="/third-link"}\nDescription for the third card\n:::\n:::\n\n'
   },
   {
     id: 'steps',
     title: 'Steps',
     description: 'Add a steps component',
     icon: ArrowRight,
-    content: '<Steps className="mb-6">\n  <Step title="Step 1">\n    Description for the first step.\n  </Step>\n  <Step title="Step 2">\n    Description for the second step.\n  </Step>\n  <Step title="Step 3">\n    Description for the third step.\n  </Step>\n</Steps>\n\n'
+    content: '\n:::steps\n1. **Step 1** - Description for the first step\n2. **Step 2** - Description for the second step\n3. **Step 3** - Description for the third step\n:::\n\n'
   },
   {
     id: 'table',
     title: 'Table',
     description: 'Add a table',
     icon: Table,
-    content: '<div className="overflow-x-auto mb-4">\n  <table className="min-w-full border-collapse border border-gray-300">\n    <thead>\n      <tr className="bg-gray-50 dark:bg-gray-800">\n        <th className="border border-gray-300 px-4 py-2 text-left">Column 1</th>\n        <th className="border border-gray-300 px-4 py-2 text-left">Column 2</th>\n        <th className="border border-gray-300 px-4 py-2 text-left">Column 3</th>\n      </tr>\n    </thead>\n    <tbody>\n      <tr>\n        <td className="border border-gray-300 px-4 py-2">Cell 1</td>\n        <td className="border border-gray-300 px-4 py-2">Cell 2</td>\n        <td className="border border-gray-300 px-4 py-2">Cell 3</td>\n      </tr>\n      <tr>\n        <td className="border border-gray-300 px-4 py-2">Cell 4</td>\n        <td className="border border-gray-300 px-4 py-2">Cell 5</td>\n        <td className="border border-gray-300 px-4 py-2">Cell 6</td>\n      </tr>\n    </tbody>\n  </table>\n</div>\n\n'
+    content: '\n| Column 1 | Column 2 | Column 3 |\n|----------|----------|----------|\n| Cell 1   | Cell 2   | Cell 3   |\n| Cell 4   | Cell 5   | Cell 6   |\n\n'
   },
   {
     id: 'image',
     title: 'Image',
+    description: 'Add an image',
+    icon: Image,
+    content: '\n![Alt text](/path/to/image.png)\n\n'
+  },
+  {
+    id: 'expandable-image',
+    title: 'Expandable Image',
     description: 'Add an expandable image',
     icon: Image,
-    content: '<ExpandableImage \n  src="/placeholder.svg"\n  alt="Description of the image"\n  className="mb-4"\n/>\n\n'
+    content: '\n:::image{src="/placeholder.svg" alt="Description of the image"}\n:::\n\n'
+  },
+  {
+    id: 'quote',
+    title: 'Quote',
+    description: 'Add a blockquote',
+    icon: Quote,
+    content: '\n> This is a blockquote. Use it to highlight important text or quotes.\n\n'
   }
 ];
 
@@ -139,7 +188,7 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
 
   if (!isOpen) return null;
 
-  const filteredFragments = TSX_FRAGMENTS.filter(fragment =>
+  const filteredFragments = MARKDOWN_FRAGMENTS.filter(fragment =>
     fragment.title.toLowerCase().includes(search.toLowerCase()) ||
     fragment.description.toLowerCase().includes(search.toLowerCase())
   );
@@ -147,7 +196,7 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
   return (
     <div
       ref={commandRef}
-      className="fixed z-50 w-80 bg-background border border-border rounded-lg shadow-lg"
+      className="fixed z-50 w-80 bg-background border border-border rounded-lg shadow-lg backdrop-blur-sm"
       style={{
         top: position.top,
         left: position.left,
@@ -155,14 +204,14 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
     >
       <Command className="h-auto">
         <CommandInput
-          placeholder="Search TSX fragments..."
+          placeholder="Search markdown snippets..."
           value={search}
           onValueChange={setSearch}
-          className="border-0"
+          className="border-0 focus:ring-0"
         />
-        <CommandList className="max-h-60">
-          <CommandEmpty>No fragments found.</CommandEmpty>
-          <CommandGroup heading="TSX Components">
+        <CommandList className="max-h-64">
+          <CommandEmpty>No snippets found.</CommandEmpty>
+          <CommandGroup heading="Markdown & Components">
             {filteredFragments.map((fragment) => {
               const Icon = fragment.icon;
               return (
@@ -172,12 +221,12 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
                     onInsert(fragment.content);
                     onClose();
                   }}
-                  className="flex items-center gap-2 p-2 cursor-pointer hover:bg-accent"
+                  className="flex items-center gap-3 p-3 cursor-pointer hover:bg-accent rounded-md"
                 >
-                  <Icon className="h-4 w-4 text-muted-foreground" />
-                  <div className="flex-1">
-                    <div className="font-medium text-sm">{fragment.title}</div>
-                    <div className="text-xs text-muted-foreground">{fragment.description}</div>
+                  <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <div className="font-medium text-sm truncate">{fragment.title}</div>
+                    <div className="text-xs text-muted-foreground truncate">{fragment.description}</div>
                   </div>
                 </CommandItem>
               );
