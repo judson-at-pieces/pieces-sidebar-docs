@@ -7,63 +7,7 @@ import { Link } from 'react-router-dom';
 import { TableOfContents } from './markdown/TableOfContents';
 import { ErrorBoundary } from 'react-error-boundary';
 import { DynamicDocPage } from './DynamicDocPage';
-
-// Type for compiled content
-interface CompiledContent {
-  component: React.ComponentType<any>;
-  frontmatter: {
-    title?: string;
-    description?: string;
-    author?: string;
-    lastModified?: string;
-    path?: string;
-    slug?: string;
-  };
-}
-
-// Dynamic import function that tries different path variations
-async function loadCompiledContent(path: string): Promise<CompiledContent | null> {
-  try {
-    console.log(`Attempting to load compiled content for path: ${path}`);
-    
-    // List of possible path variations to try
-    const pathVariations = [
-      // Direct path
-      path,
-      // Handle extensions-plugins double nesting
-      path.startsWith('extensions-plugins/') && !path.includes('/extensions-plugins/') 
-        ? path.replace('extensions-plugins/', 'extensions-plugins/extensions-plugins/')
-        : null,
-      // Try with index suffix for directories
-      `${path}/index`,
-    ].filter(Boolean) as string[];
-
-    for (const tryPath of pathVariations) {
-      try {
-        console.log(`Trying to load: ${tryPath}`);
-        
-        // Use dynamic import with template literal
-        const module = await import(`@/compiled-content/${tryPath}.tsx`);
-        
-        if (module.default) {
-          console.log(`Successfully loaded compiled content: ${tryPath}`);
-          return {
-            component: module.default,
-            frontmatter: module.frontmatter || {}
-          };
-        }
-      } catch (error) {
-        console.log(`Failed to load ${tryPath}:`, error);
-        // Continue to next variation
-      }
-    }
-    
-    throw new Error(`No compiled content found for: ${path}`);
-  } catch (error) {
-    console.error('Failed to load compiled content:', error);
-    return null;
-  }
-}
+import { getCompiledContent, type CompiledContentModule } from '@/compiled-content';
 
 function ErrorFallback({ error }: { error: Error }) {
   return (
@@ -98,7 +42,7 @@ function LoadingSpinner() {
 
 export function CompiledDocPage() {
   const { '*': path } = useParams();
-  const [content, setContent] = useState<CompiledContent | null>(null);
+  const [content, setContent] = useState<CompiledContentModule | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [useFallback, setUseFallback] = useState(false);
@@ -112,9 +56,11 @@ export function CompiledDocPage() {
       setUseFallback(false);
       
       try {
-        const compiledContent = await loadCompiledContent(path);
+        console.log(`Loading compiled content for path: ${path}`);
+        const compiledContent = getCompiledContent(path);
         
         if (compiledContent) {
+          console.log(`Successfully loaded compiled content: ${path}`);
           setContent(compiledContent);
         } else {
           console.log('Compiled content not found, using fallback to markdown...');
@@ -157,7 +103,7 @@ export function CompiledDocPage() {
     );
   }
 
-  const ContentComponent = content.component;
+  const ContentComponent = content.default;
   const { frontmatter } = content;
   
   const isGettingStartedPage = path === 'getting-started';
