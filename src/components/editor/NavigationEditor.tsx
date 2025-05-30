@@ -31,7 +31,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
 
   // Create navigation items from folder structure - preserving complete hierarchy
   const createNavigationItemsFromFolder = (folderNode: FileNode, parentId?: string): NavigationItem[] => {
-    const items: NavigationItem[] = [];
+    console.log('Creating navigation items for folder:', folderNode.name, 'with children:', folderNode.children);
     
     // Check if this folder has an index file (e.g., cli.md for cli folder)
     const indexFileName = `${folderNode.name}.md`;
@@ -39,7 +39,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
       child.type === 'file' && child.name === indexFileName
     );
     
-    // Create the folder item (which represents the folder container)
+    // Create the main folder item
     const folderItem: NavigationItem = {
       id: `temp-${Date.now()}-${Math.random()}`,
       title: folderNode.name.replace(/-/g, ' '),
@@ -52,31 +52,33 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
       items: []
     };
     
-    items.push(folderItem);
-    
-    // Process ALL children (files and subfolders)
+    // Process ALL children and add them to the folder's items array
     if (folderNode.children) {
       folderNode.children.forEach(child => {
         if (child.type === 'file' && !isFileUsed(child.path)) {
-          const childItem: NavigationItem = {
-            id: `temp-${Date.now()}-${Math.random()}`,
-            title: child.name.replace('.md', '').replace(/-/g, ' '),
-            href: `/${child.path.replace('.md', '')}`,
-            file_path: child.path,
-            order_index: 0,
-            parent_id: folderItem.id,
-            is_auto_generated: true
-          };
-          folderItem.items!.push(childItem);
+          // Skip the index file since it's already represented by the folder itself
+          if (child.name !== indexFileName) {
+            const childItem: NavigationItem = {
+              id: `temp-${Date.now()}-${Math.random()}`,
+              title: child.name.replace('.md', '').replace(/-/g, ' '),
+              href: `/${child.path.replace('.md', '')}`,
+              file_path: child.path,
+              order_index: 0,
+              parent_id: folderItem.id,
+              is_auto_generated: true
+            };
+            folderItem.items!.push(childItem);
+          }
         } else if (child.type === 'folder') {
-          // Recursively process subfolders
+          // Recursively process subfolders and add them as children
           const subFolderItems = createNavigationItemsFromFolder(child, folderItem.id);
           folderItem.items!.push(...subFolderItems);
         }
       });
     }
     
-    return items;
+    console.log('Created folder item:', folderItem.title, 'with children count:', folderItem.items?.length);
+    return [folderItem]; // Return array with single folder item containing all children
   };
 
   const handleDragEnd = async (result: DropResult) => {
@@ -123,13 +125,15 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
         // Create complete navigation structure including all children
         const newItems = createNavigationItemsFromFolder(folder);
         console.log('Created navigation items:', newItems);
-        console.log('First item children:', newItems[0]?.items);
+        console.log('Main folder item:', newItems[0]);
+        console.log('Main folder children:', newItems[0]?.items);
         
         if (newItems.length === 0) {
           toast.info("No available files in this folder");
           return;
         }
 
+        // Add the folder structure to the section
         const updatedSections = sections.map(s => {
           if (s.id === destSectionId) {
             const allItems = [...(s.items || []), ...newItems];
@@ -145,9 +149,8 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
         onNavigationChange();
         
         // Count total items added (including children)
-        const totalItemsAdded = newItems.reduce((count, item) => {
-          return count + 1 + (item.items ? item.items.length : 0);
-        }, 0);
+        const mainFolder = newItems[0];
+        const totalItemsAdded = 1 + (mainFolder?.items?.length || 0);
         
         toast.success(`Added ${folder.name} folder with ${totalItemsAdded} items to navigation`);
         
