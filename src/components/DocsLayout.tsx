@@ -1,8 +1,8 @@
-
 import { useState } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Menu, Search, ChevronDown, ChevronRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./ThemeToggle";
@@ -542,9 +542,9 @@ function DocsSidebar({ className }: { className?: string }) {
   };
 
   return (
-    <div className={cn("pb-12 w-64 h-full", className)}>
-      <div className="space-y-4 py-4 h-full">
-        <div className="px-3 py-2 flex-1">
+    <ScrollArea className={cn("h-full w-64", className)}>
+      <div className="space-y-4 py-4">
+        <div className="px-3 py-2">
           <div className="mb-6">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -578,7 +578,7 @@ function DocsSidebar({ className }: { className?: string }) {
           </div>
         </div>
       </div>
-    </div>
+    </ScrollArea>
   );
 }
 
@@ -602,7 +602,9 @@ export default function DocsLayout() {
           </div>
         </div>
         <SheetContent side="left" className="p-0 w-64">
-          <DocsSidebar />
+          <ScrollArea className="h-full">
+            <DocsSidebar />
+          </ScrollArea>
         </SheetContent>
       </Sheet>
 
@@ -619,9 +621,7 @@ export default function DocsLayout() {
               </Link>
               <ThemeToggle />
             </div>
-            <div className="flex-1 overflow-y-auto">
-              <DocsSidebar />
-            </div>
+            <DocsSidebar />
           </div>
         </div>
 
