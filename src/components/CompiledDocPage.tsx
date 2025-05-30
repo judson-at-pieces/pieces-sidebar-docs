@@ -6,6 +6,7 @@ import { ArrowLeft, Calendar, User } from 'lucide-react';
 import { Link } from 'react-router-dom';
 import { TableOfContents } from './markdown/TableOfContents';
 import { ErrorBoundary } from 'react-error-boundary';
+import { DynamicDocPage } from './DynamicDocPage';
 
 // Type for compiled content
 interface CompiledContent {
@@ -20,74 +21,56 @@ interface CompiledContent {
   };
 }
 
-// Fallback to regular markdown if compiled content fails
-async function fallbackToMarkdown(path: string) {
-  try {
-    const { DynamicDocPage } = await import('./DynamicDocPage');
-    return DynamicDocPage;
-  } catch (error) {
-    console.error('Fallback to markdown also failed:', error);
-    return null;
-  }
-}
+// Static imports for known content
+const contentComponents: Record<string, () => Promise<any>> = {
+  'meet-pieces/fundamentals': () => import('@/compiled-content/meet-pieces/fundamentals'),
+  // Add more static imports as needed
+};
 
 // Dynamic import function with better error handling
 async function loadCompiledContent(path: string): Promise<CompiledContent | null> {
   try {
-    // Build paths to try
-    const pathsToTry = [];
-    const pathSegments = path.split('/');
+    console.log(`Attempting to load compiled content for path: ${path}`);
     
-    // Strategy 1: Handle special cases first
-    if (path === 'getting-started') {
-      pathsToTry.push('getting-started');
+    // Try static import first if available
+    if (contentComponents[path]) {
+      const module = await contentComponents[path]();
+      if (module.default) {
+        console.log(`Successfully loaded compiled content via static import: ${path}`);
+        return {
+          component: module.default,
+          frontmatter: module.frontmatter || {}
+        };
+      }
     }
     
-    // Strategy 2: Direct path mapping
-    pathsToTry.push(path);
+    // Fallback: try direct static import paths
+    const pathsToTry = [
+      path,
+      `${path}/${path.split('/').pop()}`, // For nested patterns like extensions-plugins/extensions-plugins/visual-studio
+    ];
     
-    // Strategy 3: For 2+ segment paths, try the nested duplicate pattern
-    if (pathSegments.length >= 2) {
-      const [firstSegment, ...rest] = pathSegments;
-      pathsToTry.push(`${firstSegment}/${firstSegment}/${rest.join('/')}`);
-    }
-    
-    // Strategy 4: For single segment paths, try adding the duplicate
-    if (pathSegments.length === 1) {
-      pathsToTry.push(`${path}/${path}`);
-    }
-    
-    // Strategy 5: Handle nested extension patterns
-    if (pathSegments.length >= 2 && pathSegments[0] === 'extensions-plugins') {
-      const [first, ...rest] = pathSegments;
-      pathsToTry.push(`${first}/${first}/${rest.join('/')}`);
-    }
-    
-    // Try each path until one works
-    for (const fileName of pathsToTry) {
+    for (const importPath of pathsToTry) {
       try {
-        console.log(`Attempting to load compiled content: ${fileName}.tsx`);
-        
-        // Use a more specific import that should work in production
-        const modulePromise = import(/* @vite-ignore */ `/src/compiled-content/${fileName}.tsx`);
-        const module = await modulePromise;
+        console.log(`Trying static import path: ${importPath}`);
+        const module = await import(`@/compiled-content/${importPath}.tsx`);
         
         if (module.default) {
-          console.log(`Successfully loaded compiled content: ${fileName}.tsx`);
+          console.log(`Successfully loaded compiled content: ${importPath}`);
           return {
             component: module.default,
             frontmatter: module.frontmatter || {}
           };
         }
-      } catch (innerError) {
-        console.log(`Failed to load compiled content ${fileName}.tsx:`, innerError.message);
+      } catch (importError) {
+        console.log(`Failed to load ${importPath}:`, importError);
         continue;
       }
     }
     
     throw new Error(`No compiled content found for: ${path}`);
   } catch (error) {
-    console.error('Failed to load compiled content, will try fallback:', error);
+    console.error('Failed to load compiled content:', error);
     return null;
   }
 }
@@ -144,12 +127,13 @@ export function CompiledDocPage() {
         if (compiledContent) {
           setContent(compiledContent);
         } else {
-          console.log('Compiled content not found, trying fallback to markdown...');
+          console.log('Compiled content not found, using fallback to markdown...');
           setUseFallback(true);
         }
       } catch (err) {
         console.error('Error loading content:', err);
-        setError('Failed to load content');
+        console.log('Using fallback to markdown due to error...');
+        setUseFallback(true);
       } finally {
         setLoading(false);
       }
@@ -163,7 +147,6 @@ export function CompiledDocPage() {
   }
 
   if (useFallback) {
-    const { DynamicDocPage } = require('./DynamicDocPage');
     return <DynamicDocPage />;
   }
 
