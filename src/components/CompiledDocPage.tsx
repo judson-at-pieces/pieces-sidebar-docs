@@ -21,73 +21,40 @@ interface CompiledContent {
   };
 }
 
-// Comprehensive content map for all compiled content
-const contentComponents: Record<string, () => Promise<any>> = {
-  // Meet Pieces
-  'meet-pieces/fundamentals': () => import('@/compiled-content/meet-pieces/fundamentals'),
-  
-  // Extensions - Visual Studio Code
-  'extensions-plugins/visual-studio-code': () => import('@/compiled-content/extensions-plugins/extensions-plugins/visual-studio-code'),
-  'extensions-plugins/visual-studio-code/get-started': () => import('@/compiled-content/extensions-plugins/extensions-plugins/visual-studio-code/get-started'),
-  'extensions-plugins/visual-studio-code/troubleshooting': () => import('@/compiled-content/extensions-plugins/extensions-plugins/visual-studio-code/troubleshooting'),
-  'extensions-plugins/visual-studio-code/copilot/llm-settings': () => import('@/compiled-content/extensions-plugins/extensions-plugins/visual-studio-code/copilot/llm-settings'),
-  'extensions-plugins/visual-studio-code/copilot/refactoring': () => import('@/compiled-content/extensions-plugins/extensions-plugins/visual-studio-code/copilot/refactoring'),
-  'extensions-plugins/visual-studio-code/copilot/debugging-errors': () => import('@/compiled-content/extensions-plugins/extensions-plugins/visual-studio-code/copilot/debugging-errors'),
-  'extensions-plugins/visual-studio-code/drive/search-reuse': () => import('@/compiled-content/extensions-plugins/extensions-plugins/visual-studio-code/drive/search-reuse'),
-  
-  // Extensions - Visual Studio
-  'extensions-plugins/visual-studio/get-started': () => import('@/compiled-content/extensions-plugins/extensions-plugins/visual-studio/get-started'),
-  
-  // Extensions - JetBrains
-  'extensions-plugins/jetbrains/copilot/refactoring': () => import('@/compiled-content/extensions-plugins/extensions-plugins/jetbrains/copilot/refactoring'),
-  'extensions-plugins/jetbrains/copilot/debugging-errors': () => import('@/compiled-content/extensions-plugins/extensions-plugins/jetbrains/copilot/debugging-errors'),
-  'extensions-plugins/jetbrains/copilot/llm-settings': () => import('@/compiled-content/extensions-plugins/extensions-plugins/jetbrains/copilot/llm-settings'),
-  
-  // Extensions - Main
-  'extensions-plugins': () => import('@/compiled-content/extensions-plugins'),
-  
-  // Desktop
-  'desktop/navigation': () => import('@/compiled-content/desktop/navigation'),
-  'desktop/navigation/workflow-activity': () => import('@/compiled-content/desktop/navigation/workflow-activity'),
-  'desktop/navigation/updates': () => import('@/compiled-content/desktop/navigation/updates'),
-  'desktop/navigation/snippet-discovery': () => import('@/compiled-content/desktop/navigation/snippet-discovery'),
-  'desktop/navigation/global-search': () => import('@/compiled-content/desktop/navigation/global-search'),
-  'desktop/navigation/captured-context': () => import('@/compiled-content/desktop/navigation/captured-context'),
-  'desktop/navigation/settings': () => import('@/compiled-content/desktop/navigation/settings'),
-  
-  // CLI
-  'cli/commands': () => import('@/compiled-content/cli/commands'),
-};
-
-// Dynamic import function with comprehensive mapping
+// Dynamic import function that tries different path variations
 async function loadCompiledContent(path: string): Promise<CompiledContent | null> {
   try {
     console.log(`Attempting to load compiled content for path: ${path}`);
     
-    // Try direct mapping first
-    if (contentComponents[path]) {
-      const module = await contentComponents[path]();
-      if (module.default) {
-        console.log(`Successfully loaded compiled content via static mapping: ${path}`);
-        return {
-          component: module.default,
-          frontmatter: module.frontmatter || {}
-        };
-      }
-    }
-    
-    // Handle extensions-plugins paths that might have the double nesting
-    if (path.startsWith('extensions-plugins/') && !path.includes('/extensions-plugins/')) {
-      const nestedPath = path.replace('extensions-plugins/', 'extensions-plugins/extensions-plugins/');
-      if (contentComponents[nestedPath]) {
-        const module = await contentComponents[nestedPath]();
+    // List of possible path variations to try
+    const pathVariations = [
+      // Direct path
+      path,
+      // Handle extensions-plugins double nesting
+      path.startsWith('extensions-plugins/') && !path.includes('/extensions-plugins/') 
+        ? path.replace('extensions-plugins/', 'extensions-plugins/extensions-plugins/')
+        : null,
+      // Try with index suffix for directories
+      `${path}/index`,
+    ].filter(Boolean) as string[];
+
+    for (const tryPath of pathVariations) {
+      try {
+        console.log(`Trying to load: ${tryPath}`);
+        
+        // Use dynamic import with template literal
+        const module = await import(`@/compiled-content/${tryPath}.tsx`);
+        
         if (module.default) {
-          console.log(`Successfully loaded compiled content via nested mapping: ${nestedPath}`);
+          console.log(`Successfully loaded compiled content: ${tryPath}`);
           return {
             component: module.default,
             frontmatter: module.frontmatter || {}
           };
         }
+      } catch (error) {
+        console.log(`Failed to load ${tryPath}:`, error);
+        // Continue to next variation
       }
     }
     
