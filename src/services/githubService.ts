@@ -1,6 +1,4 @@
 
-import { supabase } from '@/integrations/supabase/client';
-
 interface GitHubFile {
   path: string;
   content: string;
@@ -13,41 +11,23 @@ interface CreatePRRequest {
   baseBranch?: string;
 }
 
-interface GitHubRepo {
-  id: number;
-  name: string;
-  full_name: string;
-  private: boolean;
-  html_url: string;
-}
-
 class GitHubService {
   private baseUrl = 'https://api.github.com';
+  private token: string | null = null;
+  private owner: string | null = null;
+  private repo: string | null = null;
 
-  private async getAccessToken(): Promise<string | null> {
-    const { data: { session } } = await supabase.auth.getSession();
-    return session?.provider_token || null;
-  }
-
-  private async getCurrentRepo(): Promise<string> {
-    // Get the configured repository from localStorage
-    const savedConfig = localStorage.getItem('github_repo_config');
-    if (!savedConfig) {
-      throw new Error('No repository configured. Please configure a repository in the admin panel.');
-    }
-    
-    return savedConfig;
+  constructor() {
+    // These would typically come from environment variables or user authentication
+    this.token = localStorage.getItem('github_token');
+    this.owner = localStorage.getItem('github_owner');
+    this.repo = localStorage.getItem('github_repo');
   }
 
   private async makeRequest(endpoint: string, options: RequestInit = {}) {
-    const token = await this.getAccessToken();
-    if (!token) {
-      throw new Error('GitHub OAuth token not found. Please sign in with GitHub.');
-    }
-
     const url = `${this.baseUrl}${endpoint}`;
     const headers = {
-      'Authorization': `Bearer ${token}`,
+      'Authorization': `Bearer ${this.token}`,
       'Accept': 'application/vnd.github.v3+json',
       'Content-Type': 'application/json',
       ...options.headers,
@@ -65,26 +45,21 @@ class GitHubService {
     return response.json();
   }
 
-  async getUserRepos(): Promise<GitHubRepo[]> {
-    const repos = await this.makeRequest('/user/repos?sort=updated&per_page=100');
-    return repos;
-  }
-
   async createPullRequest({ title, body, files, baseBranch = 'main' }: CreatePRRequest) {
-    // Use configured repository
-    const repoFullName = await this.getCurrentRepo();
-    const [owner, repo] = repoFullName.split('/');
-    
+    if (!this.token || !this.owner || !this.repo) {
+      throw new Error('GitHub configuration not found. Please connect your GitHub account.');
+    }
+
     // Create a new branch
     const branchName = `docs-update-${Date.now()}`;
     
     try {
       // Get the latest commit SHA from the base branch
-      const baseRef = await this.makeRequest(`/repos/${owner}/${repo}/git/ref/heads/${baseBranch}`);
+      const baseRef = await this.makeRequest(`/repos/${this.owner}/${this.repo}/git/ref/heads/${baseBranch}`);
       const baseSha = baseRef.object.sha;
 
       // Create a new branch
-      await this.makeRequest(`/repos/${owner}/${repo}/git/refs`, {
+      await this.makeRequest(`/repos/${this.owner}/${this.repo}/git/refs`, {
         method: 'POST',
         body: JSON.stringify({
           ref: `refs/heads/${branchName}`,
@@ -98,7 +73,7 @@ class GitHubService {
         let currentFileSha: string | undefined;
         try {
           const currentFile = await this.makeRequest(
-            `/repos/${owner}/${repo}/contents/${file.path}?ref=${branchName}`
+            `/repos/${this.owner}/${this.repo}/contents/${file.path}?ref=${branchName}`
           );
           currentFileSha = currentFile.sha;
         } catch (error) {
@@ -106,7 +81,7 @@ class GitHubService {
         }
 
         // Update or create the file
-        await this.makeRequest(`/repos/${owner}/${repo}/contents/${file.path}`, {
+        await this.makeRequest(`/repos/${this.owner}/${this.repo}/contents/${file.path}`, {
           method: 'PUT',
           body: JSON.stringify({
             message: `Update ${file.path}`,
@@ -118,7 +93,7 @@ class GitHubService {
       }
 
       // Create the pull request
-      const pr = await this.makeRequest(`/repos/${owner}/${repo}/pulls`, {
+      const pr = await this.makeRequest(`/repos/${this.owner}/${this.repo}/pulls`, {
         method: 'POST',
         body: JSON.stringify({
           title,
@@ -139,10 +114,18 @@ class GitHubService {
     }
   }
 
-  async isConfigured(): Promise<boolean> {
-    const token = await this.getAccessToken();
-    const repoConfig = localStorage.getItem('github_repo_config');
-    return !!(token && repoConfig);
+  isConfigured(): boolean {
+    return !!(this.token && this.owner && this.repo);
+  }
+
+  configure(token: string, owner: string, repo: string) {
+    this.token = token;
+    this.owner = owner;
+    this.repo = repo;
+    
+    localStorage.setItem('github_token', token);
+    localStorage.setItem('github_owner', owner);
+    localStorage.setItem('github_repo', repo);
   }
 }
 
