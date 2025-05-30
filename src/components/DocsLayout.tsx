@@ -1,6 +1,7 @@
+
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { ChevronRight, Menu, X, Home, FileText, Book, Zap, Settings, HelpCircle } from 'lucide-react';
+import { ChevronRight, Menu, X, Home, FileText, Book, Zap, Settings, HelpCircle, Users } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Sheet, SheetContent, SheetTrigger } from '@/components/ui/sheet';
 import { ThemeToggle } from '@/components/ThemeToggle';

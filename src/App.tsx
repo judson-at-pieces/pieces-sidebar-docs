@@ -1,3 +1,4 @@
+
 import React from "react";
 import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -9,7 +10,7 @@ import Index from "@/pages/Index";
 import NotFound from "@/pages/NotFound";
 import Auth from "@/pages/Auth";
 import AuthCallback from "@/pages/AuthCallback";
-import DynamicDocPage from "@/components/DynamicDocPage";
+import { DynamicDocPage } from "@/components/DynamicDocPage";
 import "./App.css";
 
 const queryClient = new QueryClient();
