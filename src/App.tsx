@@ -1,61 +1,45 @@
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
+import React from "react";
+import { BrowserRouter as Router, Routes, Route } from "react-router-dom";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { ThemeProvider } from "./components/ThemeProvider";
-import Index from "./pages/Index";
-import DocsLayout from "./components/DocsLayout";
-import { DynamicDocPage } from "./components/DynamicDocPage";
-import NotFound from "./pages/NotFound";
-
-// Import existing page components
-import GettingStarted from "./pages/docs/GettingStarted";
-import Installation from "./pages/docs/Installation";
-import QuickStart from "./pages/docs/QuickStart";
-import ApiReference from "./pages/docs/ApiReference";
-import Integrations from "./pages/docs/Integrations";
-import Examples from "./pages/docs/Examples";
-import MeetPieces from "./pages/docs/MeetPieces";
-import Troubleshooting from "./pages/docs/Troubleshooting";
-import QuickGuides from "./pages/docs/QuickGuides";
-import LongTermMemoryGuide from "./pages/docs/LongTermMemoryGuide";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { ProtectedRoute } from "@/components/ProtectedRoute";
+import { ThemeProvider } from "@/components/ThemeProvider";
+import { Toaster } from "@/components/ui/sonner";
+import Index from "@/pages/Index";
+import NotFound from "@/pages/NotFound";
+import Auth from "@/pages/Auth";
+import AuthCallback from "@/pages/AuthCallback";
+import DynamicDocPage from "@/components/DynamicDocPage";
+import "./App.css";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <ThemeProvider defaultTheme="dark" storageKey="pieces-ui-theme">
-      <TooltipProvider>
-        <Toaster />
-        <Sonner />
-        <BrowserRouter>
-          <Routes>
-            <Route path="/" element={<Index />} />
-            <Route path="/docs" element={<DocsLayout />}>
-              {/* Legacy routes for compatibility */}
-              <Route path="getting-started" element={<GettingStarted />} />
-              <Route path="installation" element={<Installation />} />
-              <Route path="quick-start" element={<QuickStart />} />
-              <Route path="api-reference" element={<ApiReference />} />
-              <Route path="integrations" element={<Integrations />} />
-              <Route path="examples" element={<Examples />} />
-              
-              {/* Specific routes that we want to handle with existing components */}
-              <Route path="meet-pieces" element={<MeetPieces />} />
-              <Route path="troubleshooting" element={<Troubleshooting />} />
-              <Route path="quick-guides" element={<QuickGuides />} />
-              <Route path="long-term-memory-guide" element={<LongTermMemoryGuide />} />
-              
-              {/* Dynamic content routes - catch all other routes */}
-              <Route path="*" element={<DynamicDocPage />} />
-            </Route>
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-        </BrowserRouter>
-      </TooltipProvider>
-    </ThemeProvider>
-  </QueryClientProvider>
-);
+function App() {
+  return (
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+        <AuthProvider>
+          <Router>
+            <Routes>
+              <Route path="/" element={<Index />} />
+              <Route path="/auth" element={<Auth />} />
+              <Route path="/auth/callback" element={<AuthCallback />} />
+              <Route 
+                path="/docs/*" 
+                element={
+                  <ProtectedRoute requireRole="editor">
+                    <DynamicDocPage />
+                  </ProtectedRoute>
+                } 
+              />
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+          </Router>
+          <Toaster />
+        </AuthProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
+  );
+}
 
 export default App;
