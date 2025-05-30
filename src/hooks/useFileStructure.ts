@@ -22,15 +22,21 @@ export function useFileStructure() {
       // This will need to be adjusted based on how your content is served
       const response = await fetch('/api/content-structure');
       
-      if (response.ok) {
-        const structure = await response.json();
-        setFileStructure(structure);
-      } else {
-        // Fallback to building structure from known content files
-        console.log('No API endpoint found, using fallback structure generation');
-        const structure = await buildFileStructureFromContent();
-        setFileStructure(structure);
+      if (response.ok && response.headers.get('content-type')?.includes('application/json')) {
+        try {
+          const structure = await response.json();
+          setFileStructure(structure);
+          return;
+        } catch (jsonError) {
+          console.warn('Failed to parse JSON from API response:', jsonError);
+        }
       }
+      
+      // Fallback to building structure from known content files
+      console.log('No valid API endpoint found, using fallback structure generation');
+      const structure = await buildFileStructureFromContent();
+      setFileStructure(structure);
+      
     } catch (err) {
       console.warn('Failed to load file structure, using mock data:', err);
       // Use the actual file structure that matches your public/content directory
@@ -65,6 +71,7 @@ export function useFileStructure() {
             { name: 'commands.md', path: 'obsidian/commands.md', type: 'file' },
             { name: 'configuration.md', path: 'obsidian/configuration.md', type: 'file' },
             { name: 'get-started.md', path: 'obsidian/get-started.md', type: 'file' },
+            { name: 'troubleshooting.md', path: 'obsidian/troubleshooting.md', type: 'file' },
             {
               name: 'copilot',
               path: 'obsidian/copilot',
@@ -94,6 +101,22 @@ export function useFileStructure() {
           children: [
             { name: 'cloud-models.md', path: 'large-language-models/cloud-models.md', type: 'file' },
             { name: 'local-models.md', path: 'large-language-models/local-models.md', type: 'file' }
+          ]
+        },
+        {
+          name: 'desktop',
+          path: 'desktop',
+          type: 'folder',
+          children: [
+            { name: 'download.md', path: 'desktop/download.md', type: 'file' },
+            { name: 'onboarding.md', path: 'desktop/onboarding.md', type: 'file' },
+            { name: 'navigation.md', path: 'desktop/navigation.md', type: 'file' },
+            { name: 'actions.md', path: 'desktop/actions.md', type: 'file' },
+            { name: 'configuration.md', path: 'desktop/configuration.md', type: 'file' },
+            { name: 'copilot.md', path: 'desktop/copilot.md', type: 'file' },
+            { name: 'drive.md', path: 'desktop/drive.md', type: 'file' },
+            { name: 'troubleshooting.md', path: 'desktop/troubleshooting.md', type: 'file' },
+            { name: 'workstream-activity.md', path: 'desktop/workstream-activity.md', type: 'file' }
           ]
         }
       ];
