@@ -6,7 +6,8 @@ import { AdminPortal } from '@/components/auth/AdminPortal';
 import { GitHubRepoConfig } from '@/components/admin/GitHubRepoConfig';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Users, UserPlus, Github } from 'lucide-react';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Users, UserPlus, Github, ExternalLink, Info } from 'lucide-react';
 
 export default function Admin() {
   const { user, loading, hasRole, signOut } = useAuth();
@@ -69,42 +70,114 @@ export default function Admin() {
       </header>
 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid gap-6 md:grid-cols-2">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <UserPlus className="h-5 w-5" />
-                <span>Generate Access Codes</span>
-              </CardTitle>
-              <CardDescription>
-                Create access codes for new editors to join the platform
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <AdminPortal />
-            </CardContent>
-          </Card>
+        {/* GitHub Repository Configuration - Now at the top */}
+        <div className="mb-8">
+          <div className="mb-4">
+            <h2 className="text-2xl font-bold mb-2">GitHub Integration</h2>
+            <p className="text-muted-foreground">
+              Configure GitHub repository integration for automatic pull request creation when editors save their changes.
+            </p>
+          </div>
+          
+          <Alert className="mb-6">
+            <Info className="h-4 w-4" />
+            <AlertDescription>
+              <strong>Important:</strong> Before configuring a repository, make sure the Lovable GitHub App is installed on your repository. 
+              The app is required for creating branches and pull requests automatically.
+            </AlertDescription>
+          </Alert>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center space-x-2">
-                <Users className="h-5 w-5" />
-                <span>User Management</span>
-              </CardTitle>
-              <CardDescription>
-                Manage users and their permissions
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground">
-                User management features coming soon...
-              </p>
-            </CardContent>
-          </Card>
-        </div>
-        
-        <div className="mt-6">
+          <div className="grid gap-6 md:grid-cols-2 mb-6">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Github className="h-5 w-5" />
+                  <span>Step 1: Install GitHub App</span>
+                </CardTitle>
+                <CardDescription>
+                  Install the Lovable GitHub App on your repository
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  The Lovable GitHub App must be installed on your repository to enable automatic branch creation and pull request management.
+                </p>
+                <Button 
+                  onClick={() => window.open('https://github.com/apps/lovable-editor', '_blank')}
+                  className="w-full"
+                >
+                  <ExternalLink className="h-4 w-4 mr-2" />
+                  Install Lovable GitHub App
+                </Button>
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Github className="h-5 w-5" />
+                  <span>Step 2: Configure Repository</span>
+                </CardTitle>
+                <CardDescription>
+                  Select and configure your repository for the editor
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  After installing the app, configure which repository should receive pull requests from editor changes.
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Configuration options will appear below once the app is installed.
+                </p>
+              </CardContent>
+            </Card>
+          </div>
+
           <GitHubRepoConfig />
+        </div>
+
+        {/* User Management Section */}
+        <div>
+          <div className="mb-4">
+            <h2 className="text-2xl font-bold mb-2">User Management</h2>
+            <p className="text-muted-foreground">
+              Manage editor access and user permissions for the documentation platform.
+            </p>
+          </div>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <UserPlus className="h-5 w-5" />
+                  <span>Generate Access Codes</span>
+                </CardTitle>
+                <CardDescription>
+                  Create access codes for new editors to join the platform
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <AdminPortal />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center space-x-2">
+                  <Users className="h-5 w-5" />
+                  <span>User Management</span>
+                </CardTitle>
+                <CardDescription>
+                  Manage users and their permissions
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <p className="text-muted-foreground">
+                  User management features coming soon...
+                </p>
+              </CardContent>
+            </Card>
+          </div>
         </div>
       </main>
     </div>
