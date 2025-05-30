@@ -95,13 +95,14 @@ export function GitHubAppRepoSelector({ onRepoConfigured }: GitHubAppRepoSelecto
     try {
       const [owner, repoName] = repo.full_name.split('/');
 
-      // Save configuration with installation ID
+      // Save configuration with installation ID using raw insert to avoid type issues
       const { error } = await supabase
-        .from('github_config')
+        .from('github_config' as any)
         .insert({
           repo_owner: owner,
           repo_name: repoName,
-          installation_id: parseInt(selectedInstallation)
+          installation_id: parseInt(selectedInstallation),
+          created_by: (await supabase.auth.getUser()).data.user?.id
         });
 
       if (error) {

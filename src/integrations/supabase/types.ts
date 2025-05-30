@@ -92,6 +92,7 @@ export type Database = {
           created_at: string
           created_by: string
           id: string
+          installation_id: number | null
           repo_name: string
           repo_owner: string
           updated_at: string
@@ -100,6 +101,7 @@ export type Database = {
           created_at?: string
           created_by: string
           id?: string
+          installation_id?: number | null
           repo_name: string
           repo_owner: string
           updated_at?: string
@@ -108,8 +110,47 @@ export type Database = {
           created_at?: string
           created_by?: string
           id?: string
+          installation_id?: number | null
           repo_name?: string
           repo_owner?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "fk_github_config_installation"
+            columns: ["installation_id"]
+            isOneToOne: false
+            referencedRelation: "github_installations"
+            referencedColumns: ["installation_id"]
+          },
+        ]
+      }
+      github_installations: {
+        Row: {
+          account_login: string
+          account_type: string
+          created_at: string
+          id: string
+          installation_id: number
+          installed_at: string
+          updated_at: string
+        }
+        Insert: {
+          account_login: string
+          account_type: string
+          created_at?: string
+          id?: string
+          installation_id: number
+          installed_at?: string
+          updated_at?: string
+        }
+        Update: {
+          account_login?: string
+          account_type?: string
+          created_at?: string
+          id?: string
+          installation_id?: number
+          installed_at?: string
           updated_at?: string
         }
         Relationships: []
