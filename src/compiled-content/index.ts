@@ -17,7 +17,7 @@ export interface CompiledContentModule {
 }
 
 // Content registry populated by the build script
-export const contentRegistry: Record<string, CompiledContentModule> = {};
+const contentRegistry: Record<string, CompiledContentModule> = {};
 
 // Function to get compiled content from registry
 export function getCompiledContent(path: string): CompiledContentModule | null {
@@ -75,3 +75,6 @@ if (Object.keys(contentRegistry).length === 0) {
   
   registerContent('/meet-pieces/macos-installation-guide', macosInstallationModule);
 }
+
+// Export the registry at the end to ensure it's available
+export { contentRegistry };
