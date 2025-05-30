@@ -29,7 +29,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
     );
   };
 
-  // Create navigation items from folder structure
+  // Create navigation items from folder structure - preserving complete hierarchy
   const createNavigationItemsFromFolder = (folderNode: FileNode, parentId?: string): NavigationItem[] => {
     const items: NavigationItem[] = [];
     
@@ -39,7 +39,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
       child.type === 'file' && child.name === indexFileName
     );
     
-    // Create the folder item (which represents both the folder and its index file)
+    // Create the folder item (which represents the folder container)
     const folderItem: NavigationItem = {
       id: `temp-${Date.now()}-${Math.random()}`,
       title: folderNode.name.replace(/-/g, ' '),
@@ -54,14 +54,9 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
     
     items.push(folderItem);
     
-    // Process children (excluding the index file since it's represented by the folder)
+    // Process ALL children (including the index file as a child of the folder)
     if (folderNode.children) {
       folderNode.children.forEach(child => {
-        // Skip the index file as it's already represented by the folder item
-        if (child.type === 'file' && child.name === indexFileName) {
-          return;
-        }
-        
         if (child.type === 'file' && !isFileUsed(child.path)) {
           const childItem: NavigationItem = {
             id: `temp-${Date.now()}-${Math.random()}`,
@@ -94,7 +89,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
       
       // Handle both files and folders
       if (draggableId.startsWith('folder-')) {
-        // Handle folder drag - preserve folder structure
+        // Handle folder drag - preserve complete folder structure including index file
         const folderPath = draggableId.replace('folder-', '');
         const findFolderByPath = (nodes: FileNode[], path: string): FileNode | null => {
           for (const node of nodes) {
@@ -112,7 +107,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
         const folder = findFolderByPath(fileStructure, folderPath);
         if (!folder) return;
 
-        // Create nested navigation items that preserve folder structure
+        // Create nested navigation items that preserve complete folder structure
         const newItems = createNavigationItemsFromFolder(folder);
         
         if (newItems.length === 0) {
@@ -133,7 +128,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
         
         setSections(updatedSections);
         onNavigationChange();
-        toast.success(`Added ${folder.name} folder to navigation`);
+        toast.success(`Added ${folder.name} folder with complete structure to navigation`);
         
       } else {
         // Handle single file drag
@@ -306,7 +301,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
       <div className="p-4 border-b">
         <h2 className="text-lg font-semibold mb-2">Navigation Editor</h2>
         <p className="text-sm text-muted-foreground">
-          Drag files or entire folders from the "Available Files" section into navigation sections to organize your documentation. Folders will maintain their structure and folders with index files (like cli.md for cli folder) will be treated as single navigational entities.
+          Drag files or entire folders from the "Available Files" section into navigation sections to organize your documentation. Folders will maintain their complete structure including index files and all children.
         </p>
       </div>
       
