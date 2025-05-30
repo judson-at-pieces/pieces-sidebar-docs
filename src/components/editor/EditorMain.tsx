@@ -2,7 +2,7 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Save, Eye, Edit } from "lucide-react";
+import { Save, Eye, Edit, ExternalLink } from "lucide-react";
 import { Textarea } from "@/components/ui/textarea";
 import { MarkdownRenderer } from "@/components/MarkdownRenderer";
 import { githubAppService } from "@/services/githubAppService";
@@ -104,13 +104,25 @@ export function EditorMain({ selectedFile, content, onContentChange, onSave, has
       );
 
       if (result.success) {
-        toast.success(`Pull request created successfully! PR #${result.prNumber}`);
+        // Show success toast with clickable PR link
+        toast.success(
+          <div className="flex items-center justify-between w-full">
+            <span>Pull request created successfully! PR #{result.prNumber}</span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => window.open(result.prUrl, '_blank')}
+              className="ml-2"
+            >
+              <ExternalLink className="h-3 w-3 mr-1" />
+              View PR
+            </Button>
+          </div>,
+          {
+            duration: 10000, // Show for 10 seconds
+          }
+        );
         onSave(); // Mark as saved
-        
-        // Optionally open the PR in a new tab
-        if (result.prUrl) {
-          window.open(result.prUrl, '_blank');
-        }
       } else {
         throw new Error('Failed to create pull request');
       }
