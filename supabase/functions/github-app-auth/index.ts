@@ -20,7 +20,7 @@ async function getJWT(): Promise<string> {
   console.log('Private key starts with:', privateKeyPem.substring(0, 50))
   console.log('Private key ends with:', privateKeyPem.substring(privateKeyPem.length - 50))
 
-  // Clean up the private key format - handle both base64 and raw PEM
+  // Clean up the private key format
   let cleanKey = privateKeyPem.trim()
   
   // Replace any \n literals with actual newlines
@@ -40,10 +40,30 @@ async function getJWT(): Promise<string> {
       throw new Error('Invalid base64 private key format')
     }
   }
-  
-  // Ensure proper PEM format
-  if (!cleanKey.includes('-----BEGIN PRIVATE KEY-----')) {
-    console.log('Formatting as proper PEM')
+
+  // Determine the key format and import method
+  let keyFormat: 'pkcs8' | 'pkcs1' = 'pkcs8'
+  let algorithmName = 'RSASSA-PKCS1-v1_5'
+
+  if (cleanKey.includes('-----BEGIN RSA PRIVATE KEY-----')) {
+    console.log('Detected RSA private key format')
+    keyFormat = 'pkcs1'
+    // For PKCS#1 RSA keys, we need to convert to PKCS#8 format for Web Crypto API
+    // Remove headers and get the base64 content
+    const keyContent = cleanKey
+      .replace(/-----BEGIN RSA PRIVATE KEY-----/g, '')
+      .replace(/-----END RSA PRIVATE KEY-----/g, '')
+      .replace(/\s/g, '')
+    
+    // Convert to PKCS#8 format
+    cleanKey = `-----BEGIN PRIVATE KEY-----\n${keyContent.match(/.{1,64}/g)?.join('\n') || keyContent}\n-----END PRIVATE KEY-----`
+    keyFormat = 'pkcs8'
+    console.log('Converted RSA key to PKCS#8 format')
+  } else if (cleanKey.includes('-----BEGIN PRIVATE KEY-----')) {
+    console.log('Detected PKCS#8 private key format')
+    keyFormat = 'pkcs8'
+  } else {
+    console.log('Formatting as proper PKCS#8 PEM')
     // Remove any existing headers/footers and whitespace
     const keyContent = cleanKey
       .replace(/-----BEGIN[^-]+-----/g, '')
@@ -51,6 +71,7 @@ async function getJWT(): Promise<string> {
       .replace(/\s/g, '')
     
     cleanKey = `-----BEGIN PRIVATE KEY-----\n${keyContent.match(/.{1,64}/g)?.join('\n') || keyContent}\n-----END PRIVATE KEY-----`
+    keyFormat = 'pkcs8'
   }
 
   console.log('Final key format check - starts with:', cleanKey.substring(0, 50))
@@ -59,13 +80,13 @@ async function getJWT(): Promise<string> {
   try {
     // Import the private key for RS256
     const keyData = new TextEncoder().encode(cleanKey)
-    console.log('Attempting to import key...')
+    console.log('Attempting to import key with format:', keyFormat)
     
     const privateKey = await crypto.subtle.importKey(
-      'pkcs8',
+      keyFormat,
       keyData,
       {
-        name: 'RSASSA-PKCS1-v1_5',
+        name: algorithmName,
         hash: 'SHA-256',
       },
       false,
@@ -101,7 +122,7 @@ async function getJWT(): Promise<string> {
 
     // Create signature
     const signatureData = new TextEncoder().encode(`${encodedHeader}.${encodedPayload}`)
-    const signature = await crypto.subtle.sign('RSASSA-PKCS1-v1_5', privateKey, signatureData)
+    const signature = await crypto.subtle.sign(algorithmName, privateKey, signatureData)
     
     // Convert signature to base64url
     const signatureArray = new Uint8Array(signature)
