@@ -1,71 +1,54 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Search, FileText, FolderOpen, Folder, Plus, Circle } from "lucide-react";
 import { cn } from "@/lib/utils";
-
-// File structure matching public/content directory
-const fileStructure = [
-  {
-    name: "desktop",
-    type: "folder",
-    children: [
-      { name: "actions.md", type: "file" },
-      { name: "copilot.md", type: "file" },
-      { name: "configuration.md", type: "file" },
-      { name: "desktop.md", type: "file" },
-      { name: "download.md", type: "file" },
-      {
-        name: "actions",
-        type: "folder",
-        children: [
-          { name: "keyboard-shortcuts.md", type: "file" },
-        ],
-      },
-      {
-        name: "configuration",
-        type: "folder",
-        children: [
-          { name: "account-and-cloud.md", type: "file" },
-          { name: "additional-settings.md", type: "file" },
-          { name: "aesthetics-layout.md", type: "file" },
-          { name: "copilot-and-machine-learning.md", type: "file" },
-          { name: "mcp.md", type: "file" },
-          { name: "support.md", type: "file" },
-        ],
-      },
-      {
-        name: "copilot",
-        type: "folder",
-        children: [
-          { name: "configuration.md", type: "file" },
-          { name: "integration.md", type: "file" },
-          { name: "interaction.md", type: "file" },
-          { name: "multiple-environments.md", type: "file" },
-        ],
-      },
-    ],
-  },
-];
+import { FileNode, loadContentStructure } from "@/utils/fileSystem";
 
 interface FileTreeProps {
-  items: any[];
+  items: FileNode[];
   depth?: number;
   selectedFile?: string;
   onFileSelect?: (file: string) => void;
   modifiedFiles?: Set<string>;
-  parentPath?: string;
+  searchTerm?: string;
 }
 
-function FileTree({ items, depth = 0, selectedFile, onFileSelect, modifiedFiles, parentPath = "" }: FileTreeProps) {
-  const [expandedFolders, setExpandedFolders] = useState<string[]>(['desktop']);
+function FileTree({ items, depth = 0, selectedFile, onFileSelect, modifiedFiles, searchTerm }: FileTreeProps) {
+  const [expandedFolders, setExpandedFolders] = useState<string[]>([]);
 
-  const toggleFolder = (folderName: string) => {
+  const toggleFolder = (folderPath: string) => {
     setExpandedFolders(prev =>
-      prev.includes(folderName)
-        ? prev.filter(name => name !== folderName)
-        : [...prev, folderName]
+      prev.includes(folderPath)
+        ? prev.filter(path => path !== folderPath)
+        : [...prev, folderPath]
+    );
+  };
+
+  // Filter items based on search term
+  const filteredItems = items.filter(item => {
+    if (!searchTerm) return true;
+    
+    if (item.type === 'file') {
+      return item.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+             item.path.toLowerCase().includes(searchTerm.toLowerCase());
+    } else {
+      // For folders, show if any child matches or folder name matches
+      const folderMatches = item.name.toLowerCase().includes(searchTerm.toLowerCase());
+      const hasMatchingChild = item.children?.some(child => 
+        child.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (child.type === 'folder' && hasNestedMatch(child, searchTerm))
+      );
+      return folderMatches || hasMatchingChild;
+    }
+  });
+
+  const hasNestedMatch = (folder: FileNode, term: string): boolean => {
+    if (!folder.children) return false;
+    return folder.children.some(child => 
+      child.name.toLowerCase().includes(term.toLowerCase()) ||
+      (child.type === 'folder' && hasNestedMatch(child, term))
     );
   };
 
@@ -73,11 +56,9 @@ function FileTree({ items, depth = 0, selectedFile, onFileSelect, modifiedFiles,
 
   return (
     <div className="space-y-1">
-      {items.map((item) => {
-        const currentPath = parentPath ? `${parentPath}/${item.name}` : item.name;
-        
+      {filteredItems.map((item) => {
         return (
-          <div key={item.name}>
+          <div key={item.path}>
             {item.type === "folder" ? (
               <div>
                 <Button
@@ -86,23 +67,23 @@ function FileTree({ items, depth = 0, selectedFile, onFileSelect, modifiedFiles,
                     "w-full justify-start text-left h-8",
                     paddingClass
                   )}
-                  onClick={() => toggleFolder(currentPath)}
+                  onClick={() => toggleFolder(item.path)}
                 >
-                  {expandedFolders.includes(currentPath) ? (
+                  {expandedFolders.includes(item.path) ? (
                     <FolderOpen className="h-4 w-4 mr-2" />
                   ) : (
                     <Folder className="h-4 w-4 mr-2" />
                   )}
                   <span className="truncate">{item.name}</span>
                 </Button>
-                {expandedFolders.includes(currentPath) && item.children && (
+                {(expandedFolders.includes(item.path) || searchTerm) && item.children && (
                   <FileTree
                     items={item.children}
                     depth={depth + 1}
                     selectedFile={selectedFile}
                     onFileSelect={onFileSelect}
                     modifiedFiles={modifiedFiles}
-                    parentPath={currentPath}
+                    searchTerm={searchTerm}
                   />
                 )}
               </div>
@@ -112,13 +93,13 @@ function FileTree({ items, depth = 0, selectedFile, onFileSelect, modifiedFiles,
                 className={cn(
                   "w-full justify-start text-left h-8",
                   paddingClass,
-                  selectedFile === currentPath && "bg-accent"
+                  selectedFile === item.path && "bg-accent"
                 )}
-                onClick={() => onFileSelect?.(currentPath)}
+                onClick={() => onFileSelect?.(item.path)}
               >
                 <FileText className="h-4 w-4 mr-2" />
                 <span className="truncate flex-1">{item.name}</span>
-                {modifiedFiles?.has(currentPath) && (
+                {modifiedFiles?.has(item.path) && (
                   <Circle className="h-2 w-2 fill-orange-500 text-orange-500" />
                 )}
               </Button>
@@ -138,6 +119,24 @@ interface EditorSidebarProps {
 
 export function EditorSidebar({ selectedFile, onFileSelect, modifiedFiles }: EditorSidebarProps) {
   const [searchTerm, setSearchTerm] = useState("");
+  const [fileStructure, setFileStructure] = useState<FileNode[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const loadFiles = async () => {
+      setIsLoading(true);
+      try {
+        const structure = await loadContentStructure();
+        setFileStructure(structure);
+      } catch (error) {
+        console.error('Failed to load file structure:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    loadFiles();
+  }, []);
 
   return (
     <div className="h-full flex flex-col">
@@ -162,12 +161,17 @@ export function EditorSidebar({ selectedFile, onFileSelect, modifiedFiles }: Edi
 
       {/* File tree */}
       <div className="flex-1 overflow-y-auto">
-        <FileTree
-          items={fileStructure}
-          selectedFile={selectedFile}
-          onFileSelect={onFileSelect}
-          modifiedFiles={modifiedFiles}
-        />
+        {isLoading ? (
+          <div className="p-4 text-sm text-muted-foreground">Loading files...</div>
+        ) : (
+          <FileTree
+            items={fileStructure}
+            selectedFile={selectedFile}
+            onFileSelect={onFileSelect}
+            modifiedFiles={modifiedFiles}
+            searchTerm={searchTerm}
+          />
+        )}
       </div>
     </div>
   );
