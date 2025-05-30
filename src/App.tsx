@@ -60,11 +60,11 @@ function AppContent() {
             } 
           />
           
-          {/* Protected editor route */}
+          {/* Protected editor route - Editor component handles role checking */}
           <Route 
             path="/edit" 
             element={
-              <ProtectedRoute requireRole="editor">
+              <ProtectedRoute>
                 <Editor />
               </ProtectedRoute>
             } 
