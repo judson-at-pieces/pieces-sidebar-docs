@@ -215,7 +215,7 @@ class GitHubAppService {
       }
 
       // Create the pull request with updated body
-      const prBody = `${body}\n\n---\n*Pieces Documentation Bot*`;
+      const prBody = `${body}\n\n---\n*Auto-Created by Pieces Documentation Bot*`;
       
       const pr = await this.makeRequest(`/repos/${owner}/${repo}/pulls`, token, {
         method: 'POST',
