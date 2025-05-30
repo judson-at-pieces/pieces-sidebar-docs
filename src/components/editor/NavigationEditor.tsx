@@ -5,7 +5,6 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { 
   DragDropContext, 
   Droppable, 
@@ -17,9 +16,12 @@ import {
   GripVertical, 
   FileText, 
   FolderOpen, 
+  Folder,
   Trash2, 
   Edit2,
-  ExternalLink
+  ExternalLink,
+  ChevronDown,
+  ChevronRight
 } from "lucide-react";
 import { navigationService, NavigationSection, NavigationItem } from "@/services/navigationService";
 import { useNavigation } from "@/hooks/useNavigation";
@@ -31,10 +33,112 @@ interface NavigationEditorProps {
   onNavigationChange: () => void;
 }
 
+interface FileTreeItemProps {
+  node: FileNode;
+  depth: number;
+  index: number;
+  isUsed: (path: string) => boolean;
+}
+
+function FileTreeItem({ node, depth, index, isUsed }: FileTreeItemProps) {
+  const [isExpanded, setIsExpanded] = useState(true);
+  const paddingLeft = depth * 16;
+
+  if (node.type === 'file') {
+    const used = isUsed(node.path);
+    if (used) return null; // Don't show used files
+
+    return (
+      <Draggable draggableId={node.path} index={index}>
+        {(provided, snapshot) => (
+          <div
+            ref={provided.innerRef}
+            {...provided.draggableProps}
+            {...provided.dragHandleProps}
+            className={`p-2 mb-1 border rounded-lg flex items-center gap-2 cursor-move transition-colors ${
+              snapshot.isDragging ? 'bg-accent border-primary' : 'hover:bg-accent/50'
+            }`}
+            style={{ marginLeft: paddingLeft, ...provided.draggableProps.style }}
+          >
+            <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+            <FileText className="h-4 w-4 flex-shrink-0" />
+            <span className="text-sm font-medium truncate">
+              {node.name.replace('.md', '')}
+            </span>
+          </div>
+        )}
+      </Draggable>
+    );
+  }
+
+  // For folders, check if any children are available
+  const hasAvailableChildren = (node: FileNode): boolean => {
+    if (!node.children) return false;
+    return node.children.some(child => {
+      if (child.type === 'file') return !isUsed(child.path);
+      return hasAvailableChildren(child);
+    });
+  };
+
+  if (!hasAvailableChildren(node)) return null;
+
+  return (
+    <div style={{ marginLeft: paddingLeft }}>
+      <Draggable draggableId={`folder-${node.path}`} index={index}>
+        {(provided, snapshot) => (
+          <div
+            ref={provided.innerRef}
+            {...provided.draggableProps}
+            className={`mb-2 ${snapshot.isDragging ? 'opacity-75' : ''}`}
+          >
+            <div 
+              {...provided.dragHandleProps}
+              className={`p-2 flex items-center gap-2 cursor-move hover:bg-accent/30 rounded transition-colors ${
+                snapshot.isDragging ? 'bg-accent border border-primary' : ''
+              }`}
+              onClick={() => setIsExpanded(!isExpanded)}
+            >
+              <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              {isExpanded ? (
+                <ChevronDown className="h-4 w-4 flex-shrink-0" />
+              ) : (
+                <ChevronRight className="h-4 w-4 flex-shrink-0" />
+              )}
+              {isExpanded ? (
+                <FolderOpen className="h-4 w-4 flex-shrink-0" />
+              ) : (
+                <Folder className="h-4 w-4 flex-shrink-0" />
+              )}
+              <span className="text-sm font-medium">{node.name}</span>
+              <Badge variant="secondary" className="text-xs">
+                {node.children?.filter(child => 
+                  child.type === 'file' ? !isUsed(child.path) : hasAvailableChildren(child)
+                ).length || 0}
+              </Badge>
+            </div>
+            {isExpanded && node.children && (
+              <div className="mt-1">
+                {node.children.map((child, childIndex) => (
+                  <FileTreeItem 
+                    key={child.path} 
+                    node={child} 
+                    depth={depth + 1} 
+                    index={childIndex}
+                    isUsed={isUsed}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+      </Draggable>
+    );
+  }
+}
+
 export function NavigationEditor({ fileStructure, onNavigationChange }: NavigationEditorProps) {
   const { navigation, refetch } = useNavigation();
   const [sections, setSections] = useState<NavigationSection[]>([]);
-  const [availableFiles, setAvailableFiles] = useState<FileNode[]>([]);
   const [newSectionTitle, setNewSectionTitle] = useState("");
   const [isAddingSection, setIsAddingSection] = useState(false);
   const [editingSection, setEditingSection] = useState<string | null>(null);
@@ -46,48 +150,143 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
     }
   }, [navigation]);
 
-  useEffect(() => {
-    // Flatten file structure to get all markdown files
-    const flattenFiles = (nodes: FileNode[]): FileNode[] => {
-      const files: FileNode[] = [];
-      nodes.forEach(node => {
-        if (node.type === 'file' && node.name.endsWith('.md')) {
-          files.push(node);
-        } else if (node.type === 'folder' && node.children) {
-          files.push(...flattenFiles(node.children));
-        }
-      });
-      return files;
-    };
-
-    const allFiles = flattenFiles(fileStructure);
-    
-    // Filter out files that are already in navigation
-    const usedFilePaths = new Set<string>();
-    sections.forEach(section => {
-      section.items?.forEach(item => {
-        if (item.file_path) {
-          usedFilePaths.add(item.file_path);
-        }
-      });
-    });
-
-    const unused = allFiles.filter(file => !usedFilePaths.has(file.path));
-    setAvailableFiles(unused);
-  }, [fileStructure, sections]);
+  // Check if a file is already used in navigation
+  const isFileUsed = (filePath: string): boolean => {
+    return sections.some(section => 
+      section.items?.some(item => item.file_path === filePath)
+    );
+  };
 
   const handleDragEnd = async (result: DropResult) => {
     const { destination, source, draggableId, type } = result;
 
     if (!destination) return;
 
+    console.log('Drag ended:', { source, destination, draggableId, type });
+
+    // Handle dragging from available files to navigation sections
+    if (source.droppableId === 'available-files' && destination.droppableId.startsWith('section-')) {
+      const destSectionId = destination.droppableId.replace('section-', '');
+      
+      // Handle both files and folders
+      if (draggableId.startsWith('folder-')) {
+        // Handle folder drag
+        const folderPath = draggableId.replace('folder-', '');
+        const findFolderByPath = (nodes: FileNode[], path: string): FileNode | null => {
+          for (const node of nodes) {
+            if (node.path === path && node.type === 'folder') {
+              return node;
+            }
+            if (node.children) {
+              const found = findFolderByPath(node.children, path);
+              if (found) return found;
+            }
+          }
+          return null;
+        };
+
+        const folder = findFolderByPath(fileStructure, folderPath);
+        if (!folder || !folder.children) return;
+
+        // Add all files in the folder to the section
+        const addFilesFromFolder = (folderNode: FileNode): NavigationItem[] => {
+          const items: NavigationItem[] = [];
+          
+          folderNode.children?.forEach(child => {
+            if (child.type === 'file' && !isFileUsed(child.path)) {
+              items.push({
+                id: `temp-${Date.now()}-${Math.random()}`,
+                title: child.name.replace('.md', '').replace(/-/g, ' '),
+                href: `/${child.path.replace('.md', '')}`,
+                file_path: child.path,
+                order_index: 0,
+                parent_id: undefined,
+                is_auto_generated: true
+              });
+            } else if (child.type === 'folder') {
+              items.push(...addFilesFromFolder(child));
+            }
+          });
+          
+          return items;
+        };
+
+        const newItems = addFilesFromFolder(folder);
+        
+        if (newItems.length === 0) {
+          toast.info("No available files in this folder");
+          return;
+        }
+
+        const updatedSections = sections.map(s => {
+          if (s.id === destSectionId) {
+            const allItems = [...(s.items || []), ...newItems];
+            return { 
+              ...s, 
+              items: allItems.map((item, index) => ({ ...item, order_index: index }))
+            };
+          }
+          return s;
+        });
+        
+        setSections(updatedSections);
+        onNavigationChange();
+        toast.success(`Added ${newItems.length} files from ${folder.name}`);
+        
+      } else {
+        // Handle single file drag
+        const findFileByPath = (nodes: FileNode[], path: string): FileNode | null => {
+          for (const node of nodes) {
+            if (node.path === path && node.type === 'file') {
+              return node;
+            }
+            if (node.children) {
+              const found = findFileByPath(node.children, path);
+              if (found) return found;
+            }
+          }
+          return null;
+        };
+
+        const file = findFileByPath(fileStructure, draggableId);
+        
+        if (!file) return;
+        
+        const newItem: NavigationItem = {
+          id: `temp-${Date.now()}`,
+          title: file.name.replace('.md', '').replace(/-/g, ' '),
+          href: `/${file.path.replace('.md', '')}`,
+          file_path: file.path,
+          order_index: destination.index,
+          parent_id: undefined,
+          is_auto_generated: true
+        };
+        
+        const updatedSections = sections.map(s => {
+          if (s.id === destSectionId) {
+            const newItems = [...(s.items || [])];
+            newItems.splice(destination.index, 0, newItem);
+            return { 
+              ...s, 
+              items: newItems.map((item, index) => ({ ...item, order_index: index }))
+            };
+          }
+          return s;
+        });
+        
+        setSections(updatedSections);
+        onNavigationChange();
+        toast.success(`Added ${file.name.replace('.md', '')} to navigation`);
+      }
+      return;
+    }
+
+    // Handle section reordering
     if (type === 'section') {
-      // Reorder sections
       const newSections = Array.from(sections);
       const [reorderedSection] = newSections.splice(source.index, 1);
       newSections.splice(destination.index, 0, reorderedSection);
       
-      // Update order_index for all sections
       const updatedSections = newSections.map((section, index) => ({
         ...section,
         order_index: index
@@ -98,8 +297,8 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
       return;
     }
 
+    // Handle item reordering within sections or moving between sections
     if (type === 'item') {
-      // Handle item reordering within sections or moving between sections
       const sourceSectionId = source.droppableId.replace('section-', '');
       const destSectionId = destination.droppableId.replace('section-', '');
       
@@ -129,7 +328,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
         
         const [movedItem] = sourceSection.items.splice(source.index, 1);
         const destItems = destSection.items || [];
-        destItems.splice(destination.index, 0, { ...movedItem, section_id: destSectionId });
+        destItems.splice(destination.index, 0, movedItem);
         
         const updatedSections = sections.map(s => {
           if (s.id === sourceSectionId) {
@@ -144,39 +343,6 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
         setSections(updatedSections);
         onNavigationChange();
       }
-    }
-
-    if (source.droppableId === 'available-files') {
-      // Drag from available files to a section
-      const destSectionId = destination.droppableId.replace('section-', '');
-      const file = availableFiles.find(f => f.path === draggableId);
-      
-      if (!file) return;
-      
-      const newItem: NavigationItem = {
-        id: `temp-${Date.now()}`,
-        title: file.name.replace('.md', '').replace(/-/g, ' '),
-        href: `/${file.path.replace('.md', '')}`,
-        file_path: file.path,
-        order_index: destination.index,
-        parent_id: undefined,
-        is_auto_generated: true
-      };
-      
-      const updatedSections = sections.map(s => {
-        if (s.id === destSectionId) {
-          const newItems = [...(s.items || [])];
-          newItems.splice(destination.index, 0, newItem);
-          return { 
-            ...s, 
-            items: newItems.map((item, index) => ({ ...item, order_index: index }))
-          };
-        }
-        return s;
-      });
-      
-      setSections(updatedSections);
-      onNavigationChange();
     }
   };
 
@@ -246,46 +412,34 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
       <div className="p-4 border-b">
         <h2 className="text-lg font-semibold mb-2">Navigation Editor</h2>
         <p className="text-sm text-muted-foreground">
-          Drag files from the "Available Files" section into navigation sections to organize your documentation.
+          Drag files or entire folders from the "Available Files" section into navigation sections to organize your documentation.
         </p>
       </div>
       
       <div className="flex-1 overflow-hidden">
         <DragDropContext onDragEnd={handleDragEnd}>
-          <div className="grid grid-cols-2 gap-4 h-full">
+          <div className="grid grid-cols-2 gap-4 h-full p-4">
             {/* Available Files */}
             <Card className="h-full flex flex-col">
               <CardHeader className="pb-3">
                 <CardTitle className="text-base flex items-center gap-2">
                   <FileText className="h-4 w-4" />
                   Available Files
-                  <Badge variant="secondary">{availableFiles.length}</Badge>
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex-1 overflow-hidden">
                 <Droppable droppableId="available-files" type="file">
                   {(provided) => (
                     <ScrollArea className="h-full">
-                      <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-2">
-                        {availableFiles.map((file, index) => (
-                          <Draggable key={file.path} draggableId={file.path} index={index}>
-                            {(provided, snapshot) => (
-                              <div
-                                ref={provided.innerRef}
-                                {...provided.draggableProps}
-                                {...provided.dragHandleProps}
-                                className={`p-3 border rounded-lg flex items-center gap-2 cursor-move transition-colors ${
-                                  snapshot.isDragging ? 'bg-accent' : 'hover:bg-accent/50'
-                                }`}
-                              >
-                                <GripVertical className="h-4 w-4 text-muted-foreground" />
-                                <FileText className="h-4 w-4" />
-                                <span className="text-sm font-medium truncate">
-                                  {file.name.replace('.md', '')}
-                                </span>
-                              </div>
-                            )}
-                          </Draggable>
+                      <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-1">
+                        {fileStructure.map((node, index) => (
+                          <FileTreeItem 
+                            key={node.path} 
+                            node={node} 
+                            depth={0} 
+                            index={index}
+                            isUsed={isFileUsed}
+                          />
                         ))}
                         {provided.placeholder}
                       </div>
@@ -416,8 +570,8 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
                                     <div
                                       {...provided.droppableProps}
                                       ref={provided.innerRef}
-                                      className={`p-3 min-h-[60px] ${
-                                        snapshot.isDraggingOver ? 'bg-accent/50' : ''
+                                      className={`p-3 min-h-[80px] transition-colors ${
+                                        snapshot.isDraggingOver ? 'bg-primary/10 border-primary border-2 border-dashed' : ''
                                       }`}
                                     >
                                       {section.items?.length ? (
@@ -429,8 +583,8 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
                                                   ref={provided.innerRef}
                                                   {...provided.draggableProps}
                                                   {...provided.dragHandleProps}
-                                                  className={`p-2 border rounded flex items-center justify-between ${
-                                                    snapshot.isDragging ? 'bg-background' : 'hover:bg-accent/50'
+                                                  className={`p-2 border rounded flex items-center justify-between transition-colors ${
+                                                    snapshot.isDragging ? 'bg-background shadow-lg' : 'hover:bg-accent/50'
                                                   }`}
                                                 >
                                                   <div className="flex items-center gap-2">
@@ -463,8 +617,8 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
                                           ))}
                                         </div>
                                       ) : (
-                                        <div className="text-center text-muted-foreground text-sm py-4">
-                                          Drop files here to add them to this section
+                                        <div className="text-center text-muted-foreground text-sm py-8 border-2 border-dashed border-muted-foreground/20 rounded">
+                                          Drop files or folders here to add them to this section
                                         </div>
                                       )}
                                       {provided.placeholder}
