@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { toast } from '@/components/ui/use-toast';
 
 interface AccessCodeFormProps {
   onSuccess: () => void;
@@ -34,10 +35,21 @@ export function AccessCodeForm({ onSuccess }: AccessCodeFormProps) {
       if (data) {
         // If user is already signed in, they now have editor access
         if (user) {
-          // Refresh the page to update the auth context with new roles
-          window.location.reload();
+          toast({
+            title: "Editor Access Granted",
+            description: "You now have editor permissions. Refreshing the page...",
+          });
+          
+          // Small delay to let the toast show before refresh
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
         } else {
           // User is not signed in, proceed to sign up flow
+          toast({
+            title: "Access Code Validated",
+            description: "You can now sign up with GitHub to complete your account setup.",
+          });
           onSuccess();
         }
       } else {
