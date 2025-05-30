@@ -1,7 +1,7 @@
 
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { getCompiledContent, CompiledContentModule, getAllCompiledPaths } from '@/compiled-content';
+import { getCompiledContent, CompiledContentModule, contentRegistry } from '@/compiled-content';
 import { DynamicDocPage } from './DynamicDocPage';
 
 export function CompiledDocPage() {
@@ -18,8 +18,8 @@ export function CompiledDocPage() {
     const routerPath = currentPath.replace(/^\/docs\//, '').replace(/^\//, '');
     console.log('CompiledDocPage: Router path:', routerPath);
     
-    // Get all available paths from compiled content
-    const availablePaths = getAllCompiledPaths();
+    // Get all available paths from compiled content registry
+    const availablePaths = Object.keys(contentRegistry);
     console.log('CompiledDocPage: Available compiled paths:', availablePaths);
     
     // Find matching content by checking if any compiled path ends with our router path
