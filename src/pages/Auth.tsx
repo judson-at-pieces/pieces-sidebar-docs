@@ -7,15 +7,20 @@ import { Button } from '@/components/ui/button';
 import { AccessCodeForm } from '@/components/auth/AccessCodeForm';
 import { GitHubAuthButton } from '@/components/auth/GitHubAuthButton';
 import { useAuth } from '@/contexts/AuthContext';
+import { AuthErrorBoundary } from '@/components/auth/AuthErrorBoundary';
 
-export default function Auth() {
+function AuthContent() {
   const { user, loading, hasRole, signOut, isSupabaseConfigured } = useAuth();
   const [hasValidCode, setHasValidCode] = useState(false);
 
+  // Show loading state
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
-        <div>Loading...</div>
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <div>Loading...</div>
+        </div>
       </div>
     );
   }
@@ -159,5 +164,13 @@ export default function Auth() {
         </Tabs>
       </div>
     </div>
+  );
+}
+
+export default function Auth() {
+  return (
+    <AuthErrorBoundary>
+      <AuthContent />
+    </AuthErrorBoundary>
   );
 }

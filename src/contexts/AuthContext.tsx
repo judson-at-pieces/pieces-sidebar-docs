@@ -69,12 +69,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             // Audit log for authentication
             auditLog.authAttempt(session.user.email || '', true, 'github');
             
-            // Handle post sign in
+            // Handle post sign in with a small delay to avoid blocking
             setTimeout(async () => {
               if (mounted) {
                 await handlePostSignIn(session.user);
               }
-            }, 500);
+            }, 100);
           } else {
             setUserRoles([]);
           }
