@@ -147,6 +147,8 @@ Start editing this file...`;
 
     setIsLoading(true);
     try {
+      console.log('Starting PR creation process...');
+      
       // Get the user's GitHub access token from their session
       const { data: { session } } = await supabase.auth.getSession();
       const githubToken = session?.provider_token;
@@ -155,6 +157,8 @@ Start editing this file...`;
         toast.error('GitHub access token not found. Please sign out and sign back in.');
         return;
       }
+
+      console.log('GitHub token found, repository config:', repoConfig);
 
       const files = Array.from(modifiedFiles).map(fileName => {
         // Map the file name to the correct content path in public/content
@@ -186,6 +190,8 @@ Start editing this file...`;
         };
       });
 
+      console.log('Prepared files for PR:', files.map(f => f.path));
+
       const result = await githubService.createPullRequest({
         title: `Update documentation files`,
         body: `Updated ${modifiedFiles.size} file(s) by ${user.email}:\n\n${Array.from(modifiedFiles).map(f => `- ${f}`).join('\n')}`,
@@ -197,9 +203,25 @@ Start editing this file...`;
         // Update original contents to match current
         setOriginalContents({ ...fileContents });
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating pull request:', error);
-      toast.error('Failed to create pull request. Please try again.');
+      
+      // Provide more specific error messages based on the error
+      let errorMessage = 'Failed to create pull request. ';
+      
+      if (error.message.includes('401')) {
+        errorMessage += 'Authentication failed. Please sign out and sign back in.';
+      } else if (error.message.includes('403')) {
+        errorMessage += 'You don\'t have permission to write to this repository.';
+      } else if (error.message.includes('404')) {
+        errorMessage += 'Repository not found. Please check the repository configuration.';
+      } else if (error.message.includes('422')) {
+        errorMessage += 'Invalid data provided. Please check the repository structure.';
+      } else {
+        errorMessage += error.message || 'Please try again.';
+      }
+      
+      toast.error(errorMessage);
     }
     setIsLoading(false);
   };
