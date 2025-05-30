@@ -74,20 +74,21 @@ export class SimpleMarkdownCompiler {
         return;
       }
 
-      // Generate the path key - normalize path separators and avoid double slashes
-      const baseName = fileName.replace(/\.(md|mdx)$/, '');
+      // Generate the path key
       let pathKey: string;
       
-      if (relativePath) {
-        const normalizedRelativePath = relativePath.replace(/\\/g, '/');
-        pathKey = `/docs/${normalizedRelativePath}/${baseName}`;
-      } else {
-        pathKey = `/docs/${baseName}`;
-      }
-
-      // Use frontmatter path if available, but ensure it starts with /
+      // Use frontmatter path if available
       if (frontmatter.path) {
         pathKey = frontmatter.path.startsWith('/') ? frontmatter.path : `/${frontmatter.path}`;
+      } else {
+        // Generate path based on file structure
+        const baseName = fileName.replace(/\.(md|mdx)$/, '');
+        if (relativePath) {
+          const normalizedRelativePath = relativePath.replace(/\\/g, '/');
+          pathKey = `/docs/${normalizedRelativePath}/${baseName}`;
+        } else {
+          pathKey = `/docs/${baseName}`;
+        }
       }
 
       // Clean up any double slashes
@@ -99,7 +100,7 @@ export class SimpleMarkdownCompiler {
       // Store in content map
       contentMap[pathKey] = {
         frontmatter: {
-          title: frontmatter.title || baseName.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
+          title: frontmatter.title || fileName.replace(/\.(md|mdx)$/, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()),
           description: frontmatter.description || null,
           author: frontmatter.author || null,
           lastModified: frontmatter.lastModified || null,
