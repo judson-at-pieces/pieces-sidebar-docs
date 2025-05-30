@@ -4,7 +4,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Github, Check, AlertCircle, Loader2 } from 'lucide-react';
+import { Github, Check, AlertCircle, Loader2, TestTube } from 'lucide-react';
 import { githubService } from '@/services/githubService';
 import { toast } from 'sonner';
 import { useAuth } from '@/contexts/AuthContext';
@@ -15,6 +15,7 @@ export function GitHubRepoConfig() {
   const [repo, setRepo] = useState('');
   const [loading, setLoading] = useState(false);
   const [verifying, setVerifying] = useState(false);
+  const [testing, setTesting] = useState(false);
   const [configLoading, setConfigLoading] = useState(true);
   const [isConfigured, setIsConfigured] = useState(false);
   const [currentConfig, setCurrentConfig] = useState<{ owner: string; repo: string } | null>(null);
@@ -50,6 +51,40 @@ export function GitHubRepoConfig() {
     }
   };
 
+  const handleTestAccess = async () => {
+    if (!owner || !repo) {
+      toast.error('Please fill in both owner and repository name');
+      return;
+    }
+
+    setTesting(true);
+    try {
+      console.log('Testing repository access...');
+      
+      const { data: { session } } = await supabase.auth.getSession();
+      const githubToken = session?.provider_token;
+
+      if (!githubToken) {
+        toast.error('GitHub access token not found. Please sign out and sign back in.');
+        return;
+      }
+
+      const accessTest = await githubService.testRepositoryAccess(owner, repo, githubToken);
+      
+      if (accessTest.hasAccess) {
+        toast.success(`✅ Repository access confirmed! Default branch: ${accessTest.defaultBranch || 'main'}`);
+        console.log('Access test results:', accessTest);
+      } else {
+        toast.error(`❌ Repository access failed: ${accessTest.error}`);
+      }
+    } catch (error: any) {
+      console.error('Repository access test error:', error);
+      toast.error(`❌ Access test failed: ${error.message}`);
+    } finally {
+      setTesting(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!owner || !repo) {
       toast.error('Please fill in both owner and repository name');
@@ -65,9 +100,10 @@ export function GitHubRepoConfig() {
     setVerifying(true);
 
     try {
-      console.log('Starting GitHub repository configuration process...');
+      console.log('=== Starting GitHub Repository Configuration ===');
+      console.log('Repository:', `${owner}/${repo}`);
+      console.log('User:', user.email);
       
-      // Get the user's GitHub access token
       const { data: { session } } = await supabase.auth.getSession();
       const githubToken = session?.provider_token;
 
@@ -76,14 +112,12 @@ export function GitHubRepoConfig() {
         return;
       }
 
-      console.log('Verifying repository access and structure...');
+      console.log('GitHub token found, starting verification...');
       
-      // Verify the repository structure
       await githubService.verifyRepository(owner, repo, githubToken);
       
       console.log('Repository verification successful, saving configuration...');
       
-      // Save the repository configuration to Supabase
       const success = await githubService.setRepoConfig(owner, repo);
       
       if (success) {
@@ -91,14 +125,14 @@ export function GitHubRepoConfig() {
         setCurrentConfig({ owner, repo });
         toast.success('GitHub repository configured successfully!');
         
-        // Clear the form
         setOwner('');
         setRepo('');
       } else {
         toast.error('Failed to save repository configuration');
       }
     } catch (error: any) {
-      console.error('GitHub configuration error:', error);
+      console.error('=== GitHub Configuration Error ===');
+      console.error('Error details:', error);
       toast.error(error.message || 'Failed to configure GitHub repository');
     } finally {
       setLoading(false);
@@ -192,7 +226,7 @@ export function GitHubRepoConfig() {
         <Alert>
           <AlertCircle className="h-4 w-4" />
           <AlertDescription>
-            The repository should be accessible with your GitHub account. The system will create pull requests to update documentation files.
+            The repository should be accessible with your GitHub account. Use the "Test Access" button to verify before saving.
           </AlertDescription>
         </Alert>
         
@@ -229,20 +263,41 @@ export function GitHubRepoConfig() {
           </Alert>
         )}
         
-        <Button 
-          onClick={handleSave} 
-          disabled={loading || !owner || !repo}
-          className="w-full"
-        >
-          {loading ? (
-            <>
-              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              Configuring...
-            </>
-          ) : (
-            'Save Repository Configuration'
-          )}
-        </Button>
+        <div className="flex space-x-2">
+          <Button 
+            onClick={handleTestAccess} 
+            disabled={testing || loading || !owner || !repo}
+            variant="outline"
+            className="flex-1"
+          >
+            {testing ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Testing...
+              </>
+            ) : (
+              <>
+                <TestTube className="h-4 w-4 mr-2" />
+                Test Access
+              </>
+            )}
+          </Button>
+          
+          <Button 
+            onClick={handleSave} 
+            disabled={loading || !owner || !repo}
+            className="flex-1"
+          >
+            {loading ? (
+              <>
+                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                Configuring...
+              </>
+            ) : (
+              'Save Repository Configuration'
+            )}
+          </Button>
+        </div>
       </CardContent>
     </Card>
   );

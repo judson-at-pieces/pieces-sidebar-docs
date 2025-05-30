@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 interface GitHubFile {
@@ -31,34 +30,84 @@ class GitHubService {
     };
 
     console.log('Making GitHub API request to:', url);
+    console.log('Request headers:', { ...headers, Authorization: '[REDACTED]' });
 
     const response = await fetch(url, {
       ...options,
       headers,
     });
 
+    const responseText = await response.text();
+    console.log('GitHub API response status:', response.status);
+    console.log('GitHub API response:', responseText);
+
     if (!response.ok) {
-      const errorText = await response.text();
-      console.error('GitHub API error response:', errorText);
+      console.error('GitHub API error response:', responseText);
       
       let errorMessage = `GitHub API error: ${response.status} ${response.statusText}`;
       
       try {
-        const errorData = JSON.parse(errorText);
+        const errorData = JSON.parse(responseText);
         if (errorData.message) {
           errorMessage += ` - ${errorData.message}`;
         }
-      } catch (e) {
-        // If we can't parse as JSON, include the raw text
-        if (errorText) {
-          errorMessage += ` - ${errorText}`;
+        if (errorData.documentation_url) {
+          console.log('GitHub API documentation:', errorData.documentation_url);
         }
+      } catch (e) {
+        if (responseText) {
+          errorMessage += ` - ${responseText}`;
+        }
+      }
+      
+      // Add more specific error messages
+      if (response.status === 404) {
+        if (endpoint.includes('/repos/')) {
+          const repoPath = endpoint.split('/repos/')[1].split('/')[0] + '/' + endpoint.split('/repos/')[1].split('/')[1];
+          errorMessage = `Repository ${repoPath} not found. Please check that the repository exists and you have access to it.`;
+        }
+      } else if (response.status === 403) {
+        errorMessage = 'Access forbidden. Please check that your GitHub token has the necessary permissions for this repository.';
+      } else if (response.status === 401) {
+        errorMessage = 'Authentication failed. Please sign out and sign back in to refresh your GitHub token.';
       }
       
       throw new Error(errorMessage);
     }
 
-    return response.json();
+    return JSON.parse(responseText);
+  }
+
+  async testRepositoryAccess(owner: string, repo: string, token: string) {
+    console.log('Testing repository access for:', `${owner}/${repo}`);
+    
+    try {
+      // Test basic repository access
+      const repoData = await this.makeRequest(`/repos/${owner}/${repo}`, token);
+      console.log('Repository found:', repoData.full_name);
+      console.log('Repository permissions:', repoData.permissions);
+      
+      // Test if we can read repository contents
+      const contentsData = await this.makeRequest(`/repos/${owner}/${repo}/contents`, token);
+      console.log('Repository contents accessible, found', contentsData.length, 'items');
+      
+      // Check if we can create branches (indicates write access)
+      const branchesData = await this.makeRequest(`/repos/${owner}/${repo}/branches`, token);
+      console.log('Repository branches accessible, found', branchesData.length, 'branches');
+      
+      return {
+        hasAccess: true,
+        canRead: true,
+        permissions: repoData.permissions,
+        defaultBranch: repoData.default_branch
+      };
+    } catch (error) {
+      console.error('Repository access test failed:', error);
+      return {
+        hasAccess: false,
+        error: error instanceof Error ? error.message : 'Unknown error'
+      };
+    }
   }
 
   async createPullRequest(
@@ -178,7 +227,9 @@ class GitHubService {
 
   async verifyRepository(owner: string, repo: string, token: string) {
     try {
-      console.log('Verifying repository structure for:', `${owner}/${repo}`);
+      console.log('=== Starting Repository Verification ===');
+      console.log('Repository:', `${owner}/${repo}`);
+      console.log('Token available:', !!token);
       
       if (!owner || !repo) {
         throw new Error('Repository owner and name are required');
@@ -188,63 +239,20 @@ class GitHubService {
         throw new Error('GitHub token is required for repository verification');
       }
       
-      // First check if we can access the repository at all
-      console.log('Checking repository access...');
-      const repoResponse = await this.makeRequest(`/repos/${owner}/${repo}`, token);
-      console.log('Repository accessible, permissions:', repoResponse.permissions);
-      
-      // Check if the repository has the expected structure
-      console.log('Checking repository structure...');
-      let hasPublicContent = false;
-      
-      try {
-        const response = await this.makeRequest(`/repos/${owner}/${repo}/contents/public/content`, token);
-        
-        // Check if it's a directory and has some content files
-        if (Array.isArray(response)) {
-          const hasMarkdownFiles = response.some((item: any) => 
-            item.name.endsWith('.md') || item.type === 'dir'
-          );
-          
-          if (hasMarkdownFiles) {
-            hasPublicContent = true;
-          }
-        }
-      } catch (error) {
-        console.log('No /public/content directory found, checking for any content structure...');
-        
-        // If public/content doesn't exist, check if there's at least some content in the repo
-        try {
-          const rootContents = await this.makeRequest(`/repos/${owner}/${repo}/contents`, token);
-          if (Array.isArray(rootContents) && rootContents.length > 0) {
-            console.log('Repository has content, proceeding with verification');
-            hasPublicContent = true;
-          }
-        } catch (rootError) {
-          console.error('Failed to check repository contents:', rootError);
-        }
+      // First test repository access with detailed logging
+      const accessTest = await this.testRepositoryAccess(owner, repo, token);
+      if (!accessTest.hasAccess) {
+        throw new Error(accessTest.error || 'Cannot access repository');
       }
-
-      if (!hasPublicContent) {
-        console.warn('Repository structure validation warning: No expected content structure found');
-        // Don't throw an error, just warn - let the user proceed
-      }
-
-      console.log('Repository verification completed successfully');
+      
+      console.log('Repository access verified successfully');
+      console.log('Default branch:', accessTest.defaultBranch);
+      console.log('Permissions:', accessTest.permissions);
+      
       return true;
     } catch (error) {
-      console.error('Repository verification failed:', error);
-      
-      if (error instanceof Error) {
-        if (error.message.includes('404')) {
-          throw new Error(`Repository ${owner}/${repo} not found. Please check that the repository exists and you have access to it.`);
-        } else if (error.message.includes('403')) {
-          throw new Error('Access forbidden. Please check that your GitHub token has the necessary permissions.');
-        } else if (error.message.includes('401')) {
-          throw new Error('Authentication failed. Please sign out and sign back in to refresh your GitHub token.');
-        }
-      }
-      
+      console.error('=== Repository Verification Failed ===');
+      console.error('Error:', error);
       throw error;
     }
   }
