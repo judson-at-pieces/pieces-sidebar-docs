@@ -1,12 +1,14 @@
 
 import React from 'react';
+import { cn } from '@/lib/utils';
 
 interface CardGroupProps {
   cols?: string;
   children?: React.ReactNode;
+  className?: string;
 }
 
-export function CardGroup({ cols = '1', children }: CardGroupProps) {
+export function CardGroup({ cols = '1', children, className }: CardGroupProps) {
   const getGridCols = (cols: string) => {
     switch (cols) {
       case '1':
@@ -23,8 +25,20 @@ export function CardGroup({ cols = '1', children }: CardGroupProps) {
   };
 
   return (
-    <div className={`grid gap-6 my-6 ${getGridCols(cols)}`}>
-      {children}
+    <div className={cn(
+      "grid gap-6 my-8",
+      getGridCols(cols),
+      "auto-rows-fr", // Makes all cards in a row the same height
+      className
+    )}>
+      {React.Children.map(children, (child, index) => (
+        <div 
+          className="animate-in fade-in slide-in-from-bottom-3"
+          style={{ animationDelay: `${index * 50}ms` }}
+        >
+          {child}
+        </div>
+      ))}
     </div>
   );
 }
