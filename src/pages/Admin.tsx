@@ -3,6 +3,7 @@ import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { AdminPortal } from '@/components/auth/AdminPortal';
+import { ActiveAdminCodes } from '@/components/admin/ActiveAdminCodes';
 import { GitHubRepoConfig } from '@/components/admin/GitHubRepoConfig';
 import { UserManagement } from '@/components/admin/UserManagement';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -164,6 +165,9 @@ export default function Admin() {
                 </CardHeader>
                 <CardContent>
                   <AdminPortal />
+                  <div className="mt-6">
+                    <ActiveAdminCodes />
+                  </div>
                 </CardContent>
               </Card>
 
