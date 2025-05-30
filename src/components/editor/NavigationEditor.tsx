@@ -54,7 +54,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
     
     items.push(folderItem);
     
-    // Process ALL children (including the index file as a child of the folder)
+    // Process ALL children (files and subfolders)
     if (folderNode.children) {
       folderNode.children.forEach(child => {
         if (child.type === 'file' && !isFileUsed(child.path)) {
@@ -69,6 +69,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
           };
           folderItem.items!.push(childItem);
         } else if (child.type === 'folder') {
+          // Recursively process subfolders
           const subFolderItems = createNavigationItemsFromFolder(child, folderItem.id);
           folderItem.items!.push(...subFolderItems);
         }
@@ -96,7 +97,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
       // Handle both files and folders
       if (draggableId.startsWith('folder-')) {
         console.log('Processing folder drag:', draggableId);
-        // Handle folder drag - preserve complete folder structure including index file
+        // Handle folder drag - preserve complete folder structure including all children
         const folderPath = draggableId.replace('folder-', '');
         const findFolderByPath = (nodes: FileNode[], path: string): FileNode | null => {
           for (const node of nodes) {
@@ -119,9 +120,10 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
           return;
         }
 
-        // Create nested navigation items that preserve complete folder structure
+        // Create complete navigation structure including all children
         const newItems = createNavigationItemsFromFolder(folder);
         console.log('Created navigation items:', newItems);
+        console.log('First item children:', newItems[0]?.items);
         
         if (newItems.length === 0) {
           toast.info("No available files in this folder");
@@ -141,7 +143,13 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
         
         setSections(updatedSections);
         onNavigationChange();
-        toast.success(`Added ${folder.name} folder with complete structure to navigation`);
+        
+        // Count total items added (including children)
+        const totalItemsAdded = newItems.reduce((count, item) => {
+          return count + 1 + (item.items ? item.items.length : 0);
+        }, 0);
+        
+        toast.success(`Added ${folder.name} folder with ${totalItemsAdded} items to navigation`);
         
       } else {
         console.log('Processing file drag:', draggableId);
