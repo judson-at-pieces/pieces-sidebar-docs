@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 interface GitHubInstallation {
@@ -41,6 +40,22 @@ class GitHubAppService {
       console.error('Error getting installation token:', error);
       throw error;
     }
+  }
+
+  // Helper function to properly encode content for GitHub API
+  private encodeContent(content: string): string {
+    // Use TextEncoder to handle Unicode characters properly
+    const encoder = new TextEncoder();
+    const uint8Array = encoder.encode(content);
+    
+    // Convert Uint8Array to base64
+    let binary = '';
+    const len = uint8Array.byteLength;
+    for (let i = 0; i < len; i++) {
+      binary += String.fromCharCode(uint8Array[i]);
+    }
+    
+    return btoa(binary);
   }
 
   // Get all installations for the app directly from GitHub
@@ -185,12 +200,12 @@ class GitHubAppService {
           console.log('File does not exist, creating new file');
         }
 
-        // Update or create the file
+        // Update or create the file with proper encoding
         await this.makeRequest(`/repos/${owner}/${repo}/contents/${file.path}`, token, {
           method: 'PUT',
           body: JSON.stringify({
             message: `Update ${file.path}`,
-            content: btoa(file.content), // Base64 encode the content
+            content: this.encodeContent(file.content), // Use the new encoding method
             branch: branchName,
             ...(currentFileSha && { sha: currentFileSha }),
           }),
