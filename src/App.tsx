@@ -1,9 +1,10 @@
+
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { Toaster } from '@/components/ui/toaster';
 import Index from '@/pages/Index';
-import DocsLayout from '@/layouts/DocsLayout';
+import DocsLayout from '@/components/DocsLayout';
 import GettingStarted from '@/pages/docs/GettingStarted';
 import QuickGuides from '@/pages/docs/QuickGuides';
 import Installation from '@/pages/docs/Installation';
@@ -22,16 +23,17 @@ import Examples from '@/pages/docs/Examples';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import { DynamicDocPage } from '@/components/DynamicDocPage';
-import { QueryClient } from '@tanstack/react-query';
-
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useContentPreloader } from '@/hooks/useContentPreloader';
+
+const queryClient = new QueryClient();
 
 function App() {
   // Preload content immediately when app starts
   useContentPreloader();
 
   return (
-    <QueryClient>
+    <QueryClientProvider client={queryClient}>
       <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
         <AuthProvider>
           <Router>
@@ -79,7 +81,7 @@ function App() {
           </Router>
         </AuthProvider>
       </ThemeProvider>
-    </QueryClient>
+    </QueryClientProvider>
   );
 }
 
