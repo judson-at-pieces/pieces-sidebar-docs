@@ -25,39 +25,60 @@ export function EditorLayout() {
     setLoadingContent(true);
     
     try {
+      console.log('Loading content for file:', filePath);
+      
       // Load from the public/content directory where the actual markdown files are
       const response = await fetch(`/content/${filePath}`);
       if (response.ok) {
         const fileContent = await response.text();
+        console.log('Successfully loaded content for:', filePath);
         setContent(fileContent);
       } else {
-        // If file doesn't exist, try without the extension or create new content
+        console.log(`File not found at /content/${filePath}, creating new content`);
+        // Create default content for new files with proper TSX structure
         const cleanPath = filePath.replace(/\.md$/, '');
-        console.log(`File not found at /content/${filePath}, creating new content for ${cleanPath}`);
+        const fileName = cleanPath.split('/').pop()?.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
+        
         setContent(`---
-title: "${cleanPath.split('/').pop()?.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page'}"
+title: "${fileName}"
 path: "/${cleanPath}"
 visibility: "PUBLIC"
+description: "Add a description for this page"
 ---
 
-# ${cleanPath.split('/').pop()?.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page'}
+<h1>${fileName}</h1>
 
-Add your content here...
+<p>Add your content here. You can use TSX components like:</p>
+
+<Callout type="info">
+  This is an information callout. Type "/" to see more available components.
+</Callout>
+
+<p>Start editing to see the live preview!</p>
 `);
       }
     } catch (error) {
       console.error('Error loading file content:', error);
       // Create default content for new files
       const cleanPath = filePath.replace(/\.md$/, '');
+      const fileName = cleanPath.split('/').pop()?.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
+      
       setContent(`---
-title: "${cleanPath.split('/').pop()?.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page'}"
+title: "${fileName}"
 path: "/${cleanPath}"
 visibility: "PUBLIC"
+description: "Add a description for this page"
 ---
 
-# ${cleanPath.split('/').pop()?.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page'}
+<h1>${fileName}</h1>
 
-Add your content here...
+<p>Add your content here. You can use TSX components like:</p>
+
+<Callout type="info">
+  This is an information callout. Type "/" to see more available components.
+</Callout>
+
+<p>Start editing to see the live preview!</p>
 `);
     } finally {
       setLoadingContent(false);
