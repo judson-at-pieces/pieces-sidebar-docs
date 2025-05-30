@@ -49,7 +49,10 @@ export function CompiledDocPage() {
 
   useEffect(() => {
     async function loadContent() {
-      if (!path) return;
+      if (!path) {
+        setLoading(false);
+        return;
+      }
       
       setLoading(true);
       setError(null);
@@ -60,15 +63,16 @@ export function CompiledDocPage() {
         const compiledContent = getCompiledContent(path);
         
         if (compiledContent) {
-          console.log(`Successfully loaded compiled content: ${path}`);
+          console.log(`✅ Successfully loaded compiled content: ${path}`);
           setContent(compiledContent);
         } else {
-          console.log('Compiled content not found, using fallback to markdown...');
+          console.log(`❌ Compiled content not found for: ${path}, using fallback to markdown...`);
           setUseFallback(true);
         }
       } catch (err) {
-        console.error('Error loading content:', err);
+        console.error('❌ Error loading compiled content:', err);
         console.log('Using fallback to markdown due to error...');
+        setError(err instanceof Error ? err.message : 'Unknown error');
         setUseFallback(true);
       } finally {
         setLoading(false);
@@ -83,6 +87,7 @@ export function CompiledDocPage() {
   }
 
   if (useFallback) {
+    console.log('📄 Rendering fallback markdown page for:', path);
     return <DynamicDocPage />;
   }
 
@@ -93,6 +98,11 @@ export function CompiledDocPage() {
         <p className="text-muted-foreground mb-6">
           The documentation page you're looking for doesn't exist.
         </p>
+        {error && (
+          <pre className="text-sm text-muted-foreground bg-muted p-4 rounded mb-4">
+            {error}
+          </pre>
+        )}
         <Link to="/docs">
           <Button>
             <ArrowLeft className="mr-2 w-4 h-4" />
@@ -108,6 +118,8 @@ export function CompiledDocPage() {
   
   const isGettingStartedPage = path === 'getting-started';
   const shouldShowTOC = false;
+
+  console.log('🎯 Rendering compiled content for:', path);
 
   return (
     <ErrorBoundary FallbackComponent={ErrorFallback}>
