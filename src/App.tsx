@@ -16,6 +16,7 @@ import NotFound from '@/pages/NotFound';
 import Auth from '@/pages/Auth';
 import AuthCallback from '@/pages/AuthCallback';
 import Admin from '@/pages/Admin';
+import Editor from '@/pages/Editor';
 import MeetPieces from '@/pages/docs/MeetPieces';
 import QuickStart from '@/pages/docs/QuickStart';
 import Integrations from '@/pages/docs/Integrations';
@@ -55,6 +56,16 @@ function AppContent() {
             element={
               <ProtectedRoute requireRole="admin">
                 <Admin />
+              </ProtectedRoute>
+            } 
+          />
+          
+          {/* Protected editor route */}
+          <Route 
+            path="/edit" 
+            element={
+              <ProtectedRoute requireRole="editor">
+                <Editor />
               </ProtectedRoute>
             } 
           />
