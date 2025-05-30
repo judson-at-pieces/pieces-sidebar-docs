@@ -43,22 +43,55 @@ class GitHubAppService {
     }
   }
 
-  // Get all installations for the app
+  // Get all installations for the app directly from GitHub
   async getInstallations(): Promise<GitHubInstallation[]> {
     try {
-      const { data, error } = await supabase
-        .from('github_installations')
-        .select('installation_id, account_login, account_type, installed_at')
-        .order('installed_at', { ascending: false });
+      console.log('Fetching installations directly from GitHub...');
+      
+      const { data, error } = await supabase.functions.invoke('github-app-auth', {
+        body: { action: 'list-installations' }
+      });
 
       if (error) {
         throw new Error(`Failed to get installations: ${error.message}`);
       }
 
-      return data || [];
+      // Convert GitHub API format to our expected format
+      const installations: GitHubInstallation[] = data.installations.map((install: any) => ({
+        installation_id: install.id,
+        account_login: install.account.login,
+        account_type: install.account.type,
+        installed_at: install.created_at
+      }));
+
+      console.log('Found installations from GitHub:', installations);
+
+      // Store/update installations in our database for caching
+      for (const installation of installations) {
+        await supabase
+          .from('github_installations')
+          .upsert(installation, { 
+            onConflict: 'installation_id',
+            ignoreDuplicates: false 
+          });
+      }
+
+      return installations;
     } catch (error) {
-      console.error('Error getting installations:', error);
-      throw error;
+      console.error('Error getting installations from GitHub:', error);
+      
+      // Fallback to database if GitHub API fails
+      console.log('Falling back to cached installations...');
+      const { data: dbInstallations, error: dbError } = await supabase
+        .from('github_installations')
+        .select('installation_id, account_login, account_type, installed_at')
+        .order('installed_at', { ascending: false });
+
+      if (dbError) {
+        throw new Error(`Failed to get installations: ${dbError.message}`);
+      }
+
+      return dbInstallations || [];
     }
   }
 

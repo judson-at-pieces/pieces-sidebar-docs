@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -50,36 +51,14 @@ export function GitHubAppRepoSelector({ onRepoConfigured }: GitHubAppRepoSelecto
     try {
       console.log('Loading GitHub App installations...');
       
-      // First check if we have any installations in our database
-      const { data: dbInstallations, error: dbError } = await supabase
-        .from('github_installations')
-        .select('*')
-        .order('installed_at', { ascending: false });
-
-      if (dbError) {
-        console.error('Error loading installations from database:', dbError);
-        toast.error('Failed to load GitHub App installations from database');
-        setInstallations([]);
-        return;
-      }
-
-      console.log('Installations from database:', dbInstallations);
-
-      if (dbInstallations && dbInstallations.length > 0) {
-        // Convert database format to expected format
-        const formattedInstallations: GitHubInstallation[] = dbInstallations.map(install => ({
-          installation_id: install.installation_id,
-          account_login: install.account_login,
-          account_type: install.account_type,
-          installed_at: install.installed_at
-        }));
-        
-        setInstallations(formattedInstallations);
-        console.log('Found installations:', formattedInstallations);
-      } else {
-        console.log('No installations found in database - trying manual sync...');
-        // Try to manually sync installations if webhook didn't work
-        await syncInstallationsManually();
+      // Get installations directly from GitHub API
+      const installationsList = await githubAppService.getInstallations();
+      console.log('Found installations:', installationsList);
+      
+      setInstallations(installationsList);
+      
+      if (installationsList.length === 0) {
+        console.log('No installations found');
       }
     } catch (error: any) {
       console.error('Error loading installations:', error);
@@ -88,45 +67,6 @@ export function GitHubAppRepoSelector({ onRepoConfigured }: GitHubAppRepoSelecto
     } finally {
       setLoading(false);
       setInitialLoading(false);
-    }
-  };
-
-  const syncInstallationsManually = async () => {
-    try {
-      console.log('Attempting manual installation sync...');
-      
-      // Call our webhook function to try to detect installations
-      const response = await fetch('/api/github/sync-installations', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-      });
-
-      if (!response.ok) {
-        console.log('Manual sync endpoint not available, this is expected');
-        return;
-      }
-
-      // Reload installations after sync
-      const { data: dbInstallations, error: dbError } = await supabase
-        .from('github_installations')
-        .select('*')
-        .order('installed_at', { ascending: false });
-
-      if (!dbError && dbInstallations && dbInstallations.length > 0) {
-        const formattedInstallations: GitHubInstallation[] = dbInstallations.map(install => ({
-          installation_id: install.installation_id,
-          account_login: install.account_login,
-          account_type: install.account_type,
-          installed_at: install.installed_at
-        }));
-        
-        setInstallations(formattedInstallations);
-        toast.success('Found GitHub App installations!');
-      }
-    } catch (error) {
-      console.log('Manual sync failed, this is expected:', error);
     }
   };
 
@@ -168,7 +108,13 @@ export function GitHubAppRepoSelector({ onRepoConfigured }: GitHubAppRepoSelecto
 
       console.log('Configuring repository:', { owner, repoName, installationId: selectedInstallation });
 
-      // Save configuration with installation ID
+      // Clear any existing configuration first
+      await supabase
+        .from('github_config')
+        .delete()
+        .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all records
+
+      // Save new configuration with installation ID
       const { error } = await supabase
         .from('github_config')
         .insert({
@@ -182,7 +128,7 @@ export function GitHubAppRepoSelector({ onRepoConfigured }: GitHubAppRepoSelecto
         throw new Error(`Failed to save configuration: ${error.message}`);
       }
       
-      toast.success(`Repository ${repo.full_name} configured successfully!`);
+      toast.success(`Repository ${repo.full_name} configured successfully! All editors can now create PRs to this repository.`);
       onRepoConfigured();
     } catch (error: any) {
       console.error('Error configuring repository:', error);
@@ -215,9 +161,6 @@ export function GitHubAppRepoSelector({ onRepoConfigured }: GitHubAppRepoSelecto
   }
 
   if (installations.length === 0) {
-    const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
-    const correctWebhookUrl = `${supabaseUrl}/functions/v1/github-webhook`;
-    
     return (
       <Card>
         <CardHeader>
@@ -233,13 +176,7 @@ export function GitHubAppRepoSelector({ onRepoConfigured }: GitHubAppRepoSelecto
           <Alert className="mb-4">
             <Info className="h-4 w-4" />
             <AlertDescription>
-              <strong>Important:</strong> After installing the GitHub App, make sure the webhook URL in your GitHub App settings is set to:
-              <br />
-              <code className="bg-muted px-1 py-0.5 rounded text-xs mt-1 block">
-                {correctWebhookUrl}
-              </code>
-              <br />
-              This ensures installation events are properly recorded.
+              <strong>Important:</strong> Once you install the GitHub App, it will be available for all admins to configure repositories for documentation editing.
             </AlertDescription>
           </Alert>
           
@@ -265,12 +202,13 @@ export function GitHubAppRepoSelector({ onRepoConfigured }: GitHubAppRepoSelecto
           
           <div className="mt-4 p-3 bg-muted rounded-lg">
             <p className="text-sm text-muted-foreground">
-              <strong>Troubleshooting:</strong> If you've installed the app but don't see it here:
+              <strong>Next Steps:</strong>
             </p>
             <ol className="text-sm text-muted-foreground mt-2 space-y-1">
-              <li>1. Verify the webhook URL is correctly set in your GitHub App settings</li>
-              <li>2. Try clicking "Refresh Installations" above</li>
-              <li>3. Check that the app has access to your target repository</li>
+              <li>1. Click "Install Pieces Documentation Bot" above</li>
+              <li>2. Select which repositories to grant access to</li>
+              <li>3. Come back here and click "Refresh Installations"</li>
+              <li>4. Configure your repository for documentation editing</li>
             </ol>
           </div>
         </CardContent>
@@ -286,14 +224,14 @@ export function GitHubAppRepoSelector({ onRepoConfigured }: GitHubAppRepoSelecto
           <span>Select Repository</span>
         </CardTitle>
         <CardDescription>
-          Choose a repository to configure for documentation editing
+          Choose a repository to configure for documentation editing (available to all admins)
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <Alert>
           <GitBranch className="h-4 w-4" />
           <AlertDescription>
-            The selected repository will be configured for automatic branch creation and pull request management.
+            The selected repository will be configured globally for all editors. When they save changes, the GitHub App will automatically create branches and pull requests.
           </AlertDescription>
         </Alert>
 
@@ -359,7 +297,7 @@ export function GitHubAppRepoSelector({ onRepoConfigured }: GitHubAppRepoSelecto
               <span className="text-sm font-medium">Selected: {selectedRepo}</span>
             </div>
             <p className="text-xs text-blue-600 dark:text-blue-300 mt-1">
-              This will set up automatic branching and PR creation for documentation edits.
+              This will be configured globally for all editors to create automatic PRs.
             </p>
           </div>
         )}
