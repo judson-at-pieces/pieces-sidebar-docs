@@ -12,11 +12,29 @@ export function EditorLayout() {
   const [hasChanges, setHasChanges] = useState(false);
   const [modifiedFiles, setModifiedFiles] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<'navigation' | 'content'>('navigation');
+  const [loadingContent, setLoadingContent] = useState(false);
 
-  const handleFileSelect = (filePath: string) => {
+  const handleFileSelect = async (filePath: string) => {
     setSelectedFile(filePath);
-    setContent("");
     setHasChanges(false);
+    setLoadingContent(true);
+    
+    try {
+      // Load the actual file content
+      const response = await fetch(`/content/${filePath}`);
+      if (response.ok) {
+        const fileContent = await response.text();
+        setContent(fileContent);
+      } else {
+        // If file doesn't exist or can't be loaded, start with empty content
+        setContent("");
+      }
+    } catch (error) {
+      console.error('Error loading file content:', error);
+      setContent("");
+    } finally {
+      setLoadingContent(false);
+    }
   };
 
   const handleContentChange = (newContent: string) => {
@@ -126,7 +144,7 @@ export function EditorLayout() {
             ) : (
               <EditorMain 
                 selectedFile={selectedFile}
-                content={content}
+                content={loadingContent ? "Loading..." : content}
                 onContentChange={handleContentChange}
                 onSave={handleSave}
                 hasChanges={hasChanges}
