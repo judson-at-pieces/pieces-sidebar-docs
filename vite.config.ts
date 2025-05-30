@@ -1,4 +1,5 @@
 
+
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react-swc";
 import path from "path";
@@ -6,7 +7,6 @@ import { componentTagger } from "lovable-tagger";
 import { exec } from "child_process";
 import { promisify } from "util";
 import type { Plugin, ViteDevServer } from "vite";
-// import { watch } from "fs"; // Disabled due to platform compatibility
 import { mdxCompilerPlugin } from "./scripts/mdx-compiler/vite-plugin";
 
 const execAsync = promisify(exec);
@@ -49,4 +49,17 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Group compiled content into a separate chunk
+          'compiled-content': [
+            './src/compiled-content/index.ts'
+          ]
+        }
+      }
+    }
+  }
 }));
+
