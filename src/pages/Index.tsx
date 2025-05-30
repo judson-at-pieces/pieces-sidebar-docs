@@ -88,8 +88,8 @@ const Index = () => {
   ];
 
   const ToolCard = ({ tool }: { tool: { name: string; description: string; icon: string; href: string } }) => (
-    <Card className="hover:shadow-lg transition-shadow cursor-pointer" asChild>
-      <Link to={tool.href}>
+    <Link to={tool.href}>
+      <Card className="hover:shadow-lg transition-shadow cursor-pointer">
         <CardHeader className="pb-3">
           <CardTitle className="flex items-center space-x-3 text-lg">
             <span className="text-2xl">{tool.icon}</span>
@@ -101,8 +101,8 @@ const Index = () => {
             {tool.description}
           </CardDescription>
         </CardContent>
-      </Link>
-    </Card>
+      </Card>
+    </Link>
   );
 
   return (
