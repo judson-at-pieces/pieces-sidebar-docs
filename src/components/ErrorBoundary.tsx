@@ -14,6 +14,7 @@ interface Props {
 interface State {
   hasError: boolean;
   errorId: string;
+  errorMessage?: string;
 }
 
 export class ErrorBoundary extends Component<Props, State> {
@@ -26,7 +27,8 @@ export class ErrorBoundary extends Component<Props, State> {
     const errorId = Math.random().toString(36).substring(2, 15);
     return {
       hasError: true,
-      errorId
+      errorId,
+      errorMessage: error.message
     };
   }
 
@@ -52,12 +54,12 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       // Check if this is a Supabase-related error
-      const isSupabaseError = window.location.href.includes('supabaseUrl') || 
-                              this.state.errorId.includes('supabase') ||
-                              document.querySelector('script')?.textContent?.includes('supabaseUrl is required');
+      const isSupabaseError = this.state.errorMessage?.includes('supabaseUrl') || 
+                              this.state.errorMessage?.includes('supabase') ||
+                              window.location.href.includes('supabaseUrl');
 
       if (isSupabaseError) {
-        return <DebugPage error="Supabase configuration error detected" hasCompiledContent={true} />;
+        return <DebugPage error={this.state.errorMessage} hasCompiledContent={true} />;
       }
 
       return (
@@ -76,6 +78,11 @@ export class ErrorBoundary extends Component<Props, State> {
               <p className="text-sm text-muted-foreground">
                 Error ID: {this.state.errorId}
               </p>
+              {this.state.errorMessage && (
+                <p className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                  {this.state.errorMessage}
+                </p>
+              )}
               <div className="flex space-x-2">
                 <Button 
                   onClick={() => window.location.reload()} 
