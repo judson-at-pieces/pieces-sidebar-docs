@@ -1,3 +1,4 @@
+
 import { useEffect, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { MarkdownRenderer } from './MarkdownRenderer';
@@ -78,33 +79,41 @@ export function DynamicDocPage() {
 
   console.log('Rendering DynamicDocPage with content:', content.metadata.title);
 
+  // Check if this is the getting-started page
+  const isGettingStartedPage = path === 'getting-started';
+  
+  // Show TOC only if it's not the getting-started page and content has headings
+  const shouldShowTOC = !isGettingStartedPage && content.content.includes('#');
+
   return (
     <div className="max-w-7xl mx-auto flex gap-8">
       {/* Main content */}
       <div className="flex-1 min-w-0">
-        {/* Page header */}
-        <div className="mb-8 pb-6 border-b border-border">
-          <h1 className="text-4xl font-bold mb-2">{content.metadata.title}</h1>
-          {content.metadata.description && (
-            <p className="text-xl text-muted-foreground mb-4">{content.metadata.description}</p>
-          )}
-          
-          {/* Metadata */}
-          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-            {content.metadata.author && (
-              <div className="flex items-center gap-1">
-                <User className="w-4 h-4" />
-                <span>{content.metadata.author}</span>
-              </div>
+        {/* Page header - hide for getting-started page */}
+        {!isGettingStartedPage && (
+          <div className="mb-8 pb-6 border-b border-border">
+            <h1 className="text-4xl font-bold mb-2">{content.metadata.title}</h1>
+            {content.metadata.description && (
+              <p className="text-xl text-muted-foreground mb-4">{content.metadata.description}</p>
             )}
-            {content.metadata.lastModified && (
-              <div className="flex items-center gap-1">
-                <Calendar className="w-4 h-4" />
-                <span>Updated {new Date(content.metadata.lastModified).toLocaleDateString()}</span>
-              </div>
-            )}
+            
+            {/* Metadata */}
+            <div className="flex items-center gap-4 text-sm text-muted-foreground">
+              {content.metadata.author && (
+                <div className="flex items-center gap-1">
+                  <User className="w-4 h-4" />
+                  <span>{content.metadata.author}</span>
+                </div>
+              )}
+              {content.metadata.lastModified && (
+                <div className="flex items-center gap-1">
+                  <Calendar className="w-4 h-4" />
+                  <span>Updated {new Date(content.metadata.lastModified).toLocaleDateString()}</span>
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        )}
 
         {/* Content */}
         <div className="markdown-content">
@@ -112,8 +121,8 @@ export function DynamicDocPage() {
         </div>
       </div>
 
-      {/* Table of Contents */}
-      <TableOfContents content={content.content} />
+      {/* Table of Contents - only show when appropriate */}
+      {shouldShowTOC && <TableOfContents content={content.content} />}
     </div>
   );
 }

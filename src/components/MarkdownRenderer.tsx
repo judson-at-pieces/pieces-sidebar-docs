@@ -14,7 +14,13 @@ interface MarkdownRendererProps {
 }
 
 export function MarkdownRenderer({ content }: MarkdownRendererProps) {
-  const processedContent = processCustomSyntax(content);
+  // Remove frontmatter (everything between --- markers at the start)
+  const cleanContent = content.replace(/^---[\s\S]*?---\s*/, '');
+  
+  // Remove the *** separator that comes after frontmatter
+  const finalContent = cleanContent.replace(/^\*\*\*\s*/, '');
+  
+  const processedContent = processCustomSyntax(finalContent);
 
   return (
     <div className="prose prose-lg max-w-none dark:prose-invert prose-headings:scroll-mt-20">
