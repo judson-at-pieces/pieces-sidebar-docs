@@ -61,7 +61,17 @@ export function UserManagement() {
       setLoading(true);
       setError('');
 
-      // Get all profiles with their roles
+      // First get all user IDs from user_roles
+      const { data: userRoles, error: rolesError } = await supabase
+        .from('user_roles')
+        .select('user_id, role');
+
+      if (rolesError) throw rolesError;
+
+      // Get unique user IDs
+      const userIds = [...new Set(userRoles?.map(role => role.user_id) || [])];
+
+      // Get all profiles
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select(`
@@ -74,19 +84,35 @@ export function UserManagement() {
 
       if (profilesError) throw profilesError;
 
-      // Get all user roles
-      const { data: userRoles, error: rolesError } = await supabase
-        .from('user_roles')
-        .select('user_id, role');
+      // Create a map of existing profiles
+      const profilesMap = new Map(profiles?.map(p => [p.id, p]) || []);
 
-      if (rolesError) throw rolesError;
+      // Build users list including all users with roles
+      const allUserIds = new Set([
+        ...userIds,
+        ...(profiles?.map(p => p.id) || [])
+      ]);
 
-      // Combine profiles with their roles
-      const usersWithRoles = profiles?.map(profile => ({
-        ...profile,
-        roles: userRoles?.filter(role => role.user_id === profile.id)
-          .map(role => role.role) || []
-      })) || [];
+      const usersWithRoles = Array.from(allUserIds).map(userId => {
+        const profile = profilesMap.get(userId);
+        const userRolesList = userRoles?.filter(role => role.user_id === userId)
+          .map(role => role.role) || [];
+
+        return {
+          id: userId,
+          email: profile?.email || null,
+          full_name: profile?.full_name || null,
+          created_at: profile?.created_at || new Date().toISOString(),
+          roles: userRolesList
+        };
+      });
+
+      // Sort by roles (users with roles first) then by creation date
+      usersWithRoles.sort((a, b) => {
+        if (a.roles.length > 0 && b.roles.length === 0) return -1;
+        if (a.roles.length === 0 && b.roles.length > 0) return 1;
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+      });
 
       setUsers(usersWithRoles);
     } catch (err: any) {
