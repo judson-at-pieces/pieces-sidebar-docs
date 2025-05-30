@@ -27,6 +27,8 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       setUser(session?.user ?? null);
       if (session?.user) {
         fetchUserRoles(session.user.id);
+        // Check if user needs role assignment after GitHub sign-in
+        checkAndAssignPendingRole(session.user.id);
       }
       setLoading(false);
     });
@@ -39,6 +41,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         if (session?.user) {
           setTimeout(() => {
             fetchUserRoles(session.user.id);
+            // Check if user needs role assignment after GitHub sign-in
+            if (event === 'SIGNED_IN') {
+              checkAndAssignPendingRole(session.user.id);
+            }
           }, 0);
         } else {
           setUserRoles([]);
@@ -49,6 +55,55 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  const checkAndAssignPendingRole = async (userId: string) => {
+    try {
+      // Check if there's a recently used access code without a user_id
+      const { data, error } = await supabase
+        .from('admin_access_codes')
+        .select('*')
+        .is('used_by', null)
+        .eq('is_active', true)
+        .gte('used_at', new Date(Date.now() - 5 * 60 * 1000).toISOString()) // Within last 5 minutes
+        .order('used_at', { ascending: false })
+        .limit(1);
+
+      if (error) {
+        console.error('Error checking pending access codes:', error);
+        return;
+      }
+
+      if (data && data.length > 0) {
+        // Update the access code with the user_id and assign the role
+        const { error: updateError } = await supabase
+          .from('admin_access_codes')
+          .update({ used_by: userId })
+          .eq('id', data[0].id);
+
+        if (updateError) {
+          console.error('Error updating access code:', updateError);
+          return;
+        }
+
+        // Assign editor role
+        const { error: roleError } = await supabase
+          .from('user_roles')
+          .insert({ user_id: userId, role: 'editor' })
+          .select();
+
+        if (roleError) {
+          console.error('Error assigning role:', roleError);
+        } else {
+          // Refresh user roles
+          setTimeout(() => {
+            fetchUserRoles(userId);
+          }, 100);
+        }
+      }
+    } catch (error) {
+      console.error('Error in checkAndAssignPendingRole:', error);
+    }
+  };
 
   const fetchUserRoles = async (userId: string) => {
     try {
