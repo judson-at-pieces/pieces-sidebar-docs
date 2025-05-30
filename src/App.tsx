@@ -48,7 +48,7 @@ function App() {
                 {/* Documentation routes */}
                 <Route path="/docs" element={<DocsLayout />}>
                   <Route index element={<Navigate to="/docs/getting-started" replace />} />
-                  <Route path="getting-started" element={<DynamicDocPage />} />
+                  <Route path="getting-started" element={<GettingStarted />} />
                   <Route path="quick-guides" element={<QuickGuides />} />
                   <Route path="installation" element={<Installation />} />
                   <Route path="troubleshooting" element={<Troubleshooting />} />
