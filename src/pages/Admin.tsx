@@ -1,8 +1,10 @@
+
 import React from 'react';
 import { Navigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { AdminPortal } from '@/components/auth/AdminPortal';
 import { GitHubRepoConfig } from '@/components/admin/GitHubRepoConfig';
+import { UserManagement } from '@/components/admin/UserManagement';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -68,8 +70,8 @@ export default function Admin() {
         </div>
       </header>
 
-      <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* GitHub Repository Configuration - Now at the top */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* GitHub Repository Configuration */}
         <div className="mb-8">
           <div className="mb-4">
             <h2 className="text-2xl font-bold mb-2">GitHub Integration</h2>
@@ -136,46 +138,52 @@ export default function Admin() {
         </div>
 
         {/* User Management Section */}
-        <div>
+        <div className="mb-8">
           <div className="mb-4">
             <h2 className="text-2xl font-bold mb-2">User Management</h2>
             <p className="text-muted-foreground">
-              Manage editor access and user permissions for the documentation platform.
+              Manage user accounts and permissions for the documentation platform.
             </p>
           </div>
 
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <UserPlus className="h-5 w-5" />
-                  <span>Generate Access Codes</span>
-                </CardTitle>
-                <CardDescription>
-                  Create access codes for new editors to join the platform
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <AdminPortal />
-              </CardContent>
-            </Card>
+          <div className="grid gap-6">
+            {/* User Management Component */}
+            <UserManagement />
 
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center space-x-2">
-                  <Users className="h-5 w-5" />
-                  <span>User Management</span>
-                </CardTitle>
-                <CardDescription>
-                  Manage users and their permissions
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-muted-foreground">
-                  User management features coming soon...
-                </p>
-              </CardContent>
-            </Card>
+            {/* Access Code Generation */}
+            <div className="grid gap-6 md:grid-cols-2">
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <UserPlus className="h-5 w-5" />
+                    <span>Generate Access Codes</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Create access codes for new editors to join the platform
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <AdminPortal />
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center space-x-2">
+                    <Users className="h-5 w-5" />
+                    <span>User Statistics</span>
+                  </CardTitle>
+                  <CardDescription>
+                    Overview of user activity and growth
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-muted-foreground">
+                    User analytics and statistics coming soon...
+                  </p>
+                </CardContent>
+              </Card>
+            </div>
           </div>
         </div>
       </main>
