@@ -9,7 +9,6 @@ import { EditorSidebar } from "./EditorSidebar";
 import { EditorMain } from "./EditorMain";
 import { githubService } from "@/services/githubService";
 import { toast } from "sonner";
-import { loadMarkdownContent } from "@/lib/content";
 
 interface FileContent {
   [fileName: string]: string;
@@ -33,18 +32,72 @@ export function EditorLayout() {
   const loadFileContent = async (fileName: string) => {
     setIsLoading(true);
     try {
-      // Try to load from content system
-      const contentPage = await loadMarkdownContent(fileName.replace('.md', ''));
-      const content = contentPage?.content || `# ${fileName.replace('.md', '').replace('-', ' ')}\n\nStart editing this file...`;
+      console.log('Loading content for file:', fileName);
       
-      setFileContents(prev => ({ ...prev, [fileName]: content }));
-      setOriginalContents(prev => ({ ...prev, [fileName]: content }));
+      // Map the file name to the correct content path in public/content
+      let contentPath = fileName;
+      
+      // Handle nested paths properly
+      const pathMappings: Record<string, string> = {
+        'fundamentals.md': 'meet-pieces/fundamentals.md',
+        'windows-installation-guide.md': 'meet-pieces/windows-installation-guide.md',
+        'macos-installation-guide.md': 'meet-pieces/macos-installation-guide.md',
+        'linux-installation-guide.md': 'meet-pieces/linux-installation-guide.md',
+        'cross-platform.md': 'meet-pieces/troubleshooting/cross-platform.md',
+        'macos.md': 'meet-pieces/troubleshooting/macos.md',
+        'windows.md': 'meet-pieces/troubleshooting/windows.md',
+        'linux.md': 'meet-pieces/troubleshooting/linux.md',
+        'overview.md': 'quick-guides/overview.md',
+        'ltm-context.md': 'quick-guides/ltm-context.md',
+        'copilot-with-context.md': 'quick-guides/copilot-with-context.md',
+        'download.md': 'desktop/download.md',
+        'onboarding.md': 'desktop/onboarding.md',
+      };
+      
+      // Use mapping if available, otherwise use the file name as-is for nested files
+      if (pathMappings[fileName]) {
+        contentPath = pathMappings[fileName];
+      }
+      
+      console.log('Fetching from path:', `/content/${contentPath}`);
+      
+      // Fetch the markdown file from public/content
+      const response = await fetch(`/content/${contentPath}`);
+      
+      if (response.ok) {
+        const content = await response.text();
+        console.log('Successfully loaded content for:', fileName);
+        setFileContents(prev => ({ ...prev, [fileName]: content }));
+        setOriginalContents(prev => ({ ...prev, [fileName]: content }));
+      } else {
+        console.log('File not found, using fallback content');
+        const fallbackContent = `---
+title: "${fileName.replace('.md', '').replace('-', ' ')}"
+path: "/${contentPath.replace('.md', '')}"
+visibility: "PUBLIC"
+---
+***
+
+# ${fileName.replace('.md', '').replace('-', ' ')}
+
+Start editing this file...`;
+        setFileContents(prev => ({ ...prev, [fileName]: fallbackContent }));
+        setOriginalContents(prev => ({ ...prev, [fileName]: fallbackContent }));
+      }
     } catch (error) {
       console.error('Error loading file:', error);
-      // Fallback content
-      const content = `# ${fileName.replace('.md', '').replace('-', ' ')}\n\nStart editing this file...`;
-      setFileContents(prev => ({ ...prev, [fileName]: content }));
-      setOriginalContents(prev => ({ ...prev, [fileName]: content }));
+      const fallbackContent = `---
+title: "${fileName.replace('.md', '').replace('-', ' ')}"
+path: "/${fileName.replace('.md', '')}"
+visibility: "PUBLIC"
+---
+***
+
+# ${fileName.replace('.md', '').replace('-', ' ')}
+
+Start editing this file...`;
+      setFileContents(prev => ({ ...prev, [fileName]: fallbackContent }));
+      setOriginalContents(prev => ({ ...prev, [fileName]: fallbackContent }));
     }
     setIsLoading(false);
   };
