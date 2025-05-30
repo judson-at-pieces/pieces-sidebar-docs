@@ -127,26 +127,26 @@ const Index = () => {
 
       {/* Hero Section */}
       <section className="py-16 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-6xl mx-auto text-center">
+        <div className="max-w-6xl mx-auto text-left">
           {/* Updated announcement banner */}
-          <div className="flex items-center justify-center mb-8">
+          <div className="flex items-start justify-start mb-8">
             <div className="flex items-center space-x-2 bg-muted/50 border border-border text-blue-400 px-4 py-2 rounded-full text-sm font-medium">
               <span>🚀 Get Up And Running Faster Than Ever</span>
             </div>
           </div>
           
-          <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
+          <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight text-left">
             Welcome to{" "}
             <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
               Pieces for Developers
             </span>
           </h1>
           
-          <p className="text-xl text-muted-foreground mb-12 max-w-3xl mx-auto leading-relaxed">
+          <p className="text-xl text-muted-foreground mb-12 max-w-3xl leading-relaxed text-left">
             Get started with the Pieces for Developers platform and share how to best use and optimize your workflow by selecting your favorite IDE, editor, or productivity tool.
           </p>
           
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
+          <div className="flex flex-col sm:flex-row gap-4 justify-start items-start mb-16">
             <Link to="/docs/getting-started">
               <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg">
                 <BookOpen className="mr-2 w-5 h-5" />
@@ -167,7 +167,7 @@ const Index = () => {
         <div className="max-w-7xl mx-auto">
           {integrations.map((category, categoryIndex) => (
             <div key={categoryIndex} className="mb-12">
-              <h2 className="text-2xl font-bold mb-6 text-foreground">{category.category}</h2>
+              <h2 className="text-2xl font-bold mb-6 text-foreground text-left">{category.category}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {category.items.map((integration, index) => (
                   <Card 
@@ -179,7 +179,7 @@ const Index = () => {
                       <div className="flex items-center space-x-3">
                         <span className="text-2xl">{integration.logo}</span>
                         <div className="flex-1">
-                          <CardTitle className="text-lg group-hover:text-blue-400 transition-colors flex items-center">
+                          <CardTitle className="text-lg group-hover:text-blue-400 transition-colors flex items-center text-left">
                             {integration.name}
                             <ExternalLink className="w-4 h-4 ml-2 opacity-0 group-hover:opacity-100 transition-opacity" />
                           </CardTitle>
@@ -187,7 +187,7 @@ const Index = () => {
                       </div>
                     </CardHeader>
                     <CardContent className="pt-0">
-                      <CardDescription className="text-muted-foreground leading-relaxed">
+                      <CardDescription className="text-muted-foreground leading-relaxed text-left">
                         {integration.description}
                       </CardDescription>
                     </CardContent>
@@ -202,14 +202,14 @@ const Index = () => {
       {/* Footer */}
       <footer className="border-t border-border py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto">
-          <div className="flex flex-col md:flex-row justify-between items-center">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center">
             <div className="flex items-center space-x-2 mb-4 md:mb-0">
               <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
                 <span className="text-white font-bold text-xs">P</span>
               </div>
               <span className="font-bold">Pieces for Developers</span>
             </div>
-            <p className="text-muted-foreground text-sm">&copy; 2024 Pieces. Built for developers, by developers.</p>
+            <p className="text-muted-foreground text-sm text-left">&copy; 2024 Pieces. Built for developers, by developers.</p>
           </div>
         </div>
       </footer>
