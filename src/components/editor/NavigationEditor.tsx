@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { DragDropContext, DropResult } from "@hello-pangea/dnd";
 import { navigationService, NavigationSection, NavigationItem } from "@/services/navigationService";
@@ -419,7 +418,6 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
     });
     
     setSections(updatedSections);
-    onNavigationChange();
   };
 
   const renderPreviewItems = (items: NavigationItem[], depth = 0): React.ReactNode => {
@@ -458,6 +456,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
               onAddSection={handleAddSection}
               onUpdateSectionTitle={handleUpdateSectionTitle}
               onRemoveItem={handleRemoveItem}
+              onNavigationChange={onNavigationChange}
             />
           </div>
         </DragDropContext>

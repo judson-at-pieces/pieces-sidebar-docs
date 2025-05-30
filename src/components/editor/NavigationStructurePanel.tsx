@@ -16,19 +16,23 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import { NavigationSection } from "@/services/navigationService";
+import { navigationService } from "@/services/navigationService";
+import { toast } from "sonner";
 
 interface NavigationStructurePanelProps {
   sections: NavigationSection[];
   onAddSection: (title: string) => void;
   onUpdateSectionTitle: (sectionId: string, title: string) => void;
   onRemoveItem: (sectionId: string, itemIndex: number) => void;
+  onNavigationChange: () => void;
 }
 
 export function NavigationStructurePanel({ 
   sections, 
   onAddSection, 
   onUpdateSectionTitle, 
-  onRemoveItem 
+  onRemoveItem,
+  onNavigationChange
 }: NavigationStructurePanelProps) {
   const [newSectionTitle, setNewSectionTitle] = useState("");
   const [isAddingSection, setIsAddingSection] = useState(false);
@@ -47,6 +51,34 @@ export function NavigationStructurePanel({
     onUpdateSectionTitle(sectionId, editingSectionTitle);
     setEditingSection(null);
     setEditingSectionTitle("");
+  };
+
+  const handleRemoveItemFromDb = async (sectionId: string, itemIndex: number) => {
+    const section = sections.find(s => s.id === sectionId);
+    if (!section?.items || !section.items[itemIndex]) {
+      toast.error("Item not found");
+      return;
+    }
+
+    const item = section.items[itemIndex];
+    
+    try {
+      // Delete from database if it's not a temporary item
+      if (!item.id.startsWith('temp-')) {
+        await navigationService.deleteNavigationItem(item.id);
+      }
+      
+      // Update local state
+      onRemoveItem(sectionId, itemIndex);
+      
+      // Trigger navigation refresh
+      onNavigationChange();
+      
+      toast.success(`Removed ${item.title} from navigation`);
+    } catch (error) {
+      console.error('Error removing item:', error);
+      toast.error("Failed to remove item from navigation");
+    }
   };
 
   return (
@@ -208,7 +240,7 @@ export function NavigationStructurePanel({
                                             <Button
                                               size="sm"
                                               variant="ghost"
-                                              onClick={() => onRemoveItem(section.id, itemIndex)}
+                                              onClick={() => handleRemoveItemFromDb(section.id, itemIndex)}
                                             >
                                               <Trash2 className="h-3 w-3" />
                                             </Button>
