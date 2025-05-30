@@ -435,7 +435,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
                 </CardTitle>
               </CardHeader>
               <CardContent className="flex-1 overflow-hidden">
-                <Droppable droppableId="available-files">
+                <Droppable droppableId="available-files" isDropDisabled={true}>
                   {(provided) => (
                     <ScrollArea className="h-full">
                       <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-1">
@@ -506,7 +506,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
                 )}
               </CardHeader>
               <CardContent className="flex-1 overflow-hidden">
-                <Droppable droppableId="sections">
+                <Droppable droppableId="sections" isDropDisabled={true}>
                   {(provided) => (
                     <ScrollArea className="h-full">
                       <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-4">
@@ -577,10 +577,10 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
                                     <div
                                       {...provided.droppableProps}
                                       ref={provided.innerRef}
-                                      className={`p-3 min-h-[80px] transition-colors border-2 border-dashed ${
+                                      className={`p-3 min-h-[100px] transition-all duration-200 rounded-b-lg ${
                                         snapshot.isDraggingOver 
-                                          ? 'bg-primary/10 border-primary' 
-                                          : 'border-transparent'
+                                          ? 'bg-primary/5 border-2 border-primary border-dashed' 
+                                          : 'border-2 border-transparent'
                                       }`}
                                     >
                                       {section.items?.length ? (
