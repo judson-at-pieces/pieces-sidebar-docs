@@ -133,8 +133,15 @@ Start editing this file...`;
       return;
     }
 
-    if (!githubService.isConfigured()) {
-      toast.error('GitHub not configured. Please set up your GitHub integration first.');
+    const configured = await githubService.isConfigured();
+    if (!configured) {
+      toast.error('GitHub not configured. Please sign in with GitHub and select a repository in the admin panel.');
+      return;
+    }
+
+    const selectedRepo = localStorage.getItem('selected_github_repo');
+    if (!selectedRepo) {
+      toast.error('No repository selected. Please select a repository in the admin panel.');
       return;
     }
 
@@ -149,7 +156,7 @@ Start editing this file...`;
         title: `Update documentation files`,
         body: `Updated ${modifiedFiles.size} file(s):\n\n${Array.from(modifiedFiles).map(f => `- ${f}`).join('\n')}`,
         files,
-      });
+      }, selectedRepo);
 
       if (result.success) {
         toast.success(`Pull request created successfully! PR #${result.prNumber}`);
