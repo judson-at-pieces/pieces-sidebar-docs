@@ -56,21 +56,21 @@ export default function Auth() {
     );
   }
 
-  // If user is signed in but doesn't have proper permissions, show access required message with sign out
+  // If user is signed in but doesn't have proper permissions, show access code form
   if (user && !hasRole('admin') && !hasRole('editor')) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="w-full max-w-md">
-          <CardHeader>
-            <CardTitle>Access Required</CardTitle>
-            <CardDescription>
-              You need editor permissions to access this application. Please contact an administrator or sign out to try with a different account.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Signed in as: {user.email}
+        <div className="w-full max-w-md space-y-6">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold">Documentation Editor</h1>
+            <p className="text-muted-foreground mt-2">
+              You need editor permissions to access this application
             </p>
+          </div>
+
+          <AccessCodeForm onSuccess={() => {}} />
+          
+          <div className="text-center">
             <Button 
               onClick={signOut}
               variant="outline"
@@ -78,8 +78,8 @@ export default function Auth() {
             >
               Sign Out
             </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     );
   }
@@ -96,9 +96,10 @@ export default function Auth() {
         </div>
 
         <Tabs defaultValue="signin" className="w-full">
-          <TabsList className="grid w-full grid-cols-2">
+          <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="signin">Sign In</TabsTrigger>
             <TabsTrigger value="signup">Sign Up</TabsTrigger>
+            <TabsTrigger value="access">Access Code</TabsTrigger>
           </TabsList>
           
           <TabsContent value="signin" className="space-y-4">
@@ -131,6 +132,10 @@ export default function Auth() {
                 </CardContent>
               </Card>
             )}
+          </TabsContent>
+
+          <TabsContent value="access" className="space-y-4">
+            <AccessCodeForm onSuccess={() => {}} />
           </TabsContent>
         </Tabs>
       </div>
