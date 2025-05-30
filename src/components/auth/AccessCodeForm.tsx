@@ -41,9 +41,19 @@ export function AccessCodeForm({ onSuccess }: AccessCodeFormProps) {
         userAuthenticated: !!user 
       });
 
-      // Use the Supabase client to call the edge function
+      // Get the current session to pass the auth token
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      // Prepare headers - include auth token if user is logged in
+      const headers: Record<string, string> = {};
+      if (session?.access_token) {
+        headers['Authorization'] = `Bearer ${session.access_token}`;
+      }
+
+      // Use the Supabase client to call the edge function with proper auth headers
       const { data, error } = await supabase.functions.invoke('use-admin-access-code-fix', {
-        body: { access_code: sanitizedCode }
+        body: { access_code: sanitizedCode },
+        headers
       });
 
       if (error) {
