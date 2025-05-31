@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 interface GitHubInstallation {
@@ -188,11 +187,15 @@ class GitHubAppService {
       for (const file of files) {
         console.log('Updating file:', file.path);
         
+        // Always add the .md extension to the file path for storage
+        const fullFilePath = file.path.endsWith('.md') ? file.path : `${file.path}.md`;
+        
         // Get current file to get its SHA (if it exists)
         let currentFileSha: string | undefined;
         try {
+          console.log('Checking for existing file at:', fullFilePath);
           const currentFile = await this.makeRequest(
-            `/repos/${owner}/${repo}/contents/${file.path}?ref=${branchName}`,
+            `/repos/${owner}/${repo}/contents/${fullFilePath}?ref=${branchName}`,
             token
           );
           
@@ -200,20 +203,16 @@ class GitHubAppService {
           
           // Handle both single file and array responses
           if (Array.isArray(currentFile)) {
-            // If it's an array, it's likely a directory listing
-            console.log('Received array response, file does not exist');
+            // If it's an array, the path is a directory, not a file
+            console.log('Path is a directory, file does not exist at this path');
             currentFileSha = undefined;
           } else if (currentFile && typeof currentFile === 'object') {
             // Check if it's a file object with sha property
-            if ('sha' in currentFile && currentFile.sha) {
+            if ('sha' in currentFile && currentFile.sha && 'type' in currentFile && currentFile.type === 'file') {
               currentFileSha = currentFile.sha;
               console.log('Found existing file, SHA:', currentFileSha);
-            } else if ('type' in currentFile && currentFile.type === 'file') {
-              // Sometimes the response has different structure
-              currentFileSha = currentFile.sha;
-              console.log('Found existing file (alt format), SHA:', currentFileSha);
             } else {
-              console.log('File object found but no SHA property:', Object.keys(currentFile));
+              console.log('File object found but not a file type or no SHA property:', Object.keys(currentFile));
               currentFileSha = undefined;
             }
           } else {
@@ -224,9 +223,6 @@ class GitHubAppService {
           console.log('File does not exist or error getting file:', error.message);
           currentFileSha = undefined;
         }
-
-        // Always add the .md extension to the file path for storage
-        const fullFilePath = file.path.endsWith('.md') ? file.path : `${file.path}.md`;
 
         // Update or create the file with proper encoding
         const updatePayload: any = {
