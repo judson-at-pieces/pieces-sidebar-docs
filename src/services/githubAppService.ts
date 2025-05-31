@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 interface GitHubInstallation {
@@ -194,6 +195,7 @@ class GitHubAppService {
             `/repos/${owner}/${repo}/contents/${file.path}?ref=${branchName}`,
             token
           );
+          // Fix: properly extract SHA from the response
           currentFileSha = currentFile.sha;
           console.log('Found existing file, SHA:', currentFileSha);
         } catch (error) {
@@ -205,7 +207,7 @@ class GitHubAppService {
           method: 'PUT',
           body: JSON.stringify({
             message: `Update ${file.path}`,
-            content: this.encodeContent(file.content), // Use the new encoding method
+            content: this.encodeContent(file.content),
             branch: branchName,
             ...(currentFileSha && { sha: currentFileSha }),
           }),
