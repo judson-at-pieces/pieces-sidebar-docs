@@ -1,10 +1,11 @@
+
 import { EnhancedEditor } from "./EnhancedEditor";
 import { githubAppService } from "@/services/githubAppService";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { ExternalLink } from "lucide-react";
+import { ExternalLink, Settings } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface EditorMainProps {
@@ -17,7 +18,7 @@ interface EditorMainProps {
 
 export function EditorMain({ selectedFile, content, onContentChange, onSave, hasChanges }: EditorMainProps) {
   const [saving, setSaving] = useState(false);
-  const { user } = useAuth();
+  const { user, hasRole } = useAuth();
 
   const handleSave = async () => {
     if (!selectedFile || !hasChanges) {
@@ -29,18 +30,14 @@ export function EditorMain({ selectedFile, content, onContentChange, onSave, has
     console.log('=== Starting save process ===');
     console.log('Selected file:', selectedFile);
     console.log('Content length:', content.length);
+    console.log('User role check:', { isAdmin: hasRole('admin'), isEditor: hasRole('editor') });
     
     try {
-      // Get GitHub configuration directly from github_config table instead of RPC
-      console.log('Fetching GitHub configuration...');
-      const { data: configData, error: configError } = await supabase
-        .from('github_config')
-        .select('repo_owner, repo_name, installation_id')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
+      // Use the RPC function that has SECURITY DEFINER to bypass RLS
+      console.log('Fetching GitHub configuration via RPC...');
+      const { data: configData, error: configError } = await supabase.rpc('get_current_github_config');
       
-      console.log('GitHub config from database:', configData);
+      console.log('GitHub config from RPC:', configData);
       console.log('Config error:', configError);
       
       if (configError) {
@@ -48,22 +45,106 @@ export function EditorMain({ selectedFile, content, onContentChange, onSave, has
         throw new Error(`Failed to get GitHub config: ${configError.message}`);
       }
       
-      if (!configData) {
+      // Check if we got any configuration data
+      if (!configData || !configData.repo_owner || !configData.repo_name) {
         console.error('No GitHub configuration found');
-        toast.error('No GitHub repository configured. Please configure a repository in the admin panel.');
+        
+        // Show different messages based on user role
+        if (hasRole('admin')) {
+          toast.error(
+            <div className="flex flex-col gap-2">
+              <p>No GitHub repository configured.</p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => window.location.href = '/admin'}
+                className="w-fit"
+              >
+                <Settings className="h-3 w-3 mr-1" />
+                Configure in Admin Panel
+              </Button>
+            </div>,
+            { duration: 8000 }
+          );
+        } else {
+          toast.error(
+            <div className="flex flex-col gap-1">
+              <p>No GitHub repository configured.</p>
+              <p className="text-xs text-muted-foreground">Please ask an administrator to configure a GitHub repository in the admin panel.</p>
+            </div>,
+            { duration: 6000 }
+          );
+        }
         return;
       }
 
-      const { repo_owner, repo_name, installation_id } = configData;
+      const { repo_owner, repo_name } = configData;
       console.log('Repository from config:', `${repo_owner}/${repo_name}`);
-      console.log('Installation ID from config:', installation_id);
+
+      // Get the installation_id from the github_config table with a direct query
+      // This should work for editors if we update the RLS policy
+      const { data: installationData, error: installationError } = await supabase
+        .from('github_config')
+        .select('installation_id')
+        .eq('repo_owner', repo_owner)
+        .eq('repo_name', repo_name)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      console.log('Installation data:', installationData);
+      console.log('Installation error:', installationError);
+
+      // If we can't get installation_id due to RLS, try to get it from github_installations table
+      let installation_id = installationData?.installation_id;
+      
+      if (!installation_id) {
+        console.log('Trying to get installation_id from github_installations table...');
+        const { data: installations, error: installationsError } = await supabase
+          .from('github_installations')
+          .select('installation_id')
+          .order('installed_at', { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        if (installations && !installationsError) {
+          installation_id = installations.installation_id;
+          console.log('Got installation_id from installations table:', installation_id);
+        }
+      }
 
       if (!installation_id) {
-        console.error('No installation ID found in configuration');
-        toast.error('GitHub App installation not found. Please reconfigure the repository in the admin panel.');
+        console.error('No installation ID found');
+        
+        if (hasRole('admin')) {
+          toast.error(
+            <div className="flex flex-col gap-2">
+              <p>GitHub App installation not found.</p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => window.location.href = '/admin'}
+                className="w-fit"
+              >
+                <Settings className="h-3 w-3 mr-1" />
+                Reconfigure Repository
+              </Button>
+            </div>,
+            { duration: 8000 }
+          );
+        } else {
+          toast.error(
+            <div className="flex flex-col gap-1">
+              <p>GitHub App installation not found.</p>
+              <p className="text-xs text-muted-foreground">Please ask an administrator to reconfigure the repository.</p>
+            </div>,
+            { duration: 6000 }
+          );
+        }
         return;
       }
 
+      console.log('Using installation ID:', installation_id);
       console.log('Creating PR for repository:', `${repo_owner}/${repo_name}`);
       console.log('File path will be:', `public/content/${selectedFile}`);
 
@@ -88,9 +169,10 @@ export function EditorMain({ selectedFile, content, onContentChange, onSave, has
 
       // Create PR body with user email
       const userEmail = user?.email || 'Unknown user';
+      const userRole = hasRole('admin') ? 'Admin' : 'Editor';
       const prBody = `Automated documentation update for ${selectedFile}
 
-Updated via Pieces Documentation Editor by: ${userEmail}`;
+Updated via Pieces Documentation Editor by: ${userEmail} (${userRole})`;
 
       // Create PR using GitHub App
       console.log('Creating branch and PR...');
@@ -158,6 +240,8 @@ Updated via Pieces Documentation Editor by: ${userEmail}`;
         errorMessage = 'Repository access issue. Please verify the GitHub App is installed on the target repository.';
       } else if (error.message?.includes('authentication')) {
         errorMessage = 'Authentication failed. Please try signing out and back in.';
+      } else if (error.message?.includes('permission')) {
+        errorMessage = 'Permission denied. Please ensure you have the necessary role to save changes.';
       }
       
       toast.error(errorMessage);
