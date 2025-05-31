@@ -7,7 +7,7 @@ import { logger } from '@/utils/logger';
 export default function AuthCallback() {
   const { user, loading } = useAuth();
   const [authError, setAuthError] = useState<string | null>(null);
-  const [redirectAfterDelay, setRedirectAfterDelay] = useState(false);
+  const [processingTimeout, setProcessingTimeout] = useState(false);
 
   useEffect(() => {
     const handleAuthCallback = async () => {
@@ -36,20 +36,20 @@ export default function AuthCallback() {
         console.log('OAuth callback processing with access token');
         logger.debug('OAuth callback processing', { hasToken: !!accessToken });
         
-        // Give AuthContext time to process the OAuth callback
-        // If no user after 5 seconds, redirect to auth page
+        // Give AuthContext more time to process the OAuth callback
+        // Most OAuth flows should complete within 10 seconds
         setTimeout(() => {
-          console.log('Auth processing timeout reached, checking user state');
-          setRedirectAfterDelay(true);
-        }, 5000);
+          console.log('Auth processing timeout reached, checking if we should redirect');
+          setProcessingTimeout(true);
+        }, 10000);
         
-        // Clear the hash/search params from URL for security after a short delay
+        // Clear the hash/search params from URL for security after a delay
         setTimeout(() => {
           window.history.replaceState(null, '', window.location.pathname);
-        }, 1000);
+        }, 2000);
       } else {
-        console.log('No access token found in callback');
-        setRedirectAfterDelay(true);
+        console.log('No access token found in callback, redirecting to auth');
+        setProcessingTimeout(true);
       }
     };
 
@@ -57,14 +57,14 @@ export default function AuthCallback() {
   }, []);
 
   // Show processing state while auth is being handled
-  if (loading) {
+  if (loading && !processingTimeout) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
           <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
           <div>Completing sign in...</div>
           <div className="text-sm text-muted-foreground mt-2">
-            Processing authentication...
+            Processing authentication with GitHub...
           </div>
         </div>
       </div>
@@ -92,9 +92,9 @@ export default function AuthCallback() {
     return <Navigate to="/" replace />;
   }
 
-  // If no user after processing timeout, redirect to auth
-  if (redirectAfterDelay) {
-    console.log('No user found after processing, redirecting to auth');
+  // If processing timeout occurred and no user, redirect to auth
+  if (processingTimeout && !loading) {
+    console.log('Processing timeout reached, no user found, redirecting to auth');
     return <Navigate to="/auth" replace />;
   }
 
@@ -105,7 +105,7 @@ export default function AuthCallback() {
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
         <div>Completing sign in...</div>
         <div className="text-sm text-muted-foreground mt-2">
-          Please wait while we process your authentication...
+          Establishing your session...
         </div>
       </div>
     </div>

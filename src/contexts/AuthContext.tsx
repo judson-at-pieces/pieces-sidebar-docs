@@ -33,42 +33,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     let mounted = true;
 
-    const initializeAuth = async () => {
-      try {
-        // Check if we're on the callback page with OAuth tokens
-        const isCallbackPage = window.location.pathname === '/auth/callback';
-        const hasHashParams = window.location.hash.includes('access_token');
-        
-        if (isCallbackPage && hasHashParams) {
-          console.log('OAuth callback detected, waiting for Supabase to process tokens...');
-          // Let Supabase handle the OAuth callback automatically
-          // The onAuthStateChange listener will handle the session once it's processed
-          return;
-        }
-
-        // Get initial session for normal page loads
-        const { data: { session }, error } = await supabase.auth.getSession();
-        
-        if (error) {
-          logger.error('Error getting initial session', { error: error.message });
-        } else if (mounted) {
-          console.log('Initial session:', { hasSession: !!session, userEmail: session?.user?.email });
-          setSession(session);
-          setUser(session?.user ?? null);
-          if (session?.user) {
-            await fetchUserRoles(session.user.id);
-          }
-        }
-      } catch (error: any) {
-        logger.error('Error initializing auth', { error: error.message });
-      } finally {
-        if (mounted) {
-          setLoading(false);
-        }
-      }
-    };
-
-    // Set up auth state listener FIRST
+    // Set up auth state listener FIRST - this is critical
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
@@ -79,7 +44,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           
           setSession(session);
           setUser(session?.user ?? null);
-          setLoading(false); // Always set loading to false when we get an auth state change
+          
+          // Only set loading to false after we've processed the auth state
+          if (event !== 'INITIAL_SESSION' || !window.location.hash.includes('access_token')) {
+            setLoading(false);
+          }
           
           if (session?.user) {
             auditLog.authAttempt(session.user.email || '', true, 'github');
@@ -88,10 +57,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setTimeout(async () => {
               if (mounted) {
                 await handlePostSignIn(session.user);
+                setLoading(false); // Ensure loading is false after processing
               }
             }, 100);
           } else {
             setUserRoles([]);
+            setLoading(false);
           }
         } catch (error: any) {
           logger.error('Error handling auth state change', { error: error.message });
@@ -102,8 +73,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     );
 
-    // Then initialize auth
-    initializeAuth();
+    // Check if we're handling an OAuth callback
+    const isCallbackWithTokens = window.location.pathname === '/auth/callback' && 
+                                 window.location.hash.includes('access_token');
+    
+    if (isCallbackWithTokens) {
+      console.log('OAuth callback detected with tokens, letting Supabase process...');
+      // Don't call getSession immediately for OAuth callbacks
+      // Let the onAuthStateChange handle the session establishment
+    } else {
+      // For normal page loads, get the initial session
+      const initializeAuth = async () => {
+        try {
+          const { data: { session }, error } = await supabase.auth.getSession();
+          
+          if (error) {
+            logger.error('Error getting initial session', { error: error.message });
+          } else if (mounted) {
+            console.log('Initial session:', { hasSession: !!session, userEmail: session?.user?.email });
+            setSession(session);
+            setUser(session?.user ?? null);
+            if (session?.user) {
+              await fetchUserRoles(session.user.id);
+            }
+          }
+        } catch (error: any) {
+          logger.error('Error initializing auth', { error: error.message });
+        } finally {
+          if (mounted) {
+            setLoading(false);
+          }
+        }
+      };
+
+      initializeAuth();
+    }
 
     return () => {
       mounted = false;
