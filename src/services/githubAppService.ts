@@ -195,22 +195,40 @@ class GitHubAppService {
             `/repos/${owner}/${repo}/contents/${file.path}?ref=${branchName}`,
             token
           );
-          // Fix: properly extract SHA from the response
-          currentFileSha = currentFile.sha;
-          console.log('Found existing file, SHA:', currentFileSha);
-        } catch (error) {
-          console.log('File does not exist, creating new file');
+          
+          // Handle both single file and array responses
+          if (Array.isArray(currentFile)) {
+            // If it's an array, it's likely a directory listing
+            console.log('Received array response, file does not exist');
+            currentFileSha = undefined;
+          } else if (currentFile && typeof currentFile === 'object' && 'sha' in currentFile) {
+            // It's a single file object
+            currentFileSha = currentFile.sha;
+            console.log('Found existing file, SHA:', currentFileSha);
+          } else {
+            console.log('Unexpected response format:', currentFile);
+            currentFileSha = undefined;
+          }
+        } catch (error: any) {
+          console.log('File does not exist or error getting file:', error.message);
+          currentFileSha = undefined;
         }
 
         // Update or create the file with proper encoding
+        const updatePayload: any = {
+          message: `Update ${file.path}`,
+          content: this.encodeContent(file.content),
+          branch: branchName,
+        };
+
+        // Only include SHA if we have one (for updates)
+        if (currentFileSha) {
+          updatePayload.sha = currentFileSha;
+        }
+
         await this.makeRequest(`/repos/${owner}/${repo}/contents/${file.path}`, token, {
           method: 'PUT',
-          body: JSON.stringify({
-            message: `Update ${file.path}`,
-            content: this.encodeContent(file.content),
-            branch: branchName,
-            ...(currentFileSha && { sha: currentFileSha }),
-          }),
+          body: JSON.stringify(updatePayload),
         });
         console.log('Successfully updated file:', file.path);
       }
