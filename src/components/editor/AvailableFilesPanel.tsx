@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { FileText, Folder, FolderOpen, Plus, ChevronDown, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -170,7 +171,7 @@ function FileTreeItem({ node, depth, isUsed, sections, onAddToSection, onShowPre
             <SelectTrigger className="w-32 h-8 text-xs bg-background border-border">
               <SelectValue placeholder="Section" />
             </SelectTrigger>
-            <SelectContent className="z-[100] bg-popover border-border shadow-lg">
+            <SelectContent className="z-[9999] bg-popover border-border shadow-lg" position="popper" sideOffset={4}>
               {sections.map((section) => (
                 <SelectItem key={section.id} value={section.id} className="text-xs">
                   {section.title}
@@ -203,6 +204,8 @@ function FileTreeItem({ node, depth, isUsed, sections, onAddToSection, onShowPre
     return hasAvailableChildren(child);
   }).length || 0;
 
+  const canExpand = hasAvailableChildren(node);
+
   return (
     <div style={{ marginLeft: paddingLeft }} className="mb-2">
       <div className="p-3 border rounded-lg hover:bg-accent/30 transition-all">
@@ -211,9 +214,15 @@ function FileTreeItem({ node, depth, isUsed, sections, onAddToSection, onShowPre
             variant="ghost"
             size="sm"
             className="h-6 w-6 p-0 hover:bg-primary/10"
-            onClick={() => setIsExpanded(!isExpanded)}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (canExpand) {
+                setIsExpanded(!isExpanded);
+              }
+            }}
+            disabled={!canExpand}
           >
-            {hasAvailableChildren(node) ? (
+            {canExpand ? (
               isExpanded ? (
                 <ChevronDown className="h-4 w-4" />
               ) : (
@@ -241,7 +250,7 @@ function FileTreeItem({ node, depth, isUsed, sections, onAddToSection, onShowPre
               <SelectTrigger className="w-32 h-8 text-xs bg-background border-border">
                 <SelectValue placeholder="Section" />
               </SelectTrigger>
-              <SelectContent className="z-[100] bg-popover border-border shadow-lg">
+              <SelectContent className="z-[9999] bg-popover border-border shadow-lg" position="popper" sideOffset={4}>
                 {sections.map((section) => (
                   <SelectItem key={section.id} value={section.id} className="text-xs">
                     {section.title}
@@ -260,7 +269,7 @@ function FileTreeItem({ node, depth, isUsed, sections, onAddToSection, onShowPre
             </Button>
           </div>
         </div>
-        {isExpanded && hasAvailableChildren(node) && node.children && (
+        {isExpanded && canExpand && node.children && (
           <div className="mt-2 space-y-1">
             {node.children
               .filter(child => {
