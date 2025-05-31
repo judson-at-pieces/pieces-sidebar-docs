@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase, isSupabaseConfigured } from '@/integrations/supabase/client';
@@ -45,19 +44,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           setSession(session);
           setUser(session?.user ?? null);
           
-          // Only set loading to false after we've processed the auth state
-          if (event !== 'INITIAL_SESSION' || !window.location.hash.includes('access_token')) {
-            setLoading(false);
-          }
-          
           if (session?.user) {
             auditLog.authAttempt(session.user.email || '', true, 'github');
             
             // Defer additional processing to avoid blocking the auth state change
             setTimeout(async () => {
               if (mounted) {
+                await handleUserProfile(session.user);
                 await handlePostSignIn(session.user);
-                setLoading(false); // Ensure loading is false after processing
+                setLoading(false);
               }
             }, 100);
           } else {
@@ -94,6 +89,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
             setSession(session);
             setUser(session?.user ?? null);
             if (session?.user) {
+              await handleUserProfile(session.user);
               await fetchUserRoles(session.user.id);
             }
           }
@@ -114,6 +110,41 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       subscription.unsubscribe();
     };
   }, []);
+
+  const handleUserProfile = async (user: User) => {
+    try {
+      // Check if profile exists
+      const { data: existingProfile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .single();
+
+      if (profileError && profileError.code === 'PGRST116') {
+        // Profile doesn't exist, create it
+        console.log('Creating profile for user:', user.email);
+        const { error: insertError } = await supabase
+          .from('profiles')
+          .insert({
+            id: user.id,
+            email: user.email,
+            full_name: user.user_metadata?.full_name || user.user_metadata?.name || null
+          });
+
+        if (insertError) {
+          logger.error('Error creating user profile', { error: insertError.message });
+        } else {
+          logger.info('User profile created successfully');
+        }
+      } else if (profileError) {
+        logger.error('Error checking user profile', { error: profileError.message });
+      } else {
+        console.log('Profile already exists for user:', user.email);
+      }
+    } catch (error: any) {
+      logger.error('Error handling user profile', { error: error.message });
+    }
+  };
 
   const handlePostSignIn = async (user: User) => {
     try {
