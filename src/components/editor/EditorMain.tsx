@@ -30,9 +30,14 @@ export function EditorMain({ selectedFile, content, onContentChange, onSave, has
     console.log('Content length:', content.length);
     
     try {
-      // Get GitHub configuration
+      // Get GitHub configuration directly from github_config table instead of RPC
       console.log('Fetching GitHub configuration...');
-      const { data: configData, error: configError } = await supabase.rpc('get_current_github_config');
+      const { data: configData, error: configError } = await supabase
+        .from('github_config')
+        .select('repo_owner, repo_name, installation_id')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
       
       console.log('GitHub config from database:', configData);
       console.log('Config error:', configError);
@@ -42,46 +47,29 @@ export function EditorMain({ selectedFile, content, onContentChange, onSave, has
         throw new Error(`Failed to get GitHub config: ${configError.message}`);
       }
       
-      if (!configData || configData.length === 0) {
+      if (!configData) {
         console.error('No GitHub configuration found');
         toast.error('No GitHub repository configured. Please configure a repository in the admin panel.');
         return;
       }
 
-      const { repo_owner, repo_name } = configData[0];
+      const { repo_owner, repo_name, installation_id } = configData;
       console.log('Repository from config:', `${repo_owner}/${repo_name}`);
+      console.log('Installation ID from config:', installation_id);
 
-      // Get the installation ID for this repository
-      console.log('Fetching installation ID...');
-      const { data: githubConfig, error: installationError } = await supabase
-        .from('github_config')
-        .select('installation_id')
-        .eq('repo_owner', repo_owner)
-        .eq('repo_name', repo_name)
-        .single();
-
-      console.log('Installation config:', githubConfig);
-      console.log('Installation error:', installationError);
-
-      if (installationError) {
-        console.error('Installation error details:', installationError);
-        throw new Error(`Failed to get installation config: ${installationError.message}`);
-      }
-
-      if (!githubConfig?.installation_id) {
-        console.error('No installation ID found');
+      if (!installation_id) {
+        console.error('No installation ID found in configuration');
         toast.error('GitHub App installation not found. Please reconfigure the repository in the admin panel.');
         return;
       }
 
-      console.log('Using installation ID:', githubConfig.installation_id);
       console.log('Creating PR for repository:', `${repo_owner}/${repo_name}`);
       console.log('File path will be:', `public/content/${selectedFile}`);
 
       // Test if we can access the installation repositories first
       try {
         console.log('Testing repository access...');
-        const repos = await githubAppService.getInstallationRepositories(githubConfig.installation_id);
+        const repos = await githubAppService.getInstallationRepositories(installation_id);
         console.log('Available repositories:', repos.map(r => r.full_name));
         
         const targetRepo = repos.find(r => r.full_name === `${repo_owner}/${repo_name}`);
@@ -100,7 +88,7 @@ export function EditorMain({ selectedFile, content, onContentChange, onSave, has
       // Create PR using GitHub App
       console.log('Creating branch and PR...');
       const result = await githubAppService.createBranchAndPR(
-        githubConfig.installation_id,
+        installation_id,
         repo_owner,
         repo_name,
         {
