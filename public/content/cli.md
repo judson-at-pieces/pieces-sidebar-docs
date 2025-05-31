@@ -8,7 +8,7 @@ visibility: "PUBLIC"
 <Image src="https://storage.googleapis.com/hashnode_product_documentation_assets/cli_assets/CLI_MAIN/pieces_cli_banner.png" alt="" align="center" fullwidth="true" />
 
 ***
-
+eee
 ## Pieces CLI
 
 The Pieces CLI offers users a straightforward way to manage and utilize saved code snippets through the Pieces Drive. It uses the AI-powered features of the [Pieces Copilot](https://docs.pieces.app/products/cli/copilot), all directly within your terminal.
