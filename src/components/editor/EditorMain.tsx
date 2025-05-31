@@ -1,4 +1,3 @@
-
 import { EnhancedEditor } from "./EnhancedEditor";
 import { githubAppService } from "@/services/githubAppService";
 import { supabase } from "@/integrations/supabase/client";
@@ -116,16 +115,18 @@ Updated via Pieces Documentation Editor by: ${userEmail}`;
         
         // Show success toast with clickable PR link
         const toastId = toast.success(
-          <div className="flex items-center justify-between w-full">
-            <span>Pull request created successfully! PR #{result.prNumber}</span>
+          <div className="flex items-center justify-between w-full gap-2">
+            <span className="flex-1">Pull request created successfully! PR #{result.prNumber}</span>
             <Button
               size="sm"
               variant="outline"
-              onClick={() => {
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
                 console.log('Opening PR URL:', result.prUrl);
                 window.open(result.prUrl, '_blank', 'noopener,noreferrer');
               }}
-              className="ml-2 shrink-0"
+              className="shrink-0"
             >
               <ExternalLink className="h-3 w-3 mr-1" />
               View PR
@@ -133,11 +134,6 @@ Updated via Pieces Documentation Editor by: ${userEmail}`;
           </div>,
           {
             duration: 10000, // Show for 10 seconds
-            style: {
-              background: 'var(--background)',
-              border: '1px solid var(--border)',
-              color: 'var(--foreground)',
-            },
           }
         );
         
