@@ -313,6 +313,7 @@ export type Database = {
         Returns: {
           repo_owner: string
           repo_name: string
+          installation_id: number
         }[]
       }
       get_navigation_structure: {

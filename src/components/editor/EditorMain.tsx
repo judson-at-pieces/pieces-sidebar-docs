@@ -46,7 +46,7 @@ export function EditorMain({ selectedFile, content, onContentChange, onSave, has
       }
       
       // Check if we got any configuration data
-      if (!configData || !configData.repo_owner || !configData.repo_name) {
+      if (!configData || configData.length === 0 || !configData[0].repo_owner || !configData[0].repo_name) {
         console.error('No GitHub configuration found');
         
         // Show different messages based on user role
@@ -78,43 +78,13 @@ export function EditorMain({ selectedFile, content, onContentChange, onSave, has
         return;
       }
 
-      const { repo_owner, repo_name } = configData;
+      const config = configData[0];
+      const { repo_owner, repo_name, installation_id } = config;
       console.log('Repository from config:', `${repo_owner}/${repo_name}`);
-
-      // Get the installation_id from the github_config table with a direct query
-      // This should work for editors if we update the RLS policy
-      const { data: installationData, error: installationError } = await supabase
-        .from('github_config')
-        .select('installation_id')
-        .eq('repo_owner', repo_owner)
-        .eq('repo_name', repo_name)
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      console.log('Installation data:', installationData);
-      console.log('Installation error:', installationError);
-
-      // If we can't get installation_id due to RLS, try to get it from github_installations table
-      let installation_id = installationData?.installation_id;
-      
-      if (!installation_id) {
-        console.log('Trying to get installation_id from github_installations table...');
-        const { data: installations, error: installationsError } = await supabase
-          .from('github_installations')
-          .select('installation_id')
-          .order('installed_at', { ascending: false })
-          .limit(1)
-          .maybeSingle();
-
-        if (installations && !installationsError) {
-          installation_id = installations.installation_id;
-          console.log('Got installation_id from installations table:', installation_id);
-        }
-      }
+      console.log('Installation ID from config:', installation_id);
 
       if (!installation_id) {
-        console.error('No installation ID found');
+        console.error('No installation ID found in configuration');
         
         if (hasRole('admin')) {
           toast.error(
