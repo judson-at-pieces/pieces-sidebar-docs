@@ -35,7 +35,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     const initializeAuth = async () => {
       try {
-        // Get initial session
+        // Check if we're on the callback page with OAuth tokens
+        const isCallbackPage = window.location.pathname === '/auth/callback';
+        const hasHashParams = window.location.hash.includes('access_token');
+        
+        if (isCallbackPage && hasHashParams) {
+          console.log('OAuth callback detected, waiting for Supabase to process tokens...');
+          // Let Supabase handle the OAuth callback automatically
+          // The onAuthStateChange listener will handle the session once it's processed
+          return;
+        }
+
+        // Get initial session for normal page loads
         const { data: { session }, error } = await supabase.auth.getSession();
         
         if (error) {
@@ -57,7 +68,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
-    // Set up auth state listener
+    // Set up auth state listener FIRST
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (!mounted) return;
@@ -65,12 +76,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         try {
           console.log('Auth state change:', { event, userEmail: session?.user?.email });
           logger.debug('Auth state change', { event, userEmail: session?.user?.email });
+          
           setSession(session);
           setUser(session?.user ?? null);
+          setLoading(false); // Always set loading to false when we get an auth state change
           
           if (session?.user) {
             auditLog.authAttempt(session.user.email || '', true, 'github');
             
+            // Defer additional processing to avoid blocking the auth state change
             setTimeout(async () => {
               if (mounted) {
                 await handlePostSignIn(session.user);
@@ -81,10 +95,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
           }
         } catch (error: any) {
           logger.error('Error handling auth state change', { error: error.message });
+          if (mounted) {
+            setLoading(false);
+          }
         }
       }
     );
 
+    // Then initialize auth
     initializeAuth();
 
     return () => {

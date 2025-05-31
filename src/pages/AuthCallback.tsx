@@ -6,8 +6,8 @@ import { logger } from '@/utils/logger';
 
 export default function AuthCallback() {
   const { user, loading } = useAuth();
-  const [processingAuth, setProcessingAuth] = useState(true);
   const [authError, setAuthError] = useState<string | null>(null);
+  const [redirectAfterDelay, setRedirectAfterDelay] = useState(false);
 
   useEffect(() => {
     const handleAuthCallback = async () => {
@@ -21,7 +21,6 @@ export default function AuthCallback() {
       console.log('URL search params:', Object.fromEntries(urlParams.entries()));
       console.log('URL hash params:', Object.fromEntries(hashParams.entries()));
       
-      const accessToken = hashParams.get('access_token') || urlParams.get('access_token');
       const error = hashParams.get('error') || urlParams.get('error');
       const errorDescription = hashParams.get('error_description') || urlParams.get('error_description');
       
@@ -29,25 +28,28 @@ export default function AuthCallback() {
         console.error('OAuth callback error:', error, errorDescription);
         logger.error('OAuth callback error', { error, errorDescription });
         setAuthError(errorDescription || error);
-        setProcessingAuth(false);
         return;
       }
       
+      const accessToken = hashParams.get('access_token') || urlParams.get('access_token');
       if (accessToken) {
         console.log('OAuth callback processing with access token');
         logger.debug('OAuth callback processing', { hasToken: !!accessToken });
         
-        // Give Supabase extra time to process the OAuth callback
+        // Give AuthContext time to process the OAuth callback
+        // If no user after 5 seconds, redirect to auth page
         setTimeout(() => {
           console.log('Auth processing timeout reached, checking user state');
-          setProcessingAuth(false);
-        }, 3000); // Wait 3 seconds for auth to complete
+          setRedirectAfterDelay(true);
+        }, 5000);
         
-        // Clear the hash/search params from URL for security
-        window.history.replaceState(null, '', window.location.pathname);
+        // Clear the hash/search params from URL for security after a short delay
+        setTimeout(() => {
+          window.history.replaceState(null, '', window.location.pathname);
+        }, 1000);
       } else {
         console.log('No access token found in callback');
-        setProcessingAuth(false);
+        setRedirectAfterDelay(true);
       }
     };
 
@@ -55,7 +57,7 @@ export default function AuthCallback() {
   }, []);
 
   // Show processing state while auth is being handled
-  if (loading || processingAuth) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="text-center">
@@ -90,7 +92,22 @@ export default function AuthCallback() {
     return <Navigate to="/" replace />;
   }
 
-  // If no user after processing, redirect to auth
-  console.log('No user found after processing, redirecting to auth');
-  return <Navigate to="/auth" replace />;
+  // If no user after processing timeout, redirect to auth
+  if (redirectAfterDelay) {
+    console.log('No user found after processing, redirecting to auth');
+    return <Navigate to="/auth" replace />;
+  }
+
+  // Show waiting state while processing
+  return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="text-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+        <div>Completing sign in...</div>
+        <div className="text-sm text-muted-foreground mt-2">
+          Please wait while we process your authentication...
+        </div>
+      </div>
+    </div>
+  );
 }
