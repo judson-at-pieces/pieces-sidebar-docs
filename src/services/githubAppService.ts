@@ -196,17 +196,28 @@ class GitHubAppService {
             token
           );
           
+          console.log('Raw GitHub API response for file:', JSON.stringify(currentFile, null, 2));
+          
           // Handle both single file and array responses
           if (Array.isArray(currentFile)) {
             // If it's an array, it's likely a directory listing
             console.log('Received array response, file does not exist');
             currentFileSha = undefined;
-          } else if (currentFile && typeof currentFile === 'object' && 'sha' in currentFile) {
-            // It's a single file object
-            currentFileSha = currentFile.sha;
-            console.log('Found existing file, SHA:', currentFileSha);
+          } else if (currentFile && typeof currentFile === 'object') {
+            // Check if it's a file object with sha property
+            if ('sha' in currentFile && currentFile.sha) {
+              currentFileSha = currentFile.sha;
+              console.log('Found existing file, SHA:', currentFileSha);
+            } else if ('type' in currentFile && currentFile.type === 'file') {
+              // Sometimes the response has different structure
+              currentFileSha = currentFile.sha;
+              console.log('Found existing file (alt format), SHA:', currentFileSha);
+            } else {
+              console.log('File object found but no SHA property:', Object.keys(currentFile));
+              currentFileSha = undefined;
+            }
           } else {
-            console.log('Unexpected response format:', currentFile);
+            console.log('Unexpected response format:', typeof currentFile);
             currentFileSha = undefined;
           }
         } catch (error: any) {
@@ -214,9 +225,12 @@ class GitHubAppService {
           currentFileSha = undefined;
         }
 
+        // Always add the .md extension to the file path for storage
+        const fullFilePath = file.path.endsWith('.md') ? file.path : `${file.path}.md`;
+
         // Update or create the file with proper encoding
         const updatePayload: any = {
-          message: `Update ${file.path}`,
+          message: `Update ${fullFilePath}`,
           content: this.encodeContent(file.content),
           branch: branchName,
         };
@@ -224,13 +238,18 @@ class GitHubAppService {
         // Only include SHA if we have one (for updates)
         if (currentFileSha) {
           updatePayload.sha = currentFileSha;
+          console.log('Including SHA in update payload:', currentFileSha);
+        } else {
+          console.log('No SHA found, creating new file');
         }
 
-        await this.makeRequest(`/repos/${owner}/${repo}/contents/${file.path}`, token, {
+        console.log('Update payload keys:', Object.keys(updatePayload));
+
+        await this.makeRequest(`/repos/${owner}/${repo}/contents/${fullFilePath}`, token, {
           method: 'PUT',
           body: JSON.stringify(updatePayload),
         });
-        console.log('Successfully updated file:', file.path);
+        console.log('Successfully updated file:', fullFilePath);
       }
 
       // Create the pull request with updated body
