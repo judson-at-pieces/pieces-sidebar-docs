@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ExternalLink } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
 
 interface EditorMainProps {
   selectedFile?: string;
@@ -17,6 +18,7 @@ interface EditorMainProps {
 
 export function EditorMain({ selectedFile, content, onContentChange, onSave, hasChanges }: EditorMainProps) {
   const [saving, setSaving] = useState(false);
+  const { user } = useAuth();
 
   const handleSave = async () => {
     if (!selectedFile || !hasChanges) {
@@ -85,6 +87,15 @@ export function EditorMain({ selectedFile, content, onContentChange, onSave, has
         return;
       }
 
+      // Create PR body with user email
+      const userEmail = user?.email || 'Unknown user';
+      const prBody = `Automated documentation update for ${selectedFile}
+
+Updated via Pieces Documentation Editor by: ${userEmail}
+
+---
+*Created by Pieces Documentation Bot*`;
+
       // Create PR using GitHub App
       console.log('Creating branch and PR...');
       const result = await githubAppService.createBranchAndPR(
@@ -93,7 +104,7 @@ export function EditorMain({ selectedFile, content, onContentChange, onSave, has
         repo_name,
         {
           title: `Update ${selectedFile}`,
-          body: `Automated documentation update for ${selectedFile}\n\nUpdated via Pieces Documentation Editor.`,
+          body: prBody,
           files: [{
             path: `public/content/${selectedFile}`,
             content: content
@@ -104,7 +115,7 @@ export function EditorMain({ selectedFile, content, onContentChange, onSave, has
       console.log('PR creation result:', result);
 
       if (result.success) {
-        // Show success toast with clickable PR link - NO automatic opening
+        // Show success toast with clickable PR link
         toast.success(
           <div className="flex items-center justify-between w-full">
             <span>Pull request created successfully! PR #{result.prNumber}</span>
