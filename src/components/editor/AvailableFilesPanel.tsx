@@ -167,12 +167,12 @@ function FileTreeItem({ node, depth, isUsed, sections, onAddToSection, onShowPre
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
           <Select value={selectedSection} onValueChange={setSelectedSection}>
-            <SelectTrigger className="w-32 h-8 text-xs">
+            <SelectTrigger className="w-32 h-8 text-xs bg-background border-border">
               <SelectValue placeholder="Section" />
             </SelectTrigger>
-            <SelectContent>
+            <SelectContent className="z-[100] bg-popover border-border shadow-lg">
               {sections.map((section) => (
-                <SelectItem key={section.id} value={section.id}>
+                <SelectItem key={section.id} value={section.id} className="text-xs">
                   {section.title}
                 </SelectItem>
               ))}
@@ -238,12 +238,12 @@ function FileTreeItem({ node, depth, isUsed, sections, onAddToSection, onShowPre
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <Select value={selectedSection} onValueChange={setSelectedSection}>
-              <SelectTrigger className="w-32 h-8 text-xs">
+              <SelectTrigger className="w-32 h-8 text-xs bg-background border-border">
                 <SelectValue placeholder="Section" />
               </SelectTrigger>
-              <SelectContent>
+              <SelectContent className="z-[100] bg-popover border-border shadow-lg">
                 {sections.map((section) => (
-                  <SelectItem key={section.id} value={section.id}>
+                  <SelectItem key={section.id} value={section.id} className="text-xs">
                     {section.title}
                   </SelectItem>
                 ))}
