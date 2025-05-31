@@ -45,9 +45,9 @@ export function EditorMain({ selectedFile, content, onContentChange, onSave, has
         throw new Error(`Failed to get GitHub config: ${configError.message}`);
       }
       
-      // Check if we got any configuration data
-      if (!configData || configData.length === 0 || !configData[0].repo_owner || !configData[0].repo_name) {
-        console.error('No GitHub configuration found');
+      // Check if we got any configuration data - fix the conditional logic
+      if (!configData || configData.length === 0) {
+        console.error('No GitHub configuration found - empty result');
         
         // Show different messages based on user role
         if (hasRole('admin')) {
@@ -80,6 +80,39 @@ export function EditorMain({ selectedFile, content, onContentChange, onSave, has
 
       const config = configData[0];
       const { repo_owner, repo_name, installation_id } = config;
+      
+      // Check if the required fields are present and valid
+      if (!repo_owner || !repo_name) {
+        console.error('GitHub configuration incomplete:', { repo_owner, repo_name });
+        
+        if (hasRole('admin')) {
+          toast.error(
+            <div className="flex flex-col gap-2">
+              <p>GitHub repository configuration is incomplete.</p>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => window.location.href = '/admin'}
+                className="w-fit"
+              >
+                <Settings className="h-3 w-3 mr-1" />
+                Fix Configuration
+              </Button>
+            </div>,
+            { duration: 8000 }
+          );
+        } else {
+          toast.error(
+            <div className="flex flex-col gap-1">
+              <p>GitHub repository configuration is incomplete.</p>
+              <p className="text-xs text-muted-foreground">Please ask an administrator to fix the configuration.</p>
+            </div>,
+            { duration: 6000 }
+          );
+        }
+        return;
+      }
+      
       console.log('Repository from config:', `${repo_owner}/${repo_name}`);
       console.log('Installation ID from config:', installation_id);
 
