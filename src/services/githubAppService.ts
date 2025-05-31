@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 
 interface GitHubInstallation {
@@ -203,9 +204,18 @@ class GitHubAppService {
           
           // Handle both single file and array responses
           if (Array.isArray(currentFile)) {
-            // If it's an array, the path is a directory, not a file
-            console.log('Path is a directory, file does not exist at this path');
-            currentFileSha = undefined;
+            // If it's an array, check if our target file exists in the directory
+            const targetFile = currentFile.find((item: any) => 
+              item.type === 'file' && item.path === fullFilePath
+            );
+            
+            if (targetFile && targetFile.sha) {
+              currentFileSha = targetFile.sha;
+              console.log('Found existing file in directory listing, SHA:', currentFileSha);
+            } else {
+              console.log('File not found in directory listing, creating new file');
+              currentFileSha = undefined;
+            }
           } else if (currentFile && typeof currentFile === 'object') {
             // Check if it's a file object with sha property
             if ('sha' in currentFile && currentFile.sha && 'type' in currentFile && currentFile.type === 'file') {
@@ -248,14 +258,14 @@ class GitHubAppService {
         console.log('Successfully updated file:', fullFilePath);
       }
 
-      // Create the pull request with updated body
-      const prBody = `${body}\n\n---\n*Created by Pieces Documentation Bot*`;
+      // Create the pull request with the footer added only here
+      const prBodyWithFooter = `${body}\n\n---\n*Created by Pieces Documentation Bot*`;
       
       const pr = await this.makeRequest(`/repos/${owner}/${repo}/pulls`, token, {
         method: 'POST',
         body: JSON.stringify({
           title,
-          body: prBody,
+          body: prBodyWithFooter,
           head: branchName,
           base: baseBranch,
         }),

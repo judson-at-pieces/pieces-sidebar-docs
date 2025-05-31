@@ -91,10 +91,7 @@ export function EditorMain({ selectedFile, content, onContentChange, onSave, has
       const userEmail = user?.email || 'Unknown user';
       const prBody = `Automated documentation update for ${selectedFile}
 
-Updated via Pieces Documentation Editor by: ${userEmail}
-
----
-*Created by Pieces Documentation Bot*`;
+Updated via Pieces Documentation Editor by: ${userEmail}`;
 
       // Create PR using GitHub App
       console.log('Creating branch and PR...');
