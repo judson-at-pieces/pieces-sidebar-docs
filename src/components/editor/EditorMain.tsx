@@ -112,15 +112,20 @@ Updated via Pieces Documentation Editor by: ${userEmail}`;
       console.log('PR creation result:', result);
 
       if (result.success) {
+        console.log('About to show success toast...');
+        
         // Show success toast with clickable PR link
-        toast.success(
+        const toastId = toast.success(
           <div className="flex items-center justify-between w-full">
             <span>Pull request created successfully! PR #{result.prNumber}</span>
             <Button
               size="sm"
               variant="outline"
-              onClick={() => window.open(result.prUrl, '_blank')}
-              className="ml-2"
+              onClick={() => {
+                console.log('Opening PR URL:', result.prUrl);
+                window.open(result.prUrl, '_blank', 'noopener,noreferrer');
+              }}
+              className="ml-2 shrink-0"
             >
               <ExternalLink className="h-3 w-3 mr-1" />
               View PR
@@ -128,8 +133,15 @@ Updated via Pieces Documentation Editor by: ${userEmail}`;
           </div>,
           {
             duration: 10000, // Show for 10 seconds
+            style: {
+              background: 'var(--background)',
+              border: '1px solid var(--border)',
+              color: 'var(--foreground)',
+            },
           }
         );
+        
+        console.log('Toast shown with ID:', toastId);
         onSave(); // Mark as saved
         console.log('Save process completed successfully');
       } else {

@@ -3,6 +3,7 @@ import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { Toaster } from '@/components/ui/toaster';
+import { Toaster as SonnerToaster } from '@/components/ui/sonner';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
 import Index from '@/pages/Index';
@@ -44,6 +45,7 @@ function AppContent() {
     <Router>
       <div className="min-h-screen bg-background font-sans antialiased">
         <Toaster />
+        <SonnerToaster />
         <Routes>
           {/* Public routes */}
           <Route path="/" element={<Index />} />
