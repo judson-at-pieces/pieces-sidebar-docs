@@ -81,43 +81,41 @@ export function EnhancedEditor({
       if (currentLine.trim() === '') {
         const textarea = textareaRef.current;
         if (textarea) {
-          const rect = textarea.getBoundingClientRect();
           const lineHeight = parseInt(getComputedStyle(textarea).lineHeight) || 24;
           const linesBeforeCursor = beforeCursor.split('\n').length - 1;
           
-          // Calculate position relative to textarea content, accounting for scroll
-          const scrollTop = textarea.scrollTop;
-          const relativeLinePosition = (linesBeforeCursor * lineHeight) - scrollTop;
+          // Calculate position relative to textarea content
+          const linePosition = linesBeforeCursor * lineHeight;
+          const commandPaletteHeight = 320;
+          const commandPaletteWidth = 320;
           
-          // Position relative to textarea, with offset for command palette
-          let top = rect.top + relativeLinePosition + lineHeight + 8; // 8px gap
-          let left = rect.left + 20; // 20px from left edge
+          // Position relative to the textarea (absolute positioning)
+          let top = linePosition + lineHeight + 8; // 8px gap below the line
+          let left = 20; // 20px from left edge of textarea
           
-          // Ensure command palette stays within viewport bounds
-          const viewportHeight = window.innerHeight;
-          const viewportWidth = window.innerWidth;
-          const commandPaletteHeight = 280; // Approximate height
-          const commandPaletteWidth = 320; // 80 * 4 (w-80 = 320px)
+          // Get textarea dimensions to constrain the palette
+          const textareaHeight = textarea.clientHeight;
+          const textareaWidth = textarea.clientWidth;
           
-          // Adjust vertical position if it would go off-screen
-          if (top + commandPaletteHeight > viewportHeight) {
-            // Position above the cursor line instead
-            top = rect.top + relativeLinePosition - commandPaletteHeight - 8;
+          // Ensure command palette stays within textarea bounds
+          // If it would go below the textarea, position it above the cursor line
+          if (top + commandPaletteHeight > textareaHeight) {
+            top = linePosition - commandPaletteHeight - 8;
             
-            // If still off-screen, position at top of viewport
+            // If still goes above textarea, position at top
             if (top < 0) {
-              top = 20;
+              top = 8;
             }
           }
           
-          // Adjust horizontal position if it would go off-screen
-          if (left + commandPaletteWidth > viewportWidth) {
-            left = viewportWidth - commandPaletteWidth - 20;
+          // Ensure horizontal position stays within textarea bounds
+          if (left + commandPaletteWidth > textareaWidth) {
+            left = textareaWidth - commandPaletteWidth - 20;
           }
           
-          // Ensure minimum distance from viewport edges
-          top = Math.max(20, Math.min(top, viewportHeight - commandPaletteHeight - 20));
-          left = Math.max(20, Math.min(left, viewportWidth - commandPaletteWidth - 20));
+          // Ensure minimum distance from textarea edges
+          top = Math.max(8, Math.min(top, textareaHeight - commandPaletteHeight - 8));
+          left = Math.max(8, Math.min(left, textareaWidth - commandPaletteWidth - 8));
           
           setCommandPosition({ top, left });
           setIsCommandPaletteOpen(true);
@@ -275,6 +273,16 @@ export function EnhancedEditor({
               <div className="absolute bottom-4 right-4 text-xs text-muted-foreground bg-background/90 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-border/50">
                 Type "/" for snippets • Ctrl+S to save
               </div>
+              {/* Command Palette positioned within textarea container */}
+              <CommandPalette
+                isOpen={isCommandPaletteOpen}
+                onClose={() => {
+                  setIsCommandPaletteOpen(false);
+                  setSlashPosition(null);
+                }}
+                onInsert={handleInsertFragment}
+                position={commandPosition}
+              />
             </div>
           </div>
         )}
@@ -303,6 +311,16 @@ export function EnhancedEditor({
                   <div className="absolute bottom-4 right-4 text-xs text-muted-foreground bg-background/90 backdrop-blur-sm px-2 py-1 rounded border border-border/50">
                     Type "/" for snippets
                   </div>
+                  {/* Command Palette positioned within textarea container */}
+                  <CommandPalette
+                    isOpen={isCommandPaletteOpen}
+                    onClose={() => {
+                      setIsCommandPaletteOpen(false);
+                      setSlashPosition(null);
+                    }}
+                    onInsert={handleInsertFragment}
+                    position={commandPosition}
+                  />
                 </div>
               </div>
             </ResizablePanel>
@@ -318,16 +336,7 @@ export function EnhancedEditor({
         )}
       </div>
 
-      {/* Command Palette */}
-      <CommandPalette
-        isOpen={isCommandPaletteOpen}
-        onClose={() => {
-          setIsCommandPaletteOpen(false);
-          setSlashPosition(null);
-        }}
-        onInsert={handleInsertFragment}
-        position={commandPosition}
-      />
+      {/* Command Palette now rendered within textarea containers */}
     </div>
   );
 }

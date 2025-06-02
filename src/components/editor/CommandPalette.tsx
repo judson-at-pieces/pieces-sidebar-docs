@@ -193,21 +193,19 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
         return;
       }
       
-      // Check if the click target is the scrollbar of the command palette
-      const commandList = commandRef.current?.querySelector('[cmdk-list]');
-      if (commandList && event.target === commandList) {
-        return;
-      }
-      
       onClose();
     };
 
-    // Use 'click' instead of 'mousedown' to avoid conflicts with scrollbar interaction
-    document.addEventListener('click', handleClickOutside);
-    
-    return () => {
-      document.removeEventListener('click', handleClickOutside);
-    };
+    // Add event listener to the parent container (textarea container)
+    // This ensures we only close when clicking outside within the same container
+    const textareaContainer = commandRef.current?.parentElement;
+    if (textareaContainer) {
+      textareaContainer.addEventListener('click', handleClickOutside);
+      
+      return () => {
+        textareaContainer.removeEventListener('click', handleClickOutside);
+      };
+    }
   }, [isOpen, onClose]);
 
   // Handle keyboard events
@@ -240,10 +238,10 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
   return (
     <div
       ref={commandRef}
-      className="fixed z-[100] w-80 bg-background border border-border rounded-lg shadow-xl animate-in fade-in slide-in-from-top-2 duration-200"
+      className="absolute z-[100] w-80 bg-background border border-border rounded-lg shadow-xl animate-in fade-in slide-in-from-top-2 duration-200"
       style={{
-        top: Math.max(0, position.top),
-        left: Math.max(0, position.left),
+        top: position.top,
+        left: position.left,
         maxHeight: '320px',
       }}
       onMouseDown={(e) => {
