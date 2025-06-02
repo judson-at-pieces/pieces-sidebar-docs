@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Callout } from './Callout';
 import { Card } from './Card';
@@ -80,14 +81,14 @@ export function createComponentMappings() {
         return <Steps>{children}</Steps>;
       }
       
- if (props['data-step']) {
+      if (props['data-step']) {
         const stepNumber = parseInt(String(props['data-step']), 10);
         const stepTitle = String(props['data-step-title'] || '');
         
         return (
           <div className="step-item flex gap-4 mb-6">
             <div className="step-number flex-shrink-0 w-8 h-8 bg-blue-500 text-white rounded-full flex items-center justify-center text-sm font-semibold">
-              {stepNumber}
+              {String(stepNumber)}
             </div>
             <div className="step-content flex-1">
               {stepTitle && (
