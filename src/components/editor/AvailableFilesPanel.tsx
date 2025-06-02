@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { FileText, Folder, FolderOpen, Plus, ChevronDown, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -35,7 +34,8 @@ interface FileTreeItemProps {
 }
 
 function FileTreeItem({ node, depth, isUsed, sections, onAddToSection, onShowPreview }: FileTreeItemProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  // Start with folders collapsed by default
+  const [isExpanded, setIsExpanded] = useState(false);
   const [selectedSection, setSelectedSection] = useState<string>("");
   const paddingLeft = depth * 16;
 
