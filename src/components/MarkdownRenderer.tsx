@@ -64,9 +64,13 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
               ],
               attributes: {
                 '*': ['className', 'style', 'id', 'data-*'],
-                'a': ['href', 'target', 'rel'],
-                'img': ['src', 'alt', 'width', 'height'],
+                'a': ['href', 'target', 'rel', 'title'],
+                'img': ['src', 'alt', 'width', 'height', 'title'],
                 'div': ['dataType', 'dataTitle', 'dataImage', 'dataHref', 'dataExternal', 'dataCols', 'dataIcon', 'data-*'],
+              },
+              // Allow all protocols for links to work properly
+              protocols: {
+                href: ['http', 'https', 'mailto', 'tel']
               }
             }],
             rehypeHighlight
