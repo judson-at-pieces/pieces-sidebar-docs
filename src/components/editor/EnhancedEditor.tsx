@@ -50,6 +50,25 @@ export function EnhancedEditor({
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [hasChanges, onSave]);
 
+  // Close command palette on window resize or scroll to prevent positioning issues
+  useEffect(() => {
+    const handleWindowChange = () => {
+      if (isCommandPaletteOpen) {
+        setIsCommandPaletteOpen(false);
+      }
+    };
+
+    if (isCommandPaletteOpen) {
+      window.addEventListener('scroll', handleWindowChange, true);
+      window.addEventListener('resize', handleWindowChange);
+    }
+
+    return () => {
+      window.removeEventListener('scroll', handleWindowChange, true);
+      window.removeEventListener('resize', handleWindowChange);
+    };
+  }, [isCommandPaletteOpen]);
+
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newContent = e.target.value;
     const cursorPosition = e.target.selectionStart;
@@ -68,10 +87,41 @@ export function EnhancedEditor({
           const lineHeight = parseInt(getComputedStyle(textarea).lineHeight) || 24;
           const linesBeforeCursor = beforeCursor.split('\n').length - 1;
           
-          setCommandPosition({
-            top: rect.top + (linesBeforeCursor * lineHeight) + 30,
-            left: rect.left + 20
-          });
+          // Calculate position relative to textarea content, accounting for scroll
+          const scrollTop = textarea.scrollTop;
+          const relativeLinePosition = (linesBeforeCursor * lineHeight) - scrollTop;
+          
+          // Position relative to textarea, with offset for command palette
+          let top = rect.top + relativeLinePosition + lineHeight + 8; // 8px gap
+          let left = rect.left + 20; // 20px from left edge
+          
+          // Ensure command palette stays within viewport bounds
+          const viewportHeight = window.innerHeight;
+          const viewportWidth = window.innerWidth;
+          const commandPaletteHeight = 280; // Approximate height
+          const commandPaletteWidth = 320; // 80 * 4 (w-80 = 320px)
+          
+          // Adjust vertical position if it would go off-screen
+          if (top + commandPaletteHeight > viewportHeight) {
+            // Position above the cursor line instead
+            top = rect.top + relativeLinePosition - commandPaletteHeight - 8;
+            
+            // If still off-screen, position at top of viewport
+            if (top < 0) {
+              top = 20;
+            }
+          }
+          
+          // Adjust horizontal position if it would go off-screen
+          if (left + commandPaletteWidth > viewportWidth) {
+            left = viewportWidth - commandPaletteWidth - 20;
+          }
+          
+          // Ensure minimum distance from viewport edges
+          top = Math.max(20, Math.min(top, viewportHeight - commandPaletteHeight - 20));
+          left = Math.max(20, Math.min(left, viewportWidth - commandPaletteWidth - 20));
+          
+          setCommandPosition({ top, left });
           setIsCommandPaletteOpen(true);
           
           // Remove the "/" character

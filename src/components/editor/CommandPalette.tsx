@@ -164,9 +164,20 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
   const [search, setSearch] = useState("");
   const commandRef = useRef<HTMLDivElement>(null);
 
+  // Clear search when closing
+  useEffect(() => {
+    if (!isOpen) {
+      setSearch("");
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     if (isOpen && commandRef.current) {
-      commandRef.current.focus();
+      // Focus the command input specifically
+      const input = commandRef.current.querySelector('input');
+      if (input) {
+        input.focus();
+      }
     }
   }, [isOpen]);
 
@@ -177,12 +188,21 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
       }
     };
 
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onClose();
+      }
+    };
+
     if (isOpen) {
       document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
     }
 
     return () => {
       document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, [isOpen, onClose]);
 
@@ -196,10 +216,11 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
   return (
     <div
       ref={commandRef}
-      className="fixed z-50 w-80 bg-background border border-border rounded-lg shadow-lg backdrop-blur-sm"
+      className="fixed z-50 w-80 bg-background border border-border rounded-lg shadow-xl backdrop-blur-sm animate-in fade-in slide-in-from-top-2 duration-200"
       style={{
-        top: position.top,
-        left: position.left,
+        top: Math.max(0, position.top),
+        left: Math.max(0, position.left),
+        maxHeight: '280px',
       }}
     >
       <Command className="h-auto">
