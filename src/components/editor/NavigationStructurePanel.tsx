@@ -40,6 +40,7 @@ export function NavigationStructurePanel({
   const [isAddingSection, setIsAddingSection] = useState(false);
   const [editingSection, setEditingSection] = useState<string | null>(null);
   const [editingSectionTitle, setEditingSectionTitle] = useState("");
+  // Start with empty set so all items are collapsed by default
   const [expandedItems, setExpandedItems] = useState<Set<string>>(new Set());
 
   const handleAddSection = () => {
