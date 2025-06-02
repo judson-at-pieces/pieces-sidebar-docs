@@ -300,12 +300,14 @@ export default function DocsLayout() {
         {/* Main content */}
         <div className="flex flex-col flex-1 overflow-hidden">
           <main className="flex-1 relative overflow-y-auto focus:outline-none">
-            <div className="py-4 sm:py-6 lg:py-8">
-              <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-                <Outlet />
+            <div className="min-h-full flex flex-col">
+              <div className="flex-1 py-4 sm:py-6 lg:py-8">
+                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                  <Outlet />
+                </div>
               </div>
+              <Footer />
             </div>
-            <Footer />
           </main>
         </div>
       </div>
