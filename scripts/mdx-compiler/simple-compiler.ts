@@ -1,4 +1,3 @@
-
 import fs from 'fs/promises';
 import path from 'path';
 import matter from 'gray-matter';
@@ -198,7 +197,10 @@ export class SimpleMarkdownCompiler {
   private fixEscapeSequences(content: string): string {
     // Fix malformed escape sequences that break TSX compilation
     
-    // Fix escaped backticks that are not properly escaped
+    // First, normalize multiple backslashes to prevent over-escaping
+    content = content.replace(/\\{3,}/g, '\\');
+    
+    // Fix escaped backticks that should just be backticks in markdown
     content = content.replace(/\\`/g, '`');
     
     // Fix curly quotes that break string parsing
@@ -210,17 +212,11 @@ export class SimpleMarkdownCompiler {
     // Fix em dashes that might cause issues
     content = content.replace(/—/g, '—');
     
-    // Fix any orphaned backslashes before common characters
-    content = content.replace(/\\([^nrtbfv\\'"0xuU])/g, '$1');
+    // Fix orphaned backslashes before common characters (but be careful not to break intentional escapes)
+    content = content.replace(/\\([^nrtbfv\\'"0xuU`${}])/g, '$1');
     
-    // Fix double backslashes that aren't intentional
+    // Clean up any remaining problematic sequences
     content = content.replace(/\\\\/g, '\\');
-    
-    // Fix problematic character sequences in template literals
-    content = content.replace(/\$\{/g, '\\${');
-    
-    // Escape any remaining backticks that could break template literals
-    content = content.replace(/(?<!\\)`/g, '\\`');
     
     return content;
   }
@@ -232,11 +228,14 @@ export class SimpleMarkdownCompiler {
   ): string {
     const componentName = this.getComponentName(filePath);
     
-    // Additional safety: escape any remaining problematic characters in the content
+    // Escape content for template literal - be very careful here
     const safeContent = processedContent
+      // First escape existing backslashes
+      .replace(/\\/g, '\\\\')
+      // Then escape backticks
       .replace(/`/g, '\\`')
-      .replace(/\$/g, '\\$')
-      .replace(/\\/g, '\\\\');
+      // Then escape template literal syntax
+      .replace(/\$\{/g, '\\${');
     
     return `import React from 'react';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
