@@ -1,3 +1,4 @@
+
 import fs from 'fs/promises';
 import path from 'path';
 import matter from 'gray-matter';
@@ -297,9 +298,11 @@ ${componentName}.frontmatter = frontmatter;
     const indexContent = `// Auto-generated file. Do not edit manually.
 ${imports.join('\n')}
 
-export const contentComponents = {
+export const contentRegistry = {
 ${exports.join('\n')}
 };
+
+export const contentComponents = contentRegistry;
 
 export type ContentComponent = {
   component: React.ComponentType<any>;
@@ -312,7 +315,19 @@ export type ContentComponent = {
 };
 
 export function getContentComponent(path: string): ContentComponent | undefined {
-  return contentComponents[path];
+  return contentRegistry[path];
+}
+
+export function getCompiledContent(path: string): ContentComponent | undefined {
+  return contentRegistry[path];
+}
+
+export function getAllCompiledPaths(): string[] {
+  return Object.keys(contentRegistry);
+}
+
+export function registerContent(path: string, module: ContentComponent): void {
+  contentRegistry[path] = module;
 }
 `;
     
