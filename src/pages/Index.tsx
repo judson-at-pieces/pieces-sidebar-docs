@@ -1,3 +1,4 @@
+
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -127,10 +128,13 @@ const Index = () => {
       {/* Hero Section */}
       <section className="py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto text-center">
-          {/* Updated announcement banner */}
+          {/* Updated announcement banner with RGB gradient */}
           <div className="flex items-center justify-center mb-8">
-            <div className="flex items-center space-x-2 bg-muted/50 border border-border text-blue-400 px-4 py-2 rounded-full text-sm font-medium">
-              <span>🔒 On-Device, Secure Context Storage</span>
+            <div className="relative">
+              <div className="absolute -inset-0.5 bg-gradient-to-r from-red-500 via-green-500 to-blue-500 rounded-full blur opacity-75"></div>
+              <div className="relative flex items-center space-x-2 bg-background border border-border text-foreground px-4 py-2 rounded-full text-sm font-medium">
+                <span>🔒 On-Device, Secure Context Storage</span>
+              </div>
             </div>
           </div>
           
@@ -145,7 +149,7 @@ const Index = () => {
             Pieces captures and resurfaces your workflow context so you never lose track of what you were doing. These docs help you install, integrate, and master the tools that make that possible.
           </p>
           
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-4">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
             <Link to="/docs/getting-started">
               <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg">
                 <BookOpen className="mr-2 w-5 h-5" />
