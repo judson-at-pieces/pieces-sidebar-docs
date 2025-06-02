@@ -22,9 +22,17 @@ const contentRegistry: Record<string, CompiledContentModule> = {};
 // Function to get compiled content from registry
 export function getCompiledContent(path: string): CompiledContentModule | null {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  console.log('Looking for compiled content at path:', normalizedPath);
-  console.log('Available paths:', Object.keys(contentRegistry));
-  return contentRegistry[normalizedPath] || null;
+  console.log('🔍 Looking for compiled content at path:', normalizedPath);
+  console.log('📚 Available paths in registry:', Object.keys(contentRegistry));
+  
+  const found = contentRegistry[normalizedPath];
+  if (found) {
+    console.log('✅ Found compiled content for:', normalizedPath);
+  } else {
+    console.log('❌ No compiled content found for:', normalizedPath);
+  }
+  
+  return found || null;
 }
 
 // Get all available compiled content paths
@@ -34,19 +42,22 @@ export function getAllCompiledPaths(): string[] {
 
 // Register content function (used by build script)
 export function registerContent(path: string, module: CompiledContentModule): void {
+  console.log('📝 Registering content for path:', path);
   contentRegistry[path] = module;
 }
 
-// For development - populate with some basic content if registry is empty
+// For development - populate with comprehensive content if registry is empty
 if (Object.keys(contentRegistry).length === 0) {
-  console.log('No compiled content found. The MDX compiler may need to be run.');
+  console.log('⚠️ No compiled content found. Populating with development fallbacks...');
   
   // Register CLI content
   const cliModule = {
     default: () => {
       return React.createElement('div', { className: 'markdown-content' }, 
         React.createElement('h1', null, 'Pieces CLI'),
-        React.createElement('p', null, 'The Pieces CLI offers users a straightforward way to manage and utilize saved code snippets through the Pieces Drive.')
+        React.createElement('p', null, 'The Pieces CLI offers users a straightforward way to manage and utilize saved code snippets through the Pieces Drive.'),
+        React.createElement('h2', null, 'Getting Started'),
+        React.createElement('p', null, 'Learn how to install and configure the Pieces CLI for your development workflow.')
       );
     },
     frontmatter: {
@@ -58,12 +69,37 @@ if (Object.keys(contentRegistry).length === 0) {
   
   registerContent('/cli', cliModule);
 
+  // Register Quick Guides main page
+  const quickGuidesModule = {
+    default: () => {
+      return React.createElement('div', { className: 'markdown-content' }, 
+        React.createElement('h1', null, 'Quick Guides'),
+        React.createElement('p', null, 'Fast-track your productivity with these essential guides for getting the most out of Pieces.'),
+        React.createElement('h2', null, 'Available Guides'),
+        React.createElement('ul', null,
+          React.createElement('li', null, 'Overview - Get a comprehensive overview of Pieces features'),
+          React.createElement('li', null, 'Long-Term Memory - Learn how to leverage contextual knowledge'),
+          React.createElement('li', null, 'Copilot Context - Maximize your AI assistant with context')
+        )
+      );
+    },
+    frontmatter: {
+      title: 'Quick Guides',
+      path: '/quick-guides',
+      visibility: 'PUBLIC'
+    }
+  } as CompiledContentModule;
+  
+  registerContent('/quick-guides', quickGuidesModule);
+
   // Register the cloud-models content that exists
   const cloudModelsModule = {
     default: () => {
       return React.createElement('div', { className: 'markdown-content' }, 
         React.createElement('h1', null, 'Cloud Models'),
-        React.createElement('p', null, '#Testing')
+        React.createElement('p', null, 'Learn about cloud-based language models available in Pieces.'),
+        React.createElement('h2', null, 'Supported Models'),
+        React.createElement('p', null, 'Pieces supports various cloud-based language models for enhanced AI capabilities.')
       );
     },
     frontmatter: {
@@ -80,7 +116,9 @@ if (Object.keys(contentRegistry).length === 0) {
     default: () => {
       return React.createElement('div', { className: 'markdown-content' }, 
         React.createElement('h1', null, 'macOS Installation Guide'),
-        React.createElement('p', null, 'This is a placeholder for the macOS installation guide.')
+        React.createElement('p', null, 'Learn how to install Pieces on macOS.'),
+        React.createElement('h2', null, 'System Requirements'),
+        React.createElement('p', null, 'Make sure your macOS system meets the minimum requirements for Pieces.')
       );
     },
     frontmatter: {
@@ -91,6 +129,55 @@ if (Object.keys(contentRegistry).length === 0) {
   } as CompiledContentModule;
   
   registerContent('/meet-pieces/macos-installation-guide', macosInstallationModule);
+
+  // Add Desktop content
+  const desktopModule = {
+    default: () => {
+      return React.createElement('div', { className: 'markdown-content' }, 
+        React.createElement('h1', null, 'Pieces Desktop'),
+        React.createElement('p', null, 'The flagship Pieces application for managing your code snippets and AI interactions.'),
+        React.createElement('h2', null, 'Key Features'),
+        React.createElement('ul', null,
+          React.createElement('li', null, 'Code snippet management'),
+          React.createElement('li', null, 'AI-powered copilot'),
+          React.createElement('li', null, 'Workflow activity tracking')
+        )
+      );
+    },
+    frontmatter: {
+      title: 'Desktop Application',
+      path: '/desktop',
+      visibility: 'PUBLIC'
+    }
+  } as CompiledContentModule;
+  
+  registerContent('/desktop', desktopModule);
+
+  // Add Extensions content
+  const extensionsModule = {
+    default: () => {
+      return React.createElement('div', { className: 'markdown-content' }, 
+        React.createElement('h1', null, 'Extensions & Plugins'),
+        React.createElement('p', null, 'Integrate Pieces with your favorite development tools and editors.'),
+        React.createElement('h2', null, 'Supported Platforms'),
+        React.createElement('ul', null,
+          React.createElement('li', null, 'Visual Studio Code'),
+          React.createElement('li', null, 'JetBrains IDEs'),
+          React.createElement('li', null, 'Sublime Text'),
+          React.createElement('li', null, 'Neovim')
+        )
+      );
+    },
+    frontmatter: {
+      title: 'Extensions & Plugins',
+      path: '/extensions-plugins',
+      visibility: 'PUBLIC'
+    }
+  } as CompiledContentModule;
+  
+  registerContent('/extensions-plugins', extensionsModule);
+
+  console.log('✅ Development fallback content registered. Total paths:', Object.keys(contentRegistry).length);
 }
 
 // Export the registry at the end to ensure it's available

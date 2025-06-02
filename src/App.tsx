@@ -19,14 +19,45 @@ function App() {
           <Router>
             <Routes>
               <Route path="/" element={<Index />} />
+              
+              {/* Docs routes with comprehensive coverage */}
               <Route path="/docs" element={<DocsLayout />}>
                 <Route index element={<CompiledDocPage />} />
                 <Route path="*" element={<CompiledDocPage />} />
               </Route>
-              {/* Direct route for CLI page */}
+              
+              {/* Direct routes for main content sections */}
               <Route path="/cli" element={<DocsLayout />}>
                 <Route index element={<CompiledDocPage />} />
+                <Route path="*" element={<CompiledDocPage />} />
               </Route>
+              
+              <Route path="/quick-guides" element={<DocsLayout />}>
+                <Route index element={<CompiledDocPage />} />
+                <Route path="*" element={<CompiledDocPage />} />
+              </Route>
+              
+              <Route path="/desktop" element={<DocsLayout />}>
+                <Route index element={<CompiledDocPage />} />
+                <Route path="*" element={<CompiledDocPage />} />
+              </Route>
+              
+              <Route path="/extensions-plugins" element={<DocsLayout />}>
+                <Route index element={<CompiledDocPage />} />
+                <Route path="*" element={<CompiledDocPage />} />
+              </Route>
+              
+              <Route path="/meet-pieces" element={<DocsLayout />}>
+                <Route index element={<CompiledDocPage />} />
+                <Route path="*" element={<CompiledDocPage />} />
+              </Route>
+              
+              <Route path="/large-language-models" element={<DocsLayout />}>
+                <Route index element={<CompiledDocPage />} />
+                <Route path="*" element={<CompiledDocPage />} />
+              </Route>
+              
+              {/* Catch-all for 404 */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </Router>
