@@ -22,8 +22,43 @@ export function Card({ title, image, icon, href, external, children, className }
   const processedChildren = React.useMemo(() => {
     if (typeof children === 'string') {
       return (
-        <div className="prose prose-sm dark:prose-invert max-w-none prose-p:text-sm prose-p:mb-2 prose-p:leading-relaxed prose-headings:text-sm prose-headings:font-medium prose-headings:mb-2 prose-ul:my-2 prose-li:my-0 prose-li:text-sm prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline dark:prose-a:text-blue-400">
-          <ReactMarkdown>
+        <div className="prose prose-sm dark:prose-invert max-w-none prose-p:text-sm prose-p:mb-1 prose-p:leading-relaxed prose-p:last:mb-0 prose-headings:text-sm prose-headings:font-medium prose-headings:mb-1 prose-ul:my-1 prose-li:my-0 prose-li:text-sm prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline dark:prose-a:text-blue-400 prose-a:font-medium prose-strong:font-semibold prose-em:italic">
+          <ReactMarkdown
+            components={{
+              // Custom link component for proper styling within cards
+              a: ({ href, children, ...props }) => {
+                const isExternalLink = href?.startsWith('http');
+                return (
+                  <a 
+                    href={href} 
+                    className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-colors duration-200 hover:underline"
+                    {...(isExternalLink ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                    {...props}
+                  >
+                    {children}
+                  </a>
+                );
+              },
+              // Ensure paragraphs are properly spaced
+              p: ({ children, ...props }) => (
+                <p className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed mb-1 last:mb-0" {...props}>
+                  {children}
+                </p>
+              ),
+              // Handle strong/bold text
+              strong: ({ children, ...props }) => (
+                <strong className="font-semibold text-gray-900 dark:text-gray-100" {...props}>
+                  {children}
+                </strong>
+              ),
+              // Handle emphasis/italic text
+              em: ({ children, ...props }) => (
+                <em className="italic" {...props}>
+                  {children}
+                </em>
+              )
+            }}
+          >
             {children}
           </ReactMarkdown>
         </div>
@@ -86,7 +121,7 @@ export function Card({ title, image, icon, href, external, children, className }
         
         {/* Content */}
         {children && (
-          <div className="flex-grow text-gray-600 dark:text-gray-300 leading-relaxed text-sm">
+          <div className="flex-grow leading-relaxed text-sm">
             {processedChildren}
           </div>
         )}
