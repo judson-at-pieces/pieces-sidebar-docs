@@ -88,7 +88,16 @@ export const createComponentMappings = () => ({
     const isPiecesLocalModels = props['data-pieces-local-models'] as string;
     const isGlossaryAll = props['data-glossary-all'] as string;
     
-    console.log('Div props:', props); // Debug log to see what's being passed
+    console.log('Div component mapping - props:', { 
+      isCard, 
+      isCardGroup, 
+      title, 
+      image, 
+      href, 
+      external, 
+      cols,
+      hasChildren: !!children 
+    });
     
     if (calloutType) {
       return <Callout type={calloutType as 'info' | 'warning' | 'tip' | 'error' | 'success' | 'alert'} title={title} {...props}>{children}</Callout>;
@@ -105,12 +114,12 @@ export const createComponentMappings = () => ({
     }
     
     if (isCardGroup === 'true') {
-      console.log('Rendering CardGroup with cols:', cols); // Debug log
+      console.log('Rendering CardGroup with cols:', cols, 'children count:', React.Children.count(children));
       return <CardGroup cols={cols} {...props}>{children}</CardGroup>;
     }
     
     if (isCard === 'true') {
-      console.log('Rendering Card with title:', title, 'image:', image); // Debug log
+      console.log('Rendering Card with:', { title, image, href, external, hasChildren: !!children });
       const icon = props['data-icon'] as string | undefined;
       return <Card title={title} image={image} icon={icon} href={href} external={external} {...props}>{children}</Card>;
     }

@@ -100,6 +100,7 @@ export function processCustomSyntax(content: string): string {
     });
 
     // Transform Card components to HTML - handle both self-closing and with content
+    // First handle self-closing cards
     processedContent = processedContent.replace(/<Card\s+([^>]*?)\/>/gi, (match, attributes) => {
       try {
         const titleMatch = attributes.match(/title="([^"]*)"/);
@@ -121,9 +122,11 @@ export function processCustomSyntax(content: string): string {
       }
     });
 
-    // Transform Card components with content
+    // Then handle Card components with content - this is the key fix
     processedContent = processedContent.replace(/<Card\s+([^>]*?)>([\s\S]*?)<\/Card>/gi, (match, attributes, innerContent) => {
       try {
+        console.log('Processing Card with content:', { attributes, innerContent: innerContent.substring(0, 100) });
+        
         const titleMatch = attributes.match(/title="([^"]*)"/);
         const imageMatch = attributes.match(/image="([^"]*)"/);
         const hrefMatch = attributes.match(/href="([^"]*)"/);
@@ -138,6 +141,8 @@ export function processCustomSyntax(content: string): string {
         
         // Preserve the inner content without modification so markdown links can be processed later
         const safeContent = innerContent ? innerContent.trim() : '';
+        
+        console.log('Card transformation result:', { title, image, href, external, icon, contentLength: safeContent.length });
         
         return `<div data-card="true" data-title="${title}" data-image="${image}" data-href="${href}" data-external="${external}" data-icon="${icon}">\n\n${safeContent}\n\n</div>`;
       } catch (error) {
@@ -187,6 +192,7 @@ export function processCustomSyntax(content: string): string {
       }
     );
 
+    console.log('Custom syntax processing complete. Sample output:', processedContent.substring(0, 500));
     return processedContent;
   } catch (error) {
     console.error('Error processing custom syntax:', error);
