@@ -183,8 +183,18 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      if (commandRef.current && !commandRef.current.contains(event.target as Node)) {
-        onClose();
+      // Don't close if clicking on scrollbar or command palette itself
+      const target = event.target as HTMLElement;
+      if (commandRef.current && !commandRef.current.contains(target)) {
+        // Check if the click was on a scrollbar
+        const isScrollbar = target === document.documentElement || 
+                           target === document.body ||
+                           (target.scrollHeight > target.clientHeight && 
+                            event.clientX >= target.offsetWidth + target.offsetLeft);
+        
+        if (!isScrollbar) {
+          onClose();
+        }
       }
     };
 
@@ -196,8 +206,11 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
     };
 
     if (isOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('keydown', handleKeyDown);
+      // Use a slight delay to avoid immediate closure
+      setTimeout(() => {
+        document.addEventListener('mousedown', handleClickOutside);
+        document.addEventListener('keydown', handleKeyDown);
+      }, 100);
     }
 
     return () => {
@@ -222,6 +235,7 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
         left: Math.max(0, position.left),
         maxHeight: '280px',
       }}
+      onMouseDown={(e) => e.stopPropagation()}
     >
       <Command className="h-auto">
         <CommandInput
@@ -230,7 +244,7 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
           onValueChange={setSearch}
           className="border-0 focus:ring-0"
         />
-        <CommandList className="max-h-64">
+        <CommandList className="max-h-64" onPointerDownOutside={(e) => e.preventDefault()}>
           <CommandEmpty>No snippets found.</CommandEmpty>
           <CommandGroup heading="Markdown & Components">
             {filteredFragments.map((fragment) => {

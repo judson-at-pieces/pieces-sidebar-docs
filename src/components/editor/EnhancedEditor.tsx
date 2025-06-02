@@ -29,6 +29,7 @@ export function EnhancedEditor({
   const [viewMode, setViewMode] = useState<'split' | 'edit' | 'preview'>('split');
   const [isFullscreen, setIsFullscreen] = useState(false);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [slashPosition, setSlashPosition] = useState<number | null>(null);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -124,9 +125,19 @@ export function EnhancedEditor({
           setCommandPosition({ top, left });
           setIsCommandPaletteOpen(true);
           
+          // Store the position where slash was typed (before removing it)
+          setSlashPosition(cursorPosition - 1);
+          
           // Remove the "/" character
           const contentWithoutSlash = newContent.substring(0, cursorPosition - 1) + newContent.substring(cursorPosition);
           onContentChange(contentWithoutSlash);
+          
+          // Restore cursor position after removing slash
+          setTimeout(() => {
+            if (textarea) {
+              textarea.setSelectionRange(cursorPosition - 1, cursorPosition - 1);
+            }
+          }, 0);
           return;
         }
       }
@@ -139,19 +150,32 @@ export function EnhancedEditor({
     const textarea = textareaRef.current;
     if (!textarea) return;
 
-    const cursorPosition = textarea.selectionStart;
-    const beforeCursor = content.substring(0, cursorPosition);
-    const afterCursor = content.substring(cursorPosition);
+    // Use the stored slash position if available, otherwise use current cursor position
+    const insertPosition = slashPosition !== null ? slashPosition : textarea.selectionStart;
+    const beforeInsert = content.substring(0, insertPosition);
+    const afterInsert = content.substring(insertPosition);
     
-    const newContent = beforeCursor + fragmentContent + afterCursor;
+    const newContent = beforeInsert + fragmentContent + afterInsert;
     onContentChange(newContent);
+    
+    // Clear the slash position after using it
+    setSlashPosition(null);
     
     // Set cursor position after the inserted content
     setTimeout(() => {
       if (textarea) {
-        const newPosition = cursorPosition + fragmentContent.length;
+        const newPosition = insertPosition + fragmentContent.length;
         textarea.setSelectionRange(newPosition, newPosition);
         textarea.focus();
+        
+        // Scroll to make sure the cursor is visible
+        const lineHeight = parseInt(getComputedStyle(textarea).lineHeight) || 24;
+        const linesBeforeCursor = newContent.substring(0, newPosition).split('\n').length - 1;
+        const targetScrollTop = (linesBeforeCursor * lineHeight) - (textarea.clientHeight / 2);
+        
+        if (targetScrollTop > 0) {
+          textarea.scrollTop = targetScrollTop;
+        }
       }
     }, 0);
   };
@@ -300,7 +324,10 @@ export function EnhancedEditor({
       {/* Command Palette */}
       <CommandPalette
         isOpen={isCommandPaletteOpen}
-        onClose={() => setIsCommandPaletteOpen(false)}
+        onClose={() => {
+          setIsCommandPaletteOpen(false);
+          setSlashPosition(null);
+        }}
         onInsert={handleInsertFragment}
         position={commandPosition}
       />
