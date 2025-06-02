@@ -1,5 +1,3 @@
-
-
 import { useState, useEffect, useRef } from "react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { FileText, Hash, List, Quote, Table, Code, Image, AlertCircle, CheckCircle, Info, XCircle, LayoutGrid, ArrowRight, Bold, Italic, Link } from "lucide-react";
@@ -164,6 +162,7 @@ const MARKDOWN_FRAGMENTS = [
 export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandPaletteProps) {
   const [search, setSearch] = useState("");
   const commandRef = useRef<HTMLDivElement>(null);
+  const inputRef = useRef<any>(null); // CommandInput uses a different ref type
 
   // Clear search when closing
   useEffect(() => {
@@ -172,43 +171,62 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
     }
   }, [isOpen]);
 
+  // Focus management
   useEffect(() => {
-    if (isOpen && commandRef.current) {
-      // Focus the command input specifically
-      const input = commandRef.current.querySelector('input');
-      if (input) {
-        input.focus();
-      }
+    if (isOpen && inputRef.current) {
+      // Small delay to ensure the palette is rendered
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 50);
     }
   }, [isOpen]);
 
+  // Handle click outside with better detection
   useEffect(() => {
+    if (!isOpen) return;
+
     const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as HTMLElement;
-      if (commandRef.current && !commandRef.current.contains(target)) {
-        onClose();
+      const target = event.target as Node;
+      
+      // Check if click is within command palette
+      if (commandRef.current && commandRef.current.contains(target)) {
+        return;
       }
+      
+      // Check if the click target is the scrollbar of the command palette
+      const commandList = commandRef.current?.querySelector('[cmdk-list]');
+      if (commandList && event.target === commandList) {
+        return;
+      }
+      
+      onClose();
     };
+
+    // Use 'click' instead of 'mousedown' to avoid conflicts with scrollbar interaction
+    document.addEventListener('click', handleClickOutside);
+    
+    return () => {
+      document.removeEventListener('click', handleClickOutside);
+    };
+  }, [isOpen, onClose]);
+
+  // Handle keyboard events
+  useEffect(() => {
+    if (!isOpen) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Only handle Escape key - let cmdk handle arrow keys and navigation
+      // Only handle Escape - let cmdk handle all other keys
       if (event.key === 'Escape') {
         event.preventDefault();
+        event.stopPropagation();
         onClose();
       }
     };
 
-    if (isOpen) {
-      // Use a slight delay to avoid immediate closure
-      setTimeout(() => {
-        document.addEventListener('mousedown', handleClickOutside);
-        document.addEventListener('keydown', handleKeyDown);
-      }, 100);
-    }
-
+    document.addEventListener('keydown', handleKeyDown, true);
+    
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown);
+      document.removeEventListener('keydown', handleKeyDown, true);
     };
   }, [isOpen, onClose]);
 
@@ -222,21 +240,26 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
   return (
     <div
       ref={commandRef}
-      className="fixed z-50 w-80 bg-background border border-border rounded-lg shadow-xl backdrop-blur-sm animate-in fade-in slide-in-from-top-2 duration-200"
+      className="fixed z-[100] w-80 bg-background border border-border rounded-lg shadow-xl animate-in fade-in slide-in-from-top-2 duration-200"
       style={{
         top: Math.max(0, position.top),
         left: Math.max(0, position.left),
         maxHeight: '320px',
       }}
+      onMouseDown={(e) => {
+        // Prevent any mouse down events from bubbling up
+        e.stopPropagation();
+      }}
     >
-      <Command className="h-auto" loop>
+      <Command className="h-full max-h-[320px]" loop>
         <CommandInput
+          ref={inputRef}
           placeholder="Search markdown snippets..."
           value={search}
           onValueChange={setSearch}
           className="border-0 focus:ring-0"
         />
-        <CommandList className="max-h-64 overflow-y-auto">
+        <CommandList className="max-h-[264px] overflow-y-auto">
           <CommandEmpty>No snippets found.</CommandEmpty>
           <CommandGroup heading="Markdown & Components">
             {filteredFragments.map((fragment) => {
@@ -244,6 +267,7 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
               return (
                 <CommandItem
                   key={fragment.id}
+                  value={fragment.id}
                   onSelect={() => {
                     onInsert(fragment.content);
                     onClose();

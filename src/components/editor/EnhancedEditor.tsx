@@ -33,10 +33,8 @@ export function EnhancedEditor({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Handle Escape key - but not if command palette is open (let it handle its own escape)
-      if (e.key === 'Escape' && !isCommandPaletteOpen) {
-        setIsCommandPaletteOpen(false);
-      }
+      // Don't handle Escape here - let the command palette handle it
+      // This prevents conflicts with the command palette's own escape handling
       
       // Handle Ctrl/Cmd + S for save
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
