@@ -76,7 +76,7 @@ export class SimpleMarkdownCompiler {
     // Parse frontmatter
     const { data: frontmatter, content: markdownContent } = matter(content);
     
-    // Process custom syntax and handle edge cases
+    // Process custom syntax
     const processedContent = this.processCustomSyntax(markdownContent);
     
     // Generate TSX component
@@ -93,9 +93,6 @@ export class SimpleMarkdownCompiler {
   }
 
   private processCustomSyntax(content: string): string {
-    // First, fix common escape sequence issues that break TSX compilation
-    content = this.fixEscapeSequences(content);
-    
     // Transform callout syntax
     content = content.replace(
       /:::(\w+)(?:\[([^\]]*)\]|\{title="([^"]*)"\})?\n([\s\S]*?):::/g,
@@ -195,48 +192,12 @@ export class SimpleMarkdownCompiler {
     return content;
   }
 
-  private fixEscapeSequences(content: string): string {
-    // Fix malformed escape sequences that break TSX compilation
-    
-    // First, normalize multiple backslashes to prevent over-escaping
-    content = content.replace(/\\{3,}/g, '\\');
-    
-    // Fix escaped backticks that should just be backticks in markdown
-    content = content.replace(/\\`/g, '`');
-    
-    // Fix curly quotes that break string parsing
-    content = content.replace(/'/g, "'");
-    content = content.replace(/'/g, "'");
-    content = content.replace(/"/g, '"');
-    content = content.replace(/"/g, '"');
-    
-    // Fix em dashes that might cause issues
-    content = content.replace(/—/g, '—');
-    
-    // Fix orphaned backslashes before common characters (but be careful not to break intentional escapes)
-    content = content.replace(/\\([^nrtbfv\\'"0xuU`${}])/g, '$1');
-    
-    // Clean up any remaining problematic sequences
-    content = content.replace(/\\\\/g, '\\');
-    
-    return content;
-  }
-
   private generateTSXComponent(
     filePath: string,
     processedContent: string,
     frontmatter: FrontMatter
   ): string {
     const componentName = this.getComponentName(filePath);
-    
-    // Escape content for template literal - be very careful here
-    const safeContent = processedContent
-      // First escape existing backslashes
-      .replace(/\\/g, '\\\\')
-      // Then escape backticks
-      .replace(/`/g, '\\`')
-      // Then escape template literal syntax
-      .replace(/\$\{/g, '\\${');
     
     return `import React from 'react';
 import { MarkdownRenderer } from '@/components/MarkdownRenderer';
@@ -247,7 +208,7 @@ export interface ${componentName}Props {
 
 export const frontmatter = ${JSON.stringify(frontmatter, null, 2)};
 
-const markdownContent = \`${safeContent}\`;
+const markdownContent = \`${processedContent.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`;
 
 export default function ${componentName}({ components = {} }: ${componentName}Props) {
   return (
@@ -298,11 +259,9 @@ ${componentName}.frontmatter = frontmatter;
     const indexContent = `// Auto-generated file. Do not edit manually.
 ${imports.join('\n')}
 
-export const contentRegistry = {
+export const contentComponents = {
 ${exports.join('\n')}
 };
-
-export const contentComponents = contentRegistry;
 
 export type ContentComponent = {
   component: React.ComponentType<any>;
@@ -315,19 +274,7 @@ export type ContentComponent = {
 };
 
 export function getContentComponent(path: string): ContentComponent | undefined {
-  return contentRegistry[path];
-}
-
-export function getCompiledContent(path: string): ContentComponent | undefined {
-  return contentRegistry[path];
-}
-
-export function getAllCompiledPaths(): string[] {
-  return Object.keys(contentRegistry);
-}
-
-export function registerContent(path: string, module: ContentComponent): void {
-  contentRegistry[path] = module;
+  return contentComponents[path];
 }
 `;
     

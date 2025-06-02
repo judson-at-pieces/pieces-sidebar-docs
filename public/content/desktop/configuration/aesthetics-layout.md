@@ -1,4 +1,3 @@
-
 ---
 title: "Aesthetics & Layouts"
 path: "/desktop/configuration/aesthetics-layout"
@@ -38,7 +37,7 @@ Click the `Accent Color` dropdown in the **Aesthetics** settings section, select
 
 Use the `Font Size` setting to adjust the size of all text.
 
-To zoom in, use `⌘+,+` (macOS) or `ctrl+,+` (Windows/Linux)—to zoom out, use `⌘+,-` (macOS) or `ctrl+,-` (Windows/Linux).
+\`To zoom in, use `⌘+,+` (macOS) or `ctrl+,+` (Windows/Linux)—to zoom out, use `⌘+,-` (macOS) or `ctrl+,-` (Windows/Linux).
 
 <Image src="https://storage.googleapis.com/hashnode_product_documentation_assets/desktop_app_assets/settings_with_mcp_update/aesthetics_and_layouts/changing_font_size.png" alt="" align="center" fullwidth="false" />
 
@@ -66,7 +65,7 @@ This default sorting ensures you see new or popular items first (or in whichever
 
 The **Views & Layout** settings also include `Default Gallery View Sort`, allowing you to specify how items appear in *Gallery View* (e.g., sorted by `Most Recent` or `Alphabetical`).
 
-If you frequently rely on visual cues, this setting ensures you'll quickly spot the snippets or media you need, saving time on manual sorting.
+If you frequently rely on visual cues, this setting ensures you’ll quickly spot the snippets or media you need, saving time on manual sorting.
 
 ### Default Search Mode
 
@@ -80,7 +79,7 @@ This is opposed to *Full-Text Search (FTS)* or *Search with Snippet*, which are 
 
 Confirmation prompts can protect you from unintended deletions or other irreversible changes.
 
-Enabling or adjusting `Confirmation Settings` determines whether Pieces requests an extra step (such as "Are you sure?") before making significant modifications.
+Enabling or adjusting `Confirmation Settings` determines whether Pieces requests an extra step (such as “Are you sure?”) before making significant modifications.
 
 ### Metrics Summary Settings
 

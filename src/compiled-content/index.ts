@@ -16,23 +16,15 @@ export interface CompiledContentModule {
   };
 }
 
-// Content registry that will be populated by the build script
-export const contentRegistry: Record<string, CompiledContentModule> = {};
+// Content registry populated by the build script
+const contentRegistry: Record<string, CompiledContentModule> = {};
 
 // Function to get compiled content from registry
 export function getCompiledContent(path: string): CompiledContentModule | null {
   const normalizedPath = path.startsWith('/') ? path : `/${path}`;
-  console.log('🔍 Looking for compiled content at path:', normalizedPath);
-  console.log('📚 Available paths in registry:', Object.keys(contentRegistry));
-  
-  const found = contentRegistry[normalizedPath];
-  if (found) {
-    console.log('✅ Found compiled content for:', normalizedPath);
-  } else {
-    console.log('❌ No compiled content found for:', normalizedPath);
-  }
-  
-  return found || null;
+  console.log('Looking for compiled content at path:', normalizedPath);
+  console.log('Available paths:', Object.keys(contentRegistry));
+  return contentRegistry[normalizedPath] || null;
 }
 
 // Get all available compiled content paths
@@ -42,47 +34,47 @@ export function getAllCompiledPaths(): string[] {
 
 // Register content function (used by build script)
 export function registerContent(path: string, module: CompiledContentModule): void {
-  console.log('📝 Registering content for path:', path);
   contentRegistry[path] = module;
 }
 
-// Legacy export for backward compatibility
-export const contentComponents = contentRegistry;
-
-export type ContentComponent = CompiledContentModule;
-
-export function getContentComponent(path: string): ContentComponent | undefined {
-  return getCompiledContent(path) || undefined;
-}
-
-// Simple fallback content for development
-const createFallbackContent = (title: string, path: string): CompiledContentModule => ({
-  default: () => {
-    return React.createElement('div', { className: 'markdown-content' }, 
-      React.createElement('h1', null, title),
-      React.createElement('p', null, `The ${title} offers users a straightforward way to manage and utilize saved code snippets through the Pieces Drive.`),
-      React.createElement('h2', null, 'Getting Started'),
-      React.createElement('p', null, `Learn how to install and configure the ${title} for your development workflow.`)
-    );
-  },
-  frontmatter: {
-    title,
-    path,
-    visibility: 'PUBLIC'
-  }
-});
-
-// Register some basic fallback content for development
+// For development - populate with some basic content if registry is empty
 if (Object.keys(contentRegistry).length === 0) {
-  console.log('📝 Registering fallback content for development...');
+  console.log('No compiled content found. The MDX compiler may need to be run.');
   
-  registerContent('/cli', createFallbackContent('Pieces CLI', '/cli'));
-  registerContent('/desktop/configuration/aesthetics-layout', createFallbackContent('Aesthetics & Layouts', '/desktop/configuration/aesthetics-layout'));
-  registerContent('/quick-guides', createFallbackContent('Quick Guides', '/quick-guides'));
-  registerContent('/desktop', createFallbackContent('Desktop', '/desktop'));
-  registerContent('/extensions-plugins', createFallbackContent('Extensions & Plugins', '/extensions-plugins'));
-  registerContent('/meet-pieces/macos-installation-guide', createFallbackContent('macOS Installation Guide', '/meet-pieces/macos-installation-guide'));
-  registerContent('/large-language-models/cloud-models', createFallbackContent('Cloud Models', '/large-language-models/cloud-models'));
+  // Register the cloud-models content that exists
+  const cloudModelsModule = {
+    default: () => {
+      return React.createElement('div', { className: 'markdown-content' }, 
+        React.createElement('h1', null, 'Cloud Models'),
+        React.createElement('p', null, '#Testing')
+      );
+    },
+    frontmatter: {
+      title: 'Cloud Models',
+      path: '/large-language-models/cloud-models',
+      visibility: 'PUBLIC'
+    }
+  } as CompiledContentModule;
   
-  console.log('✅ Fallback content registered');
+  registerContent('/large-language-models/cloud-models', cloudModelsModule);
+
+  // Add a sample macOS installation guide content for testing
+  const macosInstallationModule = {
+    default: () => {
+      return React.createElement('div', { className: 'markdown-content' }, 
+        React.createElement('h1', null, 'macOS Installation Guide'),
+        React.createElement('p', null, 'This is a placeholder for the macOS installation guide.')
+      );
+    },
+    frontmatter: {
+      title: 'macOS Installation Guide',
+      path: '/meet-pieces/macos-installation-guide',
+      visibility: 'PUBLIC'
+    }
+  } as CompiledContentModule;
+  
+  registerContent('/meet-pieces/macos-installation-guide', macosInstallationModule);
 }
+
+// Export the registry at the end to ensure it's available
+export { contentRegistry };
