@@ -105,7 +105,7 @@ const Index = () => {
 
       {/* Hero Section */}
       <section className="px-4 sm:px-6 lg:px-8 py-0">
-        <div className="max-w-6xl mx-auto text-center">
+        <div className="max-w-6xl mx-auto text-center py-[5px]">
           {/* Clean announcement pill with custom color border */}
           <div className="flex items-center justify-center mb-8">
             <div className="relative">
