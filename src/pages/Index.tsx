@@ -131,9 +131,19 @@ const Index = () => {
           {/* Clean announcement pill with rainbow glow */}
           <div className="flex items-center justify-center mb-8">
             <div className="relative">
-              {/* Rainbow glow background - animated */}
-              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 via-purple-500 via-pink-500 via-red-500 via-orange-500 via-yellow-500 via-green-500 to-blue-500 p-[1px] animate-[spin_3s_linear_infinite] opacity-80 blur-sm"></div>
-              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 via-purple-500 via-pink-500 via-red-500 via-orange-500 via-yellow-500 via-green-500 to-blue-500 p-[1px] animate-[spin_3s_linear_infinite]">
+              {/* Rainbow glow background - slower animation with proper rainbow colors */}
+              <div className="absolute inset-0 rounded-full opacity-75 blur-sm animate-[spin_8s_linear_infinite]" 
+                   style={{
+                     background: 'conic-gradient(from 0deg, #ff0000, #ff8000, #ffff00, #80ff00, #00ff00, #00ff80, #00ffff, #0080ff, #0000ff, #8000ff, #ff00ff, #ff0080, #ff0000)',
+                     padding: '1px'
+                   }}>
+                <div className="h-full w-full rounded-full bg-card"></div>
+              </div>
+              <div className="absolute inset-0 rounded-full animate-[spin_8s_linear_infinite]" 
+                   style={{
+                     background: 'conic-gradient(from 0deg, #ff0000, #ff8000, #ffff00, #80ff00, #00ff00, #00ff80, #00ffff, #0080ff, #0000ff, #8000ff, #ff00ff, #ff0080, #ff0000)',
+                     padding: '1px'
+                   }}>
                 <div className="h-full w-full rounded-full bg-card"></div>
               </div>
               {/* Content */}
