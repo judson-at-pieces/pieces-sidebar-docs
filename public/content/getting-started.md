@@ -1,3 +1,4 @@
+
 ---
 title: "Getting Started with Pieces"
 path: "/docs/getting-started"
@@ -5,36 +6,26 @@ visibility: "PUBLIC"
 description: "Welcome to Pieces! This guide will help you get up and running with our AI-powered code management platform."
 slug: "welcome"
 ---
-***
 
 # Getting Started with Pieces
 
 Welcome to Pieces! This guide will help you get up and running with our AI-powered code management platform.
 
-## Quick Start Cards
+## Quick Start
 
-<div className="grid md:grid-cols-3 gap-6 mb-12">
-  <div className="border rounded-lg p-6 hover:shadow-lg transition-shadow">
-    <div className="w-8 h-8 text-blue-600 mb-2">📥</div>
-    <h3 className="text-lg font-semibold mb-2">Installation</h3>
-    <p className="text-muted-foreground mb-4">Download and install Pieces on your development machine</p>
-    <a href="/docs/meet-pieces/windows-installation-guide" className="text-blue-600 hover:text-blue-700">Get started →</a>
-  </div>
+<CardGroup cols={3}>
+<Card title="Installation" image="" href="/docs/meet-pieces/windows-installation-guide" icon="📥">
+Download and install Pieces on your development machine
+</Card>
 
-  <div className="border rounded-lg p-6 hover:shadow-lg transition-shadow">
-    <div className="w-8 h-8 text-green-600 mb-2">⚡</div>
-    <h3 className="text-lg font-semibold mb-2">Quick Start</h3>
-    <p className="text-muted-foreground mb-4">Start saving and organizing your first code snippets</p>
-    <a href="/docs/quick-guides/overview" className="text-green-600 hover:text-green-700">Quick start →</a>
-  </div>
+<Card title="Quick Start" image="" href="/docs/quick-guides/overview" icon="⚡">
+Start saving and organizing your first code snippets
+</Card>
 
-  <div className="border rounded-lg p-6 hover:shadow-lg transition-shadow">
-    <div className="w-8 h-8 text-purple-600 mb-2">🔗</div>
-    <h3 className="text-lg font-semibold mb-2">Extensions</h3>
-    <p className="text-muted-foreground mb-4">Integrate Pieces into your development workflow</p>
-    <a href="/docs/extensions-plugins" className="text-purple-600 hover:text-purple-700">Explore Extensions →</a>
-  </div>
-</div>
+<Card title="Extensions" image="" href="/docs/extensions-plugins" icon="🔗">
+Integrate Pieces into your development workflow
+</Card>
+</CardGroup>
 
 ## What is Pieces?
 
@@ -66,12 +57,8 @@ Ready to start using Pieces? Follow our installation guide to get set up:
 3. **[Install Extensions](/docs/extensions-plugins)** - Add Pieces to your favorite IDE
 4. **[Quick Start Guide](/docs/quick-guides/overview)** - Start saving your first snippets
 
-<div className="bg-blue-50 dark:bg-blue-950/20 border border-blue-200 dark:border-blue-800 rounded-lg p-6 my-8">
-  <h3 className="text-lg font-semibold text-blue-900 dark:text-blue-100 mb-2">🚀 Ready to Get Started?</h3>
-  <p className="text-blue-800 dark:text-blue-200 mb-4">
-    The fastest way to get up and running is to install the Pieces Desktop App and start saving your first code snippets.
-  </p>
-  <a href="/docs/desktop/download" className="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors">
-    Install Pieces Desktop App →
-  </a>
-</div>
+:::info[Ready to Get Started?]
+The fastest way to get up and running is to install the Pieces Desktop App and start saving your first code snippets.
+
+[Install Pieces Desktop App →](/docs/desktop/download)
+:::
