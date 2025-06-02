@@ -47,6 +47,17 @@ export function processCustomSyntax(content: string): string {
   try {
     let processedContent = content;
 
+    // Store markdown links temporarily to protect them from processing
+    const linkMap = new Map<string, string>();
+    let linkCounter = 0;
+    
+    // Extract and protect markdown links
+    processedContent = processedContent.replace(/\[([^\]]*)\]\(([^)]*)\)/g, (match) => {
+      const placeholder = `__MARKDOWN_LINK_${linkCounter++}__`;
+      linkMap.set(placeholder, match);
+      return placeholder;
+    });
+
     // Transform callout syntax: :::info[Title] or :::warning{title="Warning"}
     processedContent = processedContent.replace(
       /:::(\w+)(?:\[([^\]]*)\]|\{title="([^"]*)"\})?\n([\s\S]*?):::/g,
@@ -164,6 +175,11 @@ export function processCustomSyntax(content: string): string {
         return `<img src="${safeSrc}" alt="${safeAlt}" data-caption="${safeCaption}" />`;
       }
     );
+
+    // Restore protected markdown links
+    linkMap.forEach((originalLink, placeholder) => {
+      processedContent = processedContent.replace(placeholder, originalLink);
+    });
 
     return processedContent;
   } catch (error) {
