@@ -33,8 +33,10 @@ export function EnhancedEditor({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Don't handle Escape here - let the command palette handle it
-      // This prevents conflicts with the command palette's own escape handling
+      // Don't handle any keys when command palette is open - let it handle its own events
+      if (isCommandPaletteOpen) {
+        return;
+      }
       
       // Handle Ctrl/Cmd + S for save
       if ((e.ctrlKey || e.metaKey) && e.key === 's') {
@@ -50,7 +52,6 @@ export function EnhancedEditor({
   }, [hasChanges, onSave, isCommandPaletteOpen]);
 
   // Close command palette on window resize to prevent positioning issues
-  // Don't close on scroll as it interferes with command palette scrolling
   useEffect(() => {
     const handleWindowResize = () => {
       if (isCommandPaletteOpen) {
@@ -98,11 +99,8 @@ export function EnhancedEditor({
           const textareaWidth = textarea.clientWidth;
           
           // Ensure command palette stays within textarea bounds
-          // If it would go below the textarea, position it above the cursor line
           if (top + commandPaletteHeight > textareaHeight) {
             top = linePosition - commandPaletteHeight - 8;
-            
-            // If still goes above textarea, position at top
             if (top < 0) {
               top = 8;
             }
@@ -127,12 +125,10 @@ export function EnhancedEditor({
           const contentWithoutSlash = newContent.substring(0, cursorPosition - 1) + newContent.substring(cursorPosition);
           onContentChange(contentWithoutSlash);
           
-          // Restore cursor position after removing slash
-          setTimeout(() => {
-            if (textarea) {
-              textarea.setSelectionRange(cursorPosition - 1, cursorPosition - 1);
-            }
-          }, 0);
+          // Restore cursor position after removing slash - no setTimeout needed
+          if (textarea) {
+            textarea.setSelectionRange(cursorPosition - 1, cursorPosition - 1);
+          }
           return;
         }
       }
@@ -156,20 +152,26 @@ export function EnhancedEditor({
     // Clear the slash position after using it
     setSlashPosition(null);
     
-    // Set cursor position after the inserted content
+    // Set cursor position after the inserted content and ensure visibility
     setTimeout(() => {
       if (textarea) {
         const newPosition = insertPosition + fragmentContent.length;
         textarea.setSelectionRange(newPosition, newPosition);
         textarea.focus();
         
-        // Scroll to make sure the cursor is visible
+        // Only scroll if the cursor is not visible in the current viewport
         const lineHeight = parseInt(getComputedStyle(textarea).lineHeight) || 24;
         const linesBeforeCursor = newContent.substring(0, newPosition).split('\n').length - 1;
-        const targetScrollTop = (linesBeforeCursor * lineHeight) - (textarea.clientHeight / 2);
+        const cursorTop = linesBeforeCursor * lineHeight;
         
-        if (targetScrollTop > 0) {
-          textarea.scrollTop = targetScrollTop;
+        // Check if cursor is visible in current viewport
+        const scrollTop = textarea.scrollTop;
+        const visibleHeight = textarea.clientHeight;
+        
+        // Only scroll if cursor is outside visible area
+        if (cursorTop < scrollTop || cursorTop > scrollTop + visibleHeight - lineHeight) {
+          // Center the cursor in the viewport
+          textarea.scrollTop = cursorTop - (visibleHeight / 2);
         }
       }
     }, 0);
@@ -335,8 +337,6 @@ export function EnhancedEditor({
           </ResizablePanelGroup>
         )}
       </div>
-
-      {/* Command Palette now rendered within textarea containers */}
     </div>
   );
 }
