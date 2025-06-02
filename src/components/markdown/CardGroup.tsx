@@ -30,15 +30,15 @@ export function CardGroup({ cols = '2', children, className }: CardGroupProps) {
 
   return (
     <div className={cn(
-      "grid gap-4 my-6",
+      "grid gap-3 my-4",
       getGridCols(cols),
-      "auto-rows-fr", // Makes all cards in a row the same height
+      "auto-rows-fr",
       className
     )}>
       {React.Children.map(children, (child, index) => (
         <div 
           key={index}
-          className="h-full" // Ensure each card container takes full height
+          className="h-full"
         >
           {child}
         </div>
