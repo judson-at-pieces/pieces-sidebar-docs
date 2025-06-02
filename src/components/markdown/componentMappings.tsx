@@ -113,7 +113,7 @@ export const createComponentMappings = () => ({
     if (stepNumber) {
       const validStepNumber = parseInt(stepNumber, 10);
       const finalStepNumber = isNaN(validStepNumber) ? 1 : validStepNumber;
-      const safeStepTitle = typeof stepTitle === 'string' ? stepTitle : typeof stepTitle === 'number' ? String(stepTitle) : '';
+      const safeStepTitle = stepTitle || '';
       return <Step number={finalStepNumber} title={safeStepTitle} {...props}>{children}</Step>;
     }
     
