@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ExpandableImage as ExpandableImageComponent } from './ExpandableImage';
@@ -57,7 +58,7 @@ export const createComponentMappings = () => ({
   },
   // Explicit ExpandableImage component handler
   ExpandableImage: ({ src, alt, caption, ...props }: ImageProps) => {
-    return <ExpandableImageComponent src={src} alt={alt} caption={(caption as string) || ''} {...props} />;
+    return <ExpandableImageComponent src={src} alt={caption as string} caption={(caption as string) || ''} {...props} />;
   },
 
   // Custom div handler for callouts, steps, cards, and card groups
@@ -88,13 +89,17 @@ export const createComponentMappings = () => ({
     const isPiecesLocalModels = props['data-pieces-local-models'] as string;
     const isGlossaryAll = props['data-glossary-all'] as string;
     
+    // Check for card-component attribute (new approach)
+    const isCardComponent = props['data-card-component'] as string;
+    
     // Fallback detection: if we have title + image but no explicit isCard, it's likely a card
-    const shouldRenderAsCard = !isCard && title && image;
+    const shouldRenderAsCard = !isCard && !isCardComponent && title && image;
     // Fallback detection: if we have cols but no explicit isCardGroup, it's likely a card group
     const shouldRenderAsCardGroup = !isCardGroup && cols && React.Children.count(children) > 0;
     
     console.log('Div component mapping - props:', { 
       isCard, 
+      isCardComponent,
       isCardGroup, 
       title, 
       image, 
@@ -126,7 +131,7 @@ export const createComponentMappings = () => ({
       return <CardGroup cols={cols} {...props}>{children}</CardGroup>;
     }
     
-    if (isCard === 'true' || shouldRenderAsCard) {
+    if (isCard === 'true' || isCardComponent === 'true' || shouldRenderAsCard) {
       console.log('Rendering Card with:', { title, image, href, external, hasChildren: !!children });
       const icon = props['data-icon'] as string | undefined;
       return <Card title={title} image={image} icon={icon} href={href} external={external} {...props}>{children}</Card>;

@@ -99,7 +99,7 @@ export function processCustomSyntax(content: string): string {
       return '</div>';
     });
 
-    // Transform Card components to HTML - handle both self-closing and with content
+    // Transform Card components - CRITICAL FIX: Use a special marker to preserve markdown processing
     // First handle self-closing cards
     processedContent = processedContent.replace(/<Card\s+([^>]*?)\/>/gi, (match, attributes) => {
       try {
@@ -115,14 +115,14 @@ export function processCustomSyntax(content: string): string {
         const external = sanitizeAttribute(externalMatch ? externalMatch[1] : '');
         const icon = sanitizeAttribute(iconMatch ? iconMatch[1] : '');
         
-        return `<div data-card="true" data-title="${title}" data-image="${image}" data-href="${href}" data-external="${external}" data-icon="${icon}"></div>`;
+        return `\n\n:::card-component{title="${title}" image="${image}" href="${href}" external="${external}" icon="${icon}"}\n:::\n\n`;
       } catch (error) {
         console.warn('Error parsing Card attributes:', error);
-        return '<div data-card="true"></div>';
+        return '\n\n:::card-component\n:::\n\n';
       }
     });
 
-    // Then handle Card components with content - CRITICAL FIX: Don't modify inner content
+    // Then handle Card components with content - PRESERVE MARKDOWN SYNTAX
     processedContent = processedContent.replace(/<Card\s+([^>]*?)>([\s\S]*?)<\/Card>/gi, (match, attributes, innerContent) => {
       try {
         console.log('Processing Card with content:', { attributes, innerContent: innerContent.substring(0, 100) });
@@ -139,16 +139,16 @@ export function processCustomSyntax(content: string): string {
         const external = sanitizeAttribute(externalMatch ? externalMatch[1] : '');
         const icon = sanitizeAttribute(iconMatch ? iconMatch[1] : '');
         
-        // PRESERVE the inner content exactly as is - don't trim or modify it
-        // This is crucial for proper markdown processing later
+        // PRESERVE the inner content exactly as is - this is crucial for markdown processing
         const preservedContent = innerContent || '';
         
         console.log('Card transformation result:', { title, image, href, external, icon, contentLength: preservedContent.length });
         
-        return `<div data-card="true" data-title="${title}" data-image="${image}" data-href="${href}" data-external="${external}" data-icon="${icon}">${preservedContent}</div>`;
+        // Use a special markdown extension syntax that ReactMarkdown can process
+        return `\n\n:::card-component{title="${title}" image="${image}" href="${href}" external="${external}" icon="${icon}"}\n${preservedContent}\n:::\n\n`;
       } catch (error) {
         console.warn('Error parsing Card attributes:', error);
-        return `<div data-card="true">${innerContent || ''}</div>`;
+        return `\n\n:::card-component\n${innerContent || ''}\n:::\n\n`;
       }
     });
 
