@@ -1,4 +1,3 @@
-
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -145,12 +144,8 @@ const Index = () => {
           <p className="text-xl text-muted-foreground mb-12 max-w-4xl mx-auto leading-relaxed">
             Pieces captures and resurfaces your workflow context so you never lose track of what you were doing. These docs help you install, integrate, and master the tools that make that possible.
           </p>
-
-          <p className="text-lg text-muted-foreground mb-12 max-w-3xl mx-auto">
-            Choose your environment below and start building smarter.
-          </p>
           
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-24">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
             <Link to="/docs/getting-started">
               <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg">
                 <BookOpen className="mr-2 w-5 h-5" />
