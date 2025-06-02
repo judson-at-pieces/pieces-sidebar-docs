@@ -76,7 +76,6 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
             rehypeHighlight
           ]}
           skipHtml={false}
-          linkTarget="_blank"
           components={createComponentMappings() as CustomComponents}
         >
           {processedContent}
