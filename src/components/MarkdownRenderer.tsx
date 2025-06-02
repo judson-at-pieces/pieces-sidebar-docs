@@ -24,10 +24,10 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
       const cleanContent = content.replace(/^---[\s\S]*?---\s*/, '');
       const finalContent = cleanContent.replace(/^\*\*\*\s*/, '');
       
-      // Process custom syntax but preserve standard markdown inside cards
+      // Process custom syntax but preserve standard markdown
       let processed = processCustomSyntax(finalContent);
       
-      // Handle the new :::card-component syntax - preserve inner markdown
+      // Handle the new :::card-component syntax
       processed = processed.replace(
         /:::card-component\{([^}]*)\}\n([\s\S]*?):::/g,
         (match, attributes, innerContent) => {
@@ -44,13 +44,13 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
             const external = externalMatch ? externalMatch[1] : '';
             const icon = iconMatch ? iconMatch[1] : '';
             
-            // Preserve the markdown content exactly as is for Card component to process
+            // Preserve the markdown content exactly as is for processing
             const preservedContent = innerContent.trim();
             
-            return `<div data-card-component="true" data-title="${title}" data-image="${image}" data-href="${href}" data-external="${external}" data-icon="${icon}" data-preserve-markdown="true">\n\n${preservedContent}\n\n</div>`;
+            return `<div data-card-component="true" data-title="${title}" data-image="${image}" data-href="${href}" data-external="${external}" data-icon="${icon}">\n\n${preservedContent}\n\n</div>`;
           } catch (error) {
             console.warn('Error parsing card-component attributes:', error);
-            return `<div data-card-component="true" data-preserve-markdown="true">\n\n${innerContent}\n\n</div>`;
+            return `<div data-card-component="true">\n\n${innerContent}\n\n</div>`;
           }
         }
       );

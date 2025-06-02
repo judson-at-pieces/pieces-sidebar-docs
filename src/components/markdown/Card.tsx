@@ -1,3 +1,4 @@
+
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -18,130 +19,78 @@ export function Card({ title, image, icon, href, external, children, className }
   const isExternal = external === 'true' || href?.startsWith('http');
   const isClickable = !!href;
   
-  // Process children as markdown if it's a string, or extract markdown from React elements
+  // Process children as markdown if it's a string
   const processedChildren = React.useMemo(() => {
-    let markdownContent = '';
-    
     if (typeof children === 'string') {
-      markdownContent = children;
-    } else if (React.isValidElement(children) || Array.isArray(children)) {
-      // Extract markdown content from React elements while preserving markdown syntax
-      const extractMarkdownFromChildren = (node: any): string => {
-        if (typeof node === 'string') return node;
-        if (typeof node === 'number') return String(node);
-        if (Array.isArray(node)) return node.map(extractMarkdownFromChildren).join('');
-        if (React.isValidElement(node) && node.props && typeof node.props === 'object') {
-          // Check if this is a markdown link element
-          if (node.type === 'a' && 'href' in node.props && typeof node.props.href === 'string') {
-            const linkText = 'children' in node.props ? extractMarkdownFromChildren(node.props.children) : '';
-            return `[${linkText}](${node.props.href})`;
-          }
-          // Check if this is a strong/bold element
-          if (node.type === 'strong' && 'children' in node.props) {
-            const strongText = extractMarkdownFromChildren(node.props.children);
-            return `**${strongText}**`;
-          }
-          // Check if this is an em/italic element
-          if (node.type === 'em' && 'children' in node.props) {
-            const emText = extractMarkdownFromChildren(node.props.children);
-            return `*${emText}*`;
-          }
-          // Check if this is a code element
-          if (node.type === 'code' && 'children' in node.props) {
-            const codeText = extractMarkdownFromChildren(node.props.children);
-            return `\`${codeText}\``;
-          }
-          // Check if this is a paragraph element
-          if (node.type === 'p' && 'children' in node.props) {
-            const pText = extractMarkdownFromChildren(node.props.children);
-            return `${pText}\n\n`;
-          }
-          // For other elements, just extract the text content
-          if ('children' in node.props) {
-            return extractMarkdownFromChildren(node.props.children);
-          }
-        }
-        return '';
-      };
-      markdownContent = extractMarkdownFromChildren(children);
-    } else {
-      markdownContent = String(children || '');
-    }
-
-    // Only render markdown if we have content
-    if (!markdownContent.trim()) {
-      return null;
-    }
-
-    return (
-      <div className="leading-relaxed">
-        <ReactMarkdown
-          remarkPlugins={[remarkGfm]}
-          components={{
-            // Custom link component for proper styling within cards
-            a: ({ href, children, ...props }) => {
-              const isExternalLink = href?.startsWith('http');
-              const linkClasses = "text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-200 underline hover:no-underline font-medium";
-              
-              return (
-                <a 
-                  href={href} 
-                  className={linkClasses}
-                  {...(isExternalLink ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-                  onClick={(e) => e.stopPropagation()} // Prevent card click when clicking links
-                  {...props}
-                >
+      return (
+        <div className="leading-relaxed">
+          <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
+            components={{
+              // Custom link component for proper styling within cards
+              a: ({ href, children, ...props }) => {
+                const isExternalLink = href?.startsWith('http');
+                const linkClasses = "text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-200 underline hover:no-underline font-medium";
+                
+                return (
+                  <a 
+                    href={href} 
+                    className={linkClasses}
+                    {...(isExternalLink ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                    {...props}
+                  >
+                    {children}
+                  </a>
+                );
+              },
+              // Ensure paragraphs are properly spaced and styled
+              p: ({ children, ...props }) => (
+                <p className="mb-2 last:mb-0 text-inherit leading-relaxed" {...props}>
                   {children}
-                  {isExternalLink && <ExternalLink className="inline w-3 h-3 ml-1" />}
-                </a>
-              );
-            },
-            // Ensure paragraphs are properly spaced and styled
-            p: ({ children, ...props }) => (
-              <p className="mb-2 last:mb-0 text-inherit leading-relaxed" {...props}>
-                {children}
-              </p>
-            ),
-            // Handle strong/bold text with consistent color
-            strong: ({ children, ...props }) => (
-              <strong className="font-semibold text-inherit" {...props}>
-                {children}
-              </strong>
-            ),
-            // Handle emphasis/italic text with consistent color
-            em: ({ children, ...props }) => (
-              <em className="italic text-inherit" {...props}>
-                {children}
-              </em>
-            ),
-            // Handle inline code properly
-            code: ({ children, ...props }) => (
-              <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm font-mono text-inherit" {...props}>
-                {children}
-              </code>
-            ),
-            // Handle lists properly
-            ul: ({ children, ...props }) => (
-              <ul className="list-disc list-inside mb-2 space-y-1 text-inherit" {...props}>
-                {children}
-              </ul>
-            ),
-            ol: ({ children, ...props }) => (
-              <ol className="list-decimal list-inside mb-2 space-y-1 text-inherit" {...props}>
-                {children}
-              </ol>
-            ),
-            li: ({ children, ...props }) => (
-              <li className="text-inherit" {...props}>
-                {children}
-              </li>
-            )
-          }}
-        >
-          {markdownContent}
-        </ReactMarkdown>
-      </div>
-    );
+                </p>
+              ),
+              // Handle strong/bold text with consistent color
+              strong: ({ children, ...props }) => (
+                <strong className="font-semibold text-inherit" {...props}>
+                  {children}
+                </strong>
+              ),
+              // Handle emphasis/italic text with consistent color
+              em: ({ children, ...props }) => (
+                <em className="italic text-inherit" {...props}>
+                  {children}
+                </em>
+              ),
+              // Handle inline code properly
+              code: ({ children, ...props }) => (
+                <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm font-mono text-inherit" {...props}>
+                  {children}
+                </code>
+              ),
+              // Handle lists properly
+              ul: ({ children, ...props }) => (
+                <ul className="list-disc list-inside mb-2 space-y-1 text-inherit" {...props}>
+                  {children}
+                </ul>
+              ),
+              ol: ({ children, ...props }) => (
+                <ol className="list-decimal list-inside mb-2 space-y-1 text-inherit" {...props}>
+                  {children}
+                </ol>
+              ),
+              li: ({ children, ...props }) => (
+                <li className="text-inherit" {...props}>
+                  {children}
+                </li>
+              )
+            }}
+          >
+            {children}
+          </ReactMarkdown>
+        </div>
+      );
+    }
+    return children;
   }, [children]);
   
   const cardContent = (
