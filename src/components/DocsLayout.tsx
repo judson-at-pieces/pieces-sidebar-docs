@@ -8,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./ThemeToggle";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useNavigation } from "@/hooks/useNavigation";
+import Footer from "./Footer";
 import type { NavigationItem, NavigationSection } from "@/services/navigationService";
 
 function DocsSidebar({ className, onNavigate }: { className?: string; onNavigate?: () => void }) {
@@ -304,6 +305,7 @@ export default function DocsLayout() {
                 <Outlet />
               </div>
             </div>
+            <Footer />
           </main>
         </div>
       </div>
