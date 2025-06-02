@@ -53,3 +53,6 @@ When you’re within the terminal and use the `pieces run` command, you don’t 
 | `onboarding`                      | Walk through the initial setup process.                                                           |
 | `feedback`                        | Send feedback directly to the Pieces team.                                                        |
 | `contribute`                      | Contribute code or ideas to the CLI project.                                                      |
+
+## Your Heading Here
+
