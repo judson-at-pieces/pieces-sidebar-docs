@@ -88,11 +88,13 @@ export const createComponentMappings = () => ({
     const isPiecesLocalModels = props['data-pieces-local-models'] as string;
     const isGlossaryAll = props['data-glossary-all'] as string;
     
+    console.log('Div props:', props); // Debug log to see what's being passed
+    
     if (calloutType) {
       return <Callout type={calloutType as 'info' | 'warning' | 'tip' | 'error' | 'success' | 'alert'} title={title} {...props}>{children}</Callout>;
     }
     
-    if (isSteps) {
+    if (isSteps === 'true') {
       return <Steps {...props}>{children}</Steps>;
     }
     
@@ -102,11 +104,13 @@ export const createComponentMappings = () => ({
       return <Step number={finalStepNumber} title={stepTitle} {...props}>{children}</Step>;
     }
     
-    if (isCardGroup) {
+    if (isCardGroup === 'true') {
+      console.log('Rendering CardGroup with cols:', cols); // Debug log
       return <CardGroup cols={cols} {...props}>{children}</CardGroup>;
     }
     
-    if (isCard) {
+    if (isCard === 'true') {
+      console.log('Rendering Card with title:', title, 'image:', image); // Debug log
       const icon = props['data-icon'] as string | undefined;
       return <Card title={title} image={image} icon={icon} href={href} external={external} {...props}>{children}</Card>;
     }
