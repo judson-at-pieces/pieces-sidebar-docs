@@ -22,7 +22,7 @@ export function Card({ title, image, icon, href, external, children, className }
   const processedChildren = React.useMemo(() => {
     if (typeof children === 'string') {
       return (
-        <div className="prose prose-sm dark:prose-invert max-w-none prose-p:text-sm prose-p:mb-1 prose-p:leading-relaxed prose-p:last:mb-0 prose-headings:text-sm prose-headings:font-medium prose-headings:mb-1 prose-ul:my-1 prose-li:my-0 prose-li:text-sm prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline dark:prose-a:text-blue-400 prose-a:font-medium prose-strong:font-semibold prose-em:italic">
+        <div className="prose prose-sm dark:prose-invert max-w-none prose-p:text-sm prose-p:mb-1 prose-p:leading-relaxed prose-p:last:mb-0 prose-headings:text-sm prose-headings:font-medium prose-headings:mb-1 prose-ul:my-1 prose-li:my-0 prose-li:text-sm prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline dark:prose-a:text-blue-400 prose-a:font-medium prose-strong:font-semibold prose-em:italic prose-code:bg-transparent prose-code:text-inherit prose-code:p-0 prose-code:font-normal prose-code:before:content-none prose-code:after:content-none">
           <ReactMarkdown
             components={{
               // Custom link component for proper styling within cards
@@ -56,6 +56,12 @@ export function Card({ title, image, icon, href, external, children, className }
                 <em className="italic" {...props}>
                   {children}
                 </em>
+              ),
+              // Remove code styling to prevent links from appearing as code blocks
+              code: ({ children, ...props }) => (
+                <span {...props}>
+                  {children}
+                </span>
               )
             }}
           >
