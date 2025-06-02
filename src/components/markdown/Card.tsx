@@ -1,6 +1,7 @@
 
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import { ExternalLink, ArrowUpRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -24,14 +25,17 @@ export function Card({ title, image, icon, href, external, children, className }
       return (
         <div className="leading-relaxed">
           <ReactMarkdown
+            remarkPlugins={[remarkGfm]}
             components={{
               // Custom link component for proper styling within cards
               a: ({ href, children, ...props }) => {
                 const isExternalLink = href?.startsWith('http');
+                const linkClasses = "text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-200 underline hover:no-underline font-medium";
+                
                 return (
                   <a 
                     href={href} 
-                    className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-200 underline hover:no-underline"
+                    className={linkClasses}
                     {...(isExternalLink ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                     {...props}
                   >
@@ -41,7 +45,7 @@ export function Card({ title, image, icon, href, external, children, className }
               },
               // Ensure paragraphs are properly spaced and styled
               p: ({ children, ...props }) => (
-                <p className="mb-2 last:mb-0 text-inherit" {...props}>
+                <p className="mb-2 last:mb-0 text-inherit leading-relaxed" {...props}>
                   {children}
                 </p>
               ),
@@ -57,17 +61,27 @@ export function Card({ title, image, icon, href, external, children, className }
                   {children}
                 </em>
               ),
-              // Render inline code as normal text
+              // Handle inline code properly
               code: ({ children, ...props }) => (
-                <span className="text-inherit" {...props}>
+                <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm font-mono text-inherit" {...props}>
                   {children}
-                </span>
+                </code>
               ),
-              // Render pre as normal text
-              pre: ({ children, ...props }) => (
-                <span className="text-inherit" {...props}>
+              // Handle lists properly
+              ul: ({ children, ...props }) => (
+                <ul className="list-disc list-inside mb-2 space-y-1 text-inherit" {...props}>
                   {children}
-                </span>
+                </ul>
+              ),
+              ol: ({ children, ...props }) => (
+                <ol className="list-decimal list-inside mb-2 space-y-1 text-inherit" {...props}>
+                  {children}
+                </ol>
+              ),
+              li: ({ children, ...props }) => (
+                <li className="text-inherit" {...props}>
+                  {children}
+                </li>
               )
             }}
           >

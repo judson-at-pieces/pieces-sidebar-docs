@@ -109,7 +109,9 @@ export const createComponentMappings = () => ({
       hasChildren: !!children,
       shouldRenderAsCard,
       shouldRenderAsCardGroup,
-      allDataAttribs: Object.keys(props).filter(key => key.startsWith('data-'))
+      allDataAttribs: Object.keys(props).filter(key => key.startsWith('data-')),
+      childrenType: typeof children,
+      childrenContent: typeof children === 'string' ? children.substring(0, 100) : 'not string'
     });
     
     if (calloutType) {
@@ -132,9 +134,28 @@ export const createComponentMappings = () => ({
     }
     
     if (isCard === 'true' || isCardComponent === 'true' || shouldRenderAsCard) {
-      console.log('Rendering Card with:', { title, image, href, external, hasChildren: !!children });
+      console.log('Rendering Card with:', { title, image, href, external, hasChildren: !!children, childrenType: typeof children });
       const icon = props['data-icon'] as string | undefined;
-      return <Card title={title} image={image} icon={icon} href={href} external={external} {...props}>{children}</Card>;
+      
+      // Extract the text content from children if it's React elements
+      let cardContent = children;
+      if (React.isValidElement(children) || Array.isArray(children)) {
+        // Convert React children to string for markdown processing
+        const extractTextFromChildren = (node: any): string => {
+          if (typeof node === 'string') return node;
+          if (typeof node === 'number') return String(node);
+          if (Array.isArray(node)) return node.map(extractTextFromChildren).join('');
+          if (React.isValidElement(node)) {
+            if (node.props && node.props.children) {
+              return extractTextFromChildren(node.props.children);
+            }
+          }
+          return '';
+        };
+        cardContent = extractTextFromChildren(children);
+      }
+      
+      return <Card title={title} image={image} icon={icon} href={href} external={external} {...props}>{cardContent}</Card>;
     }
     
     if (isImage && imageSrc) {
