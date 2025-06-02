@@ -16,8 +16,8 @@ export interface CompiledContentModule {
   };
 }
 
-// Content registry populated by the build script
-const contentRegistry: Record<string, CompiledContentModule> = {};
+// Content registry that will be populated by the build script
+export const contentRegistry: Record<string, CompiledContentModule> = {};
 
 // Function to get compiled content from registry
 export function getCompiledContent(path: string): CompiledContentModule | null {
@@ -46,139 +46,105 @@ export function registerContent(path: string, module: CompiledContentModule): vo
   contentRegistry[path] = module;
 }
 
-// For development - populate with comprehensive content if registry is empty
-if (Object.keys(contentRegistry).length === 0) {
-  console.log('⚠️ No compiled content found. Populating with development fallbacks...');
-  
-  // Register CLI content
-  const cliModule = {
-    default: () => {
-      return React.createElement('div', { className: 'markdown-content' }, 
-        React.createElement('h1', null, 'Pieces CLI'),
-        React.createElement('p', null, 'The Pieces CLI offers users a straightforward way to manage and utilize saved code snippets through the Pieces Drive.'),
-        React.createElement('h2', null, 'Getting Started'),
-        React.createElement('p', null, 'Learn how to install and configure the Pieces CLI for your development workflow.')
-      );
-    },
-    frontmatter: {
-      title: 'Pieces CLI',
-      path: '/cli',
-      visibility: 'PUBLIC'
-    }
-  } as CompiledContentModule;
-  
-  registerContent('/cli', cliModule);
+// Legacy export for backward compatibility
+export const contentComponents = contentRegistry;
 
-  // Register Quick Guides main page
-  const quickGuidesModule = {
-    default: () => {
-      return React.createElement('div', { className: 'markdown-content' }, 
-        React.createElement('h1', null, 'Quick Guides'),
-        React.createElement('p', null, 'Fast-track your productivity with these essential guides for getting the most out of Pieces.'),
-        React.createElement('h2', null, 'Available Guides'),
-        React.createElement('ul', null,
-          React.createElement('li', null, 'Overview - Get a comprehensive overview of Pieces features'),
-          React.createElement('li', null, 'Long-Term Memory - Learn how to leverage contextual knowledge'),
-          React.createElement('li', null, 'Copilot Context - Maximize your AI assistant with context')
-        )
-      );
-    },
-    frontmatter: {
-      title: 'Quick Guides',
-      path: '/quick-guides',
-      visibility: 'PUBLIC'
-    }
-  } as CompiledContentModule;
-  
-  registerContent('/quick-guides', quickGuidesModule);
+export type ContentComponent = CompiledContentModule;
 
-  // Register the cloud-models content that exists
-  const cloudModelsModule = {
-    default: () => {
-      return React.createElement('div', { className: 'markdown-content' }, 
-        React.createElement('h1', null, 'Cloud Models'),
-        React.createElement('p', null, 'Learn about cloud-based language models available in Pieces.'),
-        React.createElement('h2', null, 'Supported Models'),
-        React.createElement('p', null, 'Pieces supports various cloud-based language models for enhanced AI capabilities.')
-      );
-    },
-    frontmatter: {
-      title: 'Cloud Models',
-      path: '/large-language-models/cloud-models',
-      visibility: 'PUBLIC'
-    }
-  } as CompiledContentModule;
-  
-  registerContent('/large-language-models/cloud-models', cloudModelsModule);
-
-  // Add a sample macOS installation guide content for testing
-  const macosInstallationModule = {
-    default: () => {
-      return React.createElement('div', { className: 'markdown-content' }, 
-        React.createElement('h1', null, 'macOS Installation Guide'),
-        React.createElement('p', null, 'Learn how to install Pieces on macOS.'),
-        React.createElement('h2', null, 'System Requirements'),
-        React.createElement('p', null, 'Make sure your macOS system meets the minimum requirements for Pieces.')
-      );
-    },
-    frontmatter: {
-      title: 'macOS Installation Guide',
-      path: '/meet-pieces/macos-installation-guide',
-      visibility: 'PUBLIC'
-    }
-  } as CompiledContentModule;
-  
-  registerContent('/meet-pieces/macos-installation-guide', macosInstallationModule);
-
-  // Add Desktop content
-  const desktopModule = {
-    default: () => {
-      return React.createElement('div', { className: 'markdown-content' }, 
-        React.createElement('h1', null, 'Pieces Desktop'),
-        React.createElement('p', null, 'The flagship Pieces application for managing your code snippets and AI interactions.'),
-        React.createElement('h2', null, 'Key Features'),
-        React.createElement('ul', null,
-          React.createElement('li', null, 'Code snippet management'),
-          React.createElement('li', null, 'AI-powered copilot'),
-          React.createElement('li', null, 'Workflow activity tracking')
-        )
-      );
-    },
-    frontmatter: {
-      title: 'Desktop Application',
-      path: '/desktop',
-      visibility: 'PUBLIC'
-    }
-  } as CompiledContentModule;
-  
-  registerContent('/desktop', desktopModule);
-
-  // Add Extensions content
-  const extensionsModule = {
-    default: () => {
-      return React.createElement('div', { className: 'markdown-content' }, 
-        React.createElement('h1', null, 'Extensions & Plugins'),
-        React.createElement('p', null, 'Integrate Pieces with your favorite development tools and editors.'),
-        React.createElement('h2', null, 'Supported Platforms'),
-        React.createElement('ul', null,
-          React.createElement('li', null, 'Visual Studio Code'),
-          React.createElement('li', null, 'JetBrains IDEs'),
-          React.createElement('li', null, 'Sublime Text'),
-          React.createElement('li', null, 'Neovim')
-        )
-      );
-    },
-    frontmatter: {
-      title: 'Extensions & Plugins',
-      path: '/extensions-plugins',
-      visibility: 'PUBLIC'
-    }
-  } as CompiledContentModule;
-  
-  registerContent('/extensions-plugins', extensionsModule);
-
-  console.log('✅ Development fallback content registered. Total paths:', Object.keys(contentRegistry).length);
+export function getContentComponent(path: string): ContentComponent | undefined {
+  return getCompiledContent(path) || undefined;
 }
 
-// Export the registry at the end to ensure it's available
-export { contentRegistry };
+// Dynamic import function to load compiled content at runtime
+async function loadCompiledContent() {
+  try {
+    console.log('🔄 Attempting to load compiled content dynamically...');
+    
+    // Try to import the compiled CLI content
+    try {
+      const cliModule = await import('./cli');
+      if (cliModule.default && cliModule.frontmatter) {
+        registerContent('/cli', {
+          default: cliModule.default,
+          frontmatter: cliModule.frontmatter
+        });
+        console.log('✅ Loaded CLI content');
+      }
+    } catch (e) {
+      console.log('⚠️ CLI content not available:', e);
+    }
+
+    // Try to import desktop/configuration/aesthetics-layout content
+    try {
+      const aestheticsModule = await import('./desktop/configuration/aesthetics-layout');
+      if (aestheticsModule.default && aestheticsModule.frontmatter) {
+        registerContent('/desktop/configuration/aesthetics-layout', {
+          default: aestheticsModule.default,
+          frontmatter: aestheticsModule.frontmatter
+        });
+        console.log('✅ Loaded aesthetics-layout content');
+      }
+    } catch (e) {
+      console.log('⚠️ Aesthetics-layout content not available:', e);
+    }
+
+    // Try to load other common paths
+    const commonPaths = [
+      'quick-guides',
+      'desktop',
+      'extensions-plugins',
+      'meet-pieces/macos-installation-guide',
+      'large-language-models/cloud-models'
+    ];
+
+    for (const path of commonPaths) {
+      try {
+        const module = await import(`./${path}`);
+        if (module.default && module.frontmatter) {
+          registerContent(`/${path}`, {
+            default: module.default,
+            frontmatter: module.frontmatter
+          });
+          console.log(`✅ Loaded content for: /${path}`);
+        }
+      } catch (e) {
+        console.log(`⚠️ Content not available for /${path}:`, e);
+      }
+    }
+
+    console.log('🎯 Content loading complete. Registry has:', Object.keys(contentRegistry).length, 'entries');
+    
+  } catch (error) {
+    console.error('❌ Error loading compiled content:', error);
+  }
+}
+
+// Load content immediately when this module is imported
+loadCompiledContent();
+
+// For development - if registry is still empty after dynamic loading, populate with fallbacks
+setTimeout(() => {
+  if (Object.keys(contentRegistry).length === 0) {
+    console.log('⚠️ No compiled content loaded dynamically. Using development fallbacks...');
+    
+    // Register CLI content fallback
+    const cliModule = {
+      default: () => {
+        return React.createElement('div', { className: 'markdown-content' }, 
+          React.createElement('h1', null, 'Pieces CLI'),
+          React.createElement('p', null, 'The Pieces CLI offers users a straightforward way to manage and utilize saved code snippets through the Pieces Drive.'),
+          React.createElement('h2', null, 'Getting Started'),
+          React.createElement('p', null, 'Learn how to install and configure the Pieces CLI for your development workflow.')
+        );
+      },
+      frontmatter: {
+        title: 'Pieces CLI',
+        path: '/cli',
+        visibility: 'PUBLIC'
+      }
+    } as CompiledContentModule;
+    
+    registerContent('/cli', cliModule);
+    console.log('✅ Development fallback content registered');
+  }
+}, 100);
