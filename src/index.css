@@ -237,3 +237,28 @@
 .markdown-content li {
   color: hsl(var(--foreground)) !important;
 }
+
+/* Card-specific overrides to ensure consistent styling */
+.markdown-content [data-card="true"] {
+  color: #374151 !important; /* gray-700 */
+}
+
+.dark .markdown-content [data-card="true"] {
+  color: #d1d5db !important; /* gray-300 */
+}
+
+.markdown-content [data-card="true"] p {
+  color: inherit !important;
+}
+
+.markdown-content [data-card="true"] strong {
+  color: inherit !important;
+}
+
+.markdown-content [data-card="true"] em {
+  color: inherit !important;
+}
+
+.markdown-content [data-card="true"] * {
+  font-weight: inherit !important;
+}

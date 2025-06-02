@@ -1,3 +1,4 @@
+
 /* ===================================
    Markdown Unified Styles
    Documentation Typography & Layout
@@ -48,6 +49,28 @@
   line-height: var(--line-height-relaxed);
   max-width: var(--container-prose);
   margin: 0 auto;
+}
+
+/* Card-specific styles to override global markdown styles */
+.markdown-content [data-card="true"] {
+  color: inherit !important;
+}
+
+.markdown-content [data-card="true"] * {
+  color: inherit !important;
+}
+
+.markdown-content [data-card="true"] a {
+  color: #2563eb !important; /* blue-600 */
+}
+
+.dark .markdown-content [data-card="true"] a {
+  color: #60a5fa !important; /* blue-400 */
+}
+
+.markdown-content [data-card="true"] strong {
+  font-weight: 600 !important;
+  color: inherit !important;
 }
 
 /* Headings */
