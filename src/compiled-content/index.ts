@@ -55,96 +55,34 @@ export function getContentComponent(path: string): ContentComponent | undefined 
   return getCompiledContent(path) || undefined;
 }
 
-// Dynamic import function to load compiled content at runtime
-async function loadCompiledContent() {
-  try {
-    console.log('🔄 Attempting to load compiled content dynamically...');
-    
-    // Try to import the compiled CLI content
-    try {
-      const cliModule = await import('./cli');
-      if (cliModule.default && cliModule.frontmatter) {
-        registerContent('/cli', {
-          default: cliModule.default,
-          frontmatter: cliModule.frontmatter
-        });
-        console.log('✅ Loaded CLI content');
-      }
-    } catch (e) {
-      console.log('⚠️ CLI content not available:', e);
-    }
-
-    // Try to import desktop/configuration/aesthetics-layout content
-    try {
-      const aestheticsModule = await import('./desktop/configuration/aesthetics-layout');
-      if (aestheticsModule.default && aestheticsModule.frontmatter) {
-        registerContent('/desktop/configuration/aesthetics-layout', {
-          default: aestheticsModule.default,
-          frontmatter: aestheticsModule.frontmatter
-        });
-        console.log('✅ Loaded aesthetics-layout content');
-      }
-    } catch (e) {
-      console.log('⚠️ Aesthetics-layout content not available:', e);
-    }
-
-    // Try to load other common paths
-    const commonPaths = [
-      'quick-guides',
-      'desktop',
-      'extensions-plugins',
-      'meet-pieces/macos-installation-guide',
-      'large-language-models/cloud-models'
-    ];
-
-    for (const path of commonPaths) {
-      try {
-        const module = await import(`./${path}`);
-        if (module.default && module.frontmatter) {
-          registerContent(`/${path}`, {
-            default: module.default,
-            frontmatter: module.frontmatter
-          });
-          console.log(`✅ Loaded content for: /${path}`);
-        }
-      } catch (e) {
-        console.log(`⚠️ Content not available for /${path}:`, e);
-      }
-    }
-
-    console.log('🎯 Content loading complete. Registry has:', Object.keys(contentRegistry).length, 'entries');
-    
-  } catch (error) {
-    console.error('❌ Error loading compiled content:', error);
+// Simple fallback content for development
+const createFallbackContent = (title: string, path: string): CompiledContentModule => ({
+  default: () => {
+    return React.createElement('div', { className: 'markdown-content' }, 
+      React.createElement('h1', null, title),
+      React.createElement('p', null, `The ${title} offers users a straightforward way to manage and utilize saved code snippets through the Pieces Drive.`),
+      React.createElement('h2', null, 'Getting Started'),
+      React.createElement('p', null, `Learn how to install and configure the ${title} for your development workflow.`)
+    );
+  },
+  frontmatter: {
+    title,
+    path,
+    visibility: 'PUBLIC'
   }
+});
+
+// Register some basic fallback content for development
+if (Object.keys(contentRegistry).length === 0) {
+  console.log('📝 Registering fallback content for development...');
+  
+  registerContent('/cli', createFallbackContent('Pieces CLI', '/cli'));
+  registerContent('/desktop/configuration/aesthetics-layout', createFallbackContent('Aesthetics & Layouts', '/desktop/configuration/aesthetics-layout'));
+  registerContent('/quick-guides', createFallbackContent('Quick Guides', '/quick-guides'));
+  registerContent('/desktop', createFallbackContent('Desktop', '/desktop'));
+  registerContent('/extensions-plugins', createFallbackContent('Extensions & Plugins', '/extensions-plugins'));
+  registerContent('/meet-pieces/macos-installation-guide', createFallbackContent('macOS Installation Guide', '/meet-pieces/macos-installation-guide'));
+  registerContent('/large-language-models/cloud-models', createFallbackContent('Cloud Models', '/large-language-models/cloud-models'));
+  
+  console.log('✅ Fallback content registered');
 }
-
-// Load content immediately when this module is imported
-loadCompiledContent();
-
-// For development - if registry is still empty after dynamic loading, populate with fallbacks
-setTimeout(() => {
-  if (Object.keys(contentRegistry).length === 0) {
-    console.log('⚠️ No compiled content loaded dynamically. Using development fallbacks...');
-    
-    // Register CLI content fallback
-    const cliModule = {
-      default: () => {
-        return React.createElement('div', { className: 'markdown-content' }, 
-          React.createElement('h1', null, 'Pieces CLI'),
-          React.createElement('p', null, 'The Pieces CLI offers users a straightforward way to manage and utilize saved code snippets through the Pieces Drive.'),
-          React.createElement('h2', null, 'Getting Started'),
-          React.createElement('p', null, 'Learn how to install and configure the Pieces CLI for your development workflow.')
-        );
-      },
-      frontmatter: {
-        title: 'Pieces CLI',
-        path: '/cli',
-        visibility: 'PUBLIC'
-      }
-    } as CompiledContentModule;
-    
-    registerContent('/cli', cliModule);
-    console.log('✅ Development fallback content registered');
-  }
-}, 100);
