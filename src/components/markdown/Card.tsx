@@ -22,7 +22,7 @@ export function Card({ title, image, icon, href, external, children, className }
   const processedChildren = React.useMemo(() => {
     if (typeof children === 'string') {
       return (
-        <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
+        <div className="text-sm leading-relaxed">
           <ReactMarkdown
             components={{
               // Custom link component for proper styling within cards
@@ -31,7 +31,7 @@ export function Card({ title, image, icon, href, external, children, className }
                 return (
                   <a 
                     href={href} 
-                    className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-colors duration-200 hover:underline"
+                    className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-normal transition-colors duration-200 hover:underline"
                     {...(isExternalLink ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                     {...props}
                   >
@@ -41,31 +41,31 @@ export function Card({ title, image, icon, href, external, children, className }
               },
               // Ensure paragraphs are properly spaced and styled
               p: ({ children, ...props }) => (
-                <p className="mb-2 last:mb-0 text-gray-700 dark:text-gray-300" {...props}>
+                <p className="mb-2 last:mb-0 text-gray-700 dark:text-gray-300 font-normal" {...props}>
                   {children}
                 </p>
               ),
               // Handle strong/bold text with consistent color
               strong: ({ children, ...props }) => (
-                <strong className="font-semibold text-gray-900 dark:text-gray-100" {...props}>
+                <strong className="font-semibold text-gray-700 dark:text-gray-300" {...props}>
                   {children}
                 </strong>
               ),
               // Handle emphasis/italic text with consistent color
               em: ({ children, ...props }) => (
-                <em className="italic text-gray-700 dark:text-gray-300" {...props}>
+                <em className="italic text-gray-700 dark:text-gray-300 font-normal" {...props}>
                   {children}
                 </em>
               ),
-              // Render code as normal text with consistent color
+              // Render inline code as normal text
               code: ({ children, ...props }) => (
-                <span className="text-gray-700 dark:text-gray-300" {...props}>
+                <span className="text-gray-700 dark:text-gray-300 font-normal" {...props}>
                   {children}
                 </span>
               ),
-              // Render pre as normal text with consistent color
+              // Render pre as normal text
               pre: ({ children, ...props }) => (
-                <span className="text-gray-700 dark:text-gray-300" {...props}>
+                <span className="text-gray-700 dark:text-gray-300 font-normal" {...props}>
                   {children}
                 </span>
               )
@@ -93,7 +93,7 @@ export function Card({ title, image, icon, href, external, children, className }
       <div className="flex flex-col gap-3 h-full">
         {/* Header with icon and title side by side */}
         <div className="flex items-center gap-3 flex-shrink-0">
-          {/* Icon - no background */}
+          {/* Icon - no background, no styling */}
           {(image || icon) && (
             <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center">
               {image ? (
