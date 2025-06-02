@@ -22,7 +22,7 @@ export function Card({ title, image, icon, href, external, children, className }
   const processedChildren = React.useMemo(() => {
     if (typeof children === 'string') {
       return (
-        <div className="text-sm text-gray-600 dark:text-gray-300 leading-relaxed">
+        <div className="text-sm text-gray-700 dark:text-gray-300 leading-relaxed">
           <ReactMarkdown
             components={{
               // Custom link component for proper styling within cards
@@ -39,33 +39,33 @@ export function Card({ title, image, icon, href, external, children, className }
                   </a>
                 );
               },
-              // Ensure paragraphs are properly spaced
+              // Ensure paragraphs are properly spaced and styled
               p: ({ children, ...props }) => (
-                <p className="mb-1 last:mb-0" {...props}>
+                <p className="mb-2 last:mb-0 text-gray-700 dark:text-gray-300" {...props}>
                   {children}
                 </p>
               ),
-              // Handle strong/bold text
+              // Handle strong/bold text with consistent color
               strong: ({ children, ...props }) => (
                 <strong className="font-semibold text-gray-900 dark:text-gray-100" {...props}>
                   {children}
                 </strong>
               ),
-              // Handle emphasis/italic text
+              // Handle emphasis/italic text with consistent color
               em: ({ children, ...props }) => (
-                <em className="italic" {...props}>
+                <em className="italic text-gray-700 dark:text-gray-300" {...props}>
                   {children}
                 </em>
               ),
-              // Remove all code styling - render as normal text
+              // Render code as normal text with consistent color
               code: ({ children, ...props }) => (
-                <span {...props}>
+                <span className="text-gray-700 dark:text-gray-300" {...props}>
                   {children}
                 </span>
               ),
-              // Remove pre styling - render as normal text
+              // Render pre as normal text with consistent color
               pre: ({ children, ...props }) => (
-                <span {...props}>
+                <span className="text-gray-700 dark:text-gray-300" {...props}>
                   {children}
                 </span>
               )
@@ -91,49 +91,49 @@ export function Card({ title, image, icon, href, external, children, className }
     )}>
       
       <div className="flex flex-col gap-3 h-full">
-        {/* Header with icon and title */}
-        <div className="flex items-start gap-3 flex-shrink-0">
-          {/* Icon - treating image as icon */}
+        {/* Header with icon and title side by side */}
+        <div className="flex items-center gap-3 flex-shrink-0">
+          {/* Icon - no background */}
           {(image || icon) && (
-            <div className="flex-shrink-0 w-8 h-8 rounded-md bg-gray-50 dark:bg-gray-800 flex items-center justify-center overflow-hidden">
+            <div className="flex-shrink-0 w-8 h-8 flex items-center justify-center">
               {image ? (
                 <img 
                   src={image} 
                   alt={title || ''} 
-                  className="w-6 h-6 object-contain"
+                  className="w-8 h-8 object-contain"
                 />
               ) : icon?.startsWith('/') || icon?.startsWith('http') ? (
                 <img 
                   src={icon} 
                   alt={title || ''} 
-                  className="w-6 h-6 object-contain"
+                  className="w-8 h-8 object-contain"
                 />
               ) : (
-                <span className="text-lg">{icon}</span>
+                <span className="text-2xl">{icon}</span>
               )}
             </div>
           )}
           
-          {/* Title and arrow */}
-          <div className="flex-grow min-w-0">
-            {title && (
-              <h3 className="text-base font-semibold text-gray-900 dark:text-gray-100 mb-0 flex items-start justify-between group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 leading-tight">
-                <span className="line-clamp-2 pr-2">{title}</span>
-                {isClickable && (
-                  <ArrowUpRight className={cn(
-                    "w-4 h-4 flex-shrink-0 text-gray-400 transition-all duration-200",
-                    "opacity-0 group-hover:opacity-100 transform translate-x-1 translate-y-1 group-hover:translate-x-0 group-hover:translate-y-0",
-                    "group-hover:text-blue-500"
-                  )} />
-                )}
+          {/* Title and arrow in same row as icon */}
+          {title && (
+            <div className="flex-grow min-w-0 flex items-center justify-between">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 group-hover:text-blue-600 dark:group-hover:text-blue-400 transition-colors duration-200 leading-tight">
+                {title}
               </h3>
-            )}
-          </div>
+              {isClickable && (
+                <ArrowUpRight className={cn(
+                  "w-4 h-4 flex-shrink-0 text-gray-400 transition-all duration-200",
+                  "opacity-0 group-hover:opacity-100 transform translate-x-1 translate-y-1 group-hover:translate-x-0 group-hover:translate-y-0",
+                  "group-hover:text-blue-500"
+                )} />
+              )}
+            </div>
+          )}
         </div>
         
         {/* Content */}
         {children && (
-          <div className="flex-grow leading-relaxed text-sm">
+          <div className="flex-grow leading-relaxed">
             {processedChildren}
           </div>
         )}
