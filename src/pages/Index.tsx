@@ -161,7 +161,7 @@ const Index = () => {
       <section className="py-16 px-4 sm:px-6 lg:px-8 bg-muted/20">
         <div className="max-w-7xl mx-auto">
           {integrations.map((category, categoryIndex) => (
-            <div key={categoryIndex} className="mb-12">
+            <div key={categoryIndex} className="mb-8">
               <h2 className="text-2xl font-bold mb-6 text-foreground text-left">{category.category}</h2>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {category.items.map((integration, index) => (
