@@ -122,7 +122,7 @@ export function processCustomSyntax(content: string): string {
       }
     });
 
-    // Then handle Card components with content - this is the key fix
+    // Then handle Card components with content - CRITICAL FIX: Don't modify inner content
     processedContent = processedContent.replace(/<Card\s+([^>]*?)>([\s\S]*?)<\/Card>/gi, (match, attributes, innerContent) => {
       try {
         console.log('Processing Card with content:', { attributes, innerContent: innerContent.substring(0, 100) });
@@ -139,15 +139,16 @@ export function processCustomSyntax(content: string): string {
         const external = sanitizeAttribute(externalMatch ? externalMatch[1] : '');
         const icon = sanitizeAttribute(iconMatch ? iconMatch[1] : '');
         
-        // Preserve the inner content without modification so markdown links can be processed later
-        const safeContent = innerContent ? innerContent.trim() : '';
+        // PRESERVE the inner content exactly as is - don't trim or modify it
+        // This is crucial for proper markdown processing later
+        const preservedContent = innerContent || '';
         
-        console.log('Card transformation result:', { title, image, href, external, icon, contentLength: safeContent.length });
+        console.log('Card transformation result:', { title, image, href, external, icon, contentLength: preservedContent.length });
         
-        return `<div data-card="true" data-title="${title}" data-image="${image}" data-href="${href}" data-external="${external}" data-icon="${icon}">\n\n${safeContent}\n\n</div>`;
+        return `<div data-card="true" data-title="${title}" data-image="${image}" data-href="${href}" data-external="${external}" data-icon="${icon}">${preservedContent}</div>`;
       } catch (error) {
         console.warn('Error parsing Card attributes:', error);
-        return `<div data-card="true">\n\n${innerContent ? innerContent.trim() : ''}\n\n</div>`;
+        return `<div data-card="true">${innerContent || ''}</div>`;
       }
     });
 
