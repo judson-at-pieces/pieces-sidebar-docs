@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { FileText, Hash, List, Quote, Table, Code, Image, AlertCircle, CheckCircle, Info, XCircle, LayoutGrid, ArrowRight, Bold, Italic, Link } from "lucide-react";
@@ -244,7 +243,7 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
           onValueChange={setSearch}
           className="border-0 focus:ring-0"
         />
-        <CommandList className="max-h-64" onPointerDownOutside={(e) => e.preventDefault()}>
+        <CommandList className="max-h-64">
           <CommandEmpty>No snippets found.</CommandEmpty>
           <CommandGroup heading="Markdown & Components">
             {filteredFragments.map((fragment) => {
