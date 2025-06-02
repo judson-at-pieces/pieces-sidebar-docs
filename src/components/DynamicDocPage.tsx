@@ -125,8 +125,8 @@ export function DynamicDocPage() {
           </div>
         )}
 
-        {/* Content */}
-        <div className="markdown-content">
+        {/* Content with explicit prose styling */}
+        <div className="prose prose-gray dark:prose-invert max-w-none prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-li:text-foreground">
           <MarkdownRenderer content={content.content} />
         </div>
       </div>

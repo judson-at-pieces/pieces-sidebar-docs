@@ -124,9 +124,10 @@
   }
 }
 
-/* Ensure prose styles work properly */
+/* Ensure prose styles work properly and override defaults */
 .prose {
-  color: inherit;
+  color: inherit !important;
+  max-width: none !important;
 }
 
 .prose h1,
@@ -135,20 +136,104 @@
 .prose h4,
 .prose h5,
 .prose h6 {
-  color: inherit;
+  color: inherit !important;
+  font-weight: 600 !important;
+}
+
+.prose h1 {
+  font-size: 2.25rem !important;
+  line-height: 2.5rem !important;
+  margin-bottom: 1.5rem !important;
+}
+
+.prose h2 {
+  font-size: 1.875rem !important;
+  line-height: 2.25rem !important;
+  margin-top: 2rem !important;
+  margin-bottom: 1rem !important;
+  padding-bottom: 0.5rem !important;
+  border-bottom: 1px solid hsl(var(--border)) !important;
+}
+
+.prose h3 {
+  font-size: 1.5rem !important;
+  line-height: 2rem !important;
+  margin-top: 1.5rem !important;
+  margin-bottom: 0.75rem !important;
 }
 
 .prose strong {
-  color: inherit;
-  font-weight: 600;
+  color: inherit !important;
+  font-weight: 600 !important;
 }
 
 .prose p {
-  margin-top: 1.25em;
-  margin-bottom: 1.25em;
+  margin-top: 1.25em !important;
+  margin-bottom: 1.25em !important;
+  color: inherit !important;
+  line-height: 1.75 !important;
 }
 
 .prose li {
-  margin-top: 0.5em;
-  margin-bottom: 0.5em;
+  margin-top: 0.5em !important;
+  margin-bottom: 0.5em !important;
+  color: inherit !important;
+}
+
+.prose ul {
+  margin-top: 1.25em !important;
+  margin-bottom: 1.25em !important;
+  padding-left: 1.625em !important;
+}
+
+.prose ol {
+  margin-top: 1.25em !important;
+  margin-bottom: 1.25em !important;
+  padding-left: 1.625em !important;
+}
+
+.prose a {
+  color: hsl(var(--primary)) !important;
+  text-decoration: underline !important;
+  font-weight: 500 !important;
+}
+
+.prose a:hover {
+  color: hsl(var(--primary)) !important;
+  opacity: 0.8 !important;
+}
+
+/* Ensure markdown content wrapper has proper styling */
+.markdown-content {
+  color: hsl(var(--foreground)) !important;
+}
+
+.markdown-content h1,
+.markdown-content h2, 
+.markdown-content h3,
+.markdown-content h4,
+.markdown-content h5,
+.markdown-content h6 {
+  color: hsl(var(--foreground)) !important;
+  font-weight: 600 !important;
+}
+
+.markdown-content p {
+  color: hsl(var(--foreground)) !important;
+  line-height: 1.75 !important;
+}
+
+.markdown-content strong,
+.markdown-content b {
+  color: hsl(var(--foreground)) !important;
+  font-weight: 600 !important;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  color: hsl(var(--foreground)) !important;
+}
+
+.markdown-content li {
+  color: hsl(var(--foreground)) !important;
 }
