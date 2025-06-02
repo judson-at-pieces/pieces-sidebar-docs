@@ -1,4 +1,5 @@
 
+
 import { useState, useEffect, useRef } from "react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { FileText, Hash, List, Quote, Table, Code, Image, AlertCircle, CheckCircle, Info, XCircle, LayoutGrid, ArrowRight, Bold, Italic, Link } from "lucide-react";
@@ -190,7 +191,7 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Only handle Escape key - let cmdk handle arrow keys
+      // Only handle Escape key - let cmdk handle arrow keys and navigation
       if (event.key === 'Escape') {
         event.preventDefault();
         onClose();
@@ -225,7 +226,7 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
       style={{
         top: Math.max(0, position.top),
         left: Math.max(0, position.left),
-        maxHeight: '280px',
+        maxHeight: '320px',
       }}
     >
       <Command className="h-auto" loop>
@@ -235,7 +236,7 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
           onValueChange={setSearch}
           className="border-0 focus:ring-0"
         />
-        <CommandList className="max-h-64">
+        <CommandList className="max-h-64 overflow-y-auto">
           <CommandEmpty>No snippets found.</CommandEmpty>
           <CommandGroup heading="Markdown & Components">
             {filteredFragments.map((fragment) => {
