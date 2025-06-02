@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ExpandableImage as ExpandableImageComponent } from './ExpandableImage';
@@ -63,6 +62,7 @@ export const createComponentMappings = () => ({
 
   // Custom div handler for callouts, steps, cards, and card groups
   div: ({ children, ...props }: DivProps) => {
+    // Access the actual data attributes correctly
     const calloutType = props['data-callout'] as string;
     const title = props['data-title'] as string;
     const isSteps = props['data-steps'] as string;
@@ -88,6 +88,11 @@ export const createComponentMappings = () => ({
     const isPiecesLocalModels = props['data-pieces-local-models'] as string;
     const isGlossaryAll = props['data-glossary-all'] as string;
     
+    // Fallback detection: if we have title + image but no explicit isCard, it's likely a card
+    const shouldRenderAsCard = !isCard && title && image;
+    // Fallback detection: if we have cols but no explicit isCardGroup, it's likely a card group
+    const shouldRenderAsCardGroup = !isCardGroup && cols && React.Children.count(children) > 0;
+    
     console.log('Div component mapping - props:', { 
       isCard, 
       isCardGroup, 
@@ -96,7 +101,10 @@ export const createComponentMappings = () => ({
       href, 
       external, 
       cols,
-      hasChildren: !!children 
+      hasChildren: !!children,
+      shouldRenderAsCard,
+      shouldRenderAsCardGroup,
+      allDataAttribs: Object.keys(props).filter(key => key.startsWith('data-'))
     });
     
     if (calloutType) {
@@ -113,12 +121,12 @@ export const createComponentMappings = () => ({
       return <Step number={finalStepNumber} title={stepTitle} {...props}>{children}</Step>;
     }
     
-    if (isCardGroup === 'true') {
+    if (isCardGroup === 'true' || shouldRenderAsCardGroup) {
       console.log('Rendering CardGroup with cols:', cols, 'children count:', React.Children.count(children));
       return <CardGroup cols={cols} {...props}>{children}</CardGroup>;
     }
     
-    if (isCard === 'true') {
+    if (isCard === 'true' || shouldRenderAsCard) {
       console.log('Rendering Card with:', { title, image, href, external, hasChildren: !!children });
       const icon = props['data-icon'] as string | undefined;
       return <Card title={title} image={image} icon={icon} href={href} external={external} {...props}>{children}</Card>;
@@ -141,11 +149,6 @@ export const createComponentMappings = () => ({
     }
     
     return <div {...props}>{children}</div>;
-  },
-
-  img: ({ src, alt, ...props }: ImageProps) => {
-    const caption = (props['data-caption'] as string) || '';
-    return <ExpandableImageComponent src={src || ''} alt={alt || ''} caption={caption} {...props} />;
   },
 
   // Custom link component to use React Router for internal links
