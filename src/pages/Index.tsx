@@ -128,10 +128,17 @@ const Index = () => {
       {/* Hero Section */}
       <section className="py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto text-center">
-          {/* Clean announcement pill with subtle border */}
+          {/* Clean announcement pill with RGB gradient border */}
           <div className="flex items-center justify-center mb-8">
-            <div className="flex items-center space-x-2 bg-card border border-muted text-foreground px-4 py-2 rounded-full text-sm font-medium backdrop-blur-sm">
-              <span>🔒 On-Device, Secure Context Storage</span>
+            <div className="relative">
+              {/* Gradient border background */}
+              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 p-[1px]">
+                <div className="h-full w-full rounded-full bg-card"></div>
+              </div>
+              {/* Content */}
+              <div className="relative flex items-center space-x-2 bg-card text-foreground px-4 py-2 rounded-full text-sm font-medium">
+                <span>🔒 On-Device, Secure Context Storage</span>
+              </div>
             </div>
           </div>
           
