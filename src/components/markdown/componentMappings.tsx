@@ -71,7 +71,7 @@ export const createComponentMappings = () => ({
   // Enhanced image handling for markdown images
   img: ({ src, alt, title, ...props }: ImageProps) => {
     // Use ExpandableImage for all markdown images
-    const caption = (props['data-caption'] as string) || title || '';
+    const caption = (props['data-caption'] as string) || (typeof title === 'string' ? title : '') || '';
     return <ExpandableImageComponent src={src || ''} alt={alt || ''} caption={caption} {...props} />;
   },
   
