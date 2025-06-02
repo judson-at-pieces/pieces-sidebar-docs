@@ -131,22 +131,26 @@ const Index = () => {
           {/* Updated announcement banner */}
           <div className="flex items-center justify-center mb-8">
             <div className="flex items-center space-x-2 bg-muted/50 border border-border text-blue-400 px-4 py-2 rounded-full text-sm font-medium">
-              <span>🚀 Get Up And Running Faster Than Ever</span>
+              <span>🔒 On-Device, Secure Context Storage</span>
             </div>
           </div>
           
           <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
-            Welcome to{" "}
+            Get Up and Running with{" "}
             <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
               Pieces for Developers
             </span>
           </h1>
           
-          <p className="text-xl text-muted-foreground mb-12 max-w-3xl mx-auto leading-relaxed">
-            Get started with the Pieces for Developers platform and share how to best use and optimize your workflow by selecting your favorite IDE, editor, or productivity tool.
+          <p className="text-xl text-muted-foreground mb-12 max-w-4xl mx-auto leading-relaxed">
+            Pieces captures and resurfaces your workflow context so you never lose track of what you were doing. These docs help you install, integrate, and master the tools that make that possible.
+          </p>
+
+          <p className="text-lg text-muted-foreground mb-12 max-w-3xl mx-auto">
+            Choose your environment below and start building smarter.
           </p>
           
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-16">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
             <Link to="/docs/getting-started">
               <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg">
                 <BookOpen className="mr-2 w-5 h-5" />
@@ -154,10 +158,6 @@ const Index = () => {
                 <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
             </Link>
-            <Button variant="outline" size="lg" className="border-border text-muted-foreground hover:text-foreground hover:border-muted-foreground px-8 py-4 text-lg">
-              <Github className="mr-2 w-5 h-5" />
-              View on GitHub
-            </Button>
           </div>
         </div>
       </section>
