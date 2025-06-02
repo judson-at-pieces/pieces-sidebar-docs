@@ -85,22 +85,28 @@ export function EnhancedEditor({
           const lineHeight = parseInt(getComputedStyle(textarea).lineHeight) || 24;
           const linesBeforeCursor = beforeCursor.split('\n').length - 1;
           
-          // Calculate position relative to textarea content
+          // Calculate position relative to textarea content with current scroll position
+          const currentScrollTop = textarea.scrollTop;
           const linePosition = linesBeforeCursor * lineHeight;
+          const visibleLinePosition = linePosition - currentScrollTop;
+          
           const commandPaletteHeight = 320;
           const commandPaletteWidth = 320;
           
-          // Position relative to the textarea (absolute positioning)
-          let top = linePosition + lineHeight + 8; // 8px gap below the line
+          // Position relative to the visible area of the textarea
+          let top = visibleLinePosition + lineHeight + 8; // 8px gap below the line
           let left = 20; // 20px from left edge of textarea
           
           // Get textarea dimensions to constrain the palette
           const textareaHeight = textarea.clientHeight;
           const textareaWidth = textarea.clientWidth;
           
-          // Ensure command palette stays within textarea bounds
+          // Ensure command palette stays within visible textarea bounds
           if (top + commandPaletteHeight > textareaHeight) {
-            top = linePosition - commandPaletteHeight - 8;
+            // Position above the cursor line instead
+            top = visibleLinePosition - commandPaletteHeight - 8;
+            
+            // If still goes above visible area, position at top of visible area
             if (top < 0) {
               top = 8;
             }
@@ -125,10 +131,16 @@ export function EnhancedEditor({
           const contentWithoutSlash = newContent.substring(0, cursorPosition - 1) + newContent.substring(cursorPosition);
           onContentChange(contentWithoutSlash);
           
-          // Restore cursor position after removing slash - no setTimeout needed
-          if (textarea) {
-            textarea.setSelectionRange(cursorPosition - 1, cursorPosition - 1);
-          }
+          // Restore cursor position after removing slash
+          // Use requestAnimationFrame to ensure DOM is updated
+          requestAnimationFrame(() => {
+            if (textarea) {
+              const targetPosition = cursorPosition - 1;
+              textarea.setSelectionRange(targetPosition, targetPosition);
+              // Don't change scroll position when opening command palette
+              // The palette position is already calculated relative to current scroll
+            }
+          });
           return;
         }
       }
@@ -152,29 +164,38 @@ export function EnhancedEditor({
     // Clear the slash position after using it
     setSlashPosition(null);
     
-    // Set cursor position after the inserted content and ensure visibility
-    setTimeout(() => {
+    // Set cursor position after the inserted content and manage scrolling intelligently
+    requestAnimationFrame(() => {
       if (textarea) {
         const newPosition = insertPosition + fragmentContent.length;
         textarea.setSelectionRange(newPosition, newPosition);
         textarea.focus();
         
-        // Only scroll if the cursor is not visible in the current viewport
+        // Smart scroll management - only scroll when necessary
         const lineHeight = parseInt(getComputedStyle(textarea).lineHeight) || 24;
         const linesBeforeCursor = newContent.substring(0, newPosition).split('\n').length - 1;
         const cursorTop = linesBeforeCursor * lineHeight;
         
-        // Check if cursor is visible in current viewport
-        const scrollTop = textarea.scrollTop;
+        const currentScrollTop = textarea.scrollTop;
         const visibleHeight = textarea.clientHeight;
+        const scrollBuffer = lineHeight * 2; // 2 lines of buffer
         
-        // Only scroll if cursor is outside visible area
-        if (cursorTop < scrollTop || cursorTop > scrollTop + visibleHeight - lineHeight) {
-          // Center the cursor in the viewport
-          textarea.scrollTop = cursorTop - (visibleHeight / 2);
+        // Check if cursor is outside the comfortable viewing area
+        const isAboveViewport = cursorTop < currentScrollTop + scrollBuffer;
+        const isBelowViewport = cursorTop > currentScrollTop + visibleHeight - scrollBuffer - lineHeight;
+        
+        if (isAboveViewport || isBelowViewport) {
+          // Smooth scroll to position cursor in the middle third of the viewport
+          const targetScrollTop = Math.max(0, cursorTop - (visibleHeight / 3));
+          
+          // Use smooth scrolling for better user experience
+          textarea.scrollTo({
+            top: targetScrollTop,
+            behavior: 'smooth'
+          });
         }
       }
-    }, 0);
+    });
   };
 
   if (!selectedFile) {
