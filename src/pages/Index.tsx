@@ -128,11 +128,12 @@ const Index = () => {
       {/* Hero Section */}
       <section className="py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto text-center">
-          {/* Clean announcement pill with RGB gradient border */}
+          {/* Clean announcement pill with rainbow glow */}
           <div className="flex items-center justify-center mb-8">
             <div className="relative">
-              {/* Gradient border background */}
-              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 p-[1px]">
+              {/* Rainbow glow background - animated */}
+              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 via-purple-500 via-pink-500 via-red-500 via-orange-500 via-yellow-500 via-green-500 to-blue-500 p-[1px] animate-[spin_3s_linear_infinite] opacity-80 blur-sm"></div>
+              <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 via-purple-500 via-pink-500 via-red-500 via-orange-500 via-yellow-500 via-green-500 to-blue-500 p-[1px] animate-[spin_3s_linear_infinite]">
                 <div className="h-full w-full rounded-full bg-card"></div>
               </div>
               {/* Content */}
