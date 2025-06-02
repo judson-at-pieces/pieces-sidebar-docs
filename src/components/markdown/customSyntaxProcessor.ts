@@ -82,7 +82,7 @@ export function processCustomSyntax(content: string): string {
       }
     );
 
-    // Transform CardGroup components to HTML
+    // Transform CardGroup components to HTML with proper closing tag handling
     processedContent = processedContent.replace(/<CardGroup\s+cols=\{(\d+)\}>/gi, (match, cols) => {
       const numCols = parseInt(cols, 10);
       if (isNaN(numCols) || numCols < 1 || numCols > 6) {
@@ -99,8 +99,30 @@ export function processCustomSyntax(content: string): string {
       return '</div>';
     });
 
-    // Transform Card components to HTML - handle multiple attributes safely and preserve inner content
-    processedContent = processedContent.replace(/<Card\s+([^>]*)>([\s\S]*?)<\/Card>/gi, (match, attributes, innerContent) => {
+    // Transform Card components to HTML - handle both self-closing and with content
+    processedContent = processedContent.replace(/<Card\s+([^>]*?)\/>/gi, (match, attributes) => {
+      try {
+        const titleMatch = attributes.match(/title="([^"]*)"/);
+        const imageMatch = attributes.match(/image="([^"]*)"/);
+        const hrefMatch = attributes.match(/href="([^"]*)"/);
+        const externalMatch = attributes.match(/external=["']([^"']*)["']/);
+        const iconMatch = attributes.match(/icon="([^"]*)"/);
+        
+        const title = sanitizeAttribute(titleMatch ? titleMatch[1] : '');
+        const image = validateUrl(imageMatch ? imageMatch[1] : '');
+        const href = validateUrl(hrefMatch ? hrefMatch[1] : '');
+        const external = sanitizeAttribute(externalMatch ? externalMatch[1] : '');
+        const icon = sanitizeAttribute(iconMatch ? iconMatch[1] : '');
+        
+        return `<div data-card="true" data-title="${title}" data-image="${image}" data-href="${href}" data-external="${external}" data-icon="${icon}"></div>`;
+      } catch (error) {
+        console.warn('Error parsing Card attributes:', error);
+        return '<div data-card="true"></div>';
+      }
+    });
+
+    // Transform Card components with content
+    processedContent = processedContent.replace(/<Card\s+([^>]*?)>([\s\S]*?)<\/Card>/gi, (match, attributes, innerContent) => {
       try {
         const titleMatch = attributes.match(/title="([^"]*)"/);
         const imageMatch = attributes.match(/image="([^"]*)"/);
