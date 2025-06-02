@@ -1,4 +1,3 @@
-
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -154,10 +153,6 @@ const Index = () => {
                 <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
             </Link>
-            <Button variant="outline" size="lg" className="border-border text-muted-foreground hover:text-foreground hover:border-muted-foreground px-8 py-4 text-lg">
-              <Github className="mr-2 w-5 h-5" />
-              View on GitHub
-            </Button>
           </div>
         </div>
       </section>
