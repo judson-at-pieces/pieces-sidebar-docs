@@ -114,7 +114,7 @@ const Index = () => {
                 <div className="relative inline-flex p-[1px] rounded-full bg-gradient-to-r from-yellow-400 via-green-400 to-purple-500 px-[10px] py-[4px] my-[5px] mx-[5px]"></div>
               </div>
               {/* Content */}
-              <div className="relative inline-flex p-[1px] rounded-full bg-gradient-to-r from-yellow-400 via-green-400 to-purple-500 px-[10px] py-[4px] my-[5px] mx-[5px]">
+              <div className="relative flex items-center space-x-2 bg-card text-foreground py-2 text-sm font-medium px-[16px] rounded-full">
                 <span>🔒 On-Device, Secure Context Storage</span>
               </div>
             </div>
