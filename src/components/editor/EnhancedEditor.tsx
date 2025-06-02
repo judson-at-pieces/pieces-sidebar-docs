@@ -33,8 +33,8 @@ export function EnhancedEditor({
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // Handle Escape key
-      if (e.key === 'Escape') {
+      // Handle Escape key - but not if command palette is open (let it handle its own escape)
+      if (e.key === 'Escape' && !isCommandPaletteOpen) {
         setIsCommandPaletteOpen(false);
       }
       
@@ -49,24 +49,23 @@ export function EnhancedEditor({
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [hasChanges, onSave]);
+  }, [hasChanges, onSave, isCommandPaletteOpen]);
 
-  // Close command palette on window resize or scroll to prevent positioning issues
+  // Close command palette on window resize to prevent positioning issues
+  // Don't close on scroll as it interferes with command palette scrolling
   useEffect(() => {
-    const handleWindowChange = () => {
+    const handleWindowResize = () => {
       if (isCommandPaletteOpen) {
         setIsCommandPaletteOpen(false);
       }
     };
 
     if (isCommandPaletteOpen) {
-      window.addEventListener('scroll', handleWindowChange, true);
-      window.addEventListener('resize', handleWindowChange);
+      window.addEventListener('resize', handleWindowResize);
     }
 
     return () => {
-      window.removeEventListener('scroll', handleWindowChange, true);
-      window.removeEventListener('resize', handleWindowChange);
+      window.removeEventListener('resize', handleWindowResize);
     };
   }, [isCommandPaletteOpen]);
 
