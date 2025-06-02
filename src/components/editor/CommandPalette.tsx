@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { FileText, Hash, List, Quote, Table, Code, Image, AlertCircle, CheckCircle, Info, XCircle, LayoutGrid, ArrowRight, Bold, Italic, Link } from "lucide-react";
@@ -162,13 +163,11 @@ const MARKDOWN_FRAGMENTS = [
 export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandPaletteProps) {
   const [search, setSearch] = useState("");
   const commandRef = useRef<HTMLDivElement>(null);
-  const [selectedIndex, setSelectedIndex] = useState(0);
 
-  // Clear search and reset selection when closing
+  // Clear search when closing
   useEffect(() => {
     if (!isOpen) {
       setSearch("");
-      setSelectedIndex(0);
     }
   }, [isOpen]);
 
@@ -184,22 +183,14 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
-      // Don't close if clicking on scrollbar or command palette itself
       const target = event.target as HTMLElement;
       if (commandRef.current && !commandRef.current.contains(target)) {
-        // Check if the click was on a scrollbar
-        const isScrollbar = target === document.documentElement || 
-                           target === document.body ||
-                           (target.scrollHeight > target.clientHeight && 
-                            event.clientX >= target.offsetWidth + target.offsetLeft);
-        
-        if (!isScrollbar) {
-          onClose();
-        }
+        onClose();
       }
     };
 
     const handleKeyDown = (event: KeyboardEvent) => {
+      // Only handle Escape key - let cmdk handle arrow keys
       if (event.key === 'Escape') {
         event.preventDefault();
         onClose();
@@ -236,40 +227,15 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
         left: Math.max(0, position.left),
         maxHeight: '280px',
       }}
-      onMouseDown={(e) => e.stopPropagation()}
-      onWheel={(e) => e.stopPropagation()}
-      onClick={(e) => e.stopPropagation()}
     >
-      <Command className="h-auto" loop onKeyDown={(e) => {
-        // Prevent the command palette from closing on arrow key navigation
-        if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
-          e.stopPropagation();
-        }
-      }}>
+      <Command className="h-auto" loop>
         <CommandInput
           placeholder="Search markdown snippets..."
           value={search}
           onValueChange={setSearch}
           className="border-0 focus:ring-0"
-          onKeyDown={(e) => {
-            // Stop propagation for all key events in the input
-            e.stopPropagation();
-          }}
-          onFocus={(e) => {
-            // Ensure the input stays focused
-            e.stopPropagation();
-          }}
         />
-<<<<<<< Updated upstream
         <CommandList className="max-h-64">
-=======
-        <CommandList 
-          className="max-h-64" 
-          onPointerDownOutside={(e) => e.preventDefault()}
-          onWheel={(e) => e.stopPropagation()}
-          onScroll={(e) => e.stopPropagation()}
-        >
->>>>>>> Stashed changes
           <CommandEmpty>No snippets found.</CommandEmpty>
           <CommandGroup heading="Markdown & Components">
             {filteredFragments.map((fragment) => {
@@ -282,9 +248,6 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
                     onClose();
                   }}
                   className="flex items-center gap-3 p-3 cursor-pointer hover:bg-accent rounded-md"
-                  onMouseEnter={(e) => e.stopPropagation()}
-                  onPointerMove={(e) => e.stopPropagation()}
-                  onPointerDown={(e) => e.stopPropagation()}
                 >
                   <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
                   <div className="flex-1 min-w-0">
