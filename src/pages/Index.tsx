@@ -1,4 +1,3 @@
-
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -128,13 +127,10 @@ const Index = () => {
       {/* Hero Section */}
       <section className="py-16 px-4 sm:px-6 lg:px-8">
         <div className="max-w-6xl mx-auto text-center">
-          {/* Updated announcement banner with RGB gradient */}
+          {/* Updated announcement banner with thin border instead of RGB glow */}
           <div className="flex items-center justify-center mb-8">
-            <div className="relative">
-              <div className="absolute -inset-0.5 bg-gradient-to-r from-red-500 via-green-500 to-blue-500 rounded-full blur opacity-75"></div>
-              <div className="relative flex items-center space-x-2 bg-background border border-border text-foreground px-4 py-2 rounded-full text-sm font-medium">
-                <span>🔒 On-Device, Secure Context Storage</span>
-              </div>
+            <div className="flex items-center space-x-2 bg-background border-2 border-muted-foreground text-foreground px-4 py-2 rounded-full text-sm font-medium">
+              <span>🔒 On-Device, Secure Context Storage</span>
             </div>
           </div>
           
