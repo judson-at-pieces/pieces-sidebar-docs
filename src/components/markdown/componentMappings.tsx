@@ -59,7 +59,7 @@ export function createComponentMappings() {
       
       // Handle card groups
       if (props['data-cardgroup'] === 'true') {
-        const cols = parseInt(props['data-cols'] || '2', 10);
+        const cols = parseInt(String(props['data-cols'] || '2'), 10);
         return <CardGroup cols={cols}>{children}</CardGroup>;
       }
       
