@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ExpandableImage as ExpandableImageComponent } from './ExpandableImage';
@@ -56,11 +55,24 @@ export const createComponentMappings = () => ({
   'glossary-all': () => {
     return <GlossaryAll />;
   },
+  
+  // Explicit Image component handler
+  Image: ({ src, alt, caption, align, fullwidth, title, ...props }: any) => {
+    return <Image src={src} alt={alt} caption={caption} align={align} fullwidth={fullwidth} title={title} {...props} />;
+  },
+  
   // Explicit ExpandableImage component handler
   ExpandableImage: ({ src, alt, caption, ...props }: ImageProps) => {
     return <ExpandableImageComponent src={src} alt={alt} caption={(caption as string) || ''} {...props} />;
   },
-
+  
+  // Enhanced image handling for markdown images
+  img: ({ src, alt, title, ...props }: ImageProps) => {
+    // Use ExpandableImage for all markdown images
+    const caption = (props['data-caption'] as string) || title || '';
+    return <ExpandableImageComponent src={src || ''} alt={alt || ''} caption={caption} {...props} />;
+  },
+  
   // Custom div handler for callouts, steps, cards, and card groups
   div: ({ children, ...props }: DivProps) => {
     const calloutType = props['data-callout'] as string;
@@ -129,12 +141,7 @@ export const createComponentMappings = () => ({
     
     return <div {...props}>{children}</div>;
   },
-
-  img: ({ src, alt, ...props }: ImageProps) => {
-    const caption = (props['data-caption'] as string) || '';
-    return <ExpandableImageComponent src={src || ''} alt={alt || ''} caption={caption} {...props} />;
-  },
-
+  
   // Custom link component to use React Router for internal links
   a: ({ href, children, ...props }: LinkProps) => {
     const linkClasses = "text-primary hover:text-primary/80 underline underline-offset-2 decoration-primary/50 hover:decoration-primary transition-colors font-medium";
@@ -159,7 +166,7 @@ export const createComponentMappings = () => ({
       </a>
     );
   },
-
+  
   // Enhanced table styling using custom components
   table: ({ children, ...props }: CustomTableComponentProps) => (
     <CustomTable {...props}>{children}</CustomTable>
@@ -179,7 +186,7 @@ export const createComponentMappings = () => ({
   td: ({ children, ...props }: CustomTableComponentProps) => (
     <CustomTableCell {...props}>{children}</CustomTableCell>
   ),
-
+  
   h1: ({ children, ...props }: HeadingProps) => (
     <h1 className="scroll-m-20 text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight leading-tight mt-0 mb-6 first:mt-0" id={generateHeadingId(children)} {...props}>
       {children}

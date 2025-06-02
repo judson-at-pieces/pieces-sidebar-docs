@@ -51,6 +51,7 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
               attributes: {
                 '*': ['className', 'style', 'id', 'data-*'],
                 div: ['dataType', 'dataTitle', 'dataImage', 'dataHref', 'dataExternal', 'dataCols', 'dataIcon'],
+                img: ['src', 'alt', 'title', 'data-*'],
               }
             }],
             rehypeHighlight
