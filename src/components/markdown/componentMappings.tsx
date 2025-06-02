@@ -82,7 +82,7 @@ export function createComponentMappings() {
       
       // Handle individual step
       if (props['data-step']) {
-        const stepNumber = parseInt(props['data-step'], 10);
+        const stepNumber = parseInt(String(props['data-step']), 10);
         const stepTitle = props['data-step-title'] || '';
         
         return (
