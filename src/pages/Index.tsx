@@ -150,7 +150,7 @@ const Index = () => {
             Choose your environment below and start building smarter.
           </p>
           
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-24">
             <Link to="/docs/getting-started">
               <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg">
                 <BookOpen className="mr-2 w-5 h-5" />
