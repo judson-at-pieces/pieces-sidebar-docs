@@ -45,8 +45,6 @@ export function processCustomSyntax(content: string): string {
   }
 
   try {
-    // DO NOT process standard markdown links - let ReactMarkdown handle them
-    // Only process our custom syntax
     let processedContent = content;
 
     // Transform callout syntax: :::info[Title] or :::warning{title="Warning"}
