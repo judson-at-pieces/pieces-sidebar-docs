@@ -1,4 +1,3 @@
-
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -33,27 +32,27 @@ export function Card({ title, image, icon, href, external, children, className }
         if (Array.isArray(node)) return node.map(extractMarkdownFromChildren).join('');
         if (React.isValidElement(node)) {
           // Check if this is a markdown link element
-          if (node.type === 'a' && node.props.href) {
+          if (node.type === 'a' && node.props && 'href' in node.props) {
             const linkText = extractMarkdownFromChildren(node.props.children);
             return `[${linkText}](${node.props.href})`;
           }
           // Check if this is a strong/bold element
-          if (node.type === 'strong') {
+          if (node.type === 'strong' && node.props && 'children' in node.props) {
             const strongText = extractMarkdownFromChildren(node.props.children);
             return `**${strongText}**`;
           }
           // Check if this is an em/italic element
-          if (node.type === 'em') {
+          if (node.type === 'em' && node.props && 'children' in node.props) {
             const emText = extractMarkdownFromChildren(node.props.children);
             return `*${emText}*`;
           }
           // Check if this is a code element
-          if (node.type === 'code') {
+          if (node.type === 'code' && node.props && 'children' in node.props) {
             const codeText = extractMarkdownFromChildren(node.props.children);
             return `\`${codeText}\``;
           }
           // Check if this is a paragraph element
-          if (node.type === 'p') {
+          if (node.type === 'p' && node.props && 'children' in node.props) {
             const pText = extractMarkdownFromChildren(node.props.children);
             return `${pText}\n\n`;
           }
