@@ -33,7 +33,7 @@ export const createComponentMappings = () => ({
   step: ({ number, title, children, ...props }: any) => {
     const stepNumber = typeof number === 'string' ? parseInt(number, 10) : typeof number === 'number' ? number : 1;
     const validNumber = isNaN(stepNumber) ? 1 : stepNumber;
-    const stepTitle = typeof title === 'string' ? title : String(title || '');
+    const stepTitle = typeof title === 'string' ? title : typeof title === 'number' ? String(title) : '';
     return <Step number={validNumber} title={stepTitle} {...props}>{children}</Step>;
   },
   
@@ -113,7 +113,7 @@ export const createComponentMappings = () => ({
     if (stepNumber) {
       const validStepNumber = parseInt(stepNumber, 10);
       const finalStepNumber = isNaN(validStepNumber) ? 1 : validStepNumber;
-      const safeStepTitle = typeof stepTitle === 'string' ? stepTitle : String(stepTitle || '');
+      const safeStepTitle = typeof stepTitle === 'string' ? stepTitle : typeof stepTitle === 'number' ? String(stepTitle) : '';
       return <Step number={finalStepNumber} title={safeStepTitle} {...props}>{children}</Step>;
     }
     
