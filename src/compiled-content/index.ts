@@ -41,6 +41,23 @@ export function registerContent(path: string, module: CompiledContentModule): vo
 if (Object.keys(contentRegistry).length === 0) {
   console.log('No compiled content found. The MDX compiler may need to be run.');
   
+  // Register CLI content
+  const cliModule = {
+    default: () => {
+      return React.createElement('div', { className: 'markdown-content' }, 
+        React.createElement('h1', null, 'Pieces CLI'),
+        React.createElement('p', null, 'The Pieces CLI offers users a straightforward way to manage and utilize saved code snippets through the Pieces Drive.')
+      );
+    },
+    frontmatter: {
+      title: 'Pieces CLI',
+      path: '/cli',
+      visibility: 'PUBLIC'
+    }
+  } as CompiledContentModule;
+  
+  registerContent('/cli', cliModule);
+
   // Register the cloud-models content that exists
   const cloudModelsModule = {
     default: () => {

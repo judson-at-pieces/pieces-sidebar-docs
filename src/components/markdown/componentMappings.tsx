@@ -63,7 +63,8 @@ export const createComponentMappings = () => ({
   
   // Explicit ExpandableImage component handler
   ExpandableImage: ({ src, alt, caption, ...props }: ImageProps) => {
-    return <ExpandableImageComponent src={src} alt={alt} caption={(caption as string) || ''} {...props} />;
+    const safeCaption = typeof caption === 'string' ? caption : '';
+    return <ExpandableImageComponent src={src} alt={alt} caption={safeCaption} {...props} />;
   },
   
   // Enhanced image handling for markdown images
