@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ExpandableImage as ExpandableImageComponent } from './ExpandableImage';
@@ -146,7 +145,8 @@ export const createComponentMappings = () => ({
           if (typeof node === 'number') return String(node);
           if (Array.isArray(node)) return node.map(extractTextFromChildren).join('');
           if (React.isValidElement(node)) {
-            if (node.props && node.props.children) {
+            // Add proper type check before accessing children
+            if (node.props && typeof node.props === 'object' && 'children' in node.props) {
               return extractTextFromChildren(node.props.children);
             }
           }
