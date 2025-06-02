@@ -131,7 +131,7 @@ const Index = () => {
             Pieces captures and resurfaces your workflow context so you never lose track of what you were doing. These docs help you install, integrate, and master the tools that make that possible.
           </p>
           
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12 py-0 px-0 mx-0 my-0">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12 py-0 px-0 mx-0 my-[56px]">
             <Link to="/docs/getting-started">
               <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg">
                 <BookOpen className="mr-2 w-5 h-5" />
