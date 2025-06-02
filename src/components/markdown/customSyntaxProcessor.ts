@@ -45,33 +45,6 @@ export function processCustomSyntax(content: string): string {
   }
 
   try {
-    // Transform Image components to HTML first (before other processing)
-    content = content.replace(
-      /<Image\s+([^>]*)\s*\/?>/gi,
-      (match, attributes) => {
-        const srcMatch = attributes.match(/src="([^"]*)"/);
-        const altMatch = attributes.match(/alt="([^"]*)"/);
-        const captionMatch = attributes.match(/caption="([^"]*)"/);
-        const alignMatch = attributes.match(/align="([^"]*)"/);
-        const fullwidthMatch = attributes.match(/fullwidth="([^"]*)"/);
-        const titleMatch = attributes.match(/title="([^"]*)"/);
-        
-        const src = validateUrl(srcMatch ? srcMatch[1] : '');
-        if (!src) {
-          console.warn('Invalid or unsafe image URL:', srcMatch ? srcMatch[1] : 'no src');
-          return '';
-        }
-        
-        const alt = sanitizeAttribute(altMatch ? altMatch[1] : '');
-        const caption = sanitizeAttribute(captionMatch ? captionMatch[1] : '');
-        const align = sanitizeAttribute(alignMatch ? alignMatch[1] : 'left');
-        const fullwidth = sanitizeAttribute(fullwidthMatch ? fullwidthMatch[1] : 'false');
-        const title = sanitizeAttribute(titleMatch ? titleMatch[1] : '');
-        
-        return `<div data-image="true" data-src="${src}" data-alt="${alt}" data-caption="${caption}" data-align="${align}" data-fullwidth="${fullwidth}" data-title="${title}"></div>`;
-      }
-    );
-
     // Transform callout syntax: :::info[Title] or :::warning{title="Warning"}
     content = content.replace(
       /:::(\w+)(?:\[([^\]]*)\]|\{title="([^"]*)"\})?\n([\s\S]*?):::/g,
