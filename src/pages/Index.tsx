@@ -111,7 +111,7 @@ const Index = () => {
             <div className="relative">
               {/* Gradient border background */}
               <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 p-[1px]">
-                <div className="h-full w-full rounded-full bg-card"></div>
+                <div className="relative inline-flex p-[1px] rounded-full bg-gradient-to-r from-yellow-400 via-green-400 to-purple-500 px-[10px] py-[4px] my-[5px] mx-[5px]"></div>
               </div>
               {/* Content */}
               <div className="relative inline-flex p-[1px] rounded-full bg-gradient-to-r from-yellow-400 via-green-400 to-purple-500 px-[10px] py-[4px] my-[5px] mx-[5px]">
