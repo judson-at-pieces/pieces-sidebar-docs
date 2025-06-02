@@ -31,7 +31,7 @@ export function Card({ title, image, icon, href, external, children, className }
                 return (
                   <a 
                     href={href} 
-                    className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-200 hover:underline"
+                    className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 transition-colors duration-200 underline hover:no-underline"
                     {...(isExternalLink ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                     {...props}
                   >
@@ -41,31 +41,31 @@ export function Card({ title, image, icon, href, external, children, className }
               },
               // Ensure paragraphs are properly spaced and styled
               p: ({ children, ...props }) => (
-                <p className="mb-2 last:mb-0" {...props}>
+                <p className="mb-2 last:mb-0 text-inherit" {...props}>
                   {children}
                 </p>
               ),
               // Handle strong/bold text with consistent color
               strong: ({ children, ...props }) => (
-                <strong className="font-semibold" {...props}>
+                <strong className="font-semibold text-inherit" {...props}>
                   {children}
                 </strong>
               ),
               // Handle emphasis/italic text with consistent color
               em: ({ children, ...props }) => (
-                <em className="italic" {...props}>
+                <em className="italic text-inherit" {...props}>
                   {children}
                 </em>
               ),
               // Render inline code as normal text
               code: ({ children, ...props }) => (
-                <span {...props}>
+                <span className="text-inherit" {...props}>
                   {children}
                 </span>
               ),
               // Render pre as normal text
               pre: ({ children, ...props }) => (
-                <span {...props}>
+                <span className="text-inherit" {...props}>
                   {children}
                 </span>
               )
