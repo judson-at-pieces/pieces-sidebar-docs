@@ -17,18 +17,22 @@ interface MarkdownRendererProps {
 }
 
 export function MarkdownRenderer({ content }: MarkdownRendererProps) {
-  // Use proper frontmatter handling
+  // Use proper frontmatter handling and preserve markdown links
   const processedContent = React.useMemo(() => {
     try {
       // Remove frontmatter properly
       const cleanContent = content.replace(/^---[\s\S]*?---\s*/, '');
       const finalContent = cleanContent.replace(/^\*\*\*\s*/, '');
+      
+      // Process custom syntax but preserve standard markdown
       return processCustomSyntax(finalContent);
     } catch (error) {
       console.error('Error processing markdown content:', error);
       return content; // Fallback to original content
     }
   }, [content]);
+
+  console.log('Processing markdown content:', processedContent.substring(0, 200));
 
   return (
     <div className="markdown-content prose prose-gray dark:prose-invert max-w-none">
@@ -48,9 +52,21 @@ export function MarkdownRenderer({ content }: MarkdownRendererProps) {
           rehypePlugins={[
             [rehypeRaw, { allowDangerousHtml: false }],
             [rehypeSanitize, {
+              tagNames: [
+                'p', 'br', 'strong', 'em', 'u', 'del', 'code', 'pre',
+                'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
+                'ul', 'ol', 'li',
+                'blockquote',
+                'a', 'img',
+                'table', 'thead', 'tbody', 'tr', 'th', 'td',
+                'div', 'span',
+                'hr'
+              ],
               attributes: {
                 '*': ['className', 'style', 'id', 'data-*'],
-                div: ['dataType', 'dataTitle', 'dataImage', 'dataHref', 'dataExternal', 'dataCols', 'dataIcon'],
+                'a': ['href', 'target', 'rel'],
+                'img': ['src', 'alt', 'width', 'height'],
+                'div': ['dataType', 'dataTitle', 'dataImage', 'dataHref', 'dataExternal', 'dataCols', 'dataIcon', 'data-*'],
               }
             }],
             rehypeHighlight

@@ -45,8 +45,11 @@ export function processCustomSyntax(content: string): string {
   }
 
   try {
+    // Process content but preserve standard markdown links
+    let processedContent = content;
+
     // Transform callout syntax: :::info[Title] or :::warning{title="Warning"}
-    content = content.replace(
+    processedContent = processedContent.replace(
       /:::(\w+)(?:\[([^\]]*)\]|\{title="([^"]*)"\})?\n([\s\S]*?):::/g,
       (match, type, title1, title2, innerContent) => {
         const safeType = sanitizeAttribute(type);
@@ -64,7 +67,7 @@ export function processCustomSyntax(content: string): string {
     );
 
     // Transform simple callout syntax: :::info
-    content = content.replace(
+    processedContent = processedContent.replace(
       /:::(\w+)\n([\s\S]*?):::/g,
       (match, type, innerContent) => {
         const safeType = sanitizeAttribute(type);
@@ -81,7 +84,7 @@ export function processCustomSyntax(content: string): string {
     );
 
     // Transform CardGroup components to HTML
-    content = content.replace(/<CardGroup\s+cols=\{(\d+)\}>/gi, (match, cols) => {
+    processedContent = processedContent.replace(/<CardGroup\s+cols=\{(\d+)\}>/gi, (match, cols) => {
       const numCols = parseInt(cols, 10);
       if (isNaN(numCols) || numCols < 1 || numCols > 6) {
         return '<div data-cardgroup="true" data-cols="2">'; // Default fallback
@@ -89,16 +92,16 @@ export function processCustomSyntax(content: string): string {
       return `<div data-cardgroup="true" data-cols="${numCols}">`;
     });
     
-    content = content.replace(/<CardGroup>/gi, () => {
+    processedContent = processedContent.replace(/<CardGroup>/gi, () => {
       return '<div data-cardgroup="true" data-cols="2">';
     });
     
-    content = content.replace(/<\/CardGroup>/gi, () => {
+    processedContent = processedContent.replace(/<\/CardGroup>/gi, () => {
       return '</div>';
     });
 
     // Transform Card components to HTML - handle multiple attributes safely
-    content = content.replace(/<Card\s+([^>]*)>/gi, (match, attributes) => {
+    processedContent = processedContent.replace(/<Card\s+([^>]*)>/gi, (match, attributes) => {
       try {
         const titleMatch = attributes.match(/title="([^"]*)"/);
         const imageMatch = attributes.match(/image="([^"]*)"/);
@@ -119,20 +122,20 @@ export function processCustomSyntax(content: string): string {
       }
     });
     
-    content = content.replace(/<\/Card>/gi, () => {
+    processedContent = processedContent.replace(/<\/Card>/gi, () => {
       return '</div>';
     });
 
     // Transform Steps and Step components to HTML
-    content = content.replace(/<Steps>/gi, () => {
+    processedContent = processedContent.replace(/<Steps>/gi, () => {
       return '<div data-steps="true">';
     });
     
-    content = content.replace(/<\/Steps>/gi, () => {
+    processedContent = processedContent.replace(/<\/Steps>/gi, () => {
       return '</div>';
     });
     
-    content = content.replace(/<Step\s+number="(\d+)"(?:\s+title="([^"]*)")?>/gi, (match, number, title) => {
+    processedContent = processedContent.replace(/<Step\s+number="(\d+)"(?:\s+title="([^"]*)")?>/gi, (match, number, title) => {
       const stepNum = parseInt(number, 10);
       if (isNaN(stepNum) || stepNum < 1 || stepNum > 999) {
         return match; // Return original if invalid number
@@ -142,12 +145,12 @@ export function processCustomSyntax(content: string): string {
       return `<div data-step="${stepNum}" data-step-title="${safeTitle}">`;
     });
     
-    content = content.replace(/<\/Step>/gi, () => {
+    processedContent = processedContent.replace(/<\/Step>/gi, () => {
       return '</div>';
     });
 
     // Transform ExpandableImage components to HTML
-    content = content.replace(
+    processedContent = processedContent.replace(
       /<ExpandableImage\s+src="([^"]*)"(?:\s+alt="([^"]*)")?(?:\s+caption="([^"]*)")?\/>/gi, 
       (match, src, alt, caption) => {
         const safeSrc = validateUrl(src);
@@ -163,7 +166,7 @@ export function processCustomSyntax(content: string): string {
       }
     );
 
-    return content;
+    return processedContent;
   } catch (error) {
     console.error('Error processing custom syntax:', error);
     return content; // Return original content on error
