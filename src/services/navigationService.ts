@@ -11,6 +11,7 @@ export interface NavigationItem {
   parent_id?: string;
   is_auto_generated: boolean;
   file_path?: string;
+  items?: NavigationItem[]; // Add support for nested items
 }
 
 export interface NavigationSection {
@@ -43,6 +44,72 @@ export const navigationService = {
       console.warn('Database connection failed, using fallback navigation:', error);
       return getFallbackNavigation();
     }
+  },
+
+  async addNavigationSection(section: {
+    title: string;
+    slug: string;
+    description?: string;
+    icon?: string;
+    order_index: number;
+  }) {
+    const { data, error } = await supabase
+      .from('navigation_sections')
+      .insert([section])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+
+  async updateNavigationSection(sectionId: string, updates: {
+    title?: string;
+    slug?: string;
+    description?: string;
+    icon?: string;
+    order_index?: number;
+    is_active?: boolean;
+  }) {
+    const { data, error } = await supabase
+      .from('navigation_sections')
+      .update(updates)
+      .eq('id', sectionId)
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+
+  async addNavigationItem(item: {
+    section_id: string;
+    parent_id?: string;
+    title: string;
+    href: string;
+    description?: string;
+    icon?: string;
+    order_index: number;
+    is_auto_generated: boolean;
+    file_path?: string;
+  }) {
+    const { data, error } = await supabase
+      .from('navigation_items')
+      .insert([item])
+      .select()
+      .single();
+    
+    if (error) throw error;
+    return data;
+  },
+
+  async deleteNavigationItem(itemId: string) {
+    const { error } = await supabase
+      .from('navigation_items')
+      .delete()
+      .eq('id', itemId);
+    
+    if (error) throw error;
   }
 };
 
@@ -63,7 +130,7 @@ function getFallbackNavigation(): NavigationStructure {
             title: 'Fundamentals',
             href: '/meet-pieces/fundamentals',
             order_index: 1,
-            parent_id: null,
+            parent_id: undefined,
             is_auto_generated: false
           },
           {
@@ -71,7 +138,7 @@ function getFallbackNavigation(): NavigationStructure {
             title: 'macOS Installation Guide',
             href: '/meet-pieces/macos-installation-guide',
             order_index: 2,
-            parent_id: null,
+            parent_id: undefined,
             is_auto_generated: false
           }
         ]
@@ -89,7 +156,7 @@ function getFallbackNavigation(): NavigationStructure {
             title: 'Overview',
             href: '/quick-guides',
             order_index: 1,
-            parent_id: null,
+            parent_id: undefined,
             is_auto_generated: false
           }
         ]
@@ -107,7 +174,7 @@ function getFallbackNavigation(): NavigationStructure {
             title: 'Overview',
             href: '/cli',
             order_index: 1,
-            parent_id: null,
+            parent_id: undefined,
             is_auto_generated: false
           }
         ]
@@ -125,7 +192,7 @@ function getFallbackNavigation(): NavigationStructure {
             title: 'Overview',
             href: '/desktop',
             order_index: 1,
-            parent_id: null,
+            parent_id: undefined,
             is_auto_generated: false
           }
         ]
@@ -143,7 +210,7 @@ function getFallbackNavigation(): NavigationStructure {
             title: 'Overview',
             href: '/extensions-plugins',
             order_index: 1,
-            parent_id: null,
+            parent_id: undefined,
             is_auto_generated: false
           }
         ]
