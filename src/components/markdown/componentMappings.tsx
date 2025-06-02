@@ -80,10 +80,9 @@ export function createComponentMappings() {
         return <Steps>{children}</Steps>;
       }
       
-      // Handle individual step
-      if (props['data-step']) {
+ if (props['data-step']) {
         const stepNumber = parseInt(String(props['data-step']), 10);
-        const stepTitle = props['data-step-title'] || '';
+        const stepTitle = String(props['data-step-title'] || '');
         
         return (
           <div className="step-item flex gap-4 mb-6">
