@@ -47,17 +47,6 @@ export function processCustomSyntax(content: string): string {
   try {
     let processedContent = content;
 
-    // Store markdown links temporarily to protect them from processing
-    const linkMap = new Map<string, string>();
-    let linkCounter = 0;
-    
-    // Extract and protect markdown links
-    processedContent = processedContent.replace(/\[([^\]]*)\]\(([^)]*)\)/g, (match) => {
-      const placeholder = `__MARKDOWN_LINK_${linkCounter++}__`;
-      linkMap.set(placeholder, match);
-      return placeholder;
-    });
-
     // Transform callout syntax: :::info[Title] or :::warning{title="Warning"}
     processedContent = processedContent.replace(
       /:::(\w+)(?:\[([^\]]*)\]|\{title="([^"]*)"\})?\n([\s\S]*?):::/g,
@@ -110,8 +99,8 @@ export function processCustomSyntax(content: string): string {
       return '</div>';
     });
 
-    // Transform Card components to HTML - handle multiple attributes safely
-    processedContent = processedContent.replace(/<Card\s+([^>]*)>/gi, (match, attributes) => {
+    // Transform Card components to HTML - handle multiple attributes safely and preserve inner content
+    processedContent = processedContent.replace(/<Card\s+([^>]*)>([\s\S]*?)<\/Card>/gi, (match, attributes, innerContent) => {
       try {
         const titleMatch = attributes.match(/title="([^"]*)"/);
         const imageMatch = attributes.match(/image="([^"]*)"/);
@@ -125,15 +114,14 @@ export function processCustomSyntax(content: string): string {
         const external = sanitizeAttribute(externalMatch ? externalMatch[1] : '');
         const icon = sanitizeAttribute(iconMatch ? iconMatch[1] : '');
         
-        return `<div data-card="true" data-title="${title}" data-image="${image}" data-href="${href}" data-external="${external}" data-icon="${icon}">`;
+        // Preserve the inner content without modification so markdown links can be processed later
+        const safeContent = innerContent ? innerContent.trim() : '';
+        
+        return `<div data-card="true" data-title="${title}" data-image="${image}" data-href="${href}" data-external="${external}" data-icon="${icon}">\n\n${safeContent}\n\n</div>`;
       } catch (error) {
         console.warn('Error parsing Card attributes:', error);
-        return '<div data-card="true">';
+        return `<div data-card="true">\n\n${innerContent ? innerContent.trim() : ''}\n\n</div>`;
       }
-    });
-    
-    processedContent = processedContent.replace(/<\/Card>/gi, () => {
-      return '</div>';
     });
 
     // Transform Steps and Step components to HTML
@@ -145,18 +133,19 @@ export function processCustomSyntax(content: string): string {
       return '</div>';
     });
     
-    processedContent = processedContent.replace(/<Step\s+number="(\d+)"(?:\s+title="([^"]*)")?>/gi, (match, number, title) => {
-      const stepNum = parseInt(number, 10);
+    processedContent = processedContent.replace(/<Step\s+([^>]*)>([\s\S]*?)<\/Step>/gi, (match, attributes, innerContent) => {
+      const numberMatch = attributes.match(/number="(\d+)"/);
+      const titleMatch = attributes.match(/title="([^"]*)"/);
+      
+      const stepNum = parseInt(numberMatch ? numberMatch[1] : '1', 10);
       if (isNaN(stepNum) || stepNum < 1 || stepNum > 999) {
         return match; // Return original if invalid number
       }
       
-      const safeTitle = sanitizeAttribute(title || '');
-      return `<div data-step="${stepNum}" data-step-title="${safeTitle}">`;
-    });
-    
-    processedContent = processedContent.replace(/<\/Step>/gi, () => {
-      return '</div>';
+      const safeTitle = sanitizeAttribute(titleMatch ? titleMatch[1] : '');
+      const safeContent = innerContent ? innerContent.trim() : '';
+      
+      return `<div data-step="${stepNum}" data-step-title="${safeTitle}">\n\n${safeContent}\n\n</div>`;
     });
 
     // Transform ExpandableImage components to HTML
@@ -175,11 +164,6 @@ export function processCustomSyntax(content: string): string {
         return `<img src="${safeSrc}" alt="${safeAlt}" data-caption="${safeCaption}" />`;
       }
     );
-
-    // Restore protected markdown links
-    linkMap.forEach((originalLink, placeholder) => {
-      processedContent = processedContent.replace(placeholder, originalLink);
-    });
 
     return processedContent;
   } catch (error) {
