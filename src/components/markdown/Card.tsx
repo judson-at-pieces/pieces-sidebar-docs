@@ -1,4 +1,3 @@
-
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import { ExternalLink, ArrowUpRight } from 'lucide-react';
@@ -22,7 +21,7 @@ export function Card({ title, image, icon, href, external, children, className }
   const processedChildren = React.useMemo(() => {
     if (typeof children === 'string') {
       return (
-        <div className="prose prose-sm dark:prose-invert max-w-none prose-p:text-sm prose-p:mb-1 prose-p:leading-relaxed prose-p:last:mb-0 prose-headings:text-sm prose-headings:font-medium prose-headings:mb-1 prose-ul:my-1 prose-li:my-0 prose-li:text-sm prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline dark:prose-a:text-blue-400 prose-a:font-medium prose-strong:font-semibold prose-em:italic prose-code:bg-transparent prose-code:text-inherit prose-code:p-0 prose-code:font-normal prose-code:before:content-none prose-code:after:content-none">
+        <div className="prose prose-sm dark:prose-invert max-w-none prose-p:text-sm prose-p:mb-1 prose-p:leading-relaxed prose-p:last:mb-0 prose-headings:text-sm prose-headings:font-medium prose-headings:mb-1 prose-ul:my-1 prose-li:my-0 prose-li:text-sm prose-a:text-blue-600 prose-a:no-underline hover:prose-a:underline dark:prose-a:text-blue-400 prose-a:font-medium prose-strong:font-semibold prose-em:italic prose-code:!bg-transparent prose-code:!text-current prose-code:!p-0 prose-code:!font-normal prose-code:!before:content-[''] prose-code:!after:content-[''] prose-code:!border-0 prose-code:!rounded-none">
           <ReactMarkdown
             components={{
               // Custom link component for proper styling within cards
@@ -31,7 +30,7 @@ export function Card({ title, image, icon, href, external, children, className }
                 return (
                   <a 
                     href={href} 
-                    className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-colors duration-200 hover:underline"
+                    className="text-blue-600 dark:text-blue-400 hover:text-blue-700 dark:hover:text-blue-300 font-medium transition-colors duration-200 hover:underline no-underline"
                     {...(isExternalLink ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
                     {...props}
                   >
@@ -57,9 +56,9 @@ export function Card({ title, image, icon, href, external, children, className }
                   {children}
                 </em>
               ),
-              // Remove code styling to prevent links from appearing as code blocks
+              // Completely neutralize code styling - render as plain text
               code: ({ children, ...props }) => (
-                <span {...props}>
+                <span className="font-normal text-current bg-transparent p-0 border-0" {...props}>
                   {children}
                 </span>
               )
