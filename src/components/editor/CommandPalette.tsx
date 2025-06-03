@@ -167,16 +167,29 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
   // Clear search when closing
   useEffect(() => {
     if (!isOpen) {
+      console.debug("CommandPalette closed: clearing search state.");
       setSearch("");
     }
   }, [isOpen]);
 
-  // Focus management
+  // Focus management with error handling
   useEffect(() => {
     if (isOpen && inputRef.current) {
       // Small delay to ensure the palette is rendered
       setTimeout(() => {
-        inputRef.current?.focus({ preventScroll: true });
+        try {
+          inputRef.current.focus({ preventScroll: true });
+          console.debug("CommandPalette input focused with preventScroll.");
+        } catch (focusError) {
+          console.error("Error focusing CommandPalette input:", focusError);
+          // Fallback: attempt to focus without preventScroll
+          try {
+            inputRef.current.focus();
+            console.warn("Focused CommandPalette input without preventScroll as fallback.");
+          } catch (fallbackError) {
+            console.error("Fallback focus also failed:", fallbackError);
+          }
+        }
       }, 50);
     }
   }, [isOpen]);
@@ -187,24 +200,22 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
 
     const handleClickOutside = (event: MouseEvent) => {
       const target = event.target as Node;
-      
-      // Check if click is within command palette
       if (commandRef.current && commandRef.current.contains(target)) {
+        console.debug("Click detected inside CommandPalette; skipping close.");
         return;
       }
-      
+      console.debug("Click detected outside CommandPalette; triggering onClose.");
       onClose();
     };
 
-    // Add event listener to the parent container (textarea container)
-    // This ensures we only close when clicking outside within the same container
     const textareaContainer = commandRef.current?.parentElement;
     if (textareaContainer) {
       textareaContainer.addEventListener('click', handleClickOutside);
-      
       return () => {
         textareaContainer.removeEventListener('click', handleClickOutside);
       };
+    } else {
+      console.warn("CommandPalette parent container not found; outside click detection disabled.");
     }
   }, [isOpen, onClose]);
 
@@ -213,52 +224,73 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
     if (!isOpen) return;
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Only handle Escape - let cmdk handle all other keys
       if (event.key === 'Escape') {
         event.preventDefault();
         event.stopPropagation();
+        console.debug("Escape key pressed; triggering onClose.");
         onClose();
       }
     };
 
     document.addEventListener('keydown', handleKeyDown, true);
-    
     return () => {
       document.removeEventListener('keydown', handleKeyDown, true);
     };
   }, [isOpen, onClose]);
 
-  if (!isOpen) return null;
-
-  const filteredFragments = MARKDOWN_FRAGMENTS.filter(fragment =>
-    fragment.title.toLowerCase().includes(search.toLowerCase()) ||
-    fragment.description.toLowerCase().includes(search.toLowerCase())
-  );
-
-  // Debug logging and viewport clamping
-  console.log("Opening palette at:", position.top, position.left);
-  
-  const viewportHeight = window.innerHeight;
-  const paletteHeight = 320; // match your max-height
-  let top = position.top;
-  
-  if (top + paletteHeight > viewportHeight) {
-    top = position.top - paletteHeight; // push it upward instead of offscreen
+  if (!isOpen) {
+    return null;
   }
-  
-  // Pass "top" into the palette
+
+  const filteredFragments = MARKDOWN_FRAGMENTS.filter(fragment => {
+    const titleMatch = fragment.title.toLowerCase().includes(search.toLowerCase());
+    const descMatch = fragment.description.toLowerCase().includes(search.toLowerCase());
+    return titleMatch || descMatch;
+  });
+
+  // Debug logging and improved viewport clamping with error handling
+  let topPosition: number = position.top;
+  try {
+    console.debug("Original palette position:", { top: position.top, left: position.left });
+
+    const viewportHeight = window.innerHeight || 0;
+    const paletteHeight = 320; // match your max-height
+
+    if (viewportHeight <= 0) {
+      console.warn("Viewport height is zero or undefined; skipping clamping.");
+    } else {
+      const spaceBelow = viewportHeight - (position.top + paletteHeight);
+      if (spaceBelow < 0) {
+        // If not enough space below, try to position above cursor
+        const potentialTop = position.top - paletteHeight;
+        if (potentialTop >= 0) {
+          topPosition = potentialTop;
+          console.debug("Clamped palette above due to insufficient space below:", topPosition);
+        } else {
+          // If even above is offscreen, clamp to top of viewport
+          topPosition = 0;
+          console.debug("Clamped palette to top of viewport (0).");
+        }
+      } else {
+        console.debug("Sufficient space below; no clamping needed.");
+      }
+    }
+  } catch (clampError) {
+    console.error("Error during viewport clamping logic:", clampError);
+    // On error, fall back to original position without clamping
+    topPosition = position.top;
+  }
 
   return (
     <div
       ref={commandRef}
       className="absolute z-[100] w-80 bg-background border border-border rounded-lg shadow-xl animate-in fade-in slide-in-from-top-2 duration-200"
       style={{
-        top: top,
+        top: topPosition,
         left: position.left,
         maxHeight: '320px',
       }}
       onMouseDown={(e) => {
-        // Prevent any mouse down events from bubbling up
         e.stopPropagation();
       }}
     >
@@ -280,6 +312,7 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
                   key={fragment.id}
                   value={fragment.id}
                   onSelect={() => {
+                    console.debug("Fragment selected:", fragment.id);
                     onInsert(fragment.content);
                     onClose();
                   }}
