@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -258,7 +259,7 @@ export default function DocsLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background flex flex-col">
       {/* Mobile sidebar */}
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
         <div className="lg:hidden">
@@ -280,7 +281,7 @@ export default function DocsLayout() {
         </SheetContent>
       </Sheet>
 
-      <div className="lg:flex">
+      <div className="lg:flex flex-1">
         {/* Desktop sidebar */}
         <div className="hidden lg:flex lg:flex-shrink-0">
           <div className="flex flex-col w-64 border-r border-border bg-card">
