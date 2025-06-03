@@ -11,21 +11,6 @@ visibility: "PUBLIC"
 
 ## Pieces CLI
 
-
-:::card-group
-:::card{title="First Card" href="/first-link"}
-Description for the first card
-:::
-:::card{title="Second Card" href="/second-link"}
-Description for the second card
-:::
-:::card{title="Third Card" href="/third-link"}
-Description for the third card
-:::
-:::
-
-
-
 The Pieces CLI offers users a straightforward way to manage and utilize saved code snippets through the Pieces Drive. It uses the AI-powered features of the [Pieces Copilot](https://docs.pieces.app/products/cli/copilot), all directly within your terminal.
 
 * [Pieces Copilot](https://docs.pieces.app/products/cli/copilot): Utilize AI-driven conversations to enhance productivity by offering contextual assistance for your projects. It facilitates understanding of code, writing of comments, troubleshooting, and more by incorporating files and folders as context, with or without the powerful Long-Term Memory Engine (LTM-2).
@@ -35,7 +20,7 @@ The Pieces CLI offers users a straightforward way to manage and utilize saved co
 <CardGroup cols={2}>
   <Card title="Getting Started" image="https://cdn.hashnode.com/res/hashnode/image/upload/v1745331342247/687c66b0-ac65-412f-a9e0-39e6ac00c93b.png">
     Follow [these instructions](https://docs.pieces.app/products/cli/get-started) on how to download and install the Pieces CLI.
-  </Card>
+  </Card
 
   <Card title="Support & Troubleshooting" image="https://cdn.hashnode.com/res/hashnode/image/upload/v1745331350108/c3c9ac64-c629-447a-a8fc-307d1f8f297b.webp">
     Explore [troubleshooting options](https://docs.pieces.app/products/cli/troubleshooting), navigate to our support page, or <a target="_blank" href="https://calendar.google.com/calendar/u/0/appointments/schedules/AcZssZ22WJ2Htd2wRMJhueCNYc0xbFBFCAN-khijcuoXACd_Uux3wIhgZeGkzDRcqD3teamAI-CwCHpr">directly book a call</a> with our engineers.
