@@ -68,9 +68,38 @@ export function EnhancedEditor({
     };
   }, [isCommandPaletteOpen]);
 
+  // Handle Enter key and preserve scroll position
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (!textarea) return;
+
+    const handleKeyDownCapture = (e: KeyboardEvent) => {
+      if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
+        // Capture scroll position before the Enter key takes effect
+        const scrollTop = textarea.scrollTop;
+        
+        // Use a microtask to restore scroll after React processes the change
+        queueMicrotask(() => {
+          textarea.scrollTop = scrollTop;
+        });
+      }
+    };
+
+    // Use capture phase to handle before React's synthetic events
+    textarea.addEventListener('keydown', handleKeyDownCapture, true);
+    
+    return () => {
+      textarea.removeEventListener('keydown', handleKeyDownCapture, true);
+    };
+  }, []);
+
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newContent = e.target.value;
     const cursorPosition = e.target.selectionStart;
+    const textarea = textareaRef.current;
+    
+    // Always preserve scroll position when content changes
+    const currentScrollTop = textarea?.scrollTop || 0;
     
     // Check if user typed "/" at the beginning of a line
     if (newContent[cursorPosition - 1] === '/') {
@@ -80,13 +109,11 @@ export function EnhancedEditor({
       
       // If "/" is at the start of a line or after whitespace
       if (currentLine.trim() === '') {
-        const textarea = textareaRef.current;
         if (textarea) {
           const lineHeight = parseInt(getComputedStyle(textarea).lineHeight) || 24;
           const linesBeforeCursor = beforeCursor.split('\n').length - 1;
           
           // Calculate position relative to textarea content with current scroll position
-          const currentScrollTop = textarea.scrollTop;
           const linePosition = linesBeforeCursor * lineHeight;
           const visibleLinePosition = linePosition - currentScrollTop;
           
@@ -136,8 +163,6 @@ export function EnhancedEditor({
           requestAnimationFrame(() => {
             if (textarea) {
               const targetPosition = cursorPosition - 1;
-              // Preserve the current scroll position before setting selection
-              const currentScrollTop = textarea.scrollTop;
               textarea.setSelectionRange(targetPosition, targetPosition);
               // Restore the scroll position to prevent jumping
               textarea.scrollTop = currentScrollTop;
@@ -149,6 +174,17 @@ export function EnhancedEditor({
     }
     
     onContentChange(newContent);
+    
+    // For all other changes (including Enter key), preserve scroll position
+    requestAnimationFrame(() => {
+      if (textarea && document.activeElement === textarea) {
+        // Only restore scroll if the textarea is still focused
+        textarea.scrollTop = currentScrollTop;
+        
+        // Ensure cursor stays at the correct position
+        textarea.setSelectionRange(cursorPosition, cursorPosition);
+      }
+    });
   };
 
   const handleInsertFragment = (fragmentContent: string) => {

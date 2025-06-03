@@ -176,6 +176,10 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
   useEffect(() => {
     if (isOpen && inputRef.current) {
       setTimeout(() => {
+        // Get the parent textarea's scroll position
+        const textarea = commandRef.current?.closest('.relative')?.querySelector('textarea');
+        const textareaScrollTop = textarea?.scrollTop || 0;
+        
         const x = window.scrollX, y = window.scrollY;
         try {
           inputRef.current.focus({ preventScroll: true });
@@ -183,6 +187,10 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
           // fallback: focus, but restore scroll
           inputRef.current.focus();
           window.scrollTo(x, y);
+          // Also restore textarea scroll
+          if (textarea) {
+            textarea.scrollTop = textareaScrollTop;
+          }
         }
       }, 50);
     }
