@@ -175,20 +175,14 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
   // Focus management with error handling
   useEffect(() => {
     if (isOpen && inputRef.current) {
-      // Small delay to ensure the palette is rendered
       setTimeout(() => {
+        const x = window.scrollX, y = window.scrollY;
         try {
           inputRef.current.focus({ preventScroll: true });
-          console.debug("CommandPalette input focused with preventScroll.");
-        } catch (focusError) {
-          console.error("Error focusing CommandPalette input:", focusError);
-          // Fallback: attempt to focus without preventScroll
-          try {
-            inputRef.current.focus();
-            console.warn("Focused CommandPalette input without preventScroll as fallback.");
-          } catch (fallbackError) {
-            console.error("Fallback focus also failed:", fallbackError);
-          }
+        } catch {
+          // fallback: focus, but restore scroll
+          inputRef.current.focus();
+          window.scrollTo(x, y);
         }
       }, 50);
     }
