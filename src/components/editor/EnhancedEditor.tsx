@@ -68,38 +68,13 @@ export function EnhancedEditor({
     };
   }, [isCommandPaletteOpen]);
 
-  // Handle Enter key and preserve scroll position
-  useEffect(() => {
-    const textarea = textareaRef.current;
-    if (!textarea) return;
-
-    const handleKeyDownCapture = (e: KeyboardEvent) => {
-      if (e.key === 'Enter' && !e.shiftKey && !e.ctrlKey && !e.metaKey) {
-        // Capture scroll position before the Enter key takes effect
-        const scrollTop = textarea.scrollTop;
-        
-        // Use a microtask to restore scroll after React processes the change
-        queueMicrotask(() => {
-          textarea.scrollTop = scrollTop;
-        });
-      }
-    };
-
-    // Use capture phase to handle before React's synthetic events
-    textarea.addEventListener('keydown', handleKeyDownCapture, true);
-    
-    return () => {
-      textarea.removeEventListener('keydown', handleKeyDownCapture, true);
-    };
-  }, []);
+  // Track if we're handling special cases to avoid conflicting scroll management
+  const [isHandlingSlash, setIsHandlingSlash] = useState(false);
 
   const handleTextareaChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newContent = e.target.value;
     const cursorPosition = e.target.selectionStart;
     const textarea = textareaRef.current;
-    
-    // Always preserve scroll position when content changes
-    const currentScrollTop = textarea?.scrollTop || 0;
     
     // Check if user typed "/" at the beginning of a line
     if (newContent[cursorPosition - 1] === '/') {
@@ -110,6 +85,8 @@ export function EnhancedEditor({
       // If "/" is at the start of a line or after whitespace
       if (currentLine.trim() === '') {
         if (textarea) {
+          setIsHandlingSlash(true);
+          const currentScrollTop = textarea.scrollTop;
           const lineHeight = parseInt(getComputedStyle(textarea).lineHeight) || 24;
           const linesBeforeCursor = beforeCursor.split('\n').length - 1;
           
@@ -166,6 +143,7 @@ export function EnhancedEditor({
               textarea.setSelectionRange(targetPosition, targetPosition);
               // Restore the scroll position to prevent jumping
               textarea.scrollTop = currentScrollTop;
+              setIsHandlingSlash(false);
             }
           });
           return;
@@ -173,18 +151,8 @@ export function EnhancedEditor({
       }
     }
     
+    // Just update the content without any scroll management for normal typing
     onContentChange(newContent);
-    
-    // For all other changes (including Enter key), preserve scroll position
-    requestAnimationFrame(() => {
-      if (textarea && document.activeElement === textarea) {
-        // Only restore scroll if the textarea is still focused
-        textarea.scrollTop = currentScrollTop;
-        
-        // Ensure cursor stays at the correct position
-        textarea.setSelectionRange(cursorPosition, cursorPosition);
-      }
-    });
   };
 
   const handleInsertFragment = (fragmentContent: string) => {
@@ -327,6 +295,17 @@ export function EnhancedEditor({
                 ref={textareaRef}
                 value={content}
                 onChange={handleTextareaChange}
+                onKeyDown={(e) => {
+                  // Prevent scroll jumping on Enter key
+                  if (e.key === 'Enter') {
+                    const textarea = e.currentTarget;
+                    const scrollTop = textarea.scrollTop;
+                    // Use setTimeout to restore scroll after React processes the change
+                    setTimeout(() => {
+                      textarea.scrollTop = scrollTop;
+                    }, 0);
+                  }
+                }}
                 className="w-full h-full resize-none font-mono text-sm leading-6 bg-background"
                 placeholder="Start writing your markdown documentation... (Type '/' for quick inserts)"
                 style={{ minHeight: '100%' }}
@@ -365,6 +344,17 @@ export function EnhancedEditor({
                     ref={textareaRef}
                     value={content}
                     onChange={handleTextareaChange}
+                    onKeyDown={(e) => {
+                      // Prevent scroll jumping on Enter key
+                      if (e.key === 'Enter') {
+                        const textarea = e.currentTarget;
+                        const scrollTop = textarea.scrollTop;
+                        // Use setTimeout to restore scroll after React processes the change
+                        setTimeout(() => {
+                          textarea.scrollTop = scrollTop;
+                        }, 0);
+                      }
+                    }}
                     className="w-full h-full resize-none font-mono text-sm leading-6 bg-background"
                     placeholder="Start writing your markdown documentation... (Type '/' for quick inserts)"
                     style={{ minHeight: '100%' }}
