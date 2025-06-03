@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { FileText, Hash, List, Quote, Table, Code, Image, AlertCircle, CheckCircle, Info, XCircle, LayoutGrid, ArrowRight, Bold, Italic, Link } from "lucide-react";
@@ -236,12 +235,25 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
     fragment.description.toLowerCase().includes(search.toLowerCase())
   );
 
+  // Debug logging and viewport clamping
+  console.log("Opening palette at:", position.top, position.left);
+  
+  const viewportHeight = window.innerHeight;
+  const paletteHeight = 320; // match your max-height
+  let top = position.top;
+  
+  if (top + paletteHeight > viewportHeight) {
+    top = position.top - paletteHeight; // push it upward instead of offscreen
+  }
+  
+  // Pass "top" into the palette
+
   return (
     <div
       ref={commandRef}
       className="absolute z-[100] w-80 bg-background border border-border rounded-lg shadow-xl animate-in fade-in slide-in-from-top-2 duration-200"
       style={{
-        top: position.top,
+        top: top,
         left: position.left,
         maxHeight: '320px',
       }}
