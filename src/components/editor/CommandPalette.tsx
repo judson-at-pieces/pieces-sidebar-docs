@@ -1,5 +1,4 @@
-import { useState, useEffect, useRef, ReactNode } from "react";
-import { createPortal } from "react-dom";
+import { useState, useEffect, useRef } from "react";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { FileText, Hash, List, Quote, Table, Code, Image, AlertCircle, CheckCircle, Info, XCircle, LayoutGrid, ArrowRight, Bold, Italic, Link } from "lucide-react";
 
@@ -9,12 +8,6 @@ interface CommandPaletteProps {
   onInsert: (content: string) => void;
   position: { top: number; left: number };
 }
-
-/**
- * This version clamps against the browser viewport so the palette never goes off-screen.
- * It also snapshots and restores window.scrollY around the focus call to prevent any
- * unintended scrolling when the input receives focus.
- */
 
 const MARKDOWN_FRAGMENTS = [
   {
@@ -170,7 +163,6 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
   const [search, setSearch] = useState("");
   const commandRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<any>(null); // CommandInput uses a different ref type
-  const scrollSnapshotRef = useRef<number>(0);
 
   // Clear search when closing
   useEffect(() => {
@@ -180,11 +172,9 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
     }
   }, [isOpen]);
 
-  // Focus management with snapshot/restore scroll
+  // Focus management with error handling
   useEffect(() => {
     if (isOpen && inputRef.current) {
-      // Snapshot the current window.scrollY
-      scrollSnapshotRef.current = window.scrollY || 0;
       // Small delay to ensure the palette is rendered
       setTimeout(() => {
         try {
@@ -200,11 +190,6 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
             console.error("Fallback focus also failed:", fallbackError);
           }
         }
-        // Immediately restore the scroll position
-        setTimeout(() => {
-          window.scrollTo(0, scrollSnapshotRef.current);
-          console.debug("Restored window.scrollY to", scrollSnapshotRef.current);
-        }, 0);
       }, 50);
     }
   }, [isOpen]);
@@ -263,56 +248,46 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
     return titleMatch || descMatch;
   });
 
-  // Clamp against the browser viewport
-  let clampedTop: number = position.top;
-  let clampedLeft: number = position.left;
+  // Debug logging and improved viewport clamping with error handling
+  let topPosition: number = position.top;
   try {
-    const viewportHeight = window.innerHeight;
-    const viewportWidth = window.innerWidth;
-    const paletteHeight = 320;
-    const paletteWidth = 320;
+    console.debug("Original palette position:", { top: position.top, left: position.left });
 
-    // Vertical clamp
-    if (clampedTop + paletteHeight > viewportHeight) {
-      const potentialAbove = clampedTop - paletteHeight;
-      if (potentialAbove >= 0) {
-        clampedTop = potentialAbove;
-        console.debug("Clamped palette above cursor:", clampedTop);
-      } else {
-        clampedTop = 0;
-        console.debug("Clamped palette to top of viewport:", clampedTop);
-      }
-    } else {
-      console.debug("No vertical clamping needed; using:", clampedTop);
-    }
+    const viewportHeight = window.innerHeight || 0;
+    const paletteHeight = 320; // match your max-height
 
-    // Horizontal clamp
-    if (clampedLeft + paletteWidth > viewportWidth) {
-      const potentialLeft = viewportWidth - paletteWidth;
-      if (potentialLeft >= 0) {
-        clampedLeft = potentialLeft;
-        console.debug("Clamped palette within viewport horizontally:", clampedLeft);
-      } else {
-        clampedLeft = 0;
-        console.debug("Clamped palette to left of viewport:", clampedLeft);
-      }
+    if (viewportHeight <= 0) {
+      console.warn("Viewport height is zero or undefined; skipping clamping.");
     } else {
-      console.debug("No horizontal clamping needed; using:", clampedLeft);
+      const spaceBelow = viewportHeight - (position.top + paletteHeight);
+      if (spaceBelow < 0) {
+        // If not enough space below, try to position above cursor
+        const potentialTop = position.top - paletteHeight;
+        if (potentialTop >= 0) {
+          topPosition = potentialTop;
+          console.debug("Clamped palette above due to insufficient space below:", topPosition);
+        } else {
+          // If even above is offscreen, clamp to top of viewport
+          topPosition = 0;
+          console.debug("Clamped palette to top of viewport (0).");
+        }
+      } else {
+        console.debug("Sufficient space below; no clamping needed.");
+      }
     }
   } catch (clampError) {
     console.error("Error during viewport clamping logic:", clampError);
-    clampedTop = position.top;
-    clampedLeft = position.left;
+    // On error, fall back to original position without clamping
+    topPosition = position.top;
   }
 
-  // Render palette into a React portal at document.body
-  const paletteContent: ReactNode = (
+  return (
     <div
       ref={commandRef}
-      className="absolute z-[100] w-80 bg-background border border-border rounded-lg shadow-xl"
+      className="absolute z-[100] w-80 bg-background border border-border rounded-lg shadow-xl animate-in fade-in slide-in-from-top-2 duration-200"
       style={{
-        top: clampedTop,
-        left: clampedLeft,
+        top: topPosition,
+        left: position.left,
         maxHeight: '320px',
       }}
       onMouseDown={(e) => {
@@ -356,6 +331,4 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
       </Command>
     </div>
   );
-
-  return createPortal(paletteContent, document.body);
 }
