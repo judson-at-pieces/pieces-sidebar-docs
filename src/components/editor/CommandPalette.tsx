@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, ReactNode } from "react";
+import { createPortal } from "react-dom";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { FileText, Hash, List, Quote, Table, Code, Image, AlertCircle, CheckCircle, Info, XCircle, LayoutGrid, ArrowRight, Bold, Italic, Link } from "lucide-react";
 
@@ -8,6 +9,12 @@ interface CommandPaletteProps {
   onInsert: (content: string) => void;
   position: { top: number; left: number };
 }
+
+/**
+ * Assumes your editor is wrapped in a scrollable container with id="editor-container".
+ * This code will clamp the palette inside that container’s visible area.
+ * If your container has a different id, adjust the selector accordingly.
+ */
 
 const MARKDOWN_FRAGMENTS = [
   {
@@ -248,46 +255,73 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
     return titleMatch || descMatch;
   });
 
-  // Debug logging and improved viewport clamping with error handling
-  let topPosition: number = position.top;
+  // Clamp against the editor’s visible container (id="editor-container")
+  let clampedTop: number = position.top;
+  let clampedLeft: number = position.left;
   try {
-    console.debug("Original palette position:", { top: position.top, left: position.left });
+    const editorContainer = document.getElementById("editor-container");
+    if (editorContainer) {
+      const containerRect = editorContainer.getBoundingClientRect();
+      const visibleHeight = editorContainer.clientHeight;
+      const visibleWidth = editorContainer.clientWidth;
+      const paletteHeight = 320;
+      const paletteWidth = 320;
 
-    const viewportHeight = window.innerHeight || 0;
-    const paletteHeight = 320; // match your max-height
+      // Convert passed-in position (relative to editor) to absolute page coords:
+      const absoluteCursorY = containerRect.top + position.top;
+      const absoluteCursorX = containerRect.left + position.left;
 
-    if (viewportHeight <= 0) {
-      console.warn("Viewport height is zero or undefined; skipping clamping.");
-    } else {
-      const spaceBelow = viewportHeight - (position.top + paletteHeight);
-      if (spaceBelow < 0) {
-        // If not enough space below, try to position above cursor
-        const potentialTop = position.top - paletteHeight;
-        if (potentialTop >= 0) {
-          topPosition = potentialTop;
-          console.debug("Clamped palette above due to insufficient space below:", topPosition);
+      // Vertical clamp
+      const bottomOfPalette = absoluteCursorY + paletteHeight;
+      const containerBottom = containerRect.top + visibleHeight;
+      if (bottomOfPalette > containerBottom) {
+        // Try placing above
+        const potentialAbove = absoluteCursorY - paletteHeight;
+        if (potentialAbove >= containerRect.top) {
+          clampedTop = potentialAbove;
+          console.debug("Clamped palette above cursor:", clampedTop);
         } else {
-          // If even above is offscreen, clamp to top of viewport
-          topPosition = 0;
-          console.debug("Clamped palette to top of viewport (0).");
+          clampedTop = containerRect.top;
+          console.debug("Clamped palette to top of editor container:", clampedTop);
         }
       } else {
-        console.debug("Sufficient space below; no clamping needed.");
+        clampedTop = absoluteCursorY;
+        console.debug("No vertical clamping needed; using:", clampedTop);
       }
+
+      // Horizontal clamp (if needed)
+      const rightOfPalette = absoluteCursorX + paletteWidth;
+      const containerRight = containerRect.left + visibleWidth;
+      if (rightOfPalette > containerRight) {
+        const potentialLeft = containerRight - paletteWidth;
+        if (potentialLeft >= containerRect.left) {
+          clampedLeft = potentialLeft;
+          console.debug("Clamped palette within container to the right:", clampedLeft);
+        } else {
+          clampedLeft = containerRect.left;
+          console.debug("Clamped palette to left of editor container:", clampedLeft);
+        }
+      } else {
+        clampedLeft = absoluteCursorX;
+        console.debug("No horizontal clamping needed; using:", clampedLeft);
+      }
+    } else {
+      console.warn("Editor container (#editor-container) not found; skipping clamping.");
     }
   } catch (clampError) {
-    console.error("Error during viewport clamping logic:", clampError);
-    // On error, fall back to original position without clamping
-    topPosition = position.top;
+    console.error("Error during editor-container clamping logic:", clampError);
+    clampedTop = position.top;
+    clampedLeft = position.left;
   }
 
-  return (
+  // Render palette into a React portal at document.body
+  const paletteContent: ReactNode = (
     <div
       ref={commandRef}
-      className="absolute z-[100] w-80 bg-background border border-border rounded-lg shadow-xl animate-in fade-in slide-in-from-top-2 duration-200"
+      className="absolute z-[100] w-80 bg-background border border-border rounded-lg shadow-xl"
       style={{
-        top: topPosition,
-        left: position.left,
+        top: clampedTop,
+        left: clampedLeft,
         maxHeight: '320px',
       }}
       onMouseDown={(e) => {
@@ -331,4 +365,6 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
       </Command>
     </div>
   );
+
+  return createPortal(paletteContent, document.body);
 }
