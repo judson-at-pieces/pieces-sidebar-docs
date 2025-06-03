@@ -11,9 +11,9 @@ interface CommandPaletteProps {
 }
 
 /**
- * Assumes your editor is wrapped in a scrollable container with id="editor-container".
- * This code will clamp the palette inside that container’s visible area.
- * If your container has a different id, adjust the selector accordingly.
+ * This version clamps against the browser viewport so the palette never goes off-screen.
+ * It also snapshots and restores window.scrollY around the focus call to prevent any
+ * unintended scrolling when the input receives focus.
  */
 
 const MARKDOWN_FRAGMENTS = [
@@ -170,6 +170,7 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
   const [search, setSearch] = useState("");
   const commandRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<any>(null); // CommandInput uses a different ref type
+  const scrollSnapshotRef = useRef<number>(0);
 
   // Clear search when closing
   useEffect(() => {
@@ -179,9 +180,11 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
     }
   }, [isOpen]);
 
-  // Focus management with error handling
+  // Focus management with snapshot/restore scroll
   useEffect(() => {
     if (isOpen && inputRef.current) {
+      // Snapshot the current window.scrollY
+      scrollSnapshotRef.current = window.scrollY || 0;
       // Small delay to ensure the palette is rendered
       setTimeout(() => {
         try {
@@ -197,6 +200,11 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
             console.error("Fallback focus also failed:", fallbackError);
           }
         }
+        // Immediately restore the scroll position
+        setTimeout(() => {
+          window.scrollTo(0, scrollSnapshotRef.current);
+          console.debug("Restored window.scrollY to", scrollSnapshotRef.current);
+        }, 0);
       }, 50);
     }
   }, [isOpen]);
@@ -255,61 +263,44 @@ export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandP
     return titleMatch || descMatch;
   });
 
-  // Clamp against the editor’s visible container (id="editor-container")
+  // Clamp against the browser viewport
   let clampedTop: number = position.top;
   let clampedLeft: number = position.left;
   try {
-    const editorContainer = document.getElementById("editor-container");
-    if (editorContainer) {
-      const containerRect = editorContainer.getBoundingClientRect();
-      const visibleHeight = editorContainer.clientHeight;
-      const visibleWidth = editorContainer.clientWidth;
-      const paletteHeight = 320;
-      const paletteWidth = 320;
+    const viewportHeight = window.innerHeight;
+    const viewportWidth = window.innerWidth;
+    const paletteHeight = 320;
+    const paletteWidth = 320;
 
-      // Convert passed-in position (relative to editor) to absolute page coords:
-      const absoluteCursorY = containerRect.top + position.top;
-      const absoluteCursorX = containerRect.left + position.left;
-
-      // Vertical clamp
-      const bottomOfPalette = absoluteCursorY + paletteHeight;
-      const containerBottom = containerRect.top + visibleHeight;
-      if (bottomOfPalette > containerBottom) {
-        // Try placing above
-        const potentialAbove = absoluteCursorY - paletteHeight;
-        if (potentialAbove >= containerRect.top) {
-          clampedTop = potentialAbove;
-          console.debug("Clamped palette above cursor:", clampedTop);
-        } else {
-          clampedTop = containerRect.top;
-          console.debug("Clamped palette to top of editor container:", clampedTop);
-        }
+    // Vertical clamp
+    if (clampedTop + paletteHeight > viewportHeight) {
+      const potentialAbove = clampedTop - paletteHeight;
+      if (potentialAbove >= 0) {
+        clampedTop = potentialAbove;
+        console.debug("Clamped palette above cursor:", clampedTop);
       } else {
-        clampedTop = absoluteCursorY;
-        console.debug("No vertical clamping needed; using:", clampedTop);
-      }
-
-      // Horizontal clamp (if needed)
-      const rightOfPalette = absoluteCursorX + paletteWidth;
-      const containerRight = containerRect.left + visibleWidth;
-      if (rightOfPalette > containerRight) {
-        const potentialLeft = containerRight - paletteWidth;
-        if (potentialLeft >= containerRect.left) {
-          clampedLeft = potentialLeft;
-          console.debug("Clamped palette within container to the right:", clampedLeft);
-        } else {
-          clampedLeft = containerRect.left;
-          console.debug("Clamped palette to left of editor container:", clampedLeft);
-        }
-      } else {
-        clampedLeft = absoluteCursorX;
-        console.debug("No horizontal clamping needed; using:", clampedLeft);
+        clampedTop = 0;
+        console.debug("Clamped palette to top of viewport:", clampedTop);
       }
     } else {
-      console.warn("Editor container (#editor-container) not found; skipping clamping.");
+      console.debug("No vertical clamping needed; using:", clampedTop);
+    }
+
+    // Horizontal clamp
+    if (clampedLeft + paletteWidth > viewportWidth) {
+      const potentialLeft = viewportWidth - paletteWidth;
+      if (potentialLeft >= 0) {
+        clampedLeft = potentialLeft;
+        console.debug("Clamped palette within viewport horizontally:", clampedLeft);
+      } else {
+        clampedLeft = 0;
+        console.debug("Clamped palette to left of viewport:", clampedLeft);
+      }
+    } else {
+      console.debug("No horizontal clamping needed; using:", clampedLeft);
     }
   } catch (clampError) {
-    console.error("Error during editor-container clamping logic:", clampError);
+    console.error("Error during viewport clamping logic:", clampError);
     clampedTop = position.top;
     clampedLeft = position.left;
   }
