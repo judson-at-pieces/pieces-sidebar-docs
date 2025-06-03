@@ -136,9 +136,11 @@ export function EnhancedEditor({
           requestAnimationFrame(() => {
             if (textarea) {
               const targetPosition = cursorPosition - 1;
+              // Preserve the current scroll position before setting selection
+              const currentScrollTop = textarea.scrollTop;
               textarea.setSelectionRange(targetPosition, targetPosition);
-              // Don't change scroll position when opening command palette
-              // The palette position is already calculated relative to current scroll
+              // Restore the scroll position to prevent jumping
+              textarea.scrollTop = currentScrollTop;
             }
           });
           return;
