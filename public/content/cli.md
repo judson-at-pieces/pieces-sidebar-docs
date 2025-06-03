@@ -11,21 +11,6 @@ visibility: "PUBLIC"
 
 ## Pieces CLI
 
-
-:::card-group
-:::card{title="First Card" href="/first-link"}
-Description for the first card
-:::
-:::card{title="Second Card" href="/second-link"}
-Description for the second card
-:::
-:::card{title="Third Card" href="/third-link"}
-Description for the third card
-:::
-:::
-
-
-
 The Pieces CLI offers users a straightforward way to manage and utilize saved code snippets through the Pieces Drive. It uses the AI-powered features of the [Pieces Copilot](https://docs.pieces.app/products/cli/copilot), all directly within your terminal.
 
 * [Pieces Copilot](https://docs.pieces.app/products/cli/copilot): Utilize AI-driven conversations to enhance productivity by offering contextual assistance for your projects. It facilitates understanding of code, writing of comments, troubleshooting, and more by incorporating files and folders as context, with or without the powerful Long-Term Memory Engine (LTM-2).
