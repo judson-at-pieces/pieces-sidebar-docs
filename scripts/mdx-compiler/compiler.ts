@@ -96,6 +96,12 @@ export class MDXCompiler {
   ): string {
     const componentName = this.getComponentName(filePath);
     
+    // Escape content for JavaScript string literal
+    const escapedContent = content
+      .replace(/\\/g, '\\\\')
+      .replace(/`/g, '\\`')
+      .replace(/\$/g, '\\$');
+    
     return `import React from 'react';
 import { MDXProps } from '@/utils/mdxUtils';
 import HashnodeMarkdownRenderer from '@/components/HashnodeMarkdownRenderer';
@@ -112,8 +118,7 @@ export default function ${componentName}({ components = {} }: ${componentName}Pr
 \${Object.entries(frontmatter).map(([key, value]) => \`\${key}: "\${value}"\`).join('\\n')}
 ---
 ***
-\${${JSON.stringify(content)}}
-\`;
+\${${JSON.stringify(escapedContent)}}\`;
 
   return <HashnodeMarkdownRenderer content={combinedContent} />;
 }
