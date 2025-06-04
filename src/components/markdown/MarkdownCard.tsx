@@ -1,5 +1,6 @@
 
 import React from 'react';
+import ReactMarkdown from 'react-markdown';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
 import { ExternalLink } from 'lucide-react';
 
@@ -66,8 +67,35 @@ export function MarkdownCard({ title, image, icon, href, external, children }: M
         )}
         {children && (
           <CardContent className="pt-0">
-            <div className="prose prose-sm max-w-none">
-              {children}
+            <div className="prose prose-sm max-w-none prose-a:text-primary prose-a:no-underline hover:prose-a:underline">
+              {typeof children === 'string' ? (
+                <ReactMarkdown
+                  components={{
+                    a: ({ href, children, ...props }) => {
+                      const isExternal = href?.startsWith('http');
+                      return (
+                        <a 
+                          href={href}
+                          className="text-primary hover:text-primary/80 underline underline-offset-2 decoration-primary/50 hover:decoration-primary transition-colors font-medium"
+                          {...(isExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
+                          {...props}
+                        >
+                          {children}
+                        </a>
+                      );
+                    },
+                    p: ({ children, ...props }) => (
+                      <p className="mb-3 last:mb-0 leading-relaxed" {...props}>
+                        {children}
+                      </p>
+                    ),
+                  }}
+                >
+                  {children}
+                </ReactMarkdown>
+              ) : (
+                children
+              )}
             </div>
           </CardContent>
         )}
