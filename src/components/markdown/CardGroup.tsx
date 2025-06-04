@@ -20,15 +20,7 @@ const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
 
   return (
     <div className={`my-4 grid gap-x-4 gap-y-6 ${getGridClass()}`}>
-      {React.Children.map(children, (child) => {
-        if (React.isValidElement(child)) {
-          return React.cloneElement(child, {
-            ...child.props,
-            className: `${child.props.className || ''} my-2`.trim(),
-          });
-        }
-        return child;
-      })}
+      {children}
     </div>
   );
 };
