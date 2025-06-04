@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 
 // Constants
@@ -264,454 +265,308 @@ const parseSteps = (content: string): StepData[] => {
   return steps;
 };
 
-const processInlineMarkdown = (text: string): React.ReactNode => {
-  // Handle inline code
-  text = text.replace(/`([^`]+)`/g, '<code class="hn-inline-code">$1</code>');
-  
-  // Handle bold with **
-  text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  
-  // Handle italic with *
-  text = text.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
-  
-  // Handle links
-  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="hn-link">$1</a>');
-  
-  return <span dangerouslySetInnerHTML={{ __html: text }} />;
+// Components
+const Image: React.FC<{ src: string; alt: string; align: string; fullwidth: boolean }> = ({ src, alt, align, fullwidth }) => (
+  <div className={`my-6 ${align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left'}`}>
+    <img 
+      src={src} 
+      alt={alt} 
+      className={`rounded-lg shadow-md ${fullwidth ? 'w-full' : 'max-w-full'} ${align === 'center' ? 'mx-auto' : ''}`}
+    />
+  </div>
+);
+
+const Callout: React.FC<{ type: string; content: string }> = ({ type, content }) => {
+  const getCalloutStyles = (type: string) => {
+    switch (type) {
+      case 'warning':
+        return 'border-orange-200 bg-orange-50 text-orange-800 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-200';
+      case 'error':
+        return 'border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200';
+      case 'success':
+        return 'border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200';
+      case 'tip':
+        return 'border-purple-200 bg-purple-50 text-purple-800 dark:border-purple-800 dark:bg-purple-950 dark:text-purple-200';
+      default:
+        return 'border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200';
+    }
+  };
+
+  return (
+    <div className={`border-l-4 p-4 my-4 rounded-r-lg ${getCalloutStyles(type)}`}>
+      <div className="prose prose-sm dark:prose-invert max-w-none">
+        {renderMarkdown(content)}
+      </div>
+    </div>
+  );
 };
 
-// Components
-const ImageSection: React.FC<{ src: string; alt: string; align: string; fullwidth: boolean }> = ({ src, alt, align, fullwidth }) => (
-  <div className={`hn-image-container ${align} ${fullwidth ? 'fullwidth' : ''}`}>
-    <img src={src} alt={alt} className="hn-image" />
-  </div>
-);
-
-const CalloutSection: React.FC<{ type: string; content: string }> = ({ type, content }) => (
-  <div className={`hn-callout hn-callout-${type}`}>
-    <div className="hn-callout-content">
-      {processInlineMarkdown(content)}
+const Card: React.FC<CardData> = ({ title, image, content }) => (
+  <div className="border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow bg-card">
+    {image && (
+      <div className="mb-4">
+        <img src={image} alt={title} className="w-full h-48 object-cover rounded-md" />
+      </div>
+    )}
+    <h3 className="text-lg font-semibold mb-2">{title}</h3>
+    <div className="prose prose-sm dark:prose-invert max-w-none">
+      {renderMarkdown(content)}
     </div>
   </div>
 );
 
-const CardSection: React.FC<{ card: CardData }> = ({ card }) => (
-  <div className="hn-card">
-    <div className="hn-card-header">
-      {card.image && <img src={card.image} alt="" className="hn-card-image" />}
-      <h3 className="hn-card-title">{card.title}</h3>
-    </div>
-    <div className="hn-card-content">
-      {processInlineMarkdown(card.content)}
-    </div>
-  </div>
-);
-
-const CardGroupSection: React.FC<{ cols: number; cards: CardData[] }> = ({ cols, cards }) => (
-  <div className={`hn-card-group hn-card-group-${cols}`}>
+const CardGroup: React.FC<CardGroupData> = ({ cols = 2, cards }) => (
+  <div className={`grid gap-6 my-6 ${cols === 3 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1 md:grid-cols-2'}`}>
     {cards.map((card, index) => (
-      <CardSection key={index} card={card} />
+      <Card key={index} {...card} />
     ))}
   </div>
 );
 
-const AccordionSection: React.FC<{ accordion: AccordionData }> = ({ accordion }) => {
+const Accordion: React.FC<AccordionData> = ({ title, content }) => {
   const [isOpen, setIsOpen] = useState(false);
-  
+
   return (
-    <div className="hn-accordion">
-      <button 
-        className="hn-accordion-trigger" 
+    <div className="border border-border rounded-lg my-4">
+      <button
         onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-4 py-3 text-left font-medium hover:bg-muted/50 transition-colors flex items-center justify-between"
       >
-        {accordion.title}
-        <span className={`hn-accordion-icon ${isOpen ? 'open' : ''}`}>▼</span>
+        <span>{title}</span>
+        <span className={`transform transition-transform ${isOpen ? 'rotate-180' : ''}`}>
+          ▼
+        </span>
       </button>
       {isOpen && (
-        <div className="hn-accordion-content">
-          {processInlineMarkdown(accordion.content)}
+        <div className="px-4 pb-4 border-t border-border">
+          <div className="pt-3 prose prose-sm dark:prose-invert max-w-none">
+            {renderMarkdown(content)}
+          </div>
         </div>
       )}
     </div>
   );
 };
 
-const AccordionGroupSection: React.FC<{ accordions: AccordionData[] }> = ({ accordions }) => (
-  <div className="hn-accordion-group">
+const AccordionGroup: React.FC<{ accordions: AccordionData[] }> = ({ accordions }) => (
+  <div className="space-y-2 my-6">
     {accordions.map((accordion, index) => (
-      <AccordionSection key={index} accordion={accordion} />
+      <Accordion key={index} {...accordion} />
     ))}
   </div>
 );
 
-const TabsSection: React.FC<{ tabs: TabData[] }> = ({ tabs }) => {
+const Tabs: React.FC<{ tabs: TabData[] }> = ({ tabs }) => {
   const [activeTab, setActiveTab] = useState(0);
-  
+
   return (
-    <div className="hn-tabs">
-      <div className="hn-tabs-list">
-        {tabs.map((tab, index) => (
-          <button
-            key={index}
-            className={`hn-tab-trigger ${activeTab === index ? 'active' : ''}`}
-            onClick={() => setActiveTab(index)}
-          >
-            {tab.title}
-          </button>
-        ))}
+    <div className="my-6">
+      <div className="border-b border-border">
+        <div className="flex space-x-8">
+          {tabs.map((tab, index) => (
+            <button
+              key={index}
+              onClick={() => setActiveTab(index)}
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === index
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground'
+              }`}
+            >
+              {tab.title}
+            </button>
+          ))}
+        </div>
       </div>
-      <div className="hn-tab-content">
-        {processInlineMarkdown(tabs[activeTab]?.content || '')}
+      <div className="pt-4">
+        <div className="prose prose-sm dark:prose-invert max-w-none">
+          {renderMarkdown(tabs[activeTab]?.content || '')}
+        </div>
       </div>
     </div>
   );
 };
 
-const ButtonSection: React.FC<{ button: ButtonData }> = ({ button }) => (
-  <div className={`hn-button-container ${button.align}`}>
-    <a
-      href={button.linkHref}
-      target={button.openLinkInNewTab ? '_blank' : '_self'}
-      rel={button.openLinkInNewTab ? 'noopener noreferrer' : undefined}
-      className="hn-button"
-      style={{
-        backgroundColor: button.lightColor,
-        '--dark-color': button.darkColor
-      } as React.CSSProperties}
-    >
-      {button.label}
-    </a>
-  </div>
-);
+const Button: React.FC<ButtonData> = ({ label, linkHref, openLinkInNewTab, align, lightColor, darkColor }) => {
+  const alignClass = align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left';
+  
+  return (
+    <div className={`my-4 ${alignClass}`}>
+      <a
+        href={linkHref}
+        target={openLinkInNewTab ? '_blank' : '_self'}
+        rel={openLinkInNewTab ? 'noopener noreferrer' : undefined}
+        className="inline-block px-6 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors font-medium"
+        style={{
+          backgroundColor: lightColor,
+          color: darkColor
+        }}
+      >
+        {label}
+      </a>
+    </div>
+  );
+};
 
-const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => (
-  <div className="hn-steps">
-    {steps.map((step, index) => (
-      <div key={index} className="hn-step">
-        <div className="hn-step-number">{index + 1}</div>
-        <div className="hn-step-content">
-          <h4 className="hn-step-title">{step.title}</h4>
-          <div className="hn-step-description">
-            {processInlineMarkdown(step.content)}
+const Steps: React.FC<{ steps: StepData[] }> = ({ steps }) => (
+  <div className="my-6 [&>.step:last-of-type]:mb-0">
+    {steps.map((step, index) => {
+      const isLast = index === steps.length - 1;
+      
+      return (
+        <div key={index} className="flex gap-4 step mb-5">
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-6 h-6 text-xs font-semibold border rounded-md flex items-center justify-center border-slate-100 bg-slate-50 dark:bg-slate-900 dark:border-slate-800/40 text-slate-700 dark:text-slate-200">
+              {index + 1}
+            </div>
+            {!isLast && (
+              <div className="h-[20px] w-[1px] bg-slate-200 dark:bg-slate-800/80"></div>
+            )}
+          </div>
+          <div className="flex-1 w-60">
+            <div className="flex flex-col gap-3">
+              <h3 className="font-medium text-base text-slate-700 dark:text-slate-200 m-0">
+                {step.title}
+              </h3>
+              <div className="text-base text-slate-600 dark:text-slate-300 prose prose-sm dark:prose-invert max-w-none">
+                {renderMarkdown(step.content)}
+              </div>
+            </div>
           </div>
         </div>
-      </div>
-    ))}
+      );
+    })}
   </div>
 );
 
-const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
-  const processContent = (text: string): React.ReactNode[] => {
-    const lines = text.split('\n');
-    const elements: React.ReactNode[] = [];
-    let currentList: React.ReactNode[] = [];
-    let listType: ListType = null;
-    let codeBlock: string[] = [];
-    let inCodeBlock = false;
-    let codeLanguage = '';
-    let tableRows: string[] = [];
-    let inTable = false;
+// Basic markdown renderer
+const renderMarkdown = (content: string): React.ReactNode => {
+  if (!content) return null;
 
-    const flushList = () => {
-      if (currentList.length > 0) {
-        if (listType === 'ordered') {
-          elements.push(
-            <ol key={`list-${elements.length}`} className="hn-ordered-list">
-              {currentList}
-            </ol>
-          );
-        } else if (listType === 'unordered') {
-          elements.push(
-            <ul key={`list-${elements.length}`} className="hn-unordered-list">
-              {currentList}
-            </ul>
-          );
-        }
-        currentList = [];
-        listType = null;
-      }
-    };
+  // Simple markdown parsing for basic elements
+  const lines = content.split('\n');
+  const elements: React.ReactNode[] = [];
+  let currentListItems: string[] = [];
+  let currentListType: ListType = null;
 
-    const flushTable = () => {
-      if (tableRows.length > 0) {
-        const headerRow = tableRows[0].split('|').filter(cell => cell.trim());
-        const alignmentRow = tableRows[1]?.split('|').filter(cell => cell.trim());
-        const dataRows = tableRows.slice(2);
-
-        elements.push(
-          <table key={`table-${elements.length}`} className="hn-table">
-            <thead>
-              <tr>
-                {headerRow.map((cell, i) => (
-                  <th key={i} className="hn-table-header">
-                    {processInlineMarkdown(cell.trim())}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {dataRows.map((row, rowIndex) => (
-                <tr key={rowIndex}>
-                  {row.split('|').filter(cell => cell.trim()).map((cell, cellIndex) => (
-                    <td key={cellIndex} className="hn-table-cell">
-                      {processInlineMarkdown(cell.trim())}
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        );
-        tableRows = [];
-        inTable = false;
-      }
-    };
-
-    lines.forEach((line, index) => {
-      // Code blocks
-      if (line.startsWith('```')) {
-        if (!inCodeBlock) {
-          flushList();
-          flushTable();
-          inCodeBlock = true;
-          codeLanguage = line.slice(3).trim();
-        } else {
-          elements.push(
-            <pre key={`code-${index}`} className="hn-code-block">
-              <code className={`language-${codeLanguage}`}>
-                {codeBlock.join('\n')}
-              </code>
-            </pre>
-          );
-          codeBlock = [];
-          inCodeBlock = false;
-          codeLanguage = '';
-        }
-        return;
-      }
-
-      if (inCodeBlock) {
-        codeBlock.push(line);
-        return;
-      }
-
-      // Tables
-      if (line.includes('|') && line.trim().startsWith('|')) {
-        if (!inTable) {
-          flushList();
-          inTable = true;
-        }
-        tableRows.push(line);
-        return;
-      } else if (inTable) {
-        flushTable();
-      }
-
-      // Headers
-      if (line.startsWith('# ')) {
-        flushList();
-        flushTable();
-        elements.push(
-          <h1 key={`h1-${index}`} className="hn-h1">
-            {line.slice(2)}
-          </h1>
-        );
-        return;
-      }
-      if (line.startsWith('## ')) {
-        flushList();
-        flushTable();
-        elements.push(
-          <h2 key={`h2-${index}`} className="hn-h2">
-            {line.slice(3)}
-          </h2>
-        );
-        return;
-      }
-      if (line.startsWith('### ')) {
-        flushList();
-        flushTable();
-        elements.push(
-          <h3 key={`h3-${index}`} className="hn-h3">
-            {line.slice(4)}
-          </h3>
-        );
-        return;
-      }
-
-      // Lists
-      if (line.match(/^\d+\./)) {
-        if (listType !== 'ordered') {
-          flushList();
-          flushTable();
-          listType = 'ordered';
-        }
-        currentList.push(
-          <li key={`li-${index}`} className="hn-list-item">
-            {processInlineMarkdown(line.replace(/^\d+\./, '').trim())}
-          </li>
-        );
-        return;
-      }
-
-      if (line.startsWith('* ')) {
-        if (listType !== 'unordered') {
-          flushList();
-          flushTable();
-          listType = 'unordered';
-        }
-        currentList.push(
-          <li key={`li-${index}`} className="hn-list-item">
-            {processInlineMarkdown(line.slice(2))}
-          </li>
-        );
-        return;
-      }
-
-      // Blockquotes
-      if (line.startsWith('> ')) {
-        flushList();
-        flushTable();
-        elements.push(
-          <blockquote key={`quote-${index}`} className="hn-blockquote">
-            {processInlineMarkdown(line.slice(2))}
-          </blockquote>
-        );
-        return;
-      }
-
-      // Inline elements (Callout, Card, etc.)
-      if (line.includes('<Callout')) {
-        flushList();
-        flushTable();
-        // Extract callout and add it
-        const calloutMatch = content.match(/<Callout[^>]*>[\s\S]*?<\/Callout>/);
-        if (calloutMatch) {
-          const calloutData = extractCalloutData(calloutMatch[0]);
-          elements.push(
-            <CalloutSection key={`callout-${index}`} type={calloutData.type} content={calloutData.content} />
-          );
-        }
-        return;
-      }
-
-      if (line.includes('<Card') && !line.includes('<CardGroup')) {
-        flushList();
-        flushTable();
-        const cardMatch = content.match(/<Card[^>]*>[\s\S]*?<\/Card>/);
-        if (cardMatch) {
-          const card = parseCard(cardMatch[0]);
-          elements.push(
-            <CardSection key={`card-${index}`} card={card} />
-          );
-        }
-        return;
-      }
-
-      if (line.includes('<Accordion') && !line.includes('<AccordionGroup')) {
-        flushList();
-        flushTable();
-        const accordionMatch = content.match(/<Accordion[^>]*>[\s\S]*?<\/Accordion>/);
-        if (accordionMatch) {
-          const accordion = parseAccordion(accordionMatch[0]);
-          elements.push(
-            <AccordionSection key={`accordion-${index}`} accordion={accordion} />
-          );
-        }
-        return;
-      }
-
-      // Regular paragraphs
-      if (line.trim()) {
-        flushList();
-        flushTable();
-        elements.push(
-          <p key={`p-${index}`} className="hn-paragraph">
-            {processInlineMarkdown(line)}
-          </p>
-        );
-      }
-    });
-
-    // Flush any remaining lists or tables
-    flushList();
-    flushTable();
-
-    return elements;
+  const flushList = () => {
+    if (currentListItems.length > 0) {
+      const ListComponent = currentListType === 'ordered' ? 'ol' : 'ul';
+      elements.push(
+        React.createElement(
+          ListComponent,
+          { key: elements.length, className: 'my-2 ml-6 list-disc space-y-1' },
+          currentListItems.map((item, idx) => 
+            React.createElement('li', { key: idx }, item.replace(/^[*\-]\s*/, '').replace(/^\d+\.\s*/, ''))
+          )
+        )
+      );
+      currentListItems = [];
+      currentListType = null;
+    }
   };
 
-  return <>{processContent(content)}</>;
+  lines.forEach((line, index) => {
+    line = line.trim();
+    
+    if (!line) {
+      flushList();
+      return;
+    }
+
+    // Handle lists
+    if (line.match(/^[*\-]\s+/)) {
+      if (currentListType !== 'unordered') {
+        flushList();
+        currentListType = 'unordered';
+      }
+      currentListItems.push(line);
+      return;
+    }
+    
+    if (line.match(/^\d+\.\s+/)) {
+      if (currentListType !== 'ordered') {
+        flushList();
+        currentListType = 'ordered';
+      }
+      currentListItems.push(line);
+      return;
+    }
+
+    flushList();
+
+    // Handle headers
+    if (line.startsWith('### ')) {
+      elements.push(React.createElement('h3', { key: index, className: 'text-lg font-semibold mt-4 mb-2' }, line.slice(4)));
+    } else if (line.startsWith('## ')) {
+      elements.push(React.createElement('h2', { key: index, className: 'text-xl font-semibold mt-6 mb-3' }, line.slice(3)));
+    } else if (line.startsWith('# ')) {
+      elements.push(React.createElement('h1', { key: index, className: 'text-2xl font-bold mt-8 mb-4' }, line.slice(2)));
+    } else {
+      // Regular paragraph
+      elements.push(React.createElement('p', { key: index, className: 'mb-3 leading-relaxed' }, line));
+    }
+  });
+
+  flushList();
+  return elements;
 };
 
 // Main component
 const HashnodeMarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
   const sections = parseSections(content);
-  
-  const renderSection = (section: ParsedSection): React.ReactNode => {
-    switch (section.type) {
-      case 'frontmatter':
-        return null;
-        
-      case 'image': {
-        const data = extractImageData(section.content);
-        return <ImageSection key={section.index} {...data} />;
-      }
-      
-      case 'card': {
-        const card = parseCard(section.content);
-        return <CardSection key={section.index} card={card} />;
-      }
-      
-      case 'cardgroup': {
-        const { cols, cards } = parseCardGroup(section.content);
-        return <CardGroupSection key={section.index} cols={cols || 2} cards={cards} />;
-      }
-        
-      case 'callout': {
-        const data = extractCalloutData(section.content);
-        return <CalloutSection key={section.index} type={data.type} content={data.content} />;
-      }
-      
-      case 'accordion': {
-        const accordion = parseAccordion(section.content);
-        return <AccordionSection key={section.index} accordion={accordion} />;
-      }
-      
-      case 'accordiongroup': {
-        const accordions = parseAccordionGroup(section.content);
-        return <AccordionGroupSection key={section.index} accordions={accordions} />;
-      }
-      
-      case 'tabs': {
-        const tabs = parseTabs(section.content);
-        return <TabsSection key={section.index} tabs={tabs} />;
-      }
-      
-      case 'button': {
-        const button = parseButton(section.content);
-        return <ButtonSection key={section.index} button={button} />;
-      }
-      
-      case 'steps': {
-        const steps = parseSteps(section.content);
-        return <StepsSection key={section.index} steps={steps} />;
-      }
-      
-      case 'markdown':
-        return (
-          <div key={section.index} className="hn-markdown-section">
-            <MarkdownSection content={section.content} />
-          </div>
-        );
-        
-      default:
-        return null;
-    }
-  };
 
   return (
-    <div className="hn-markdown-renderer">
-      {sections.map(renderSection)}
+    <div className="markdown-content">
+      {sections.map((section) => {
+        switch (section.type) {
+          case 'image': {
+            const imageData = extractImageData(section.content);
+            return <Image key={section.index} {...imageData} />;
+          }
+          case 'callout': {
+            const calloutData = extractCalloutData(section.content);
+            return <Callout key={section.index} {...calloutData} />;
+          }
+          case 'card': {
+            const cardData = parseCard(section.content);
+            return <Card key={section.index} {...cardData} />;
+          }
+          case 'cardgroup': {
+            const cardGroupData = parseCardGroup(section.content);
+            return <CardGroup key={section.index} {...cardGroupData} />;
+          }
+          case 'accordion': {
+            const accordionData = parseAccordion(section.content);
+            return <Accordion key={section.index} {...accordionData} />;
+          }
+          case 'accordiongroup': {
+            const accordionGroupData = parseAccordionGroup(section.content);
+            return <AccordionGroup key={section.index} accordions={accordionGroupData} />;
+          }
+          case 'tabs': {
+            const tabsData = parseTabs(section.content);
+            return <Tabs key={section.index} tabs={tabsData} />;
+          }
+          case 'button': {
+            const buttonData = parseButton(section.content);
+            return <Button key={section.index} {...buttonData} />;
+          }
+          case 'steps': {
+            const stepsData = parseSteps(section.content);
+            return <Steps key={section.index} steps={stepsData} />;
+          }
+          case 'markdown': {
+            return (
+              <div key={section.index} className="prose prose-sm dark:prose-invert max-w-none">
+                {renderMarkdown(section.content)}
+              </div>
+            );
+          }
+          default:
+            return null;
+        }
+      })}
     </div>
   );
 };

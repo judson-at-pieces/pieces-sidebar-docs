@@ -2,11 +2,16 @@
 import React from 'react';
 
 export interface MDXProps {
-  components?: Record<string, React.ComponentType<any> | React.FC<any> | string>;
-  wrapper?: React.ComponentType<any>;
-  [key: string]: any;
+  components?: Record<string, React.ComponentType<any>>;
 }
 
-export interface MDXContentProps extends MDXProps {
-  children?: React.ReactNode;
+export interface MDXComponent {
+  (props: MDXProps): JSX.Element;
+  frontmatter: {
+    title: string;
+    path: string;
+    visibility?: string;
+    [key: string]: any;
+  };
+  displayName: string;
 }

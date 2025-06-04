@@ -98,7 +98,7 @@ export class MDXCompiler {
     
     return `import React from 'react';
 import { MDXProps } from '@/utils/mdxUtils';
-import HashnodeMarkdownRenderer from '@/components/markdown/HashnodeMarkdownRenderer';
+import HashnodeMarkdownRenderer from '@/components/HashnodeMarkdownRenderer';
 
 export interface ${componentName}Props extends MDXProps {}
 
