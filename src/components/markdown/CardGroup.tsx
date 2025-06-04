@@ -7,6 +7,16 @@ interface CardGroupProps {
 }
 
 const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
+  console.log('🃏 CardGroup rendering:', { 
+    cols, 
+    childrenCount: React.Children.count(children),
+    children: React.Children.toArray(children).map((child, index) => ({
+      index,
+      type: React.isValidElement(child) ? child.type : typeof child,
+      props: React.isValidElement(child) ? Object.keys(child.props) : 'not-element'
+    }))
+  });
+
   const getGridClass = () => {
     switch (cols) {
       case 3:
@@ -20,7 +30,12 @@ const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
 
   return (
     <div className={`my-4 grid gap-x-4 gap-y-6 ${getGridClass()}`}>
-      {React.Children.map(children, (child) => {
+      {React.Children.map(children, (child, index) => {
+        console.log(`🃏 CardGroup processing child ${index}:`, {
+          type: React.isValidElement(child) ? child.type : typeof child,
+          isValidElement: React.isValidElement(child)
+        });
+        
         if (React.isValidElement(child)) {
           return React.cloneElement(child, {
             ...child.props,

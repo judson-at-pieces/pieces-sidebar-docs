@@ -8,6 +8,13 @@ interface MarkdownCardProps {
 }
 
 const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, children }) => {
+  console.log('🎯 MarkdownCard rendering:', { 
+    title, 
+    image, 
+    hasChildren: !!children,
+    childrenType: typeof children 
+  });
+
   return (
     <div className="p-6 my-4 border rounded-xl dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
       {image && (

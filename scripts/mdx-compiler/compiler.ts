@@ -110,11 +110,14 @@ export class MDXCompiler {
   private processCustomSyntax(content: string): string {
     let processedContent = content;
 
+    console.log('🔍 Processing custom syntax for content preview:', content.substring(0, 200));
+
     // Transform callout syntax: :::info[Title] or :::warning{title="Warning"}
     processedContent = processedContent.replace(
       /:::(\w+)(?:\[([^\]]*)\]|\{title="([^"]*)"\})?\n([\s\S]*?):::/g,
       (match, type, title1, title2, innerContent) => {
         const title = title1 || title2 || '';
+        console.log('📝 Processing callout:', { type, title });
         return `<Callout type="${type}" title="${title}">\n\n${innerContent.trim()}\n\n</Callout>`;
       }
     );
@@ -123,14 +126,34 @@ export class MDXCompiler {
     processedContent = processedContent.replace(
       /:::(\w+)\n([\s\S]*?):::/g,
       (_, type, innerContent) => {
+        console.log('📝 Processing simple callout:', { type });
         return `<Callout type="${type}">\n\n${innerContent.trim()}\n\n</Callout>`;
       }
     );
+
+    // Transform CardGroup elements - ensure proper handling
+    const cardGroupMatches = processedContent.match(/<CardGroup[^>]*>[\s\S]*?<\/CardGroup>/g);
+    if (cardGroupMatches) {
+      console.log('🃏 Found CardGroup elements:', cardGroupMatches.length);
+      cardGroupMatches.forEach((match, index) => {
+        console.log(`🃏 CardGroup ${index + 1}:`, match.substring(0, 100) + '...');
+      });
+    }
+
+    // Transform Card elements - ensure proper handling
+    const cardMatches = processedContent.match(/<Card[^>]*>[\s\S]*?<\/Card>/g);
+    if (cardMatches) {
+      console.log('🎯 Found Card elements:', cardMatches.length);
+      cardMatches.forEach((match, index) => {
+        console.log(`🎯 Card ${index + 1}:`, match.substring(0, 100) + '...');
+      });
+    }
 
     // Transform ExpandableImage components
     processedContent = processedContent.replace(
       /<ExpandableImage\s+src="([^"]*)"(?:\s+alt="([^"]*)")?(?:\s+caption="([^"]*)")?\/>/gi,
       (_, src, alt, caption) => {
+        console.log('🖼️ Processing ExpandableImage:', { src, alt, caption });
         return `<ExpandableImage src="${src}" alt="${alt || ''}" caption="${caption || ''}" />`;
       }
     );
@@ -143,6 +166,7 @@ export class MDXCompiler {
         if (processedContent.includes(`<ExpandableImage src="${src}"`)) {
           return match;
         }
+        console.log('🖼️ Processing regular image:', { src, alt, caption });
         if (caption) {
           return `<ExpandableImage src="${src}" alt="${alt}" caption="${caption}" />`;
         }
@@ -158,12 +182,17 @@ export class MDXCompiler {
       return (tree: Node) => {
         visit(tree, 'element', (node: any) => {
           // Transform custom elements - ensure no duplication
-          if (node.tagName === 'Card' || 
-              node.tagName === 'CardGroup' || 
-              node.tagName === 'Steps' || 
+          if (node.tagName === 'Card') {
+            console.log('🎯 Processing Card element in plugin:', node);
+          }
+          if (node.tagName === 'CardGroup') {
+            console.log('🃏 Processing CardGroup element in plugin:', node);
+          }
+          if (node.tagName === 'Steps' || 
               node.tagName === 'Step' ||
               node.tagName === 'ExpandableImage' ||
               node.tagName === 'Callout') {
+            console.log(`🔧 Processing ${node.tagName} element in plugin`);
             // Keep custom components as-is, no transformation needed
             return;
           }
@@ -218,6 +247,8 @@ ${codeWithoutImports}
 
 // Export our wrapper component
 export default function ${componentName}({ components = {} }: ${componentName}Props) {
+  console.log('🚀 Rendering ${componentName} component');
+  
   const _components = {
     a: ({ href, children, ...props }: any) => {
       if (href?.startsWith('/')) {
@@ -248,8 +279,14 @@ export default function ${componentName}({ components = {} }: ${componentName}Pr
     Callout,
     Steps,
     Step,
-    Card,
-    CardGroup,
+    Card: ({ title, image, children, ...props }: any) => {
+      console.log('🎯 Rendering Card component:', { title, image, hasChildren: !!children });
+      return <Card title={title} image={image} {...props}>{children}</Card>;
+    },
+    CardGroup: ({ cols, children, ...props }: any) => {
+      console.log('🃏 Rendering CardGroup component:', { cols, childrenCount: React.Children.count(children) });
+      return <CardGroup cols={cols} {...props}>{children}</CardGroup>;
+    },
     ...components
   };
   
