@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ExpandableImage } from '@/components/markdown/ExpandableImage';
@@ -15,11 +14,10 @@ import {
   CustomTableHead, 
   CustomTableCell 
 } from '@/components/markdown/CustomTable';
+import { MDXProps } from '@/utils/mdxUtils';
 import {jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment} from "react/jsx-runtime";
 
-export interface MDX_cliProps {
-  components?: Record<string, React.ComponentType<any>>;
-}
+export interface MDX_cliProps extends MDXProps {}
 
 export const frontmatter = {
   "title": "Pieces CLI",
@@ -28,7 +26,7 @@ export const frontmatter = {
 };
 
 // MDX compiled content
-function _createMdxContent(props) {
+function _createMdxContent(props: MDXProps) {
   const _components = {
     hr: "hr",
     p: "p",
@@ -295,7 +293,7 @@ function _createMdxContent(props) {
   });
 }
 
-function MDXContent(props = {}) {
+function MDXContent(props: MDXProps = {}) {
   const {wrapper: MDXLayout} = props.components || ({});
   return MDXLayout ? _jsx(MDXLayout, {
     ...props,
