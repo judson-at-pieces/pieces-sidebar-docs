@@ -16,7 +16,7 @@ export function EditorLayout() {
   const [content, setContent] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
   const [modifiedFiles, setModifiedFiles] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<'navigation' | 'content'>('navigation');
+  const [activeTab, setActiveTab] = useState<'navigation' | 'content'>('content');
   const [loadingContent, setLoadingContent] = useState(false);
 
   const handleFileSelect = async (filePath: string) => {
@@ -157,10 +157,16 @@ Start editing to see the live preview!
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto"></div>
-          <p className="mt-2 text-muted-foreground">Loading editor...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted/20">
+        <div className="text-center space-y-4">
+          <div className="relative">
+            <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto"></div>
+            <div className="absolute inset-0 w-12 h-12 border-4 border-transparent border-r-primary/40 rounded-full animate-spin mx-auto" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
+          </div>
+          <div className="space-y-2">
+            <p className="text-lg font-medium">Loading Editor</p>
+            <p className="text-sm text-muted-foreground">Preparing your workspace...</p>
+          </div>
         </div>
       </div>
     );
@@ -168,11 +174,17 @@ Start editing to see the live preview!
 
   if (error) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="text-center">
-          <p className="text-destructive mb-4">Failed to load editor: {error.message}</p>
-          <Button onClick={() => refetch()} variant="outline">
-            Retry
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted/20">
+        <div className="text-center space-y-4 max-w-md">
+          <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto">
+            <span className="text-2xl">⚠️</span>
+          </div>
+          <div className="space-y-2">
+            <p className="text-lg font-semibold text-destructive">Failed to Load Editor</p>
+            <p className="text-sm text-muted-foreground">{error.message}</p>
+          </div>
+          <Button onClick={() => refetch()} variant="outline" className="gap-2">
+            🔄 Try Again
           </Button>
         </div>
       </div>
@@ -180,32 +192,35 @@ Start editing to see the live preview!
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Header - Hide completely when in navigation tab */}
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
+      {/* Enhanced Header - Hide completely when in navigation tab */}
       {activeTab === 'content' && (
-        <div className="border-b border-border/50 bg-background/80 backdrop-blur-sm">
+        <div className="border-b border-border/50 bg-background/95 backdrop-blur-md shadow-sm">
           <div className="flex h-16 items-center justify-between px-6">
             <div className="flex items-center space-x-6">
-              <Link to="/" className="flex items-center space-x-2 hover:opacity-80 transition-opacity">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
+              <Link to="/" className="flex items-center space-x-3 hover:opacity-80 transition-all duration-200 group">
+                <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
                   <span className="text-white font-bold text-sm">P</span>
                 </div>
-                <span className="font-semibold text-lg">Pieces Docs</span>
+                <span className="font-semibold text-lg bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">Pieces Docs</span>
               </Link>
-              <div className="h-6 w-px bg-border/50"></div>
-              <h1 className="text-xl font-semibold text-muted-foreground">Content Editor</h1>
+              <div className="h-6 w-px bg-gradient-to-b from-transparent via-border to-transparent"></div>
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                <h1 className="text-lg font-medium text-muted-foreground">Content Editor</h1>
+              </div>
             </div>
             
             <div className="flex items-center space-x-3">
               <Link to="/">
-                <Button variant="ghost" size="sm" className="gap-2">
+                <Button variant="ghost" size="sm" className="gap-2 hover:bg-muted/50 transition-colors">
                   <Home className="h-4 w-4" />
                   Home
                 </Button>
               </Link>
               {hasRole('admin') && (
                 <Link to="/admin">
-                  <Button variant="outline" size="sm" className="gap-2">
+                  <Button variant="outline" size="sm" className="gap-2 hover:bg-muted/50 transition-colors">
                     <Settings className="h-4 w-4" />
                     Admin
                   </Button>
@@ -218,9 +233,9 @@ Start editing to see the live preview!
       )}
       
       <div className={`flex ${activeTab === 'content' ? 'h-[calc(100vh-4rem)]' : 'h-screen'}`}>
-        {/* Sidebar - Hide when in navigation tab */}
+        {/* Enhanced Sidebar - Hide when in navigation tab */}
         {activeTab === 'content' && (
-          <div className="w-72 border-r border-border/50 bg-muted/20">
+          <div className="w-80 border-r border-border/50 bg-muted/20 backdrop-blur-sm">
             <EditorSidebar
               selectedFile={selectedFile}
               onFileSelect={handleFileSelect}
@@ -234,45 +249,59 @@ Start editing to see the live preview!
         
         {/* Main Content */}
         <div className="flex-1 flex flex-col">
-          {/* Tab Navigation */}
-          <div className="border-b border-border/50 p-4 bg-background/95 backdrop-blur-sm">
-            <div className="flex space-x-2">
-              <Button
-                onClick={() => setActiveTab('navigation')}
-                variant={activeTab === 'navigation' ? 'default' : 'ghost'}
-                size="sm"
-                className="gap-2"
-              >
-                <Navigation className="h-4 w-4" />
-                Navigation
-              </Button>
-              <Button
-                onClick={() => setActiveTab('content')}
-                variant={activeTab === 'content' ? 'default' : 'ghost'}
-                size="sm"
-                className="gap-2"
-              >
-                <FileText className="h-4 w-4" />
-                Content
-              </Button>
+          {/* Enhanced Tab Navigation */}
+          <div className="border-b border-border/50 px-6 py-4 bg-background/95 backdrop-blur-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex space-x-1 bg-muted/30 p-1 rounded-lg">
+                <Button
+                  onClick={() => setActiveTab('navigation')}
+                  variant={activeTab === 'navigation' ? 'default' : 'ghost'}
+                  size="sm"
+                  className="gap-2 transition-all duration-200"
+                >
+                  <Navigation className="h-4 w-4" />
+                  Navigation
+                </Button>
+                <Button
+                  onClick={() => setActiveTab('content')}
+                  variant={activeTab === 'content' ? 'default' : 'ghost'}
+                  size="sm"
+                  className="gap-2 transition-all duration-200"
+                >
+                  <FileText className="h-4 w-4" />
+                  Content
+                </Button>
+              </div>
+              
+              {activeTab === 'content' && modifiedFiles.size > 0 && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
+                  {modifiedFiles.size} file{modifiedFiles.size !== 1 ? 's' : ''} modified
+                </div>
+              )}
             </div>
           </div>
           
-          {/* Tab Content */}
+          {/* Enhanced Tab Content */}
           <div className="flex-1 overflow-hidden">
             {activeTab === 'navigation' ? (
-              <NavigationEditor 
-                fileStructure={fileStructure} 
-                onNavigationChange={refetch}
-              />
+              <div className="h-full animate-in fade-in slide-in-from-top-2 duration-300">
+                <NavigationEditor 
+                  fileStructure={fileStructure} 
+                  onNavigationChange={refetch}
+                />
+              </div>
             ) : (
-              <EditorMain 
-                selectedFile={selectedFile}
-                content={loadingContent ? "Loading..." : content}
-                onContentChange={handleContentChange}
-                onSave={handleSave}
-                hasChanges={hasChanges}
-              />
+              <div className="h-full animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <EditorMain 
+                  selectedFile={selectedFile}
+                  content={loadingContent ? "Loading content..." : content}
+                  onContentChange={handleContentChange}
+                  onSave={handleSave}
+                  hasChanges={hasChanges}
+                  saving={false}
+                />
+              </div>
             )}
           </div>
         </div>
