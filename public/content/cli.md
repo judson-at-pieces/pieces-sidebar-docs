@@ -4,7 +4,7 @@ path: "/cli"
 visibility: "PUBLIC"
 ---
 ***
-
+s
 <Image src="https://storage.googleapis.com/hashnode_product_documentation_assets/cli_assets/CLI_MAIN/pieces_cli_banner.png" alt="" align="center" fullwidth="true" />
 
 ***
