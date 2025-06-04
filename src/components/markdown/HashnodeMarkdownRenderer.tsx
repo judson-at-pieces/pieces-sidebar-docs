@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Callout } from './Callout';
 import { MarkdownCard } from './MarkdownCard';
@@ -18,7 +19,7 @@ const STEPS_PATTERN = '<Steps';
 const CARD_PATTERN = '<Card';
 
 // Types
-type SectionType = 'frontmatter' | 'image' | 'cardgroup' | 'callout' | 'accordion' | 'accordiongroup' | 'tabs' | 'button' | 'steps' | 'card' | 'markdown';
+type SectionType = 'frontmatter' | 'image' | 'cardgroup' | 'callout' | 'accordion' | 'accordiongroup' | 'tabs' | 'button' | 'steps' | 'card' | 'markdown' | 'mixed';
 type ListType = 'ordered' | 'unordered' | null;
 
 interface ParsedSection {
@@ -50,6 +51,11 @@ const parseSections = (text: string): ParsedSection[] => {
     if (section.startsWith(IMAGE_PATTERN)) {
       console.log('🖼️ Found image section');
       return { type: 'image', content: section, index };
+    }
+    // Check if section contains CardGroup AND other content
+    if (section.includes(CARDGROUP_PATTERN) && section.split('\n').filter(line => line.trim()).length > 10) {
+      console.log('🔀 Found mixed content section with CardGroup!');
+      return { type: 'mixed', content: section, index };
     }
     if (section.includes(CARDGROUP_PATTERN)) {
       console.log('🃏 Found CardGroup section!');
@@ -460,6 +466,133 @@ const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => {
   );
 };
 
+// Parse mixed content that contains both special elements and markdown
+const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
+  console.log('🔀 MixedContentSection: Processing content with length:', content.length);
+  
+  const elements: React.ReactNode[] = [];
+  
+  // Find all special elements with their positions
+  const cardGroupRegex = /<CardGroup[^>]*>[\s\S]*?<\/CardGroup>/g;
+  const imageRegex = /<Image[^>]*\/>/g;
+  const calloutRegex = /<Callout[^>]*>[\s\S]*?<\/Callout>/g;
+  const standaloneCardRegex = /<Card[^>]*>[\s\S]*?<\/Card>/g;
+  
+  const allMatches: Array<{ match: RegExpMatchArray; type: string }> = [];
+  
+  // Find CardGroups
+  let match;
+  while ((match = cardGroupRegex.exec(content)) !== null) {
+    allMatches.push({ match, type: 'cardgroup' });
+  }
+  
+  // Find Images
+  cardGroupRegex.lastIndex = 0;
+  while ((match = imageRegex.exec(content)) !== null) {
+    allMatches.push({ match, type: 'image' });
+  }
+  
+  // Find Callouts
+  imageRegex.lastIndex = 0;
+  while ((match = calloutRegex.exec(content)) !== null) {
+    allMatches.push({ match, type: 'callout' });
+  }
+  
+  // Find standalone Cards (not inside CardGroups)
+  calloutRegex.lastIndex = 0;
+  const cardGroupMatches = allMatches.filter(m => m.type === 'cardgroup');
+  while ((match = standaloneCardRegex.exec(content)) !== null) {
+    // Check if this card is inside a CardGroup
+    const isInCardGroup = cardGroupMatches.some(cgMatch => {
+      const cgStart = cgMatch.match.index!;
+      const cgEnd = cgStart + cgMatch.match[0].length;
+      return match.index! >= cgStart && match.index! < cgEnd;
+    });
+    
+    if (!isInCardGroup) {
+      allMatches.push({ match, type: 'card' });
+    }
+  }
+  
+  // Sort by position
+  allMatches.sort((a, b) => (a.match.index || 0) - (b.match.index || 0));
+  
+  console.log('🔀 Found special elements:', allMatches.length);
+  
+  let lastIndex = 0;
+  let elementIndex = 0;
+  
+  for (const { match, type } of allMatches) {
+    const elementStart = match.index!;
+    const elementEnd = elementStart + match[0].length;
+    
+    // Add markdown content before this element
+    if (elementStart > lastIndex) {
+      const markdownContent = content.slice(lastIndex, elementStart).trim();
+      if (markdownContent) {
+        console.log('🔀 Adding markdown content before', type);
+        elements.push(
+          <div key={`markdown-${elementIndex}`} className="hn-markdown-section">
+            <MarkdownSection content={markdownContent} />
+          </div>
+        );
+        elementIndex++;
+      }
+    }
+    
+    // Add the special element
+    console.log('🔀 Adding special element:', type);
+    switch (type) {
+      case 'cardgroup': {
+        const { cols, cards } = parseCardGroup(match[0]);
+        elements.push(
+          <CardGroupSection key={`cardgroup-${elementIndex}`} cols={cols || 2} cards={cards} />
+        );
+        break;
+      }
+      case 'image': {
+        const imageData = extractImageData(match[0]);
+        elements.push(
+          <ImageSection key={`image-${elementIndex}`} {...imageData} />
+        );
+        break;
+      }
+      case 'callout': {
+        const calloutData = extractCalloutData(match[0]);
+        elements.push(
+          <CalloutSection key={`callout-${elementIndex}`} type={calloutData.type} content={calloutData.content} />
+        );
+        break;
+      }
+      case 'card': {
+        const cardData = parseCard(match[0]);
+        elements.push(
+          <CardSection key={`card-${elementIndex}`} card={cardData} />
+        );
+        break;
+      }
+    }
+    elementIndex++;
+    lastIndex = elementEnd;
+  }
+  
+  // Add any remaining markdown content
+  if (lastIndex < content.length) {
+    const markdownContent = content.slice(lastIndex).trim();
+    if (markdownContent) {
+      console.log('🔀 Adding final markdown content');
+      elements.push(
+        <div key={`markdown-final`} className="hn-markdown-section">
+          <MarkdownSection content={markdownContent} />
+        </div>
+      );
+    }
+  }
+  
+  console.log('🔀 MixedContentSection: Returning', elements.length, 'elements');
+  return <>{elements}</>;
+};
+
 // Parse Markdown
 const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
   console.log('📝 MarkdownSection: Starting with content length:', content.length);
@@ -539,15 +672,6 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
 
     lines.forEach((line, index) => {
       console.log(`📝 Processing line ${index}:`, line);
-      
-      // Skip lines that are part of special elements - they'll be handled by section parsing
-      if (line.includes('<CardGroup') || line.includes('</CardGroup>') || 
-          line.includes('<Card') || line.includes('</Card>') ||
-          line.includes('<Callout') || line.includes('</Callout>') ||
-          line.includes('<Image')) {
-        console.log(`📝 Skipping special element line ${index}:`, line);
-        return;
-      }
 
       // Code blocks
       if (line.startsWith('```')) {
@@ -736,6 +860,12 @@ const HashnodeMarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) 
         const { cols, cards } = parseCardGroup(section.content);
         console.log('🃏 Rendering CardGroupSection with data:', { cols, cardCount: cards.length });
         result = <CardGroupSection key={section.index} cols={cols || 2} cards={cards} />;
+        break;
+      }
+      
+      case 'mixed': {
+        console.log('🔀 Rendering MixedContentSection');
+        result = <MixedContentSection key={section.index} content={section.content} />;
         break;
       }
         
