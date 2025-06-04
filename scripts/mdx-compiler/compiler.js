@@ -69,21 +69,6 @@ class MDXCompiler {
 
   generateTSX(componentName, frontmatter, content) {
     return `import React from 'react';
-import { Link } from 'react-router-dom';
-import { ExpandableImage } from '@/components/markdown/ExpandableImage';
-import { Image } from '@/components/markdown/Image';
-import { Callout } from '@/components/markdown/Callout';
-import { Steps, Step } from '@/components/markdown/Steps';
-import { MarkdownCard as Card } from '@/components/markdown/MarkdownCard';
-import { CardGroup } from '@/components/markdown/CardGroup';
-import { 
-  CustomTable, 
-  CustomTableHeader, 
-  CustomTableBody, 
-  CustomTableRow, 
-  CustomTableHead, 
-  CustomTableCell 
-} from '@/components/markdown/CustomTable';
 import { MDXProps } from '@/utils/mdxUtils';
 import HashnodeMarkdownRenderer from '@/components/markdown/HashnodeMarkdownRenderer';
 
@@ -111,4 +96,8 @@ ${componentName}.frontmatter = frontmatter;
   }
 }
 
+// ES module export
+export { MDXCompiler };
+
+// CommonJS export for compatibility
 module.exports = { MDXCompiler };

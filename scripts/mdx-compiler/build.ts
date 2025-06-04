@@ -1,6 +1,6 @@
 
 import path from 'path';
-const { MDXCompiler } = require('./compiler.js');
+import { MDXCompiler } from './compiler.js';
 
 const INPUT_DIR = path.join(process.cwd(), 'public/content');
 const OUTPUT_DIR = path.join(process.cwd(), 'src/compiled-content');
