@@ -491,8 +491,8 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
     };
 
     lines.forEach((line, index) => {
-      // Skip lines that are part of CardGroup or Card elements - they'll be handled by section parsing
-      if (line.includes('<CardGroup') || line.includes('<Card') || line.includes('</CardGroup>') || line.includes('</Card>')) {
+      // Skip lines that are part of CardGroup elements - they'll be handled by section parsing
+      if (line.includes('<CardGroup') || line.includes('</CardGroup>')) {
         return;
       }
 
@@ -609,6 +609,46 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
           <blockquote key={`quote-${index}`} className="hn-blockquote">
             {processInlineMarkdown(line.slice(2))}
           </blockquote>
+        );
+        return;
+      }
+
+      // Handle standalone Card elements (not in CardGroup)
+      if (line.includes('<Card') && !line.includes('</Card>')) {
+        // This is the start of a multiline Card element
+        let cardContent = line;
+        let cardIndex = index + 1;
+        
+        // Collect the full Card element
+        while (cardIndex < lines.length && !lines[cardIndex].includes('</Card>')) {
+          cardContent += '\n' + lines[cardIndex];
+          cardIndex++;
+        }
+        
+        if (cardIndex < lines.length) {
+          cardContent += '\n' + lines[cardIndex]; // Add the closing </Card>
+          
+          // Parse and render the card
+          const card = parseCard(cardContent);
+          flushList();
+          flushTable();
+          elements.push(
+            <CardSection key={`standalone-card-${index}`} card={card} />
+          );
+          
+          // Skip the lines we've already processed
+          index = cardIndex;
+        }
+        return;
+      }
+
+      // Handle single-line Card elements
+      if (line.includes('<Card') && line.includes('</Card>')) {
+        const card = parseCard(line);
+        flushList();
+        flushTable();
+        elements.push(
+          <CardSection key={`standalone-card-${index}`} card={card} />
         );
         return;
       }
