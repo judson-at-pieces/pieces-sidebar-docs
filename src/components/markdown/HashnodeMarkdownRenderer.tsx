@@ -39,9 +39,11 @@ const parseSections = (text: string): ParsedSection[] => {
     console.log(`🔍 Parsing section ${index}:`, section.substring(0, 100));
     
     if (section.startsWith(FRONTMATTER_PATTERN) && section.includes(TITLE_PATTERN)) {
+      console.log('📋 Found frontmatter section');
       return { type: 'frontmatter', content: section, index };
     }
     if (section.startsWith(IMAGE_PATTERN)) {
+      console.log('🖼️ Found image section');
       return { type: 'image', content: section, index };
     }
     if (section.includes(CARDGROUP_PATTERN)) {
@@ -49,26 +51,35 @@ const parseSections = (text: string): ParsedSection[] => {
       return { type: 'cardgroup', content: section, index };
     }
     if (section.startsWith(ACCORDIONGROUP_PATTERN)) {
+      console.log('📁 Found AccordionGroup section');
       return { type: 'accordiongroup', content: section, index };
     }
     if (section.startsWith(ACCORDION_PATTERN)) {
+      console.log('📂 Found Accordion section');
       return { type: 'accordion', content: section, index };
     }
     if (section.startsWith(TABS_PATTERN)) {
+      console.log('📑 Found Tabs section');
       return { type: 'tabs', content: section, index };
     }
     if (section.startsWith(BUTTON_PATTERN)) {
+      console.log('🔘 Found Button section');
       return { type: 'button', content: section, index };
     }
     if (section.startsWith(STEPS_PATTERN)) {
+      console.log('👣 Found Steps section');
       return { type: 'steps', content: section, index };
     }
     if (section.startsWith(CARD_PATTERN) && !section.includes(CARDGROUP_PATTERN)) {
+      console.log('🎯 Found standalone Card section');
       return { type: 'card', content: section, index };
     }
     if (section.startsWith(CALLOUT_PATTERN)) {
+      console.log('💬 Found Callout section');
       return { type: 'callout', content: section, index };
     }
+    
+    console.log('📝 Found markdown section');
     return { type: 'markdown', content: section, index };
   });
 };
@@ -491,13 +502,11 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
     };
 
     lines.forEach((line, index) => {
-      // Skip lines that are part of CardGroup elements - they'll be handled by section parsing
-      if (line.includes('<CardGroup') || line.includes('</CardGroup>')) {
-        return;
-      }
-
-      // Skip Callout lines as they're handled by section parsing
-      if (line.includes('<Callout')) {
+      // Skip lines that are part of special elements - they'll be handled by section parsing
+      if (line.includes('<CardGroup') || line.includes('</CardGroup>') || 
+          line.includes('<Card') || line.includes('</Card>') ||
+          line.includes('<Callout') || line.includes('</Callout>') ||
+          line.includes('<Image')) {
         return;
       }
 
@@ -609,46 +618,6 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
           <blockquote key={`quote-${index}`} className="hn-blockquote">
             {processInlineMarkdown(line.slice(2))}
           </blockquote>
-        );
-        return;
-      }
-
-      // Handle standalone Card elements (not in CardGroup)
-      if (line.includes('<Card') && !line.includes('</Card>')) {
-        // This is the start of a multiline Card element
-        let cardContent = line;
-        let cardIndex = index + 1;
-        
-        // Collect the full Card element
-        while (cardIndex < lines.length && !lines[cardIndex].includes('</Card>')) {
-          cardContent += '\n' + lines[cardIndex];
-          cardIndex++;
-        }
-        
-        if (cardIndex < lines.length) {
-          cardContent += '\n' + lines[cardIndex]; // Add the closing </Card>
-          
-          // Parse and render the card
-          const card = parseCard(cardContent);
-          flushList();
-          flushTable();
-          elements.push(
-            <CardSection key={`standalone-card-${index}`} card={card} />
-          );
-          
-          // Skip the lines we've already processed
-          index = cardIndex;
-        }
-        return;
-      }
-
-      // Handle single-line Card elements
-      if (line.includes('<Card') && line.includes('</Card>')) {
-        const card = parseCard(line);
-        flushList();
-        flushTable();
-        elements.push(
-          <CardSection key={`standalone-card-${index}`} card={card} />
         );
         return;
       }
