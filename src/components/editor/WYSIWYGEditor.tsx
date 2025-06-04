@@ -17,7 +17,8 @@ interface EditableElement {
   id: string;
   type: 'text' | 'heading' | 'image' | 'callout' | 'card' | 'steps' | 'list';
   content: string;
-  props?: Record<string, any>;
+  startLine: number;
+  endLine: number;
 }
 
 export function WYSIWYGEditor({ content, onContentChange }: WYSIWYGEditorProps) {
@@ -26,68 +27,109 @@ export function WYSIWYGEditor({ content, onContentChange }: WYSIWYGEditorProps) 
   const [insertPosition, setInsertPosition] = useState<number>(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
-  // Parse content into editable elements
+  // Parse content into editable elements with proper line tracking
   const parseContent = (markdownContent: string): EditableElement[] => {
     const lines = markdownContent.split('\n');
     const elements: EditableElement[] = [];
     let currentElement = '';
     let elementType: EditableElement['type'] = 'text';
     let elementId = 0;
+    let startLine = 0;
+    let currentLine = 0;
 
-    for (const line of lines) {
-      if (line.startsWith('# ')) {
-        if (currentElement) {
-          elements.push({
-            id: `element-${elementId++}`,
-            type: elementType,
-            content: currentElement.trim()
-          });
+    const addElement = (type: EditableElement['type'], content: string, start: number, end: number) => {
+      if (content.trim()) {
+        elements.push({
+          id: `element-${elementId++}`,
+          type,
+          content: content.trim(),
+          startLine: start,
+          endLine: end
+        });
+      }
+    };
+
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i];
+      
+      // Skip frontmatter and section delimiters
+      if (line.startsWith('---') || line === '***') {
+        if (currentElement.trim()) {
+          addElement(elementType, currentElement, startLine, i - 1);
           currentElement = '';
+        }
+        continue;
+      }
+
+      // Check for new element types
+      if (line.startsWith('# ') || line.startsWith('## ') || line.startsWith('### ')) {
+        if (currentElement.trim()) {
+          addElement(elementType, currentElement, startLine, i - 1);
         }
         elementType = 'heading';
         currentElement = line;
+        startLine = i;
       } else if (line.startsWith('<Image')) {
-        if (currentElement) {
-          elements.push({
-            id: `element-${elementId++}`,
-            type: elementType,
-            content: currentElement.trim()
-          });
-          currentElement = '';
+        if (currentElement.trim()) {
+          addElement(elementType, currentElement, startLine, i - 1);
         }
         elementType = 'image';
         currentElement = line;
+        startLine = i;
       } else if (line.startsWith('<Callout') || line.startsWith(':::')) {
-        if (currentElement) {
-          elements.push({
-            id: `element-${elementId++}`,
-            type: elementType,
-            content: currentElement.trim()
-          });
-          currentElement = '';
+        if (currentElement.trim()) {
+          addElement(elementType, currentElement, startLine, i - 1);
         }
         elementType = 'callout';
         currentElement = line;
+        startLine = i;
+      } else if (line.startsWith('<Card ') && !line.includes('<CardGroup')) {
+        if (currentElement.trim()) {
+          addElement(elementType, currentElement, startLine, i - 1);
+        }
+        elementType = 'card';
+        currentElement = line;
+        startLine = i;
+      } else if (line.startsWith('<Steps')) {
+        if (currentElement.trim()) {
+          addElement(elementType, currentElement, startLine, i - 1);
+        }
+        elementType = 'steps';
+        currentElement = line;
+        startLine = i;
+      } else if (line.match(/^[*\-]\s+/) || line.match(/^\d+\.\s+/)) {
+        if (elementType !== 'list') {
+          if (currentElement.trim()) {
+            addElement(elementType, currentElement, startLine, i - 1);
+          }
+          elementType = 'list';
+          currentElement = line;
+          startLine = i;
+        } else {
+          currentElement += '\n' + line;
+        }
       } else {
-        if (elementType !== 'text' && currentElement) {
-          elements.push({
-            id: `element-${elementId++}`,
-            type: elementType,
-            content: currentElement.trim()
-          });
+        if (elementType !== 'text' && currentElement.trim()) {
+          addElement(elementType, currentElement, startLine, i - 1);
           elementType = 'text';
           currentElement = '';
+          startLine = i;
         }
-        currentElement += line + '\n';
+        
+        if (elementType === 'text') {
+          if (currentElement === '') {
+            startLine = i;
+          }
+          currentElement += (currentElement ? '\n' : '') + line;
+        } else {
+          currentElement += '\n' + line;
+        }
       }
     }
 
+    // Add the last element
     if (currentElement.trim()) {
-      elements.push({
-        id: `element-${elementId++}`,
-        type: elementType,
-        content: currentElement.trim()
-      });
+      addElement(elementType, currentElement, startLine, lines.length - 1);
     }
 
     return elements;
@@ -109,7 +151,7 @@ export function WYSIWYGEditor({ content, onContentChange }: WYSIWYGEditorProps) 
         newContent = '<Image src="" alt="" align="center" fullwidth="false" />';
         break;
       case 'callout':
-        newContent = ':::info\nNew callout content...\n:::';
+        newContent = '<Callout type="info">\nNew callout content...\n</Callout>';
         break;
       case 'card':
         newContent = '<Card title="New Card" image="">\nCard content...\n</Card>';
@@ -123,23 +165,39 @@ export function WYSIWYGEditor({ content, onContentChange }: WYSIWYGEditorProps) 
     }
 
     const lines = content.split('\n');
-    lines.splice(position, 0, '', newContent, '');
+    
+    // Find the actual line position to insert at
+    let insertLineIndex = 0;
+    if (position > 0 && position <= elements.length) {
+      const targetElement = elements[position - 1];
+      insertLineIndex = targetElement.endLine + 1;
+    } else if (position > elements.length) {
+      insertLineIndex = lines.length;
+    }
+
+    // Insert the new content with proper spacing
+    const newLines = [
+      '',
+      ...newContent.split('\n'),
+      ''
+    ];
+    
+    lines.splice(insertLineIndex, 0, ...newLines);
     onContentChange(lines.join('\n'));
     setShowInsertMenu(false);
   };
 
   const updateElement = (elementId: string, newContent: string) => {
-    const elementIndex = elements.findIndex(el => el.id === elementId);
-    if (elementIndex === -1) return;
+    const element = elements.find(el => el.id === elementId);
+    if (!element) return;
 
-    const updatedElements = [...elements];
-    updatedElements[elementIndex] = {
-      ...updatedElements[elementIndex],
-      content: newContent
-    };
-
-    const newMarkdown = updatedElements.map(el => el.content).join('\n\n');
-    onContentChange(newMarkdown);
+    const lines = content.split('\n');
+    
+    // Replace the lines for this element
+    const newContentLines = newContent.split('\n');
+    lines.splice(element.startLine, element.endLine - element.startLine + 1, ...newContentLines);
+    
+    onContentChange(lines.join('\n'));
     setEditingElement(null);
   };
 
@@ -155,7 +213,7 @@ export function WYSIWYGEditor({ content, onContentChange }: WYSIWYGEditorProps) 
             </div>
             <Button
               size="sm"
-              onClick={() => setEditingElement(null)}
+              onClick={() => updateElement(element.id, document.getElementById(`editor-${element.id}`)?.value || element.content)}
               className="h-6 px-2 text-xs"
             >
               <Save className="h-3 w-3 mr-1" />
@@ -163,27 +221,21 @@ export function WYSIWYGEditor({ content, onContentChange }: WYSIWYGEditorProps) 
             </Button>
           </div>
           <Textarea
-            value={element.content}
-            onChange={(e) => {
-              // Update immediately for preview
-              const updatedElements = [...elements];
-              updatedElements[index] = { ...element, content: e.target.value };
-              const newMarkdown = updatedElements.map(el => el.content).join('\n\n');
-              onContentChange(newMarkdown);
-            }}
+            id={`editor-${element.id}`}
+            defaultValue={element.content}
             onKeyDown={(e) => {
               if (e.key === 'Escape') {
                 setEditingElement(null);
               }
               if (e.key === 'Enter' && e.ctrlKey) {
-                setEditingElement(null);
+                updateElement(element.id, e.currentTarget.value);
               }
             }}
             className="min-h-[100px] font-mono text-sm"
             autoFocus
           />
           <div className="mt-2 text-xs text-muted-foreground">
-            Press Ctrl+Enter to finish editing, Esc to cancel
+            Press Ctrl+Enter to save, Esc to cancel
           </div>
         </div>
       );
