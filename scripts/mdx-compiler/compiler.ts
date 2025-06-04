@@ -81,7 +81,7 @@ export class MDXCompiler {
     // Parse frontmatter
     const { data: frontmatter, content: markdownContent } = matter(content);
     
-    // Process custom syntax
+    // Process custom syntax - fix duplication issues
     const processedContent = this.processCustomSyntax(markdownContent);
     
     // Compile MDX to JSX
@@ -108,8 +108,10 @@ export class MDXCompiler {
   }
 
   private processCustomSyntax(content: string): string {
+    let processedContent = content;
+
     // Transform callout syntax: :::info[Title] or :::warning{title="Warning"}
-    content = content.replace(
+    processedContent = processedContent.replace(
       /:::(\w+)(?:\[([^\]]*)\]|\{title="([^"]*)"\})?\n([\s\S]*?):::/g,
       (match, type, title1, title2, innerContent) => {
         const title = title1 || title2 || '';
@@ -118,7 +120,7 @@ export class MDXCompiler {
     );
 
     // Transform simple callout syntax: :::info
-    content = content.replace(
+    processedContent = processedContent.replace(
       /:::(\w+)\n([\s\S]*?):::/g,
       (_, type, innerContent) => {
         return `<Callout type="${type}">\n\n${innerContent.trim()}\n\n</Callout>`;
@@ -126,39 +128,43 @@ export class MDXCompiler {
     );
 
     // Transform ExpandableImage components
-    content = content.replace(
+    processedContent = processedContent.replace(
       /<ExpandableImage\s+src="([^"]*)"(?:\s+alt="([^"]*)")?(?:\s+caption="([^"]*)")?\/>/gi,
       (_, src, alt, caption) => {
         return `<ExpandableImage src="${src}" alt="${alt || ''}" caption="${caption || ''}" />`;
       }
     );
 
-    // Handle regular images with captions
-    content = content.replace(
+    // Handle regular images with captions - but avoid double processing
+    processedContent = processedContent.replace(
       /!\[([^\]]*)\]\(([^)]+)\)(?:\s*"([^"]*)")?/g,
-      (_, alt, src, caption) => {
+      (match, alt, src, caption) => {
+        // Don't transform if it's already an ExpandableImage
+        if (processedContent.includes(`<ExpandableImage src="${src}"`)) {
+          return match;
+        }
         if (caption) {
           return `<ExpandableImage src="${src}" alt="${alt}" caption="${caption}" />`;
         }
-        return `<ExpandableImage src="${src}" alt="${alt}" />`;
+        return `<Image src="${src}" alt="${alt}" />`;
       }
     );
 
-    return content;
+    return processedContent;
   }
 
   private createCustomComponentsPlugin() {
     return () => {
       return (tree: Node) => {
         visit(tree, 'element', (node: any) => {
-          // Transform custom elements
+          // Transform custom elements - ensure no duplication
           if (node.tagName === 'Card' || 
               node.tagName === 'CardGroup' || 
               node.tagName === 'Steps' || 
               node.tagName === 'Step' ||
               node.tagName === 'ExpandableImage' ||
               node.tagName === 'Callout') {
-            // Keep custom components as-is
+            // Keep custom components as-is, no transformation needed
             return;
           }
         });
@@ -187,6 +193,7 @@ export class MDXCompiler {
     return `import React from 'react';
 import { Link } from 'react-router-dom';
 import { ExpandableImage } from '@/components/markdown/ExpandableImage';
+import { Image } from '@/components/markdown/Image';
 import { Callout } from '@/components/markdown/Callout';
 import { Steps, Step } from '@/components/markdown/Steps';
 import { MarkdownCard as Card } from '@/components/markdown/MarkdownCard';
@@ -199,11 +206,10 @@ import {
   CustomTableHead, 
   CustomTableCell 
 } from '@/components/markdown/CustomTable';
+import { MDXProps } from '@/utils/mdxUtils';
 ${imports}
 
-export interface ${componentName}Props {
-  components?: Record<string, React.ComponentType<any>>;
-}
+export interface ${componentName}Props extends MDXProps {}
 
 export const frontmatter = ${JSON.stringify(frontmatter, null, 2)};
 
@@ -238,6 +244,7 @@ export default function ${componentName}({ components = {} }: ${componentName}Pr
     p: ({ children, ...props }: any) => <p className="leading-7 [&:not(:first-child)]:mt-6" {...props}>{children}</p>,
     hr: ({ ...props }: any) => <hr className="my-4 md:my-8" {...props} />,
     ExpandableImage,
+    Image,
     Callout,
     Steps,
     Step,

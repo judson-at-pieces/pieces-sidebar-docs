@@ -2,9 +2,9 @@
 import React from 'react';
 
 export interface MDXProps {
-  components?: Record<string, React.ComponentType<any>>;
+  components?: Record<string, React.ComponentType<any> | string>;
 }
 
 export interface MDXContentProps {
-  components?: Record<string, React.ComponentType<any>>;
+  components?: Record<string, React.ComponentType<any> | string>;
 }
