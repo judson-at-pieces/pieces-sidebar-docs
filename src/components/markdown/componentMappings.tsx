@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ExpandableImage as ExpandableImageComponent } from './ExpandableImage';
@@ -7,6 +8,7 @@ import { Steps, Step } from './Steps';
 import { MarkdownCard } from './MarkdownCard';
 import { CardGroup } from './CardGroup';
 import { CustomTable, CustomTableHeader, CustomTableBody, CustomTableRow, CustomTableHead, CustomTableCell } from './CustomTable';
+import { CodeBlock } from './CodeBlock';
 import { PiecesCloudModels } from './PiecesCloudModels';
 import { PiecesLocalModels } from './PiecesLocalModels';
 import { GlossaryAll } from './GlossaryAll';
@@ -55,6 +57,7 @@ export const createComponentMappings = () => ({
   'glossary-all': () => {
     return <GlossaryAll />;
   },
+
   // Explicit ExpandableImage component handler
   ExpandableImage: ({ src, alt, caption, ...props }: ImageProps) => {
     return <ExpandableImageComponent src={src} alt={caption as string} caption={(caption as string) || ''} {...props} />;
@@ -62,90 +65,52 @@ export const createComponentMappings = () => ({
 
   // Custom div handler for callouts, steps, cards, and card groups
   div: ({ children, ...props }: DivProps) => {
-    // Access the actual data attributes correctly
-    const calloutType = props['data-callout'] as string;
-    const title = props['data-title'] as string;
-    const isSteps = props['data-steps'] as string;
-    const stepNumber = props['data-step'] as string;
-    const stepTitle = props['data-step-title'] as string;
-    const isCard = props['data-card'] as string;
-    const isCardGroup = props['data-cardgroup'] as string;
-    const cols = props['data-cols'] as string;
-    const image = props['data-image'] as string;
-    const href = props['data-href'] as string;
-    const external = props['data-external'] as string;
+    // Get data attributes directly from props object
+    const dataProps = Object.keys(props).reduce((acc, key) => {
+      if (key.startsWith('data-')) {
+        const cleanKey = key.replace('data-', '').replace(/-([a-z])/g, (g) => g[1].toUpperCase());
+        acc[cleanKey] = props[key as keyof typeof props];
+      }
+      return acc;
+    }, {} as Record<string, any>);
+
+    console.log('Div component mapping - dataProps:', dataProps, 'hasChildren:', !!children);
     
-    // Handle Image component
-    const isImage = props['data-image'] as string;
-    const imageSrc = props['data-src'] as string;
-    const imageAlt = props['data-alt'] as string;
-    const imageCaption = props['data-caption'] as string;
-    const imageAlign = props['data-align'] as string;
-    const imageFullwidth = props['data-fullwidth'] as string;
-    
-    // Handle pieces-cloud-models component
-    const isPiecesCloudModels = props['data-pieces-cloud-models'] as string;
-    const isPiecesLocalModels = props['data-pieces-local-models'] as string;
-    const isGlossaryAll = props['data-glossary-all'] as string;
-    
-    // Check for card-component attribute (new approach)
-    const isCardComponent = props['data-card-component'] as string;
-    
-    // Fallback detection: if we have title + image but no explicit isCard, it's likely a card
-    const shouldRenderAsCard = !isCard && !isCardComponent && title && image;
-    // Fallback detection: if we have cols but no explicit isCardGroup, it's likely a card group
-    const shouldRenderAsCardGroup = !isCardGroup && cols && React.Children.count(children) > 0;
-    
-    console.log('Div component mapping - props:', { 
-      isCard, 
-      isCardComponent,
-      isCardGroup, 
-      title, 
-      image, 
-      href, 
-      external, 
-      cols,
-      hasChildren: !!children,
-      shouldRenderAsCard,
-      shouldRenderAsCardGroup,
-      allDataAttribs: Object.keys(props).filter(key => key.startsWith('data-')),
-      childrenType: typeof children,
-      childrenContent: typeof children === 'string' ? children.substring(0, 100) : 'not string'
-    });
-    
-    if (calloutType) {
-      return <Callout type={calloutType as 'info' | 'warning' | 'tip' | 'error' | 'success' | 'alert'} title={title} {...props}>{children}</Callout>;
+    if (dataProps.callout) {
+      return <Callout type={dataProps.callout as 'info' | 'warning' | 'tip' | 'error' | 'success' | 'alert'} title={dataProps.title} {...props}>{children}</Callout>;
     }
     
-    if (isSteps === 'true') {
+    if (dataProps.steps === 'true') {
       return <Steps {...props}>{children}</Steps>;
     }
     
-    if (stepNumber) {
-      const validStepNumber = parseInt(stepNumber);
+    if (dataProps.step) {
+      const validStepNumber = parseInt(dataProps.step);
       const finalStepNumber = isNaN(validStepNumber) ? 1 : validStepNumber;
-      return <Step number={finalStepNumber} title={stepTitle} {...props}>{children}</Step>;
+      return <Step number={finalStepNumber} title={dataProps.stepTitle} {...props}>{children}</Step>;
     }
     
-    if (isCardGroup === 'true' || shouldRenderAsCardGroup) {
-      console.log('Rendering CardGroup with cols:', cols, 'children count:', React.Children.count(children));
-      return <CardGroup cols={cols} {...props}>{children}</CardGroup>;
+    if (dataProps.cardgroup === 'true') {
+      console.log('Rendering CardGroup with cols:', dataProps.cols, 'children count:', React.Children.count(children));
+      return <CardGroup cols={dataProps.cols} {...props}>{children}</CardGroup>;
     }
     
-    if (isCard === 'true' || isCardComponent === 'true' || shouldRenderAsCard) {
-      console.log('Rendering Card with:', { title, image, href, external, hasChildren: !!children, childrenType: typeof children });
-      const icon = props['data-icon'] as string | undefined;
+    if (dataProps.card === 'true' || dataProps.cardComponent === 'true') {
+      console.log('Rendering Card with:', { 
+        title: dataProps.title, 
+        image: dataProps.image, 
+        href: dataProps.href, 
+        external: dataProps.external, 
+        hasChildren: !!children 
+      });
       
-      // Extract the text content from children if it's React elements
       let cardContent = children;
       if (React.isValidElement(children) || Array.isArray(children)) {
-        // Convert React children to string for markdown processing
         const extractTextFromChildren = (node: any): string => {
           if (typeof node === 'string') return node;
           if (typeof node === 'number') return String(node);
           if (Array.isArray(node)) return node.map(extractTextFromChildren).join('');
           if (React.isValidElement(node)) {
-            // Add proper type check before accessing children
             if (node.props && typeof node.props === 'object' && 'children' in node.props) {
               return extractTextFromChildren(node.props.children);
             }
@@ -155,22 +120,22 @@ export const createComponentMappings = () => ({
         cardContent = extractTextFromChildren(children);
       }
       
-      return <MarkdownCard title={title} image={image} icon={icon} href={href} external={external}>{cardContent}</MarkdownCard>;
+      return <MarkdownCard title={dataProps.title} image={dataProps.image} icon={dataProps.icon} href={dataProps.href} external={dataProps.external}>{cardContent}</MarkdownCard>;
     }
     
-    if (isImage && imageSrc) {
-      return <Image src={imageSrc} alt={imageAlt} caption={imageCaption} align={imageAlign as any} fullwidth={imageFullwidth} />;
+    if (dataProps.image && dataProps.src) {
+      return <Image src={dataProps.src} alt={dataProps.alt} caption={dataProps.caption} align={dataProps.align as any} fullwidth={dataProps.fullwidth} />;
     }
     
-    if (isPiecesCloudModels) {
+    if (dataProps.piecesCloudModels) {
       return <PiecesCloudModels />;
     }
 
-    if (isPiecesLocalModels) {
+    if (dataProps.piecesLocalModels) {
       return <PiecesLocalModels />;
     }
 
-    if (isGlossaryAll) {
+    if (dataProps.glossaryAll) {
       return <GlossaryAll />;
     }
     
@@ -243,9 +208,7 @@ export const createComponentMappings = () => ({
     </h4>
   ),
   pre: ({ children, ...props }: CodeProps) => (
-    <pre className="my-4 rounded-lg border bg-muted/50 dark:bg-muted/20 p-4 text-sm overflow-x-auto max-w-full font-mono leading-relaxed" {...props}>
-      {children}
-    </pre>
+    <CodeBlock {...props}>{children}</CodeBlock>
   ),
   code: ({ children, ...props }: CodeProps) => (
     <code className="relative rounded bg-muted px-1.5 py-0.5 font-mono text-sm font-medium text-foreground" {...props}>

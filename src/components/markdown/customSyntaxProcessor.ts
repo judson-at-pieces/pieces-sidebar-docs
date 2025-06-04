@@ -99,7 +99,7 @@ export function processCustomSyntax(content: string): string {
       return '</div>';
     });
 
-    // Transform Card components - CRITICAL FIX: Use a special marker to preserve markdown processing
+    // Transform Card components - Use direct HTML instead of special syntax
     // First handle self-closing cards
     processedContent = processedContent.replace(/<Card\s+([^>]*?)\/>/gi, (match, attributes) => {
       try {
@@ -115,14 +115,14 @@ export function processCustomSyntax(content: string): string {
         const external = sanitizeAttribute(externalMatch ? externalMatch[1] : '');
         const icon = sanitizeAttribute(iconMatch ? iconMatch[1] : '');
         
-        return `\n\n:::card-component{title="${title}" image="${image}" href="${href}" external="${external}" icon="${icon}"}\n:::\n\n`;
+        return `<div data-card="true" data-title="${title}" data-image="${image}" data-href="${href}" data-external="${external}" data-icon="${icon}"></div>`;
       } catch (error) {
         console.warn('Error parsing Card attributes:', error);
-        return '\n\n:::card-component\n:::\n\n';
+        return '<div data-card="true"></div>';
       }
     });
 
-    // Then handle Card components with content - PRESERVE MARKDOWN SYNTAX
+    // Then handle Card components with content - Use direct HTML
     processedContent = processedContent.replace(/<Card\s+([^>]*?)>([\s\S]*?)<\/Card>/gi, (match, attributes, innerContent) => {
       try {
         console.log('Processing Card with content:', { attributes, innerContent: innerContent.substring(0, 100) });
@@ -144,11 +144,11 @@ export function processCustomSyntax(content: string): string {
         
         console.log('Card transformation result:', { title, image, href, external, icon, contentLength: preservedContent.length });
         
-        // Use a special markdown extension syntax that ReactMarkdown can process
-        return `\n\n:::card-component{title="${title}" image="${image}" href="${href}" external="${external}" icon="${icon}"}\n${preservedContent}\n:::\n\n`;
+        // Use direct HTML that will be processed by ReactMarkdown
+        return `<div data-card="true" data-title="${title}" data-image="${image}" data-href="${href}" data-external="${external}" data-icon="${icon}">\n\n${preservedContent}\n\n</div>`;
       } catch (error) {
         console.warn('Error parsing Card attributes:', error);
-        return `\n\n:::card-component\n${innerContent || ''}\n:::\n\n`;
+        return `<div data-card="true">\n\n${innerContent || ''}\n\n</div>`;
       }
     });
 
