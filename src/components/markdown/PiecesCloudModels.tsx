@@ -1,6 +1,5 @@
-
 import React from 'react';
-import { Card } from './Card';
+import { MarkdownCard } from './MarkdownCard';
 import { CardGroup } from './CardGroup';
 
 export function PiecesCloudModels() {
@@ -71,7 +70,7 @@ export function PiecesCloudModels() {
               {cloudModels
                 .filter(model => model.provider === provider)
                 .map(model => (
-                  <Card key={model.name} title={model.name}>
+                  <MarkdownCard key={model.name} title={model.name}>
                     <p className="text-sm text-muted-foreground mb-3">{model.description}</p>
                     <ul className="text-sm space-y-1">
                       {model.features.map((feature, idx) => (
@@ -81,7 +80,7 @@ export function PiecesCloudModels() {
                         </li>
                       ))}
                     </ul>
-                  </Card>
+                  </MarkdownCard>
                 ))}
             </CardGroup>
           </div>
@@ -89,10 +88,10 @@ export function PiecesCloudModels() {
       </div>
       
       <div className="mt-8 p-4 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
-        <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">🔑 API Keys Required</h4>
-        <p className="text-sm text-blue-800 dark:text-blue-200">
-          To use cloud models, you'll need to add your API keys in the Pieces Desktop App settings. 
-          Each provider requires its own API key, which you can obtain from their respective platforms.
+        <h4 className="font-semibold text-blue-900 dark:text-blue-100 mb-2">Getting Started with Cloud Models</h4>
+        <p className="text-blue-800 dark:text-blue-200 text-sm">
+          To use these cloud models, you'll need to configure your API keys in Pieces. 
+          Visit the settings to add your OpenAI, Anthropic, or Google API credentials.
         </p>
       </div>
     </div>

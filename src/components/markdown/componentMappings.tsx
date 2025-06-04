@@ -4,7 +4,7 @@ import { ExpandableImage as ExpandableImageComponent } from './ExpandableImage';
 import { Image } from './Image';
 import { Callout } from './Callout';
 import { Steps, Step } from './Steps';
-import { Card } from './Card';
+import { MarkdownCard } from './MarkdownCard';
 import { CardGroup } from './CardGroup';
 import { CustomTable, CustomTableHeader, CustomTableBody, CustomTableRow, CustomTableHead, CustomTableCell } from './CustomTable';
 import { PiecesCloudModels } from './PiecesCloudModels';
@@ -37,7 +37,7 @@ export const createComponentMappings = () => ({
   },
   
   card: ({ title, image, href, external, children, ...props }: any) => {
-    return <Card title={title} image={image} href={href} external={external} {...props}>{children}</Card>;
+    return <MarkdownCard title={title} image={image} href={href} external={external} {...props}>{children}</MarkdownCard>;
   },
   
   cardgroup: ({ cols, children, ...props }: any) => {
@@ -155,7 +155,7 @@ export const createComponentMappings = () => ({
         cardContent = extractTextFromChildren(children);
       }
       
-      return <Card title={title} image={image} icon={icon} href={href} external={external} {...props}>{cardContent}</Card>;
+      return <MarkdownCard title={title} image={image} icon={icon} href={href} external={external}>{cardContent}</MarkdownCard>;
     }
     
     if (isImage && imageSrc) {
