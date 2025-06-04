@@ -36,13 +36,16 @@ const parseSections = (text: string): ParsedSection[] => {
   const sections = text.split(SECTION_DELIMITER).map(section => section.trim()).filter(Boolean);
   
   return sections.map((section, index) => {
+    console.log(`🔍 Parsing section ${index}:`, section.substring(0, 100));
+    
     if (section.startsWith(FRONTMATTER_PATTERN) && section.includes(TITLE_PATTERN)) {
       return { type: 'frontmatter', content: section, index };
     }
     if (section.startsWith(IMAGE_PATTERN)) {
       return { type: 'image', content: section, index };
     }
-    if (section.startsWith(CARDGROUP_PATTERN)) {
+    if (section.includes(CARDGROUP_PATTERN)) {
+      console.log('🃏 Found CardGroup section!');
       return { type: 'cardgroup', content: section, index };
     }
     if (section.startsWith(ACCORDIONGROUP_PATTERN)) {
@@ -60,7 +63,7 @@ const parseSections = (text: string): ParsedSection[] => {
     if (section.startsWith(STEPS_PATTERN)) {
       return { type: 'steps', content: section, index };
     }
-    if (section.startsWith(CARD_PATTERN)) {
+    if (section.startsWith(CARD_PATTERN) && !section.includes(CARDGROUP_PATTERN)) {
       return { type: 'card', content: section, index };
     }
     if (section.startsWith(CALLOUT_PATTERN)) {
@@ -122,6 +125,7 @@ interface CardGroupData {
 const parseCardGroup = (content: string): CardGroupData => {
   console.log('🃏 Parsing CardGroup content:', content.substring(0, 200));
   
+  // Updated regex to handle both {2} and 2 formats
   const colsMatch = content.match(/<CardGroup[^>]*cols=\{?(\d+)\}?/);
   const cols = colsMatch ? parseInt(colsMatch[1]) : 2;
   
@@ -487,6 +491,16 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
     };
 
     lines.forEach((line, index) => {
+      // Skip lines that are part of CardGroup or Card elements - they'll be handled by section parsing
+      if (line.includes('<CardGroup') || line.includes('<Card') || line.includes('</CardGroup>') || line.includes('</Card>')) {
+        return;
+      }
+
+      // Skip Callout lines as they're handled by section parsing
+      if (line.includes('<Callout')) {
+        return;
+      }
+
       // Code blocks
       if (line.startsWith('```')) {
         if (!inCodeBlock) {
@@ -596,16 +610,6 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
             {processInlineMarkdown(line.slice(2))}
           </blockquote>
         );
-        return;
-      }
-
-      // Skip lines that are part of inline CardGroup or Card elements - they'll be handled by section parsing
-      if (line.includes('<CardGroup') || line.includes('<Card') || line.includes('</CardGroup>') || line.includes('</Card>')) {
-        return;
-      }
-
-      // Skip Callout lines as they're handled by section parsing
-      if (line.includes('<Callout')) {
         return;
       }
 
