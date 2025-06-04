@@ -1,7 +1,9 @@
+
 import React, { useState } from 'react';
 import { Callout } from './Callout';
 import { MarkdownCard } from './MarkdownCard';
 import { CardGroup } from './CardGroup';
+import { Image } from './Image';
 
 // Constants
 const SECTION_DELIMITER = '***';
@@ -170,126 +172,6 @@ const parseCardGroup = (content: string): CardGroupData => {
   return { cols, cards };
 };
 
-// Parse Accordion
-interface AccordionData {
-  title: string;
-  content: string;
-}
-
-const parseAccordion = (content: string): AccordionData => {
-  const titleMatch = content.match(/title="([^"]*)"/);
-  const contentMatch = content.match(/<Accordion[^>]*>([\s\S]*?)<\/Accordion>/);
-  
-  return {
-    title: titleMatch?.[1] || '',
-    content: contentMatch?.[1]?.trim() || ''
-  };
-};
-
-// Parse AccordionGroup
-const parseAccordionGroup = (content: string): AccordionData[] => {
-  const accordionRegex = /<Accordion\s+([^>]*)>([\s\S]*?)<\/Accordion>/g;
-  const accordions: AccordionData[] = [];
-  
-  let match: RegExpExecArray | null;
-  while ((match = accordionRegex.exec(content)) !== null) {
-    const attributes = match[1];
-    const innerContent = match[2].trim();
-    
-    const titleMatch = attributes.match(/title="([^"]*)"/);
-    const title = titleMatch ? titleMatch[1] : '';
-    
-    accordions.push({
-      title,
-      content: innerContent
-    });
-  }
-  
-  return accordions;
-};
-
-// Parse Tabs
-interface TabData {
-  title: string;
-  content: string;
-}
-
-const parseTabs = (content: string): TabData[] => {
-  const tabRegex = /<TabItem\s+([^>]*)>([\s\S]*?)<\/TabItem>/g;
-  const tabs: TabData[] = [];
-  
-  let match: RegExpExecArray | null;
-  while ((match = tabRegex.exec(content)) !== null) {
-    const attributes = match[1];
-    const innerContent = match[2].trim();
-    
-    const titleMatch = attributes.match(/title="([^"]*)"/);
-    const title = titleMatch ? titleMatch[1] : '';
-    
-    tabs.push({
-      title,
-      content: innerContent
-    });
-  }
-  
-  return tabs;
-};
-
-// Parse Button
-interface ButtonData {
-  label: string;
-  linkHref: string;
-  openLinkInNewTab: boolean;
-  align: string;
-  lightColor?: string;
-  darkColor?: string;
-}
-
-const parseButton = (content: string): ButtonData => {
-  const labelMatch = content.match(/label="([^"]*)"/);
-  const linkHrefMatch = content.match(/linkHref="([^"]*)"/);
-  const openLinkInNewTabMatch = content.match(/openLinkInNewTab="([^"]*)"/);
-  const alignMatch = content.match(/align="([^"]*)"/);
-  const lightColorMatch = content.match(/lightColor="([^"]*)"/);
-  const darkColorMatch = content.match(/darkColor="([^"]*)"/);
-  
-  return {
-    label: labelMatch?.[1] || '',
-    linkHref: linkHrefMatch?.[1] || '#',
-    openLinkInNewTab: openLinkInNewTabMatch?.[1] === 'true',
-    align: alignMatch?.[1] || 'left',
-    lightColor: lightColorMatch?.[1],
-    darkColor: darkColorMatch?.[1]
-  };
-};
-
-// Parse Steps
-interface StepData {
-  title: string;
-  content: string;
-}
-
-const parseSteps = (content: string): StepData[] => {
-  const stepRegex = /<Step\s+([^>]*)>([\s\S]*?)<\/Step>/g;
-  const steps: StepData[] = [];
-  
-  let match: RegExpExecArray | null;
-  while ((match = stepRegex.exec(content)) !== null) {
-    const attributes = match[1];
-    const innerContent = match[2].trim();
-    
-    const titleMatch = attributes.match(/title="([^"]*)"/);
-    const title = titleMatch ? titleMatch[1] : '';
-    
-    steps.push({
-      title,
-      content: innerContent
-    });
-  }
-  
-  return steps;
-};
-
 const processInlineMarkdown = (text: string): React.ReactNode => {
   // Handle inline code
   text = text.replace(/`([^`]+)`/g, '<code class="hn-inline-code">$1</code>');
@@ -308,9 +190,7 @@ const processInlineMarkdown = (text: string): React.ReactNode => {
 
 // Components
 const ImageSection: React.FC<{ src: string; alt: string; align: string; fullwidth: boolean }> = ({ src, alt, align, fullwidth }) => (
-  <div className={`hn-image-container ${align} ${fullwidth ? 'fullwidth' : ''}`}>
-    <img src={src} alt={alt} className="hn-image" />
-  </div>
+  <Image src={src} alt={alt} align={align as 'left' | 'center' | 'right'} fullwidth={fullwidth} />
 );
 
 const CalloutSection: React.FC<{ type: string; content: string }> = ({ type, content }) => (
@@ -343,97 +223,6 @@ const CardGroupSection: React.FC<{ cols: number; cards: CardData[] }> = ({ cols,
   );
 };
 
-// Parse Accordion
-const AccordionSection: React.FC<{ accordion: AccordionData }> = ({ accordion }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  
-  return (
-    <div className="hn-accordion">
-      <button 
-        className="hn-accordion-trigger" 
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        {accordion.title}
-        <span className={`hn-accordion-icon ${isOpen ? 'open' : ''}`}>▼</span>
-      </button>
-      {isOpen && (
-        <div className="hn-accordion-content">
-          {processInlineMarkdown(accordion.content)}
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Parse AccordionGroup
-const AccordionGroupSection: React.FC<{ accordions: AccordionData[] }> = ({ accordions }) => (
-  <div className="hn-accordion-group">
-    {accordions.map((accordion, index) => (
-      <AccordionSection key={index} accordion={accordion} />
-    ))}
-  </div>
-);
-
-// Parse Tabs
-const TabsSection: React.FC<{ tabs: TabData[] }> = ({ tabs }) => {
-  const [activeTab, setActiveTab] = useState(0);
-  
-  return (
-    <div className="hn-tabs">
-      <div className="hn-tabs-list">
-        {tabs.map((tab, index) => (
-          <button
-            key={index}
-            className={`hn-tab-trigger ${activeTab === index ? 'active' : ''}`}
-            onClick={() => setActiveTab(index)}
-          >
-            {tab.title}
-          </button>
-        ))}
-      </div>
-      <div className="hn-tab-content">
-        {processInlineMarkdown(tabs[activeTab]?.content || '')}
-      </div>
-    </div>
-  );
-};
-
-// Parse Button
-const ButtonSection: React.FC<{ button: ButtonData }> = ({ button }) => (
-  <div className={`hn-button-container ${button.align}`}>
-    <a
-      href={button.linkHref}
-      target={button.openLinkInNewTab ? '_blank' : '_self'}
-      rel={button.openLinkInNewTab ? 'noopener noreferrer' : undefined}
-      className="hn-button"
-      style={({
-        backgroundColor: button.lightColor,
-        '--dark-color': button.darkColor
-      } as React.CSSProperties)}
-    >
-      {button.label}
-    </a>
-  </div>
-);
-
-// Parse Steps
-const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => (
-  <div className="hn-steps">
-    {steps.map((step, index) => (
-      <div key={index} className="hn-step">
-        <div className="hn-step-number">{index + 1}</div>
-        <div className="hn-step-content">
-          <h4 className="hn-step-title">{step.title}</h4>
-          <div className="hn-step-description">
-            {processInlineMarkdown(step.content)}
-          </div>
-        </div>
-      </div>
-    ))}
-  </div>
-);
-
-// Parse Markdown
 const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
   const processContent = (text: string): React.ReactNode[] => {
     const lines = text.split('\n');
@@ -502,14 +291,6 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
     };
 
     lines.forEach((line, index) => {
-      // Skip lines that are part of special elements - they'll be handled by section parsing
-      if (line.includes('<CardGroup') || line.includes('</CardGroup>') || 
-          line.includes('<Card') || line.includes('</Card>') ||
-          line.includes('<Callout') || line.includes('</Callout>') ||
-          line.includes('<Image')) {
-        return;
-      }
-
       // Code blocks
       if (line.startsWith('```')) {
         if (!inCodeBlock) {
@@ -676,31 +457,6 @@ const HashnodeMarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) 
       case 'callout': {
         const data = extractCalloutData(section.content);
         return <CalloutSection key={section.index} type={data.type} content={data.content} />;
-      }
-      
-      case 'accordion': {
-        const accordion = parseAccordion(section.content);
-        return <AccordionSection key={section.index} accordion={accordion} />;
-      }
-      
-      case 'accordiongroup': {
-        const accordions = parseAccordionGroup(section.content);
-        return <AccordionGroupSection key={section.index} accordions={accordions} />;
-      }
-      
-      case 'tabs': {
-        const tabs = parseTabs(section.content);
-        return <TabsSection key={section.index} tabs={tabs} />;
-      }
-      
-      case 'button': {
-        const button = parseButton(section.content);
-        return <ButtonSection key={section.index} button={button} />;
-      }
-      
-      case 'steps': {
-        const steps = parseSteps(section.content);
-        return <StepsSection key={section.index} steps={steps} />;
       }
       
       case 'markdown':
