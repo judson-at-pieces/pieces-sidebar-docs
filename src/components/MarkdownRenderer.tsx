@@ -10,4 +10,6 @@ const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
   return <HashnodeMarkdownRenderer content={content} />;
 };
 
+// Export both default and named export for compatibility
 export default MarkdownRenderer;
+export { MarkdownRenderer };
