@@ -1,137 +1,54 @@
+
 import React from 'react';
 
-// Header Components
-interface HeaderProps {
-  id?: string;
-  children: React.ReactNode;
-  className?: string;
-}
-
-export const H1: React.FC<HeaderProps> = ({ id, children, className = '' }) => (
-  <h1
-    id={id}
-    className={`scroll-mt-[var(--headings-scroll-mt)] text-3xl font-medium mb-6 text-slate-900 dark:text-slate-100 ${className}`}
-  >
-    {children}
-  </h1>
-);
-
-export const H2: React.FC<HeaderProps> = ({ id, children, className = '' }) => (
-  <h2
-    id={id}
-    className={`scroll-mt-[var(--headings-scroll-mt)] text-2xl font-semibold mb-4 text-slate-900 dark:text-slate-100 ${className}`}
-  >
-    {children}
-  </h2>
-);
-
-export const H3: React.FC<HeaderProps> = ({ id, children, className = '' }) => (
-  <h3
-    id={id}
-    className={`scroll-mt-[var(--headings-scroll-mt)] text-xl font-semibold mb-3 text-slate-900 dark:text-slate-100 ${className}`}
-  >
-    {children}
-  </h3>
-);
-
-// Paragraph Component
-interface ParagraphProps {
-  children: React.ReactNode;
-  className?: string;
-}
-
-export const Paragraph: React.FC<ParagraphProps> = ({ children, className = '' }) => (
-  <p className={`mb-6 text-base text-slate-700 dark:text-slate-300 ${className}`}>
-    {children}
-  </p>
-);
-
-// List Components
-interface ListProps {
-  children: React.ReactNode;
-  className?: string;
-}
-
-export const UnorderedList: React.FC<ListProps> = ({ children, className = '' }) => (
-  <ul className={`ml-6 list-disc space-y-1 mb-6 text-base text-slate-700 dark:text-slate-300 ${className}`}>
-    {children}
-  </ul>
-);
-
-export const OrderedList: React.FC<ListProps> = ({ children, className = '' }) => (
-  <ol className={`ml-6 list-decimal space-y-1 mb-6 text-base text-slate-700 dark:text-slate-300 ${className}`}>
-    {children}
-  </ol>
-);
-
-export const ListItem: React.FC<ListProps> = ({ children, className = '' }) => (
-  <li className={className}>
-    {children}
-  </li>
-);
-
-// Link Component
-interface LinkProps {
-  href: string;
-  children: React.ReactNode;
-  target?: '_blank' | '_self';
-  rel?: string;
-  className?: string;
-}
-
-export const Link: React.FC<LinkProps> = ({
-  href,
-  children,
-  target,
-  rel,
-  className = ''
-}) => (
-  <a
-    href={href}
-    target={target}
-    rel={rel || (target === '_blank' ? 'noopener noreferrer' : undefined)}
-    className={`text-blue-600 hover:underline dark:text-blue-400 ${className}`}
-  >
-    {children}
-  </a>
-);
-
-// Blockquote Component
-interface BlockquoteProps {
-  children: React.ReactNode;
-  className?: string;
-}
-
-export const Blockquote: React.FC<BlockquoteProps> = ({ children, className = '' }) => (
-  <blockquote className={`border-l-4 pl-4 italic my-6 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-800 ${className}`}>
-    {children}
-  </blockquote>
-);
-
-// Inline Code Component
-interface InlineCodeProps {
-  children: React.ReactNode;
-  className?: string;
-}
-
-export const InlineCode: React.FC<InlineCodeProps> = ({ children, className = '' }) => (
-  <code className={`bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-1 py-0.5 rounded text-sm font-mono ${className}`}>
-    {children}
-  </code>
-);
-
-// Export all components as default
 const Typography = {
-  H1,
-  H2,
-  H3,
-  Paragraph,
-  UnorderedList,
-  OrderedList,
-  ListItem,
-  Link,
-  Blockquote,
-  InlineCode,
+  H1: ({ children }: { children: React.ReactNode }) => (
+    <h1 className="hn-h1 text-4xl font-bold text-gray-900 mt-8 mb-6 border-b border-gray-200 pb-2">
+      {children}
+    </h1>
+  ),
+
+  H2: ({ children }: { children: React.ReactNode }) => (
+    <h2 className="hn-h2 text-3xl font-semibold text-gray-900 mt-10 mb-4">
+      {children}
+    </h2>
+  ),
+
+  H3: ({ children }: { children: React.ReactNode }) => (
+    <h3 className="hn-h3 text-2xl font-medium text-gray-900 mt-8 mb-3">
+      {children}
+    </h3>
+  ),
+
+  Paragraph: ({ children }: { children: React.ReactNode }) => (
+    <p className="hn-paragraph text-gray-700 leading-relaxed mb-4 text-base">
+      {children}
+    </p>
+  ),
+
+  OrderedList: ({ children }: { children: React.ReactNode }) => (
+    <ol className="hn-ordered-list list-decimal list-inside space-y-2 my-4 ml-4">
+      {children}
+    </ol>
+  ),
+
+  UnorderedList: ({ children }: { children: React.ReactNode }) => (
+    <ul className="hn-unordered-list list-disc list-inside space-y-2 my-4 ml-4">
+      {children}
+    </ul>
+  ),
+
+  ListItem: ({ children }: { children: React.ReactNode }) => (
+    <li className="hn-list-item text-gray-700 leading-relaxed">
+      {children}
+    </li>
+  ),
+
+  Blockquote: ({ children }: { children: React.ReactNode }) => (
+    <blockquote className="hn-blockquote border-l-4 border-gray-300 pl-6 italic text-gray-600 my-6 bg-gray-50 py-4 rounded-r-lg">
+      {children}
+    </blockquote>
+  ),
 };
 
 export default Typography;
