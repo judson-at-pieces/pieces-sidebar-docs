@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Callout } from './Callout';
 import { MarkdownCard } from './MarkdownCard';
+import { CardGroup } from './CardGroup';
 
 // Constants
 const SECTION_DELIMITER = '***';
@@ -119,8 +120,12 @@ interface CardGroupData {
 }
 
 const parseCardGroup = (content: string): CardGroupData => {
-  const colsMatch = content.match(/<CardGroup[^>]*cols={(\d+)}/);
+  console.log('🃏 Parsing CardGroup content:', content.substring(0, 200));
+  
+  const colsMatch = content.match(/<CardGroup[^>]*cols=\{?(\d+)\}?/);
   const cols = colsMatch ? parseInt(colsMatch[1]) : 2;
+  
+  console.log('🃏 Detected cols:', cols);
   
   const cardRegex = /<Card\s+([^>]*)>([\s\S]*?)<\/Card>/g;
   const cards: CardData[] = [];
@@ -136,12 +141,16 @@ const parseCardGroup = (content: string): CardGroupData => {
     const imageMatch = attributes.match(/image="([^"]*)"/);
     const image = imageMatch ? imageMatch[1] : undefined;
     
+    console.log('🃏 Parsed card:', { title, image, contentLength: innerContent.length });
+    
     cards.push({
       title,
       image,
       content: innerContent
     });
   }
+  
+  console.log('🃏 Total cards parsed:', cards.length);
   
   return { cols, cards };
 };
@@ -295,22 +304,31 @@ const CalloutSection: React.FC<{ type: string; content: string }> = ({ type, con
   </Callout>
 );
 
-const CardSection: React.FC<{ card: CardData }> = ({ card }) => (
-  <MarkdownCard title={card.title} image={card.image}>
-    {processInlineMarkdown(card.content)}
-  </MarkdownCard>
-);
+const CardSection: React.FC<{ card: CardData }> = ({ card }) => {
+  console.log('🎯 Rendering individual Card:', { title: card.title, image: card.image });
+  
+  return (
+    <MarkdownCard title={card.title} image={card.image}>
+      {processInlineMarkdown(card.content)}
+    </MarkdownCard>
+  );
+};
 
-const CardGroupSection: React.FC<{ cols: number; cards: CardData[] }> = ({ cols, cards }) => (
-  <div className={`hn-card-group hn-card-group-${cols}`}>
-    {cards.map((card, index) => (
-      <MarkdownCard key={index} title={card.title} image={card.image}>
-        {processInlineMarkdown(card.content)}
-      </MarkdownCard>
-    ))}
-  </div>
-);
+const CardGroupSection: React.FC<{ cols: number; cards: CardData[] }> = ({ cols, cards }) => {
+  console.log('🃏 Rendering CardGroup with:', { cols, cardCount: cards.length });
+  
+  return (
+    <CardGroup cols={cols as 2 | 3 | 4}>
+      {cards.map((card, index) => (
+        <MarkdownCard key={`card-${index}`} title={card.title} image={card.image}>
+          {processInlineMarkdown(card.content)}
+        </MarkdownCard>
+      ))}
+    </CardGroup>
+  );
+};
 
+// Parse Accordion
 const AccordionSection: React.FC<{ accordion: AccordionData }> = ({ accordion }) => {
   const [isOpen, setIsOpen] = useState(false);
   
@@ -332,6 +350,7 @@ const AccordionSection: React.FC<{ accordion: AccordionData }> = ({ accordion })
   );
 };
 
+// Parse AccordionGroup
 const AccordionGroupSection: React.FC<{ accordions: AccordionData[] }> = ({ accordions }) => (
   <div className="hn-accordion-group">
     {accordions.map((accordion, index) => (
@@ -340,6 +359,7 @@ const AccordionGroupSection: React.FC<{ accordions: AccordionData[] }> = ({ acco
   </div>
 );
 
+// Parse Tabs
 const TabsSection: React.FC<{ tabs: TabData[] }> = ({ tabs }) => {
   const [activeTab, setActiveTab] = useState(0);
   
@@ -363,6 +383,7 @@ const TabsSection: React.FC<{ tabs: TabData[] }> = ({ tabs }) => {
   );
 };
 
+// Parse Button
 const ButtonSection: React.FC<{ button: ButtonData }> = ({ button }) => (
   <div className={`hn-button-container ${button.align}`}>
     <a
@@ -370,16 +391,17 @@ const ButtonSection: React.FC<{ button: ButtonData }> = ({ button }) => (
       target={button.openLinkInNewTab ? '_blank' : '_self'}
       rel={button.openLinkInNewTab ? 'noopener noreferrer' : undefined}
       className="hn-button"
-      style={{
+      style={({
         backgroundColor: button.lightColor,
         '--dark-color': button.darkColor
-      } as React.CSSProperties}
+      } as React.CSSProperties)}
     >
       {button.label}
     </a>
   </div>
 );
 
+// Parse Steps
 const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => (
   <div className="hn-steps">
     {steps.map((step, index) => (
@@ -396,6 +418,7 @@ const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => (
   </div>
 );
 
+// Parse Markdown
 const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
   const processContent = (text: string): React.ReactNode[] => {
     const lines = text.split('\n');
@@ -576,44 +599,13 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
         return;
       }
 
-      // Inline elements (Callout, Card, etc.)
+      // Skip lines that are part of inline CardGroup or Card elements - they'll be handled by section parsing
+      if (line.includes('<CardGroup') || line.includes('<Card') || line.includes('</CardGroup>') || line.includes('</Card>')) {
+        return;
+      }
+
+      // Skip Callout lines as they're handled by section parsing
       if (line.includes('<Callout')) {
-        flushList();
-        flushTable();
-        // Extract callout and add it
-        const calloutMatch = content.match(/<Callout[^>]*>[\s\S]*?<\/Callout>/);
-        if (calloutMatch) {
-          const calloutData = extractCalloutData(calloutMatch[0]);
-          elements.push(
-            <CalloutSection key={`callout-${index}`} type={calloutData.type} content={calloutData.content} />
-          );
-        }
-        return;
-      }
-
-      if (line.includes('<Card') && !line.includes('<CardGroup')) {
-        flushList();
-        flushTable();
-        const cardMatch = content.match(/<Card[^>]*>[\s\S]*?<\/Card>/);
-        if (cardMatch) {
-          const card = parseCard(cardMatch[0]);
-          elements.push(
-            <CardSection key={`card-${index}`} card={card} />
-          );
-        }
-        return;
-      }
-
-      if (line.includes('<Accordion') && !line.includes('<AccordionGroup')) {
-        flushList();
-        flushTable();
-        const accordionMatch = content.match(/<Accordion[^>]*>[\s\S]*?<\/Accordion>/);
-        if (accordionMatch) {
-          const accordion = parseAccordion(accordionMatch[0]);
-          elements.push(
-            <AccordionSection key={`accordion-${index}`} accordion={accordion} />
-          );
-        }
         return;
       }
 
@@ -641,9 +633,14 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
 
 // Main component
 const HashnodeMarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
+  console.log('🚀 HashnodeMarkdownRenderer processing content length:', content.length);
+  
   const sections = parseSections(content);
+  console.log('🚀 Parsed sections:', sections.map(s => ({ type: s.type, index: s.index })));
   
   const renderSection = (section: ParsedSection): React.ReactNode => {
+    console.log('🔄 Rendering section:', section.type, 'at index:', section.index);
+    
     switch (section.type) {
       case 'frontmatter':
         return null;
@@ -701,6 +698,7 @@ const HashnodeMarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) 
         );
         
       default:
+        console.log('⚠️ Unhandled section type:', section.type);
         return null;
     }
   };
