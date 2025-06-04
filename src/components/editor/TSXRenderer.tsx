@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { WYSIWYGEditor } from './WYSIWYGEditor';
@@ -51,7 +50,7 @@ export function TSXRenderer({ content, onContentChange, readOnly = false, filePa
     }
   }, [filePath]);
 
-  // Process the content to match the compiled content format (same as old working version)
+  // Process the content to match the compiled content format
   const processedContent = React.useMemo(() => {
     // If content doesn't start with frontmatter, add a basic one
     if (!content.startsWith('---')) {
@@ -151,7 +150,6 @@ ${markdownContent}`;
           </div>
         ) : (
           <div className="h-full overflow-y-auto animate-in fade-in duration-300">
-            {/* Use the EXACT SAME structure and rendering as the old working version and docs */}
             <div className="h-full p-6 bg-muted/10 overflow-y-auto">
               <div className="max-w-4xl mx-auto">
                 <div className="bg-background rounded-lg border border-border p-6 shadow-sm">
