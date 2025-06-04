@@ -19,7 +19,31 @@ export function TSXRenderer({ content, onContentChange, readOnly = false, filePa
   const [mode, setMode] = useState<'preview' | 'wysiwyg'>('preview');
   const { user } = useAuth();
   
-  // Use the EXACT SAME content processing as the old working version
+  // Check if we have a compiled component for this file path
+  const getCompiledComponent = React.useCallback(() => {
+    if (!filePath) return null;
+    
+    try {
+      // Try to dynamically import the compiled component
+      // Convert file path to match compiled structure
+      let compiledPath = filePath;
+      if (compiledPath.startsWith('public/content/')) {
+        compiledPath = compiledPath.replace('public/content/', '');
+      }
+      if (compiledPath.endsWith('.md')) {
+        compiledPath = compiledPath.replace('.md', '');
+      }
+      
+      // Since we can't use dynamic imports here, we'll fall back to HashnodeMarkdownRenderer
+      console.log('🔍 Would try to load compiled component for:', compiledPath);
+      return null;
+    } catch (error) {
+      console.log('📝 No compiled component found, using HashnodeMarkdownRenderer');
+      return null;
+    }
+  }, [filePath]);
+
+  // Process the content to match the compiled content format (same as old working version)
   const processedContent = React.useMemo(() => {
     // If content doesn't start with frontmatter, add a basic one
     if (!content.startsWith('---')) {
@@ -44,6 +68,8 @@ ${markdownContent}`;
     
     return content;
   }, [content]);
+
+  const CompiledComponent = getCompiledComponent();
 
   return (
     <div className="h-full flex flex-col bg-gradient-to-br from-background to-muted/10">
@@ -115,7 +141,7 @@ ${markdownContent}`;
           </div>
         ) : (
           <div className="h-full overflow-y-auto animate-in fade-in duration-300">
-            {/* Use the EXACT SAME structure and rendering as the old working version */}
+            {/* Use the EXACT SAME structure and rendering as the old working version and docs */}
             <div className="h-full p-6 bg-muted/10 overflow-y-auto">
               <div className="max-w-4xl mx-auto">
                 <div className="bg-background rounded-lg border border-border p-6 shadow-sm">
@@ -124,7 +150,11 @@ ${markdownContent}`;
                     <p className="text-xs mt-1">This shows exactly how the content will appear on the docs site.</p>
                   </div>
                   <div className="markdown-content">
-                    <HashnodeMarkdownRenderer content={processedContent} />
+                    {CompiledComponent ? (
+                      <CompiledComponent />
+                    ) : (
+                      <HashnodeMarkdownRenderer content={processedContent} />
+                    )}
                   </div>
                 </div>
               </div>

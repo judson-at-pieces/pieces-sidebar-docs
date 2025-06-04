@@ -1,26 +1,22 @@
 
-const { execSync } = require('child_process');
+const { MDXCompiler } = require('./mdx-compiler/compiler.js');
 const path = require('path');
-const fs = require('fs');
 
-console.log('🔧 Fixing compiled content issues...');
-
-// First, clean the compiled content directory
-const compiledDir = path.join(process.cwd(), 'src/compiled-content');
-if (fs.existsSync(compiledDir)) {
-  fs.rmSync(compiledDir, { recursive: true, force: true });
-  console.log('🗑️ Cleaned old compiled content');
-}
-
-try {
-  // Regenerate the compiled content
-  execSync(`npx tsx ${path.join(__dirname, 'mdx-compiler/build.ts')}`, {
-    stdio: 'inherit',
-    cwd: process.cwd()
+async function fixCompiledContent() {
+  console.log('🔧 Fixing compiled content with proper TypeScript...');
+  
+  const compiler = new MDXCompiler({
+    inputDir: path.join(process.cwd(), 'public/content'),
+    outputDir: path.join(process.cwd(), 'src/compiled-content')
   });
   
-  console.log('✅ Compiled content regenerated successfully!');
-} catch (error) {
-  console.error('❌ Failed to regenerate content:', error.message);
-  process.exit(1);
+  try {
+    await compiler.compile();
+    console.log('✅ Compiled content fixed successfully!');
+  } catch (error) {
+    console.error('❌ Failed to fix compiled content:', error);
+    process.exit(1);
+  }
 }
+
+fixCompiledContent();

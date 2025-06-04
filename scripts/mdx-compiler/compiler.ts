@@ -96,27 +96,24 @@ export class MDXCompiler {
   ): string {
     const componentName = this.getComponentName(filePath);
     
-    // Escape content for JavaScript string literal
-    const escapedContent = content
-      .replace(/\\/g, '\\\\')
-      .replace(/`/g, '\\`')
-      .replace(/\$/g, '\\$');
+    // Escape content for JavaScript string literal - handle all special characters
+    const escapedContent = JSON.stringify(content);
     
     return `import React from 'react';
 import HashnodeMarkdownRenderer from '@/components/HashnodeMarkdownRenderer';
 
 export const frontmatter = ${JSON.stringify(frontmatter, null, 2)};
 
-// Export our wrapper component that uses EXACT SAME rendering as docs
+// Export our wrapper component that uses EXACT SAME rendering as editor preview
 export default function ${componentName}() {
   console.log('🚀 Rendering ${componentName} component');
   
-  // Use EXACT SAME content format as the editor - this ensures 1-to-1 matching
+  // Use EXACT SAME content format as the editor preview - this ensures 1-to-1 matching
   const combinedContent = \`---
 \${Object.entries(frontmatter).map(([key, value]) => \`\${key}: "\${value}"\`).join('\\n')}
 ---
 ***
-${escapedContent}\`;
+\${${escapedContent}}\`;
 
   return <HashnodeMarkdownRenderer content={combinedContent} />;
 }
