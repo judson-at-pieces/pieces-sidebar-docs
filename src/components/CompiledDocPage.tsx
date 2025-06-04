@@ -1,12 +1,12 @@
 
 import { useEffect, useState } from 'react';
 import { useLocation } from 'react-router-dom';
-import { getCompiledContent, CompiledContentModule, contentRegistry } from '@/compiled-content';
+import { getContentComponent, ContentComponent, contentComponents } from '@/compiled-content';
 import { DynamicDocPage } from './DynamicDocPage';
 
 export function CompiledDocPage() {
   const location = useLocation();
-  const [compiledContent, setCompiledContent] = useState<CompiledContentModule | null>(null);
+  const [compiledContent, setCompiledContent] = useState<ContentComponent | null>(null);
   const [shouldUseFallback, setShouldUseFallback] = useState(false);
 
   useEffect(() => {
@@ -15,7 +15,7 @@ export function CompiledDocPage() {
     console.log('CompiledDocPage: Current location.pathname:', currentPath);
     
     // Get all available paths from compiled content registry
-    const availablePaths = Object.keys(contentRegistry);
+    const availablePaths = Object.keys(contentComponents);
     console.log('CompiledDocPage: Available compiled paths:', availablePaths);
     
     // Find matching content by checking multiple strategies
@@ -23,7 +23,7 @@ export function CompiledDocPage() {
     let foundPath = '';
     
     // Strategy 1: Exact match
-    foundContent = getCompiledContent(currentPath);
+    foundContent = getContentComponent(currentPath);
     if (foundContent) {
       foundPath = currentPath;
       console.log('CompiledDocPage: Found exact match:', foundPath);
@@ -40,7 +40,7 @@ export function CompiledDocPage() {
       console.log('CompiledDocPage: Trying path variations:', pathVariations);
       
       for (const variation of pathVariations) {
-        foundContent = getCompiledContent(variation);
+        foundContent = getContentComponent(variation);
         if (foundContent) {
           foundPath = variation;
           console.log('CompiledDocPage: Found variation match:', foundPath, 'for route:', currentPath);
@@ -48,18 +48,19 @@ export function CompiledDocPage() {
         }
       }
       
-      // Strategy 3: Try to match segments
+      // Strategy 3: Try to match segments using registry keys
       if (!foundContent) {
-        for (const availablePath of availablePaths) {
+        const registryKeys = Object.keys(contentComponents);
+        for (const registryPath of registryKeys) {
           const currentSegments = currentPath.split('/').filter(Boolean);
-          const availableSegments = availablePath.split('/').filter(Boolean);
+          const availableSegments = registryPath.split('/').filter(Boolean);
           
           // Check if the last segment matches
           if (currentSegments.length > 0 && availableSegments.length > 0 && 
               currentSegments[currentSegments.length - 1] === availableSegments[availableSegments.length - 1]) {
-            foundContent = getCompiledContent(availablePath);
+            foundContent = getContentComponent(registryPath);
             if (foundContent) {
-              foundPath = availablePath;
+              foundPath = registryPath;
               console.log('CompiledDocPage: Found segment match:', foundPath, 'for route:', currentPath);
               break;
             }
@@ -84,7 +85,7 @@ export function CompiledDocPage() {
   }
 
   // Render the compiled content
-  const ContentComponent = compiledContent.default;
+  const ContentComponent = compiledContent.component;
   
   return (
     <div className="max-w-7xl mx-auto">

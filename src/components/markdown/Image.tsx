@@ -1,37 +1,52 @@
 import React from 'react';
-import { ExpandableImage } from './ExpandableImage';
 
 interface ImageProps {
   src: string;
   alt?: string;
-  caption?: string;
   align?: 'left' | 'center' | 'right';
-  fullwidth?: string | boolean;
-  title?: string;
+  fullwidth?: boolean;
+  loading?: 'lazy' | 'eager';
 }
 
-export function Image({ src, alt = '', caption = '', align = 'left', fullwidth, title }: ImageProps) {
-  // Use ExpandableImage for the actual image rendering
-  const imageElement = <ExpandableImage src={src} alt={alt || title || ''} caption={caption || title || ''} />;
-  
-  // Handle alignment and full width
-  if (fullwidth === 'true' || fullwidth === true) {
-    return (
-      <div className="w-full my-4">
-        {imageElement}
-      </div>
-    );
-  }
-  
-  const alignmentClass = {
-    left: 'mr-auto',
-    center: 'mx-auto',
-    right: 'ml-auto'
-  }[align];
-  
+const Image: React.FC<ImageProps> = ({
+  src,
+  alt = '',
+  align = 'center',
+  fullwidth = false,
+  loading = 'lazy',
+}) => {
+  const getAlignmentClass = () => {
+    switch (align) {
+      case 'left':
+        return 'justify-start';
+      case 'right':
+        return 'justify-end';
+      default:
+        return 'justify-center';
+    }
+  };
+
+  const getImageClass = () => {
+    if (fullwidth) {
+      return 'w-full h-auto';
+    }
+    return 'max-w-full h-auto';
+  };
+
   return (
-    <div className={`my-4 ${alignmentClass}`}>
-      {imageElement}
+    <div className={`flex my-4 not-prose [&>_img]:!rounded-none ${getAlignmentClass()}`}>
+      <img
+        src={src}
+        alt={alt}
+        className={getImageClass()}
+        loading={loading}
+        decoding="async"
+      />
     </div>
   );
-}
+};
+
+export default Image;
+
+// Export named export for compatibility
+export { Image };

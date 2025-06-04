@@ -1,40 +1,39 @@
 
 import React from 'react';
-import { cn } from '@/lib/utils';
 
 interface CardGroupProps {
-  cols?: string;
-  children?: React.ReactNode;
-  className?: string;
+  cols?: 2 | 3 | 4;
+  children: React.ReactNode;
 }
 
-export function CardGroup({ cols = '2', children, className }: CardGroupProps) {
-  const getGridCols = (cols: string) => {
+const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
+  const getGridClass = () => {
     switch (cols) {
-      case '1':
-        return 'grid-cols-1';
-      case '2':
-        return 'grid-cols-1 md:grid-cols-2';
-      case '3':
-        return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3';
-      case '4':
-        return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4';
-      case '5':
-        return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5';
-      case '6':
-        return 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6';
+      case 3:
+        return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3';
+      case 4:
+        return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4';
       default:
-        return 'grid-cols-1 md:grid-cols-2';
+        return 'grid-cols-1 sm:grid-cols-2';
     }
   };
 
   return (
-    <div className={cn(
-      "grid gap-4 my-6",
-      getGridCols(cols),
-      className
-    )}>
-      {children}
+    <div className={`my-4 grid gap-x-4 gap-y-6 ${getGridClass()}`}>
+      {React.Children.map(children, (child) => {
+        if (React.isValidElement(child)) {
+          return React.cloneElement(child, {
+            ...child.props,
+            className: `${child.props.className || ''} my-2`.trim(),
+          });
+        }
+        return child;
+      })}
     </div>
   );
-}
+};
+
+export default CardGroup;
+
+// Export named export for compatibility
+export { CardGroup };

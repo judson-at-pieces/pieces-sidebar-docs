@@ -1,12 +1,12 @@
 
 import path from 'path';
-import { SimpleMarkdownCompiler } from './simple-compiler.js';
+import { MDXCompiler } from './compiler.js';
 
 const INPUT_DIR = path.join(process.cwd(), 'public/content');
 const OUTPUT_DIR = path.join(process.cwd(), 'src/compiled-content');
 
 async function build() {
-  const compiler = new SimpleMarkdownCompiler({
+  const compiler = new MDXCompiler({
     inputDir: INPUT_DIR,
     outputDir: OUTPUT_DIR,
   });
@@ -21,7 +21,7 @@ async function build() {
 }
 
 async function watch() {
-  const compiler = new SimpleMarkdownCompiler({
+  const compiler = new MDXCompiler({
     inputDir: INPUT_DIR,
     outputDir: OUTPUT_DIR,
   });

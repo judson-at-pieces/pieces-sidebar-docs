@@ -1,105 +1,44 @@
 
 import React from 'react';
-import ReactMarkdown from 'react-markdown';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../ui/card';
-import { ExternalLink } from 'lucide-react';
 
 interface MarkdownCardProps {
-  title?: string;
+  title: string;
   image?: string;
-  icon?: string;
-  href?: string;
-  external?: string;
-  children?: React.ReactNode;
+  children: React.ReactNode;
 }
 
-export function MarkdownCard({ title, image, icon, href, external, children }: MarkdownCardProps) {
-  const CardWrapper = ({ children: cardChildren }: { children: React.ReactNode }) => {
-    if (href) {
-      const isExternal = external === 'true' || href.startsWith('http');
-      
-      if (isExternal) {
-        return (
-          <a 
-            href={href} 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="block transition-transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-lg"
-          >
-            {cardChildren}
-          </a>
-        );
-      } else {
-        return (
-          <a 
-            href={href}
-            className="block transition-transform hover:scale-[1.02] focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 rounded-lg"
-          >
-            {cardChildren}
-          </a>
-        );
-      }
-    }
-    
-    return <>{cardChildren}</>;
-  };
-
+const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, children }) => {
   return (
-    <CardWrapper>
-      <Card className="h-full hover:shadow-md transition-shadow">
-        {title && (
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg leading-tight flex items-center gap-3">
-              {image && (
-                <img 
-                  src={image} 
-                  alt={title || ''} 
-                  className="w-8 h-8 object-contain rounded flex-shrink-0"
-                />
-              )}
-              {icon && <span className="text-xl flex-shrink-0">{icon}</span>}
-              <span className="flex-1">{title}</span>
-              {href && (external === 'true' || href.startsWith('http')) && (
-                <ExternalLink className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-              )}
-            </CardTitle>
-          </CardHeader>
-        )}
-        {children && (
-          <CardContent className="pt-0">
-            <div className="prose prose-sm max-w-none prose-a:text-primary prose-a:no-underline hover:prose-a:underline">
-              {typeof children === 'string' ? (
-                <ReactMarkdown
-                  components={{
-                    a: ({ href, children, ...props }) => {
-                      const isExternal = href?.startsWith('http');
-                      return (
-                        <a 
-                          href={href}
-                          className="text-primary hover:text-primary/80 underline underline-offset-2 decoration-primary/50 hover:decoration-primary transition-colors font-medium"
-                          {...(isExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-                          {...props}
-                        >
-                          {children}
-                        </a>
-                      );
-                    },
-                    p: ({ children, ...props }) => (
-                      <p className="mb-3 last:mb-0 leading-relaxed" {...props}>
-                        {children}
-                      </p>
-                    ),
-                  }}
-                >
-                  {children}
-                </ReactMarkdown>
-              ) : (
-                children
-              )}
-            </div>
-          </CardContent>
-        )}
-      </Card>
-    </CardWrapper>
+    <div className="p-6 my-4 border rounded-xl dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+      {image && (
+        <div className="w-10 h-10 mb-6 relative rounded-lg">
+          <img
+            src={image}
+            alt={title}
+            loading="lazy"
+            decoding="async"
+            className="rounded-lg object-cover"
+            style={{
+              position: 'absolute',
+              height: '100%',
+              width: '100%',
+              left: 0,
+              top: 0,
+            }}
+          />
+        </div>
+      )}
+      <span className="block text-base font-semibold text-slate-700 dark:text-slate-200">
+        {title}
+      </span>
+      <div className="mt-3 text-base text-slate-600 dark:text-slate-300">
+        {children}
+      </div>
+    </div>
   );
-}
+};
+
+export default MarkdownCard;
+
+// Export named export for compatibility
+export { MarkdownCard };

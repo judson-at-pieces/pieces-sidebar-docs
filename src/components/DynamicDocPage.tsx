@@ -1,6 +1,7 @@
 
 import { useEffect, useState } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useLocation } from 'react-router-dom';
+import HashnodeMarkdownRenderer from './markdown/HashnodeMarkdownRenderer';
 import { MarkdownRenderer } from './MarkdownRenderer';
 import { loadMarkdownContent, getContentFromCache, ContentPage } from '@/lib/content';
 import { Button } from '@/components/ui/button';
@@ -10,21 +11,53 @@ import { TableOfContents } from './markdown/TableOfContents';
 
 export function DynamicDocPage() {
   const { '*': path } = useParams();
+  const location = useLocation();
   const [content, setContent] = useState<ContentPage | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadContent() {
-      if (!path) return;
+      // Get the current path from location if path param is empty
+      const basePath = location.pathname;
+      const subPath = path;
       
-      // For getting-started, use the direct path without /docs/ prefix
-      const contentPath = path === 'getting-started' ? 'getting-started' : `/docs/${path}`;
+      console.log('DynamicDocPage: path param:', path, 'location.pathname:', location.pathname);
+      
+      if (!basePath) return;
+      
+      // Try multiple path variations to find content
+      const pathVariations = [
+        // First try with /docs prefix (this is how content is stored in index)
+        basePath.startsWith('/docs/') ? basePath : `/docs${basePath}`,
+        // Then try the original path
+        basePath,
+        // For getting-started, use the direct path without /docs/ prefix
+        basePath === '/getting-started' || basePath === 'getting-started' ? 'getting-started' : null,
+        // Remove leading slash and add /docs
+        basePath.replace(/^\//, '/docs/'),
+        // Also try without leading slash entirely
+        basePath.replace(/^\//, ''),
+      ].filter(Boolean);
+      
+      console.log('DynamicDocPage: trying path variations:', pathVariations);
       
       // Try to get content from cache first (synchronous)
-      const cachedContent = getContentFromCache(contentPath);
-      if (cachedContent) {
-        setContent(cachedContent);
+      let foundContent = null;
+      let foundPath = '';
+      
+      for (const variation of pathVariations) {
+        const cachedContent = getContentFromCache(variation);
+        if (cachedContent) {
+          foundContent = cachedContent;
+          foundPath = variation;
+          console.log('DynamicDocPage: Found cached content for:', variation);
+          break;
+        }
+      }
+      
+      if (foundContent) {
+        setContent(foundContent);
         setLoading(false);
         setError(null);
         return;
@@ -35,18 +68,22 @@ export function DynamicDocPage() {
       setError(null);
       
       try {
-        console.log('Attempting to load content for path:', contentPath);
-        
-        const contentPage = await loadMarkdownContent(contentPath);
-        console.log('Loaded content page:', contentPage);
-        
-        if (contentPage) {
-          console.log('Content loaded successfully:', contentPage.metadata.title);
-          setContent(contentPage);
-        } else {
-          console.log('No content found for path:', contentPath);
-          setError('Content not found');
+        // Try each path variation until we find content
+        for (const variation of pathVariations) {
+          console.log('Attempting to load content for path:', variation);
+          
+          const contentPage = await loadMarkdownContent(variation);
+          if (contentPage) {
+            console.log('Content loaded successfully:', contentPage.metadata.title);
+            setContent(contentPage);
+            setLoading(false);
+            setError(null);
+            return;
+          }
         }
+        
+        console.log('No content found for any path variation');
+        setError('Content not found');
       } catch (err) {
         console.error('Error loading content:', err);
         setError('Failed to load content');
@@ -56,7 +93,7 @@ export function DynamicDocPage() {
     }
 
     loadContent();
-  }, [path]);
+  }, [path, location.pathname]);
 
   // Only show loading if we're actually loading and don't have content yet
   if (loading && !content) {
@@ -125,9 +162,21 @@ export function DynamicDocPage() {
           </div>
         )}
 
-        {/* Content with explicit prose styling */}
-        <div className="prose prose-gray dark:prose-invert max-w-none prose-headings:text-foreground prose-p:text-foreground prose-strong:text-foreground prose-li:text-foreground">
-          <MarkdownRenderer content={content.content} />
+        {/* Content with Hashnode styling */}
+        <div className="max-w-none">
+          {content.content.includes('***') ? (
+            <>
+              {console.log('DynamicDocPage: Using HashnodeMarkdownRenderer for content with ***', content.metadata.title)}
+              <HashnodeMarkdownRenderer content={content.content} />
+            </>
+          ) : (
+            <>
+              {console.log('DynamicDocPage: Using MarkdownRenderer for content without ***', content.metadata.title)}
+              <div className="hn-markdown-renderer">
+                <MarkdownRenderer content={content.content} />
+              </div>
+            </>
+          )}
         </div>
       </div>
 

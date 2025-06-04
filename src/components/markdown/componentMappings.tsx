@@ -7,11 +7,18 @@ import { Callout } from './Callout';
 import { Steps, Step } from './Steps';
 import { MarkdownCard } from './MarkdownCard';
 import { CardGroup } from './CardGroup';
+import Card from './SimpleCard';
 import { CustomTable, CustomTableHeader, CustomTableBody, CustomTableRow, CustomTableHead, CustomTableCell } from './CustomTable';
+import Table from './Table';
 import { CodeBlock } from './CodeBlock';
 import { PiecesCloudModels } from './PiecesCloudModels';
 import { PiecesLocalModels } from './PiecesLocalModels';
 import { GlossaryAll } from './GlossaryAll';
+import Accordion from './Accordion';
+import AccordionGroup, { AccordionItem } from './AccordionGroup';
+import Button from './Button';
+import HorizontalRule from './HorizontalRule';
+import Tabs, { TabItem } from './Tabs';
 import { 
   CustomTableComponentProps, 
   ImageProps, 
@@ -25,25 +32,66 @@ import {
 export const createComponentMappings = () => ({
   // Handle custom components that are being rendered as raw HTML
   callout: ({ type, title, children, ...props }: any) => {
-    return <Callout type={type as 'info' | 'warning' | 'tip' | 'error' | 'success' | 'alert'} title={title} {...props}>{children}</Callout>;
+    return <Callout type={type as 'info' | 'tip' | 'alert'} {...props}>{children}</Callout>;
+  },
+  
+  accordion: ({ title, defaultOpen, children, ...props }: any) => {
+    return <Accordion title={title} defaultOpen={defaultOpen} {...props}>{children}</Accordion>;
+  },
+  
+  accordiongroup: ({ allowMultiple, children, ...props }: any) => {
+    return <AccordionGroup allowMultiple={allowMultiple} {...props}>{children}</AccordionGroup>;
+  },
+  
+  accordionitem: ({ title, children, ...props }: any) => {
+    return <AccordionItem title={title} isOpen={false} onToggle={() => {}} {...props}>{children}</AccordionItem>;
+  },
+  
+  button: ({ label, linkHref, openLinkInNewTab, align, lightColor, darkColor, onClick, ...props }: any) => {
+    return <Button label={label} linkHref={linkHref} openLinkInNewTab={openLinkInNewTab} align={align} lightColor={lightColor} darkColor={darkColor} onClick={onClick} {...props} />;
+  },
+  
+  horizontalrule: ({ className, ...props }: any) => {
+    return <HorizontalRule className={className} {...props} />;
+  },
+  
+  tabs: ({ defaultActiveTab, children, ...props }: any) => {
+    return <Tabs defaultActiveTab={defaultActiveTab} {...props}>{children}</Tabs>;
+  },
+  
+  tabitem: ({ title, children, ...props }: any) => {
+    return <TabItem title={title} {...props}>{children}</TabItem>;
+  },
+  
+  table: ({ headers, rows, className, ...props }: any) => {
+    return <Table headers={headers} rows={rows} className={className} {...props} />;
   },
   
   steps: ({ children, ...props }: any) => {
     return <Steps {...props}>{children}</Steps>;
   },
   
-  step: ({ number, title, children, ...props }: any) => {
-    const stepNumber = parseInt(number);
-    const validNumber = isNaN(stepNumber) ? 1 : stepNumber;
-    return <Step number={validNumber} title={title} {...props}>{children}</Step>;
+  step: ({ title, children, ...props }: any) => {
+    return <Step title={title} {...props}>{children}</Step>;
   },
   
   card: ({ title, image, href, external, children, ...props }: any) => {
-    return <MarkdownCard title={title} image={image} href={href} external={external} {...props}>{children}</MarkdownCard>;
+    // If href is provided, use MarkdownCard for link functionality
+    if (href) {
+      return <MarkdownCard title={title} image={image} href={href} external={external} {...props}>{children}</MarkdownCard>;
+    }
+    // Otherwise use the simple Card component
+    return <Card title={title} image={image} {...props}>{children}</Card>;
+  },
+  
+  simplecard: ({ title, image, children, ...props }: any) => {
+    return <Card title={title} image={image} {...props}>{children}</Card>;
   },
   
   cardgroup: ({ cols, children, ...props }: any) => {
-    return <CardGroup cols={cols} {...props}>{children}</CardGroup>;
+    const colsNumber = typeof cols === 'string' ? parseInt(cols) : cols;
+    const validCols = [2, 3, 4].includes(colsNumber) ? colsNumber as 2 | 3 | 4 : 2;
+    return <CardGroup cols={validCols} {...props}>{children}</CardGroup>;
   },
   
   'pieces-cloud-models': () => {
@@ -77,7 +125,7 @@ export const createComponentMappings = () => ({
     console.log('Div component mapping - dataProps:', dataProps, 'hasChildren:', !!children);
     
     if (dataProps.callout) {
-      return <Callout type={dataProps.callout as 'info' | 'warning' | 'tip' | 'error' | 'success' | 'alert'} title={dataProps.title} {...props}>{children}</Callout>;
+      return <Callout type={dataProps.callout as 'info' | 'tip' | 'alert'} {...props}>{children}</Callout>;
     }
     
     if (dataProps.steps === 'true') {
@@ -85,14 +133,14 @@ export const createComponentMappings = () => ({
     }
     
     if (dataProps.step) {
-      const validStepNumber = parseInt(dataProps.step);
-      const finalStepNumber = isNaN(validStepNumber) ? 1 : validStepNumber;
-      return <Step number={finalStepNumber} title={dataProps.stepTitle} {...props}>{children}</Step>;
+      return <Step title={dataProps.stepTitle || dataProps.title || ''} {...props}>{children}</Step>;
     }
     
     if (dataProps.cardgroup === 'true') {
       console.log('Rendering CardGroup with cols:', dataProps.cols, 'children count:', React.Children.count(children));
-      return <CardGroup cols={dataProps.cols} {...props}>{children}</CardGroup>;
+      const colsNumber = typeof dataProps.cols === 'string' ? parseInt(dataProps.cols) : dataProps.cols;
+      const validCols = [2, 3, 4].includes(colsNumber) ? colsNumber as 2 | 3 | 4 : 2;
+      return <CardGroup cols={validCols} {...props}>{children}</CardGroup>;
     }
     
     if (dataProps.card === 'true' || dataProps.cardComponent === 'true') {
@@ -137,6 +185,34 @@ export const createComponentMappings = () => ({
 
     if (dataProps.glossaryAll) {
       return <GlossaryAll />;
+    }
+    
+    if (dataProps.accordion === 'true') {
+      return <Accordion title={dataProps.title || ''} defaultOpen={dataProps.defaultOpen === 'true'} {...props}>{children}</Accordion>;
+    }
+    
+    if (dataProps.accordiongroup === 'true') {
+      return <AccordionGroup allowMultiple={dataProps.allowMultiple === 'true'} {...props}>{children}</AccordionGroup>;
+    }
+    
+    if (dataProps.button === 'true') {
+      return <Button 
+        label={dataProps.label || ''} 
+        linkHref={dataProps.linkHref} 
+        openLinkInNewTab={dataProps.openLinkInNewTab === 'true'} 
+        align={dataProps.align as any} 
+        lightColor={dataProps.lightColor} 
+        darkColor={dataProps.darkColor} 
+        {...props} 
+      />;
+    }
+    
+    if (dataProps.tabs === 'true') {
+      return <Tabs defaultActiveTab={parseInt(dataProps.defaultActiveTab) || 0} {...props}>{children}</Tabs>;
+    }
+    
+    if (dataProps.tabitem === 'true') {
+      return <TabItem title={dataProps.title || ''} {...props}>{children}</TabItem>;
     }
     
     return <div {...props}>{children}</div>;
@@ -241,7 +317,7 @@ export const createComponentMappings = () => ({
     </p>
   ),
   hr: ({ ...props }: Record<string, unknown>) => (
-    <hr className="my-4 md:my-8" {...props} />
+    <HorizontalRule {...props} />
   ),
 });
 

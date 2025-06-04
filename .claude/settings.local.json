@@ -5,7 +5,9 @@
       "Bash(npm install:*)",
       "Bash(npx tsc:*)",
       "Bash(timeout 10s npm run dev)",
-      "Bash(grep:*)"
+      "Bash(grep:*)",
+      "Bash(find:*)",
+      "Bash(npx tsx:*)"
     ],
     "deny": []
   }

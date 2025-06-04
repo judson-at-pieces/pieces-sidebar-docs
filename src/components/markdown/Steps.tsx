@@ -1,65 +1,54 @@
 
-import { ReactNode } from 'react';
-import { cn } from '@/lib/utils';
-import { Check } from 'lucide-react';
+import React from 'react';
 
 interface StepProps {
-  children: ReactNode;
-  number: number;
-  title?: string;
-  isLast?: boolean;
-  isCompleted?: boolean;
+  title: string;
+  children: React.ReactNode;
 }
 
 interface StepsProps {
-  children: ReactNode;
-  className?: string;
+  children: React.ReactElement<StepProps>[];
 }
 
-export function Step({ children, number, title, isLast = false, isCompleted = false }: StepProps) {
-  return (
-    <div className="relative flex gap-4">
-      <div className="flex flex-col items-center">
-        <div className={cn(
-          "relative z-10 flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all duration-300",
-          isCompleted 
-            ? "border-emerald-500 bg-emerald-500 text-white shadow-lg shadow-emerald-500/25" 
-            : "border-primary bg-primary text-primary-foreground shadow-md hover:shadow-lg hover:scale-105"
-        )}>
-          {isCompleted ? (
-            <Check className="w-5 h-5" />
-          ) : (
-            <span className="text-sm font-bold">{number}</span>
-          )}
-        </div>
-        {!isLast && (
-          <div className={cn(
-            "mt-2 w-0.5 h-12 transition-all duration-300",
-            isCompleted ? "bg-emerald-500" : "bg-border"
-          )} />
-        )}
-      </div>
-      <div className="flex-1 min-w-0 pt-0.5">
-        {title && (
-          <h4 className={cn(
-            "font-semibold mb-2 text-base transition-colors duration-300",
-            isCompleted ? "text-emerald-700 dark:text-emerald-400" : "text-foreground"
-          )}>
-            {title}
-          </h4>
-        )}
-        <div className="text-sm leading-relaxed text-muted-foreground [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
-          {children}
-        </div>
-      </div>
-    </div>
-  );
-}
+const Step: React.FC<StepProps> = ({ children }) => {
+  return <>{children}</>;
+};
 
-export function Steps({ children, className }: StepsProps) {
+const Steps: React.FC<StepsProps> = ({ children }) => {
+  const steps = React.Children.toArray(children) as React.ReactElement<StepProps>[];
+
   return (
-    <div className={cn('relative my-6 space-y-6', className)}>
-      {children}
+    <div className="my-6 [&>.step:last-of-type]:mb-0">
+      {steps.map((step, index) => {
+        const isLast = index === steps.length - 1;
+        
+        return (
+          <div key={index} className="flex gap-4 step mb-5">
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-6 h-6 text-xs font-semibold border rounded-md flex items-center justify-center border-slate-100 bg-slate-50 dark:bg-slate-900 dark:border-slate-800/40 text-slate-700 dark:text-slate-200">
+                {index + 1}
+              </div>
+              {!isLast && (
+                <div className="h-[20px] w-[1px] bg-slate-200 dark:bg-slate-800/80"></div>
+              )}
+            </div>
+            <div className="flex-1 w-60">
+              <div className="flex flex-col gap-3">
+                <h3 className="font-medium text-base text-slate-700 dark:text-slate-200 m-0">
+                  {step.props.title}
+                </h3>
+                <div className="text-base text-slate-600 dark:text-slate-300">
+                  {step.props.children}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
     </div>
   );
-}
+};
+
+// Export both components
+export { Step, Steps };
+export default Steps;

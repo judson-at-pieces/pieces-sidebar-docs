@@ -2,6 +2,7 @@
 import { createRoot } from 'react-dom/client'
 import App from './App.tsx'
 import './index.css'
+import './styles/hashnode-components.css'
 
 // Global error handler for uncaught errors
 window.addEventListener('error', (event) => {

@@ -1,5 +1,6 @@
 
 import { supabase } from '@/integrations/supabase/client';
+import { staticNavigation } from './staticNavigation';
 
 export interface NavigationItem {
   id: string;
@@ -34,14 +35,14 @@ export class NavigationService {
       const { data, error } = await supabase.rpc('get_navigation_structure');
       
       if (error) {
-        console.error('Error fetching navigation structure:', error);
-        return null;
+        console.warn('Error fetching navigation structure from database, using static navigation:', error);
+        return staticNavigation;
       }
       
-      return data as NavigationStructure;
+      return data as NavigationStructure || staticNavigation;
     } catch (error) {
-      console.error('Error in getNavigationStructure:', error);
-      return null;
+      console.warn('Error in getNavigationStructure, using static navigation:', error);
+      return staticNavigation;
     }
   }
 

@@ -1,13 +1,26 @@
 
 import React from 'react';
-import HashnodeMarkdownRenderer from './HashnodeMarkdownRenderer';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { processCustomSyntax } from './markdown/customSyntaxProcessor';
+import { createComponentMappings } from './markdown/componentMappings';
 
 interface MarkdownRendererProps {
   content: string;
 }
 
 const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
-  return <HashnodeMarkdownRenderer content={content} />;
+  const processedContent = processCustomSyntax(content);
+  const components = createComponentMappings();
+  
+  return (
+    <ReactMarkdown 
+      remarkPlugins={[remarkGfm]} 
+      components={components}
+    >
+      {processedContent}
+    </ReactMarkdown>
+  );
 };
 
 // Export both default and named export for compatibility

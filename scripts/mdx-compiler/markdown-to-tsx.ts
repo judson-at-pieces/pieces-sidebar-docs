@@ -237,7 +237,7 @@ import { Link } from 'react-router-dom';
 import { ExpandableImage } from '@/components/markdown/ExpandableImage';
 import { Callout } from '@/components/markdown/Callout';
 import { Steps, Step } from '@/components/markdown/Steps';
-import { Card } from '@/components/markdown/Card';
+import { MarkdownCard as Card } from '@/components/markdown/MarkdownCard';
 import { CardGroup } from '@/components/markdown/CardGroup';
 
 export const frontmatter = ${JSON.stringify(frontmatter, null, 2)};
