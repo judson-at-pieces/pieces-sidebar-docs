@@ -46,26 +46,22 @@ export function MarkdownCard({ title, image, icon, href, external, children }: M
   return (
     <CardWrapper>
       <Card className="h-full hover:shadow-md transition-shadow">
-        {(title || image) && (
+        {title && (
           <CardHeader className="pb-3">
-            {image && (
-              <div className="mb-3">
+            <CardTitle className="text-lg leading-tight flex items-center gap-3">
+              {image && (
                 <img 
                   src={image} 
                   alt={title || ''} 
-                  className="w-full h-32 object-cover rounded-md"
+                  className="w-8 h-8 object-contain rounded flex-shrink-0"
                 />
-              </div>
-            )}
-            {title && (
-              <CardTitle className="text-lg leading-tight flex items-center gap-2">
-                {icon && <span className="text-xl">{icon}</span>}
-                {title}
-                {href && (external === 'true' || href.startsWith('http')) && (
-                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
-                )}
-              </CardTitle>
-            )}
+              )}
+              {icon && <span className="text-xl flex-shrink-0">{icon}</span>}
+              <span className="flex-1">{title}</span>
+              {href && (external === 'true' || href.startsWith('http')) && (
+                <ExternalLink className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+              )}
+            </CardTitle>
           </CardHeader>
         )}
         {children && (
