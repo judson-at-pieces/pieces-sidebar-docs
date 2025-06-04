@@ -155,17 +155,21 @@ ${componentName}.frontmatter = frontmatter;
       
       imports.push(`import ${componentName}, { frontmatter as ${componentName}_frontmatter } from '${importPath}';`);
       
-      // Add both the original file path and the folder path (without .md extension)
-      const originalPath = relativePath;
-      const folderPath = relativePath.replace(/\.md$/, '');
+      // Add the original file path
+      exports.push(`  '${relativePath}': { component: ${componentName}, frontmatter: ${componentName}_frontmatter },`);
       
-      exports.push(`  '${originalPath}': { component: ${componentName}, frontmatter: ${componentName}_frontmatter },`);
-      
-      // If the file ends with .md, also add the folder path mapping
-      if (originalPath.endsWith('.md')) {
+      // If the file ends with .md, also add folder path mappings
+      if (relativePath.endsWith('.md')) {
+        const folderPath = relativePath.replace(/\.md$/, '');
+        
+        // Add folder path without leading slash
         exports.push(`  '${folderPath}': { component: ${componentName}, frontmatter: ${componentName}_frontmatter },`);
-        // Also add with leading slash for routes like /cli
+        
+        // Add folder path with leading slash for routes like /cli
         exports.push(`  '/${folderPath}': { component: ${componentName}, frontmatter: ${componentName}_frontmatter },`);
+        
+        // Add with /docs prefix
+        exports.push(`  '/docs/${folderPath}': { component: ${componentName}, frontmatter: ${componentName}_frontmatter },`);
       }
     }
     
