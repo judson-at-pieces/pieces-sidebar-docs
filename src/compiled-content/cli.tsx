@@ -1,6 +1,8 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ExpandableImage } from '@/components/markdown/ExpandableImage';
+import { Image } from '@/components/markdown/Image';
 import { Callout } from '@/components/markdown/Callout';
 import { Steps, Step } from '@/components/markdown/Steps';
 import { MarkdownCard as Card } from '@/components/markdown/MarkdownCard';
@@ -13,7 +15,7 @@ import {
   CustomTableHead, 
   CustomTableCell 
 } from '@/components/markdown/CustomTable';
-import {jsx as _jsx} from "react/jsx-runtime";
+import {jsx as _jsx, jsxs as _jsxs, Fragment as _Fragment} from "react/jsx-runtime";
 
 export interface MDX_cliProps {
   components?: Record<string, React.ComponentType<any>>;
@@ -28,11 +30,271 @@ export const frontmatter = {
 // MDX compiled content
 function _createMdxContent(props) {
   const _components = {
-    div: "div",
+    hr: "hr",
+    p: "p",
+    h2: "h2",
+    ul: "ul",
+    li: "li",
+    h3: "h3",
     ...props.components
   };
-  return _jsx(_components.div, {});
+  
+  return _jsxs(_Fragment, {
+    children: [
+      _jsx(_components.hr, {}),
+      _jsx(Image, {
+        src: "https://storage.googleapis.com/hashnode_product_documentation_assets/cli_assets/CLI_MAIN/pieces_cli_banner.png",
+        alt: "",
+        align: "center",
+        fullwidth: true
+      }),
+      _jsx(_components.hr, {}),
+      _jsx(_components.h2, {
+        children: "Pieces CLI"
+      }),
+      _jsx(_components.p, {
+        children: "The Pieces CLI offers users a straightforward way to manage and utilize saved code snippets through the Pieces Drive. It uses the AI-powered features of the Pieces Copilot, all directly within your terminal."
+      }),
+      _jsxs(_components.ul, {
+        children: [
+          _jsxs(_components.li, {
+            children: [
+              _jsx(Link, {
+                to: "/cli/copilot",
+                children: "Pieces Copilot"
+              }),
+              ": Utilize AI-driven conversations to enhance productivity by offering contextual assistance for your projects. It facilitates understanding of code, writing of comments, troubleshooting, and more by incorporating files and folders as context, with or without the powerful Long-Term Memory Engine (LTM-2)."
+            ]
+          }),
+          _jsxs(_components.li, {
+            children: [
+              _jsx(Link, {
+                to: "/cli/drive",
+                children: "Pieces Drive"
+              }),
+              ": Effortlessly save, find, and share your frequently used code snippets in your Pieces Drive. This makes organizing your work easy, allows for quick access to the code you need, and facilitates effective collaboration with others."
+            ]
+          })
+        ]
+      }),
+      _jsx(CardGroup, {
+        cols: 2,
+        children: [
+          _jsx(Card, {
+            title: "Getting Started",
+            image: "https://cdn.hashnode.com/res/hashnode/image/upload/v1745331342247/687c66b0-ac65-412f-a9e0-39e6ac00c93b.png",
+            children: _jsxs(_Fragment, {
+              children: [
+                "Follow ",
+                _jsx(Link, {
+                  to: "/cli/get-started",
+                  children: "these instructions"
+                }),
+                " on how to download and install the Pieces CLI."
+              ]
+            })
+          }),
+          _jsx(Card, {
+            title: "Support & Troubleshooting",
+            image: "https://cdn.hashnode.com/res/hashnode/image/upload/v1745331350108/c3c9ac64-c629-447a-a8fc-307d1f8f297b.webp",
+            children: _jsxs(_Fragment, {
+              children: [
+                "Explore ",
+                _jsx(Link, {
+                  to: "/cli/troubleshooting",
+                  children: "troubleshooting options"
+                }),
+                ", navigate to our support page, or ",
+                _jsx("a", {
+                  target: "_blank",
+                  href: "https://calendar.google.com/calendar/u/0/appointments/schedules/AcZssZ22WJ2Htd2wRMJhueCNYc0xbFBFCAN-khijcuoXACd_Uux3wIhgZeGkzDRcqD3teamAI-CwCHpr",
+                  children: "directly book a call"
+                }),
+                " with our engineers."
+              ]
+            })
+          })
+        ]
+      }),
+      _jsx(Card, {
+        title: "Learn More with Quick Guides",
+        image: "https://cdn.hashnode.com/res/hashnode/image/upload/v1747065928779/0f8466fc-9daf-4c91-87ba-f596cd1cd6d3.png",
+        children: _jsxs(_Fragment, {
+          children: [
+            "Pieces Quick Guides help you quickly understand and effectively utilize powerful features like the Long-Term (LTM-2) Memory Engine and Pieces Copilot. ",
+            _jsx(Link, {
+              to: "/quick-guides/overview",
+              children: "Click here to get started."
+            })
+          ]
+        })
+      }),
+      _jsx(_components.p, {
+        children: "This software is designed to provide two main features: AI Assistance with the Pieces Copilot and developer material management within the Pieces Drive."
+      }),
+      _jsx(_components.h3, {
+        children: "Enhanced AI Assistance"
+      }),
+      _jsx(_components.p, {
+        children: _jsxs(_Fragment, {
+          children: [
+            "Through the Pieces CLI, developers can boost productivity by having AI-driven conversations that use ",
+            _jsx(Link, {
+              to: "/cli/copilot/chat",
+              children: "relevant notes and folders as context"
+            }),
+            ", all within their terminal."
+          ]
+        })
+      }),
+      _jsx(Image, {
+        src: "https://storage.googleapis.com/hashnode_product_documentation_assets/cli_assets/pieces_copilot/chat/pieces_context_chat.gif",
+        alt: "",
+        align: "center",
+        fullwidth: false
+      }),
+      _jsx(_components.h3, {
+        children: "Integrated Snippet Management"
+      }),
+      _jsx(_components.p, {
+        children: _jsxs(_Fragment, {
+          children: [
+            "With Pieces Drive and PiecesOS in their terminal, developers can ",
+            _jsx(Link, {
+              to: "/cli/drive",
+              children: "save, search, and share their code snippets"
+            }),
+            ". This enhances productivity by making reusable code accessible and organized within their notes and project files."
+          ]
+        })
+      }),
+      _jsx(Image, {
+        src: "https://storage.googleapis.com/hashnode_product_documentation_assets/cli_assets/CLI_MAIN/pieces_drive_list.png",
+        alt: "",
+        align: "center",
+        fullwidth: true
+      }),
+      _jsx(_components.h2, {
+        children: "Using Pieces Copilot"
+      }),
+      _jsx(_components.p, {
+        children: "The Pieces CLI enhances your workflow by letting you save, manage, and share snippets in the terminal. It offers features like snippet enrichment, sharing via custom links, and seamless integration with your development environment."
+      }),
+      _jsx(_components.p, {
+        children: "To explore available options, run `pieces help` within your terminal."
+      }),
+      _jsx(_components.p, {
+        children: "From here, you'll find several actions, including:"
+      }),
+      _jsxs(_components.ul, {
+        children: [
+          _jsxs(_components.li, {
+            children: [
+              "`Edit`: ",
+              _jsx(Link, {
+                to: "/cli/drive/edit-and-update",
+                children: "Change the name and classification of the material"
+              }),
+              " within Pieces Drive from directly within the terminal."
+            ]
+          }),
+          _jsxs(_components.li, {
+            children: [
+              "`Create and Delete`: Pieces CLI allows you to ",
+              _jsx(Link, {
+                to: "/cli/drive/saving-materials",
+                children: "manage your snippets easily from within your terminal"
+              }),
+              ", allowing you to create and delete snippets."
+            ]
+          })
+        ]
+      }),
+      _jsx(Image, {
+        src: "https://storage.googleapis.com/hashnode_product_documentation_assets/cli_assets/CLI_MAIN/edit_command.png",
+        alt: "",
+        align: "center",
+        fullwidth: true
+      }),
+      _jsx(_components.h2, {
+        children: "Managing Your Code Snippets"
+      }),
+      _jsx(_components.p, {
+        children: "Saving and managing materials with the Pieces CLI is done with lightweight and familiar terminal-style commands."
+      }),
+      _jsx(_components.p, {
+        children: "To save a snippet, copy a section of text or code to your clipboard, head over to Pieces CLI, and type `pieces create`. If you're in `pieces run` mode, you can just type `create`."
+      }),
+      _jsx(Callout, {
+        type: "tip",
+        children: "Common snippet types include utility functions, API requests, and reusable code blocks."
+      }),
+      _jsx(_components.p, {
+        children: _jsxs(_Fragment, {
+          children: [
+            "When you save snippets to your Pieces Drive with Pieces CLI, they get AI-generated metadata like ",
+            _jsx(Link, {
+              to: "/cli/drive/save-snippets#whats-stored-when-you-save-a-snippet",
+              children: "tags, titles, authorship details, and descriptions"
+            }),
+            ". This keeps everything organized and easy to access and use at any point."
+          ]
+        })
+      }),
+      _jsx(Image, {
+        src: "https://storage.googleapis.com/hashnode_product_documentation_assets/cli_assets/CLI_MAIN/snippet_content.png",
+        alt: "",
+        align: "center",
+        fullwidth: true
+      }),
+      _jsx(_components.h3, {
+        children: "Referencing & Reusing"
+      }),
+      _jsx(_components.p, {
+        children: "Pieces CLI provides you with powerful search tools to quickly find and access your snippets that you previously saved to Pieces Drive."
+      }),
+      _jsx(_components.p, {
+        children: "There are three different search methods: Fuzzy Search, Neural Code Search, and Full Text Search."
+      }),
+      _jsx(_components.p, {
+        children: "To search for snippets, while Pieces CLI is open, type `search \"query\"`."
+      }),
+      _jsx(_components.p, {
+        children: "You can also opt-in to using Neural Code Search with `—mode ncs` or Full Text Search with `—mode fts`."
+      }),
+      _jsx(Callout, {
+        type: "info",
+        children: "Your query must be encapsulated in quotations for Pieces CLI to capture your full prompt"
+      }),
+      _jsx(_components.p, {
+        children: "A new terminal window will open and you'll be presented with a list of materials that closely match your query."
+      }),
+      _jsx(_components.p, {
+        children: "Scroll down or up with the `arrow keys` and select the material by pressing `enter`. The material will display with its attributes and the code that was stored in the material."
+      }),
+      _jsx(Image, {
+        src: "https://storage.googleapis.com/hashnode_product_documentation_assets/cli_assets/CLI_MAIN/ncs_search_results.png",
+        alt: "",
+        align: "center",
+        fullwidth: true
+      }),
+      _jsx(_components.hr, {}),
+      _jsx(_components.p, {
+        children: _jsxs(_Fragment, {
+          children: [
+            "Download the Pieces CLI and follow our ",
+            _jsx(Link, {
+              to: "/cli/get-started",
+              children: "installation guide"
+            }),
+            " to start streamlining your workflow!"
+          ]
+        })
+      })
+    ]
+  });
 }
+
 function MDXContent(props = {}) {
   const {wrapper: MDXLayout} = props.components || ({});
   return MDXLayout ? _jsx(MDXLayout, {
