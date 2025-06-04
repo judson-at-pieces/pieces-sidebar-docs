@@ -19,7 +19,7 @@ The Pieces CLI offers users a straightforward way to manage and utilize saved co
 
 <CardGroup cols={2}>
   <Card title="Getting Started" image="https://cdn.hashnode.com/res/hashnode/image/upload/v1745331342247/687c66b0-ac65-412f-a9e0-39e6ac00c93b.png">
-    Follow [these instructions](https://docs.pieces.app/products/cli/get-started) on how to download and install the Pieces CLI.
+    Follow [thesse instructions](https://docs.pieces.app/products/cli/get-started) on how to download and install the Pieces CLI.
   </Card>
 
   <Card title="Support & Troubleshooting" image="https://cdn.hashnode.com/res/hashnode/image/upload/v1745331350108/c3c9ac64-c629-447a-a8fc-307d1f8f297b.webp">
