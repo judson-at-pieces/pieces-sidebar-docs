@@ -158,6 +158,7 @@ export function EnhancedEditor({
             <TSXRenderer 
               content={content} 
               onContentChange={handleContentChange}
+              filePath={selectedFile}
             />
           </div>
         )}
@@ -182,6 +183,7 @@ export function EnhancedEditor({
                   <TSXRenderer 
                     content={content} 
                     onContentChange={handleContentChange}
+                    filePath={selectedFile}
                   />
                 </div>
               </ResizablePanel>

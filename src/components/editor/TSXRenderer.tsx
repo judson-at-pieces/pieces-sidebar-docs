@@ -7,15 +7,18 @@ import { Edit, Eye, Sparkles, Wand2, GitPullRequest } from 'lucide-react';
 import { toast } from 'sonner';
 import { githubAppService } from '@/services/githubAppService';
 import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface TSXRendererProps {
   content: string;
   onContentChange?: (content: string) => void;
   readOnly?: boolean;
+  filePath?: string; // Add file path prop
 }
 
-export function TSXRenderer({ content, onContentChange, readOnly = false }: TSXRendererProps) {
+export function TSXRenderer({ content, onContentChange, readOnly = false, filePath }: TSXRendererProps) {
   const [mode, setMode] = useState<'preview' | 'wysiwyg'>('preview');
+  const { user } = useAuth();
   
   // Process the content to match the compiled content format
   const processedContent = React.useMemo(() => {
@@ -63,7 +66,12 @@ ${markdownContent}`;
         return;
       }
 
-      // Extract title from frontmatter or use default
+      if (!filePath) {
+        toast.error('No file selected for editing. Please select a file first.', { duration: 3000 });
+        return;
+      }
+
+      // Extract title from frontmatter or use filename
       let title = 'Update documentation content';
       const frontmatterMatch = content.match(/^---\s*\n([\s\S]*?)\n---/);
       if (frontmatterMatch) {
@@ -71,6 +79,27 @@ ${markdownContent}`;
         if (titleMatch) {
           title = `Update: ${titleMatch[1]}`;
         }
+      } else {
+        // Use filename as fallback
+        const fileName = filePath.split('/').pop()?.replace(/\.md$/, '') || 'content';
+        title = `Update: ${fileName.replace(/-/g, ' ')}`;
+      }
+
+      // Get user information for PR attribution
+      const userEmail = user?.email || 'unknown@pieces.app';
+      const userName = user?.user_metadata?.full_name || user?.user_metadata?.name || userEmail.split('@')[0];
+
+      // Determine the correct file path in the repository
+      let repoFilePath = filePath;
+      
+      // If it's a content file, place it in public/content
+      if (!filePath.startsWith('public/') && !filePath.startsWith('src/')) {
+        repoFilePath = `public/content/${filePath}`;
+      }
+      
+      // Ensure .md extension
+      if (!repoFilePath.endsWith('.md')) {
+        repoFilePath = `${repoFilePath}.md`;
       }
 
       // Create the pull request using our GitHub service
@@ -83,14 +112,21 @@ ${markdownContent}`;
           body: `This pull request updates documentation content via the Pieces documentation editor.
 
 ## Changes
-- Updated content with latest modifications
+- Updated content for: \`${repoFilePath}\`
 - Content reviewed and ready for publication
 
+## Authored By
+- **Editor:** ${userName} (${userEmail})
+- **Date:** ${new Date().toISOString().split('T')[0]}
+
 ## Review Notes
-Please review the changes and merge when ready.`,
+Please review the changes and merge when ready.
+
+---
+*This PR was created automatically by the Pieces Documentation Editor*`,
           files: [
             {
-              path: 'public/content/updated-content', // This should be determined by the actual file being edited
+              path: repoFilePath,
               content: content
             }
           ]
@@ -109,7 +145,7 @@ Please review the changes and merge when ready.`,
         throw new Error('Failed to create PR');
       }
       
-      console.log('PR created with content changes');
+      console.log('PR created with content changes for file:', repoFilePath);
     } catch (error) {
       toast.error('Failed to create pull request. Please check your GitHub connection.', { duration: 3000 });
       console.error('PR creation failed:', error);
@@ -166,6 +202,7 @@ Please review the changes and merge when ready.`,
             variant="outline"
             size="sm"
             onClick={handleCreatePR}
+            disabled={!filePath}
             className="h-8 px-3 gap-2 text-xs font-medium transition-all duration-200 bg-gradient-to-r from-blue-500/10 to-green-500/10 hover:from-blue-500/20 hover:to-green-500/20 border-blue-200 dark:border-blue-800"
           >
             <GitPullRequest className="h-3.5 w-3.5" />
