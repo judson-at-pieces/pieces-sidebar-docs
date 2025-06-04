@@ -274,18 +274,45 @@
 }
 
 /* ===================================
-   Code & Pre
+   Code & Pre - CRITICAL DARK MODE FIX
    =================================== */
 
-/* Inline code */
+/* Light mode inline code */
 .markdown-content code:not(pre code) {
-  background-color: var(--md-code-bg);
-  border: 1px solid var(--md-code-border);
-  border-radius: 0.375rem;
-  padding: 0.125rem 0.375rem;
-  font-size: 0.875em;
-  font-family: "Consolas", "Monaco", "Courier New", monospace;
-  white-space: nowrap;
+  background-color: rgb(243 244 246) !important; /* gray-100 */
+  color: rgb(31 41 55) !important; /* gray-800 */
+  border: 1px solid rgb(229 231 235) !important; /* gray-200 */
+  border-radius: 0.375rem !important;
+  padding: 0.125rem 0.375rem !important;
+  font-size: 0.875em !important;
+  font-family: "Consolas", "Monaco", "Courier New", monospace !important;
+  white-space: nowrap !important;
+}
+
+/* Dark mode inline code - HIGHEST PRIORITY */
+.dark .markdown-content code:not(pre code) {
+  background-color: rgb(55 65 81) !important; /* gray-700 */
+  color: rgb(229 231 235) !important; /* gray-200 */
+  border: 1px solid rgb(75 85 99) !important; /* gray-600 */
+}
+
+/* Global dark mode inline code override */
+.dark code:not(pre code) {
+  background-color: rgb(55 65 81) !important; /* gray-700 */
+  color: rgb(229 231 235) !important; /* gray-200 */
+  border: 1px solid rgb(75 85 99) !important; /* gray-600 */
+}
+
+/* Even more specific for HashnodeMarkdownRenderer */
+.dark .hn-markdown-renderer code,
+.dark .hn-inline-code {
+  background-color: rgb(55 65 81) !important; /* gray-700 */
+  color: rgb(229 231 235) !important; /* gray-200 */
+  border: 1px solid rgb(75 85 99) !important; /* gray-600 */
+  padding: 0.125rem 0.375rem !important;
+  border-radius: 0.25rem !important;
+  font-size: 0.875rem !important;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace !important;
 }
 
 /* Code blocks */
@@ -301,12 +328,13 @@
 }
 
 .markdown-content pre code {
-  background-color: transparent;
-  border: none;
-  padding: 0;
+  background-color: transparent !important;
+  border: none !important;
+  padding: 0 !important;
   font-size: var(--md-text-sm);
   line-height: inherit;
   white-space: pre;
+  color: inherit !important;
 }
 
 /* Syntax highlighting classes */
