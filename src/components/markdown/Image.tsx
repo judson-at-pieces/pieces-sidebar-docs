@@ -3,30 +3,37 @@ import React from 'react';
 
 interface ImageProps {
   src: string;
-  alt: string;
+  alt?: string;
   align?: 'left' | 'center' | 'right';
   fullwidth?: boolean;
+  className?: string;
 }
 
 export const Image: React.FC<ImageProps> = ({ 
   src, 
-  alt, 
+  alt = '', 
   align = 'center', 
-  fullwidth = false 
+  fullwidth = false,
+  className = ''
 }) => {
-  const alignClass = {
+  console.log('🖼️ Image component rendering:', { src, alt, align, fullwidth });
+  
+  const alignmentClass = {
     left: 'text-left',
-    center: 'text-center',
+    center: 'text-center', 
     right: 'text-right'
   }[align];
-
+  
+  const widthClass = fullwidth ? 'w-full' : 'max-w-full';
+  
   return (
-    <div className={`my-6 ${alignClass}`}>
+    <div className={`hn-image-container ${alignmentClass} my-6`}>
       <img 
         src={src} 
-        alt={alt} 
-        className={`${fullwidth ? 'w-full' : 'max-w-full'} h-auto rounded-lg`}
+        alt={alt}
+        className={`hn-image ${widthClass} h-auto rounded-lg ${className}`}
         loading="lazy"
+        decoding="async"
       />
     </div>
   );
