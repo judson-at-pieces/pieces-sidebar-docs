@@ -13,14 +13,14 @@ interface TSXRendererProps {
   content: string;
   onContentChange?: (content: string) => void;
   readOnly?: boolean;
-  filePath?: string; // Add file path prop
+  filePath?: string;
 }
 
 export function TSXRenderer({ content, onContentChange, readOnly = false, filePath }: TSXRendererProps) {
   const [mode, setMode] = useState<'preview' | 'wysiwyg'>('preview');
   const { user } = useAuth();
   
-  // Process the content to match the compiled content format
+  // Process the content to match the EXACT compilation format used by docs
   const processedContent = React.useMemo(() => {
     // If content doesn't start with frontmatter, add a basic one
     if (!content.startsWith('---')) {
@@ -166,7 +166,7 @@ Please review the changes and merge when ready.
               <div className="text-xs text-muted-foreground">
                 {mode === 'wysiwyg' 
                   ? "✨ Click elements to edit them directly" 
-                  : "👀 Real-time preview of your content"
+                  : "👀 Real-time preview using exact docs compilation"
                 }
               </div>
             </div>
@@ -223,9 +223,10 @@ Please review the changes and merge when ready.
         ) : (
           <div className="h-full overflow-y-auto animate-in fade-in duration-300">
             <div className="min-h-full">
-              {/* Use the exact same container structure as docs pages */}
+              {/* Use the EXACT SAME container structure as docs pages */}
               <div className="container mx-auto px-4 py-8 max-w-4xl">
                 <article className="prose prose-neutral dark:prose-invert max-w-none">
+                  {/* Use the EXACT SAME HashnodeMarkdownRenderer as the compiled content */}
                   <HashnodeMarkdownRenderer content={processedContent} />
                 </article>
               </div>
