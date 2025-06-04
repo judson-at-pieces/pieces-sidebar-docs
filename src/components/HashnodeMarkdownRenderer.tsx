@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 
 // Constants
@@ -26,6 +25,12 @@ interface ParsedSection {
 }
 
 interface MarkdownRendererProps {
+  content: string;
+}
+
+interface CardData {
+  title: string;
+  image?: string;
   content: string;
 }
 
@@ -91,13 +96,6 @@ const extractCalloutData = (content: string) => {
     content: contentMatch?.[1]?.trim() || ''
   };
 };
-
-// Parse Card element
-interface CardData {
-  title: string;
-  image?: string;
-  content: string;
-}
 
 const parseCard = (content: string): CardData => {
   const titleMatch = content.match(/title="([^"]*)"/);
