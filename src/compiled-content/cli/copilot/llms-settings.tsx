@@ -26,14 +26,15 @@ export const frontmatter = {
 };
 
 // MDX compiled content
-function _createMdxContent(props) {
+function _createMdxContent(props: { components?: Record<string, React.ComponentType<any>> }) {
   const _components = {
-    div: "div",
+    div: "div" as const,
     ...props.components
   };
   return _jsx(_components.div, {});
 }
-function MDXContent(props = {}) {
+
+function MDXContent(props: { components?: Record<string, React.ComponentType<any>>; wrapper?: React.ComponentType<any> } = {}) {
   const {wrapper: MDXLayout} = props.components || ({});
   return MDXLayout ? _jsx(MDXLayout, {
     ...props,
