@@ -2,7 +2,7 @@
 import React from 'react';
 import { Textarea } from '@/components/ui/textarea';
 import { CommandPalette } from './CommandPalette';
-import { Code2, Type, Palette } from 'lucide-react';
+import { Code2, Palette } from 'lucide-react';
 
 interface CodeEditorProps {
   content: string;
@@ -16,7 +16,8 @@ export function CodeEditor({ content, onChange, language = 'markdown' }: CodeEdi
   const textareaRef = React.useRef<HTMLTextAreaElement>(null);
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === '/' && e.ctrlKey) {
+    // Check for Ctrl+/ or Cmd+/ for command palette
+    if (e.key === '/' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       
       if (textareaRef.current) {

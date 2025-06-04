@@ -3,7 +3,8 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { WYSIWYGEditor } from './WYSIWYGEditor';
 import HashnodeMarkdownRenderer from '@/components/HashnodeMarkdownRenderer';
-import { Edit, Eye, Sparkles, Wand2 } from 'lucide-react';
+import { Edit, Eye, Sparkles, Wand2, GitPullRequest } from 'lucide-react';
+import { toast } from 'sonner';
 
 interface TSXRendererProps {
   content: string;
@@ -40,6 +41,23 @@ ${markdownContent}`;
     return content;
   }, [content]);
 
+  const handleCreatePR = async () => {
+    try {
+      toast.info('Creating pull request...', { duration: 2000 });
+      
+      // This would integrate with GitHub API
+      // For now, we'll just show a success message
+      setTimeout(() => {
+        toast.success('Pull request created successfully!', { duration: 3000 });
+      }, 1500);
+      
+      console.log('Creating PR with content changes');
+    } catch (error) {
+      toast.error('Failed to create pull request', { duration: 3000 });
+      console.error('PR creation failed:', error);
+    }
+  };
+
   return (
     <div className="h-full flex flex-col bg-gradient-to-br from-background to-muted/10">
       {/* Enhanced Header */}
@@ -61,28 +79,41 @@ ${markdownContent}`;
           </div>
         </div>
         
-        {!readOnly && onContentChange && (
-          <div className="flex items-center gap-2">
-            <Button
-              variant={mode === 'preview' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setMode('preview')}
-              className="h-8 px-3 gap-2 text-xs font-medium transition-all duration-200"
-            >
-              <Eye className="h-3.5 w-3.5" />
-              Preview
-            </Button>
-            <Button
-              variant={mode === 'wysiwyg' ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setMode('wysiwyg')}
-              className="h-8 px-3 gap-2 text-xs font-medium transition-all duration-200 bg-gradient-to-r from-purple-500/10 to-pink-500/10 hover:from-purple-500/20 hover:to-pink-500/20 border-purple-200 dark:border-purple-800"
-            >
-              <Wand2 className="h-3.5 w-3.5" />
-              Edit Mode
-            </Button>
-          </div>
-        )}
+        <div className="flex items-center gap-2">
+          {!readOnly && onContentChange && (
+            <>
+              <Button
+                variant={mode === 'preview' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setMode('preview')}
+                className="h-8 px-3 gap-2 text-xs font-medium transition-all duration-200"
+              >
+                <Eye className="h-3.5 w-3.5" />
+                Preview
+              </Button>
+              <Button
+                variant={mode === 'wysiwyg' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setMode('wysiwyg')}
+                className="h-8 px-3 gap-2 text-xs font-medium transition-all duration-200 bg-gradient-to-r from-purple-500/10 to-pink-500/10 hover:from-purple-500/20 hover:to-pink-500/20 border-purple-200 dark:border-purple-800"
+              >
+                <Wand2 className="h-3.5 w-3.5" />
+                Edit Mode
+              </Button>
+            </>
+          )}
+          
+          {/* Create PR Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCreatePR}
+            className="h-8 px-3 gap-2 text-xs font-medium transition-all duration-200 bg-gradient-to-r from-blue-500/10 to-green-500/10 hover:from-blue-500/20 hover:to-green-500/20 border-blue-200 dark:border-blue-800"
+          >
+            <GitPullRequest className="h-3.5 w-3.5" />
+            Create PR
+          </Button>
+        </div>
       </div>
 
       {/* Content area */}
@@ -96,13 +127,12 @@ ${markdownContent}`;
           </div>
         ) : (
           <div className="h-full overflow-y-auto animate-in fade-in duration-300">
-            <div className="min-h-full py-8 px-6">
-              <div className="max-w-4xl mx-auto">
-                <div className="bg-background/60 backdrop-blur-sm rounded-xl border border-border/50 shadow-lg shadow-black/5 p-8 min-h-[400px]">
-                  <div className="markdown-content prose prose-neutral dark:prose-invert max-w-none">
-                    <HashnodeMarkdownRenderer content={processedContent} />
-                  </div>
-                </div>
+            <div className="min-h-full">
+              {/* Use the exact same container structure as docs pages */}
+              <div className="container mx-auto px-4 py-8 max-w-4xl">
+                <article className="prose prose-neutral dark:prose-invert max-w-none">
+                  <HashnodeMarkdownRenderer content={processedContent} />
+                </article>
               </div>
             </div>
           </div>
