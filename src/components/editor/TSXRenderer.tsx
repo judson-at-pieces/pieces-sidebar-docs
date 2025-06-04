@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { WYSIWYGEditor } from './WYSIWYGEditor';
@@ -20,8 +19,7 @@ export function TSXRenderer({ content, onContentChange, readOnly = false, filePa
   const [mode, setMode] = useState<'preview' | 'wysiwyg'>('preview');
   const { user } = useAuth();
   
-  // Process the content to match the EXACT compilation format used by docs
-  // This ensures 100% identical rendering between editor and compiled docs
+  // Use the EXACT SAME content processing as the old working version
   const processedContent = React.useMemo(() => {
     // If content doesn't start with frontmatter, add a basic one
     if (!content.startsWith('---')) {
@@ -47,7 +45,97 @@ ${markdownContent}`;
     return content;
   }, [content]);
 
-  const handleCreatePR = async () => {
+  return (
+    <div className="h-full flex flex-col bg-gradient-to-br from-background to-muted/10">
+      {/* Enhanced Header */}
+      <div className="flex items-center justify-between px-4 py-3 border-b bg-background/80 backdrop-blur-sm">
+        <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500/20 to-blue-500/20 flex items-center justify-center">
+              <Sparkles className="h-4 w-4 text-green-600 dark:text-green-400" />
+            </div>
+            <div>
+              <span className="text-sm font-medium">Live Preview</span>
+              <div className="text-xs text-muted-foreground">
+                {mode === 'wysiwyg' 
+                  ? "✨ Click elements to edit them directly" 
+                  : "👀 100% identical to published docs"
+                }
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-2">
+          {!readOnly && onContentChange && (
+            <>
+              <Button
+                variant={mode === 'preview' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setMode('preview')}
+                className="h-8 px-3 gap-2 text-xs font-medium transition-all duration-200"
+              >
+                <Eye className="h-3.5 w-3.5" />
+                Preview
+              </Button>
+              <Button
+                variant={mode === 'wysiwyg' ? 'default' : 'outline'}
+                size="sm"
+                onClick={() => setMode('wysiwyg')}
+                className="h-8 px-3 gap-2 text-xs font-medium transition-all duration-200 bg-gradient-to-r from-purple-500/10 to-pink-500/10 hover:from-purple-500/20 hover:to-pink-500/20 border-purple-200 dark:border-purple-800"
+              >
+                <Wand2 className="h-3.5 w-3.5" />
+                Edit Mode
+              </Button>
+            </>
+          )}
+          
+          {/* Create PR Button */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCreatePR}
+            disabled={!filePath}
+            className="h-8 px-3 gap-2 text-xs font-medium transition-all duration-200 bg-gradient-to-r from-blue-500/10 to-green-500/10 hover:from-blue-500/20 hover:to-green-500/20 border-blue-200 dark:border-blue-800"
+          >
+            <GitPullRequest className="h-3.5 w-3.5" />
+            Create PR
+          </Button>
+        </div>
+      </div>
+
+      {/* Content area */}
+      <div className="flex-1 overflow-hidden">
+        {mode === 'wysiwyg' && !readOnly && onContentChange ? (
+          <div className="h-full animate-in fade-in slide-in-from-top-2 duration-300">
+            <WYSIWYGEditor 
+              content={content} 
+              onContentChange={onContentChange}
+            />
+          </div>
+        ) : (
+          <div className="h-full overflow-y-auto animate-in fade-in duration-300">
+            {/* Use the EXACT SAME structure and rendering as the old working version */}
+            <div className="h-full p-6 bg-muted/10 overflow-y-auto">
+              <div className="max-w-4xl mx-auto">
+                <div className="bg-background rounded-lg border border-border p-6 shadow-sm">
+                  <div className="mb-4 text-sm text-muted-foreground border-b border-border pb-2">
+                    <span className="font-medium">Live Preview</span>
+                    <p className="text-xs mt-1">This shows exactly how the content will appear on the docs site.</p>
+                  </div>
+                  <div className="markdown-content">
+                    <HashnodeMarkdownRenderer content={processedContent} />
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+
+  async function handleCreatePR() {
     try {
       toast.info('Creating pull request...', { duration: 2000 });
       
@@ -151,94 +239,5 @@ Please review the changes and merge when ready.
       toast.error('Failed to create pull request. Please check your GitHub connection.', { duration: 3000 });
       console.error('PR creation failed:', error);
     }
-  };
-
-  return (
-    <div className="h-full flex flex-col bg-gradient-to-br from-background to-muted/10">
-      {/* Enhanced Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b bg-background/80 backdrop-blur-sm">
-        <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-green-500/20 to-blue-500/20 flex items-center justify-center">
-              <Sparkles className="h-4 w-4 text-green-600 dark:text-green-400" />
-            </div>
-            <div>
-              <span className="text-sm font-medium">Live Preview</span>
-              <div className="text-xs text-muted-foreground">
-                {mode === 'wysiwyg' 
-                  ? "✨ Click elements to edit them directly" 
-                  : "👀 100% identical to published docs"
-                }
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <div className="flex items-center gap-2">
-          {!readOnly && onContentChange && (
-            <>
-              <Button
-                variant={mode === 'preview' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setMode('preview')}
-                className="h-8 px-3 gap-2 text-xs font-medium transition-all duration-200"
-              >
-                <Eye className="h-3.5 w-3.5" />
-                Preview
-              </Button>
-              <Button
-                variant={mode === 'wysiwyg' ? 'default' : 'outline'}
-                size="sm"
-                onClick={() => setMode('wysiwyg')}
-                className="h-8 px-3 gap-2 text-xs font-medium transition-all duration-200 bg-gradient-to-r from-purple-500/10 to-pink-500/10 hover:from-purple-500/20 hover:to-pink-500/20 border-purple-200 dark:border-purple-800"
-              >
-                <Wand2 className="h-3.5 w-3.5" />
-                Edit Mode
-              </Button>
-            </>
-          )}
-          
-          {/* Create PR Button */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleCreatePR}
-            disabled={!filePath}
-            className="h-8 px-3 gap-2 text-xs font-medium transition-all duration-200 bg-gradient-to-r from-blue-500/10 to-green-500/10 hover:from-blue-500/20 hover:to-green-500/20 border-blue-200 dark:border-blue-800"
-          >
-            <GitPullRequest className="h-3.5 w-3.5" />
-            Create PR
-          </Button>
-        </div>
-      </div>
-
-      {/* Content area */}
-      <div className="flex-1 overflow-hidden">
-        {mode === 'wysiwyg' && !readOnly && onContentChange ? (
-          <div className="h-full animate-in fade-in slide-in-from-top-2 duration-300">
-            <WYSIWYGEditor 
-              content={content} 
-              onContentChange={onContentChange}
-            />
-          </div>
-        ) : (
-          <div className="h-full overflow-y-auto animate-in fade-in duration-300">
-            <div className="min-h-full">
-              {/* Use the EXACT SAME container structure and rendering as compiled docs */}
-              <div className="container mx-auto px-4 py-8 max-w-4xl">
-                <article className="prose prose-neutral dark:prose-invert max-w-none">
-                  {/* 
-                    CRITICAL: This uses the exact same HashnodeMarkdownRenderer 
-                    with the exact same content format as the compiled docs.
-                    This ensures 100% identical rendering between editor and docs.
-                  */}
-                  <HashnodeMarkdownRenderer content={processedContent} />
-                </article>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
-    </div>
-  );
+  }
 }
