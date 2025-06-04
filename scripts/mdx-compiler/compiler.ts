@@ -1,12 +1,7 @@
 
 import fs from 'fs/promises';
 import path from 'path';
-import { compile } from '@mdx-js/mdx';
 import matter from 'gray-matter';
-import { remark } from 'remark';
-import remarkGfm from 'remark-gfm';
-import { visit } from 'unist-util-visit';
-import type { Node } from 'unist';
 
 interface FrontMatter {
   title: string;
@@ -18,7 +13,6 @@ interface FrontMatter {
 interface CompilerOptions {
   inputDir: string;
   outputDir: string;
-  baseImportPath?: string;
 }
 
 export class MDXCompiler {
