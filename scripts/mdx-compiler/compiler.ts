@@ -103,15 +103,12 @@ export class MDXCompiler {
       .replace(/\$/g, '\\$');
     
     return `import React from 'react';
-import { MDXProps } from '@/utils/mdxUtils';
 import HashnodeMarkdownRenderer from '@/components/HashnodeMarkdownRenderer';
-
-export interface ${componentName}Props extends MDXProps {}
 
 export const frontmatter = ${JSON.stringify(frontmatter, null, 2)};
 
 // Export our wrapper component
-export default function ${componentName}(props: ${componentName}Props = {}) {
+export default function ${componentName}() {
   console.log('🚀 Rendering ${componentName} component');
   
   const combinedContent = \`---

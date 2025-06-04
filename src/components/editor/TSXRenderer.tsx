@@ -5,6 +5,8 @@ import { WYSIWYGEditor } from './WYSIWYGEditor';
 import HashnodeMarkdownRenderer from '@/components/HashnodeMarkdownRenderer';
 import { Edit, Eye, Sparkles, Wand2, GitPullRequest } from 'lucide-react';
 import { toast } from 'sonner';
+import { githubAppService } from '@/services/githubAppService';
+import { supabase } from '@/integrations/supabase/client';
 
 interface TSXRendererProps {
   content: string;
@@ -45,27 +47,62 @@ ${markdownContent}`;
     try {
       toast.info('Creating pull request...', { duration: 2000 });
       
-      // GitHub API call to create PR
-      const response = await fetch('/api/create-pr', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          title: 'Update documentation content',
-          content: content,
-          branch: `docs-update-${Date.now()}`,
-          message: 'Update documentation via editor'
-        })
-      });
+      // Get GitHub configuration
+      const { data: configData, error: configError } = await supabase.rpc('get_current_github_config');
+      
+      if (configError || !configData || configData.length === 0) {
+        toast.error('GitHub repository not configured. Please configure it in Admin settings.', { duration: 5000 });
+        return;
+      }
 
-      if (response.ok) {
-        const result = await response.json();
-        toast.success(`Pull request created successfully! #${result.number}`, { 
+      const config = configData[0];
+      const { repo_owner, repo_name, installation_id } = config;
+
+      if (!installation_id) {
+        toast.error('GitHub App installation not found. Please reinstall the GitHub App.', { duration: 5000 });
+        return;
+      }
+
+      // Extract title from frontmatter or use default
+      let title = 'Update documentation content';
+      const frontmatterMatch = content.match(/^---\s*\n([\s\S]*?)\n---/);
+      if (frontmatterMatch) {
+        const titleMatch = frontmatterMatch[1].match(/title:\s*["']?([^"'\n]+)["']?/);
+        if (titleMatch) {
+          title = `Update: ${titleMatch[1]}`;
+        }
+      }
+
+      // Create the pull request using our GitHub service
+      const result = await githubAppService.createBranchAndPR(
+        installation_id,
+        repo_owner,
+        repo_name,
+        {
+          title,
+          body: `This pull request updates documentation content via the Pieces documentation editor.
+
+## Changes
+- Updated content with latest modifications
+- Content reviewed and ready for publication
+
+## Review Notes
+Please review the changes and merge when ready.`,
+          files: [
+            {
+              path: 'public/content/updated-content', // This should be determined by the actual file being edited
+              content: content
+            }
+          ]
+        }
+      );
+
+      if (result.success) {
+        toast.success(`Pull request created successfully! #${result.prNumber}`, { 
           duration: 5000,
           action: {
             label: 'View PR',
-            onClick: () => window.open(result.html_url, '_blank')
+            onClick: () => window.open(result.prUrl, '_blank')
           }
         });
       } else {
