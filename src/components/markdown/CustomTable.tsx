@@ -1,42 +1,39 @@
 
-import React from 'react';
+import { ReactNode } from 'react';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface CustomTableProps {
-  children: React.ReactNode;
+  children: ReactNode;
 }
 
-export const CustomTable: React.FC<CustomTableProps> = ({ children, ...props }) => {
+export function CustomTable({ children, ...props }: CustomTableProps) {
   return (
-    <div className="overflow-x-auto table-wrapper mb-6">
-      <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800/80" {...props}>
-        {children}
-      </table>
+    <div className="my-6 -mx-4 sm:mx-0">
+      <div className="overflow-x-auto px-4 sm:px-0">
+        <Table className="min-w-[600px]" {...props}>
+          {children}
+        </Table>
+      </div>
     </div>
   );
-};
+}
 
-export const CustomTableHeader: React.FC<{ children: React.ReactNode }> = ({ children, ...props }) => (
-  <thead {...props}>{children}</thead>
-);
+export function CustomTableHeader({ children, ...props }: { children: ReactNode }) {
+  return <TableHeader {...props}>{children}</TableHeader>;
+}
 
-export const CustomTableBody: React.FC<{ children: React.ReactNode }> = ({ children, ...props }) => (
-  <tbody className="divide-y divide-slate-200 dark:divide-slate-800/80" {...props}>{children}</tbody>
-);
+export function CustomTableBody({ children, ...props }: { children: ReactNode }) {
+  return <TableBody {...props}>{children}</TableBody>;
+}
 
-export const CustomTableRow: React.FC<{ children: React.ReactNode }> = ({ children, ...props }) => (
-  <tr {...props}>{children}</tr>
-);
+export function CustomTableRow({ children, ...props }: { children: ReactNode }) {
+  return <TableRow {...props}>{children}</TableRow>;
+}
 
-export const CustomTableHead: React.FC<{ children: React.ReactNode }> = ({ children, ...props }) => (
-  <th className="px-4 py-2 text-left text-sm font-semibold text-slate-700 dark:text-slate-200" {...props}>
-    <p className="!m-0 min-h-6">
-      <strong>{children}</strong>
-    </p>
-  </th>
-);
+export function CustomTableHead({ children, ...props }: { children: ReactNode }) {
+  return <TableHead {...props}>{children}</TableHead>;
+}
 
-export const CustomTableCell: React.FC<{ children: React.ReactNode }> = ({ children, ...props }) => (
-  <td className="px-4 py-2 text-sm text-slate-700 dark:text-slate-300" {...props}>
-    {children}
-  </td>
-);
+export function CustomTableCell({ children, ...props }: { children: ReactNode }) {
+  return <TableCell {...props}>{children}</TableCell>;
+}

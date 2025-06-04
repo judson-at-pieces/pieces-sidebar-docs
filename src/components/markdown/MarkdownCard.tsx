@@ -7,7 +7,7 @@ interface MarkdownCardProps {
   children: React.ReactNode;
 }
 
-export const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, children }) => {
+const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, children }) => {
   return (
     <div className="p-6 my-4 border rounded-xl dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
       {image && (
@@ -37,3 +37,8 @@ export const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, childr
     </div>
   );
 };
+
+export default MarkdownCard;
+
+// Export named export for compatibility
+export { MarkdownCard };

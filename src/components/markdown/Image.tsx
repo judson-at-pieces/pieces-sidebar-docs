@@ -1,4 +1,3 @@
-
 import React from 'react';
 
 interface ImageProps {
@@ -9,25 +8,45 @@ interface ImageProps {
   loading?: 'lazy' | 'eager';
 }
 
-export const Image: React.FC<ImageProps> = ({ 
-  src, 
-  alt = '', 
-  align = 'center', 
-  fullwidth = false, 
-  loading = 'lazy' 
+const Image: React.FC<ImageProps> = ({
+  src,
+  alt = '',
+  align = 'center',
+  fullwidth = false,
+  loading = 'lazy',
 }) => {
-  const alignmentClass = align === 'center' ? 'mx-auto' : align === 'right' ? 'ml-auto' : 'mr-auto';
-  const widthClass = fullwidth ? 'w-full' : 'max-w-full';
+  const getAlignmentClass = () => {
+    switch (align) {
+      case 'left':
+        return 'justify-start';
+      case 'right':
+        return 'justify-end';
+      default:
+        return 'justify-center';
+    }
+  };
+
+  const getImageClass = () => {
+    if (fullwidth) {
+      return 'w-full h-auto';
+    }
+    return 'max-w-full h-auto';
+  };
 
   return (
-    <div className={`my-4 ${alignmentClass}`}>
+    <div className={`flex my-4 not-prose [&>_img]:!rounded-none ${getAlignmentClass()}`}>
       <img
         src={src}
         alt={alt}
+        className={getImageClass()}
         loading={loading}
         decoding="async"
-        className={`${widthClass} h-auto rounded-lg shadow-sm`}
       />
     </div>
   );
 };
+
+export default Image;
+
+// Export named export for compatibility
+export { Image };
