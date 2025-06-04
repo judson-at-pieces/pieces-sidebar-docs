@@ -81,7 +81,7 @@ export class MDXCompiler {
     // Parse frontmatter
     const { data: frontmatter, content: markdownContent } = matter(content);
     
-    // Process custom syntax - fix duplication issues
+    // Process custom syntax
     const processedContent = this.processCustomSyntax(markdownContent);
     
     // Compile MDX to JSX
@@ -131,23 +131,38 @@ export class MDXCompiler {
       }
     );
 
-    // Transform CardGroup elements - ensure proper handling
-    const cardGroupMatches = processedContent.match(/<CardGroup[^>]*>[\s\S]*?<\/CardGroup>/g);
-    if (cardGroupMatches) {
-      console.log('🃏 Found CardGroup elements:', cardGroupMatches.length);
-      cardGroupMatches.forEach((match, index) => {
-        console.log(`🃏 CardGroup ${index + 1}:`, match.substring(0, 100) + '...');
-      });
-    }
+    // Robust CardGroup processing - handle both with and without cols attribute
+    console.log('🃏 Starting CardGroup processing...');
+    
+    // First, handle CardGroup with cols attribute
+    processedContent = processedContent.replace(
+      /<CardGroup\s+cols=\{(\d+)\}>([\s\S]*?)<\/CardGroup>/g,
+      (match, cols, innerContent) => {
+        console.log(`🃏 Processing CardGroup with cols=${cols}:`);
+        console.log('🃏 Inner content preview:', innerContent.substring(0, 200));
+        
+        // Process the inner Card elements
+        const processedInner = this.processCardElements(innerContent.trim());
+        console.log('🃏 Processed inner content preview:', processedInner.substring(0, 200));
+        
+        return `<CardGroup cols={${cols}}>\n${processedInner}\n</CardGroup>`;
+      }
+    );
 
-    // Transform Card elements - ensure proper handling
-    const cardMatches = processedContent.match(/<Card[^>]*>[\s\S]*?<\/Card>/g);
-    if (cardMatches) {
-      console.log('🎯 Found Card elements:', cardMatches.length);
-      cardMatches.forEach((match, index) => {
-        console.log(`🎯 Card ${index + 1}:`, match.substring(0, 100) + '...');
-      });
-    }
+    // Then handle CardGroup without cols (default to 2)
+    processedContent = processedContent.replace(
+      /<CardGroup>([\s\S]*?)<\/CardGroup>/g,
+      (match, innerContent) => {
+        console.log('🃏 Processing CardGroup with default cols=2:');
+        console.log('🃏 Inner content preview:', innerContent.substring(0, 200));
+        
+        // Process the inner Card elements
+        const processedInner = this.processCardElements(innerContent.trim());
+        console.log('🃏 Processed inner content preview:', processedInner.substring(0, 200));
+        
+        return `<CardGroup cols={2}>\n${processedInner}\n</CardGroup>`;
+      }
+    );
 
     // Transform ExpandableImage components
     processedContent = processedContent.replace(
@@ -158,11 +173,10 @@ export class MDXCompiler {
       }
     );
 
-    // Handle regular images with captions - but avoid double processing
+    // Handle regular images with captions
     processedContent = processedContent.replace(
       /!\[([^\]]*)\]\(([^)]+)\)(?:\s*"([^"]*)")?/g,
       (match, alt, src, caption) => {
-        // Don't transform if it's already an ExpandableImage
         if (processedContent.includes(`<ExpandableImage src="${src}"`)) {
           return match;
         }
@@ -174,6 +188,42 @@ export class MDXCompiler {
       }
     );
 
+    console.log('✅ Custom syntax processing complete');
+    return processedContent;
+  }
+
+  private processCardElements(content: string): string {
+    console.log('🎯 Processing Card elements in content...');
+    
+    // Handle Card elements with various attribute combinations
+    let processedContent = content;
+    
+    // Pattern to match Card with title and image attributes
+    processedContent = processedContent.replace(
+      /<Card\s+title="([^"]*)"(?:\s+image="([^"]*)")?>([\s\S]*?)<\/Card>/g,
+      (match, title, image, innerContent) => {
+        console.log(`🎯 Processing Card with title="${title}" image="${image || 'none'}"`);
+        console.log('🎯 Card inner content preview:', innerContent.substring(0, 100));
+        
+        const imageAttr = image ? ` image="${image}"` : '';
+        const processedInner = innerContent.trim();
+        
+        return `  <Card title="${title}"${imageAttr}>\n    ${processedInner}\n  </Card>`;
+      }
+    );
+
+    // Handle Card with just title
+    processedContent = processedContent.replace(
+      /<Card\s+title="([^"]*)">([\s\S]*?)<\/Card>/g,
+      (match, title, innerContent) => {
+        console.log(`🎯 Processing Card with title="${title}" (no image)`);
+        
+        const processedInner = innerContent.trim();
+        return `  <Card title="${title}">\n    ${processedInner}\n  </Card>`;
+      }
+    );
+
+    console.log('🎯 Card processing complete');
     return processedContent;
   }
 
@@ -181,20 +231,18 @@ export class MDXCompiler {
     return () => {
       return (tree: Node) => {
         visit(tree, 'element', (node: any) => {
-          // Transform custom elements - ensure no duplication
+          // Log custom elements for debugging
           if (node.tagName === 'Card') {
-            console.log('🎯 Processing Card element in plugin:', node);
+            console.log('🎯 Remark plugin processing Card element:', node);
           }
           if (node.tagName === 'CardGroup') {
-            console.log('🃏 Processing CardGroup element in plugin:', node);
+            console.log('🃏 Remark plugin processing CardGroup element:', node);
           }
           if (node.tagName === 'Steps' || 
               node.tagName === 'Step' ||
               node.tagName === 'ExpandableImage' ||
               node.tagName === 'Callout') {
-            console.log(`🔧 Processing ${node.tagName} element in plugin`);
-            // Keep custom components as-is, no transformation needed
-            return;
+            console.log(`🔧 Remark plugin processing ${node.tagName} element`);
           }
         });
       };
