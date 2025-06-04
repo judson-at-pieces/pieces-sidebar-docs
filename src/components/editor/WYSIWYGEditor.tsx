@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Type, Image as ImageIcon, AlertCircle, List, Hash, Quote, Code } from 'lucide-react';
+import { Plus, Type, Image as ImageIcon, AlertCircle, List, Hash, Quote, Code, Save } from 'lucide-react';
 import HashnodeMarkdownRenderer from '@/components/HashnodeMarkdownRenderer';
 
 interface WYSIWYGEditorProps {
@@ -21,7 +21,6 @@ interface EditableElement {
 }
 
 export function WYSIWYGEditor({ content, onContentChange }: WYSIWYGEditorProps) {
-  const [isEditing, setIsEditing] = useState(false);
   const [editingElement, setEditingElement] = useState<string | null>(null);
   const [showInsertMenu, setShowInsertMenu] = useState(false);
   const [insertPosition, setInsertPosition] = useState<number>(0);
@@ -58,7 +57,7 @@ export function WYSIWYGEditor({ content, onContentChange }: WYSIWYGEditorProps) 
         }
         elementType = 'image';
         currentElement = line;
-      } else if (line.startsWith('<Callout')) {
+      } else if (line.startsWith('<Callout') || line.startsWith(':::')) {
         if (currentElement) {
           elements.push({
             id: `element-${elementId++}`,
@@ -110,7 +109,7 @@ export function WYSIWYGEditor({ content, onContentChange }: WYSIWYGEditorProps) 
         newContent = '<Image src="" alt="" align="center" fullwidth="false" />';
         break;
       case 'callout':
-        newContent = '<Callout type="info">\nNew callout content...\n</Callout>';
+        newContent = ':::info\nNew callout content...\n:::';
         break;
       case 'card':
         newContent = '<Card title="New Card" image="">\nCard content...\n</Card>';
@@ -149,9 +148,19 @@ export function WYSIWYGEditor({ content, onContentChange }: WYSIWYGEditorProps) 
 
     if (isCurrentlyEditing) {
       return (
-        <div key={element.id} className="border-2 border-primary rounded-lg p-4 bg-background">
-          <div className="mb-2 text-xs text-muted-foreground">
-            Editing {element.type}
+        <div key={element.id} className="border-2 border-primary rounded-lg p-4 bg-background mb-4">
+          <div className="mb-2 flex items-center justify-between">
+            <div className="text-xs text-muted-foreground">
+              Editing {element.type}
+            </div>
+            <Button
+              size="sm"
+              onClick={() => setEditingElement(null)}
+              className="h-6 px-2 text-xs"
+            >
+              <Save className="h-3 w-3 mr-1" />
+              Save
+            </Button>
           </div>
           <Textarea
             value={element.content}
@@ -162,7 +171,6 @@ export function WYSIWYGEditor({ content, onContentChange }: WYSIWYGEditorProps) 
               const newMarkdown = updatedElements.map(el => el.content).join('\n\n');
               onContentChange(newMarkdown);
             }}
-            onBlur={() => setEditingElement(null)}
             onKeyDown={(e) => {
               if (e.key === 'Escape') {
                 setEditingElement(null);
@@ -184,47 +192,45 @@ export function WYSIWYGEditor({ content, onContentChange }: WYSIWYGEditorProps) 
     return (
       <div
         key={element.id}
-        className={`relative group ${isEditing ? 'hover:ring-2 hover:ring-primary/50 rounded-lg' : ''}`}
-        onClick={() => {
-          if (isEditing) {
-            setEditingElement(element.id);
-          }
+        className="relative group mb-4 p-2 rounded-lg hover:bg-muted/20 transition-colors cursor-pointer"
+        onClick={(e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          setEditingElement(element.id);
         }}
       >
-        <HashnodeMarkdownRenderer content={element.content} />
+        <div className="pointer-events-none">
+          <HashnodeMarkdownRenderer content={element.content} />
+        </div>
         
-        {isEditing && (
-          <>
-            <div className="absolute top-0 right-0 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setEditingElement(element.id);
-                }}
-                className="h-6 px-2 text-xs"
-              >
-                Edit
-              </Button>
-            </div>
-            
-            <div className="absolute -bottom-6 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={(e) => {
-                  e.stopPropagation();
-                  setInsertPosition(index + 1);
-                  setShowInsertMenu(true);
-                }}
-                className="h-6 px-2 text-xs"
-              >
-                <Plus className="h-3 w-3" />
-              </Button>
-            </div>
-          </>
-        )}
+        <div className="absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={(e) => {
+              e.stopPropagation();
+              setEditingElement(element.id);
+            }}
+            className="h-6 px-2 text-xs bg-background shadow-sm"
+          >
+            <Edit className="h-3 w-3" />
+          </Button>
+        </div>
+        
+        <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-auto">
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={(e) => {
+              e.stopPropagation();
+              setInsertPosition(index + 1);
+              setShowInsertMenu(true);
+            }}
+            className="h-6 px-2 text-xs bg-background shadow-sm"
+          >
+            <Plus className="h-3 w-3" />
+          </Button>
+        </div>
       </div>
     );
   };
@@ -234,49 +240,53 @@ export function WYSIWYGEditor({ content, onContentChange }: WYSIWYGEditorProps) 
       {/* Toolbar */}
       <div className="flex items-center justify-between p-4 border-b bg-background">
         <div className="flex items-center gap-2">
-          <Button
-            variant={isEditing ? "default" : "outline"}
-            size="sm"
-            onClick={() => setIsEditing(!isEditing)}
-          >
-            {isEditing ? 'Exit Edit Mode' : 'Enter Edit Mode'}
-          </Button>
-          
-          {isEditing && (
-            <div className="text-sm text-muted-foreground">
-              Click elements to edit them directly
-            </div>
-          )}
+          <div className="text-sm font-medium">WYSIWYG Editor</div>
+          <div className="text-xs text-muted-foreground">
+            Click elements to edit • Hover for insert options
+          </div>
         </div>
 
-        {isEditing && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setInsertPosition(0);
-              setShowInsertMenu(true);
-            }}
-          >
-            <Plus className="h-4 w-4 mr-1" />
-            Add Element
-          </Button>
-        )}
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => {
+            setInsertPosition(0);
+            setShowInsertMenu(true);
+          }}
+          className="gap-2"
+        >
+          <Plus className="h-4 w-4" />
+          Add Element
+        </Button>
       </div>
 
       {/* Content Area */}
       <div className="flex-1 overflow-y-auto p-6" ref={containerRef}>
         <div className="max-w-4xl mx-auto">
           <div className="bg-background rounded-lg border border-border p-6 shadow-sm">
-            {!isEditing ? (
-              <div className="markdown-content">
-                <HashnodeMarkdownRenderer content={content} />
-              </div>
-            ) : (
-              <div className="space-y-6">
-                {elements.map((element, index) => renderEditableElement(element, index))}
-              </div>
-            )}
+            <div className="space-y-2">
+              {elements.map((element, index) => renderEditableElement(element, index))}
+              
+              {elements.length === 0 && (
+                <div className="text-center py-12 text-muted-foreground">
+                  <div className="mb-4">
+                    <Type className="h-12 w-12 mx-auto opacity-50" />
+                  </div>
+                  <p className="text-lg font-medium mb-2">Start creating content</p>
+                  <p className="text-sm mb-4">Click "Add Element" to begin</p>
+                  <Button
+                    variant="outline"
+                    onClick={() => {
+                      setInsertPosition(0);
+                      setShowInsertMenu(true);
+                    }}
+                  >
+                    <Plus className="h-4 w-4 mr-2" />
+                    Add Your First Element
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>

@@ -1,6 +1,8 @@
-import { useState, useEffect, useRef } from "react";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
-import { FileText, Hash, List, Quote, Table, Code, Image, AlertCircle, CheckCircle, Info, XCircle, LayoutGrid, ArrowRight, Bold, Italic, Link } from "lucide-react";
+
+import React, { useState, useEffect } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Type, Hash, Image as ImageIcon, AlertCircle, List, Quote, Code, Link } from 'lucide-react';
 
 interface CommandPaletteProps {
   isOpen: boolean;
@@ -9,280 +11,185 @@ interface CommandPaletteProps {
   position: { top: number; left: number };
 }
 
-const MARKDOWN_FRAGMENTS = [
+const commands = [
   {
     id: 'heading',
-    title: 'Heading',
-    description: 'Add a heading',
+    label: 'Heading',
     icon: Hash,
-    content: '\n## Your Heading Here\n\n'
+    content: '## Your heading here',
+    description: 'Add a section heading'
   },
   {
-    id: 'subheading',
-    title: 'Subheading',
-    description: 'Add a subheading',
-    icon: Hash,
-    content: '\n### Your Subheading Here\n\n'
-  },
-  {
-    id: 'paragraph',
-    title: 'Paragraph',
-    description: 'Add a paragraph',
-    icon: FileText,
-    content: '\nYour paragraph text here.\n\n'
-  },
-  {
-    id: 'bold',
-    title: 'Bold Text',
-    description: 'Add bold text',
-    icon: Bold,
-    content: '**bold text**'
-  },
-  {
-    id: 'italic',
-    title: 'Italic Text',
-    description: 'Add italic text',
-    icon: Italic,
-    content: '*italic text*'
-  },
-  {
-    id: 'link',
-    title: 'Link',
-    description: 'Add a link',
-    icon: Link,
-    content: '[link text](https://example.com)'
-  },
-  {
-    id: 'list',
-    title: 'Bullet List',
-    description: 'Add a bullet list',
-    icon: List,
-    content: '\n- Item 1\n- Item 2\n- Item 3\n\n'
-  },
-  {
-    id: 'ordered-list',
-    title: 'Numbered List',
-    description: 'Add a numbered list',
-    icon: List,
-    content: '\n1. First item\n2. Second item\n3. Third item\n\n'
-  },
-  {
-    id: 'code-inline',
-    title: 'Inline Code',
-    description: 'Add inline code',
-    icon: Code,
-    content: '`your code here`'
-  },
-  {
-    id: 'code-block',
-    title: 'Code Block',
-    description: 'Add a code block',
-    icon: Code,
-    content: '\n```javascript\n// Your code here\nconsole.log("Hello World");\n```\n\n'
-  },
-  {
-    id: 'callout-info',
-    title: 'Info Callout',
-    description: 'Add an info callout',
-    icon: Info,
-    content: '\n:::info\nThis is an information callout. Use it to provide helpful context.\n:::\n\n'
-  },
-  {
-    id: 'callout-warning',
-    title: 'Warning Callout',
-    description: 'Add a warning callout',
-    icon: AlertCircle,
-    content: '\n:::warning\nThis is a warning callout. Use it to highlight important notices.\n:::\n\n'
-  },
-  {
-    id: 'callout-success',
-    title: 'Success Callout',
-    description: 'Add a success callout',
-    icon: CheckCircle,
-    content: '\n:::success\nThis is a success callout. Use it to highlight positive outcomes.\n:::\n\n'
-  },
-  {
-    id: 'callout-error',
-    title: 'Error Callout',
-    description: 'Add an error callout',
-    icon: XCircle,
-    content: '\n:::error\nThis is an error callout. Use it to highlight problems or issues.\n:::\n\n'
-  },
-  {
-    id: 'card',
-    title: 'Card',
-    description: 'Add a single card',
-    icon: FileText,
-    content: '\n:::card{title="Card Title" href="/link-to-page"}\nCard description goes here\n:::\n\n'
-  },
-  {
-    id: 'card-group',
-    title: 'Card Group',
-    description: 'Add a group of cards',
-    icon: LayoutGrid,
-    content: '\n:::card-group\n:::card{title="First Card" href="/first-link"}\nDescription for the first card\n:::\n:::card{title="Second Card" href="/second-link"}\nDescription for the second card\n:::\n:::card{title="Third Card" href="/third-link"}\nDescription for the third card\n:::\n:::\n\n'
-  },
-  {
-    id: 'steps',
-    title: 'Steps',
-    description: 'Add a steps component',
-    icon: ArrowRight,
-    content: '\n:::steps\n1. **Step 1** - Description for the first step\n2. **Step 2** - Description for the second step\n3. **Step 3** - Description for the third step\n:::\n\n'
-  },
-  {
-    id: 'table',
-    title: 'Table',
-    description: 'Add a table',
-    icon: Table,
-    content: '\n| Column 1 | Column 2 | Column 3 |\n|----------|----------|----------|\n| Cell 1   | Cell 2   | Cell 3   |\n| Cell 4   | Cell 5   | Cell 6   |\n\n'
+    id: 'text',
+    label: 'Paragraph',
+    icon: Type,
+    content: 'Your paragraph text here...',
+    description: 'Add a text paragraph'
   },
   {
     id: 'image',
-    title: 'Image',
-    description: 'Add an image',
-    icon: Image,
-    content: '\n![Alt text](/path/to/image.png)\n\n'
+    label: 'Image',
+    icon: ImageIcon,
+    content: '<Image src="https://your-image-url.com" alt="Description" align="center" fullwidth="false" />',
+    description: 'Insert an image'
   },
   {
-    id: 'expandable-image',
-    title: 'Expandable Image',
-    description: 'Add an expandable image',
-    icon: Image,
-    content: '\n:::image{src="/placeholder.svg" alt="Description of the image"}\n:::\n\n'
+    id: 'callout',
+    label: 'Callout',
+    icon: AlertCircle,
+    content: ':::info\nYour callout content here...\n:::',
+    description: 'Add an info callout'
   },
   {
-    id: 'quote',
-    title: 'Quote',
-    description: 'Add a blockquote',
+    id: 'card',
+    label: 'Card',
     icon: Quote,
-    content: '\n> This is a blockquote. Use it to highlight important text or quotes.\n\n'
+    content: '<Card title="Card Title" image="https://image-url.com">\nCard content goes here...\n</Card>',
+    description: 'Insert a content card'
+  },
+  {
+    id: 'cardgroup',
+    label: 'Card Group',
+    icon: Quote,
+    content: '<CardGroup cols={2}>\n  <Card title="Card 1">\n    Content 1\n  </Card>\n  <Card title="Card 2">\n    Content 2\n  </Card>\n</CardGroup>',
+    description: 'Insert a group of cards'
+  },
+  {
+    id: 'list',
+    label: 'List',
+    icon: List,
+    content: '- Item 1\n- Item 2\n- Item 3',
+    description: 'Add a bulleted list'
+  },
+  {
+    id: 'code',
+    label: 'Code Block',
+    icon: Code,
+    content: '```javascript\n// Your code here\nconsole.log("Hello World");\n```',
+    description: 'Insert a code block'
+  },
+  {
+    id: 'link',
+    label: 'Link',
+    icon: Link,
+    content: '[Link text](https://example.com)',
+    description: 'Add a link'
   }
 ];
 
 export function CommandPalette({ isOpen, onClose, onInsert, position }: CommandPaletteProps) {
-  const [search, setSearch] = useState("");
-  const commandRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<any>(null); // CommandInput uses a different ref type
+  const [selectedIndex, setSelectedIndex] = useState(0);
+  const [search, setSearch] = useState('');
 
-  // Clear search when closing
+  const filteredCommands = commands.filter(cmd => 
+    cmd.label.toLowerCase().includes(search.toLowerCase()) ||
+    cmd.description.toLowerCase().includes(search.toLowerCase())
+  );
+
   useEffect(() => {
-    if (!isOpen) {
-      setSearch("");
+    if (isOpen) {
+      setSelectedIndex(0);
+      setSearch('');
     }
   }, [isOpen]);
 
-  // Focus management
   useEffect(() => {
-    if (isOpen && inputRef.current) {
-      // Small delay to ensure the palette is rendered
-      setTimeout(() => {
-        inputRef.current?.focus();
-      }, 50);
-    }
-  }, [isOpen]);
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!isOpen) return;
 
-  // Handle click outside with better detection
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleClickOutside = (event: MouseEvent) => {
-      const target = event.target as Node;
-      
-      // Check if click is within command palette
-      if (commandRef.current && commandRef.current.contains(target)) {
-        return;
-      }
-      
-      onClose();
-    };
-
-    // Add event listener to the parent container (textarea container)
-    // This ensures we only close when clicking outside within the same container
-    const textareaContainer = commandRef.current?.parentElement;
-    if (textareaContainer) {
-      textareaContainer.addEventListener('click', handleClickOutside);
-      
-      return () => {
-        textareaContainer.removeEventListener('click', handleClickOutside);
-      };
-    }
-  }, [isOpen, onClose]);
-
-  // Handle keyboard events
-  useEffect(() => {
-    if (!isOpen) return;
-
-    const handleKeyDown = (event: KeyboardEvent) => {
-      // Only handle Escape - let cmdk handle all other keys
-      if (event.key === 'Escape') {
-        event.preventDefault();
-        event.stopPropagation();
-        onClose();
+      switch (e.key) {
+        case 'ArrowDown':
+          e.preventDefault();
+          setSelectedIndex(prev => Math.min(prev + 1, filteredCommands.length - 1));
+          break;
+        case 'ArrowUp':
+          e.preventDefault();
+          setSelectedIndex(prev => Math.max(prev - 1, 0));
+          break;
+        case 'Enter':
+          e.preventDefault();
+          if (filteredCommands[selectedIndex]) {
+            onInsert(filteredCommands[selectedIndex].content);
+          }
+          break;
+        case 'Escape':
+          e.preventDefault();
+          onClose();
+          break;
       }
     };
 
-    document.addEventListener('keydown', handleKeyDown, true);
-    
-    return () => {
-      document.removeEventListener('keydown', handleKeyDown, true);
-    };
-  }, [isOpen, onClose]);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen, selectedIndex, filteredCommands, onInsert, onClose]);
 
   if (!isOpen) return null;
 
-  const filteredFragments = MARKDOWN_FRAGMENTS.filter(fragment =>
-    fragment.title.toLowerCase().includes(search.toLowerCase()) ||
-    fragment.description.toLowerCase().includes(search.toLowerCase())
-  );
-
   return (
-    <div
-      ref={commandRef}
-      className="absolute z-[100] w-80 bg-background border border-border rounded-lg shadow-xl animate-in fade-in slide-in-from-top-2 duration-200"
-      style={{
-        top: position.top,
-        left: position.left,
-        maxHeight: '320px',
-      }}
-      onMouseDown={(e) => {
-        // Prevent any mouse down events from bubbling up
-        e.stopPropagation();
-      }}
-    >
-      <Command className="h-full max-h-[320px]" loop>
-        <CommandInput
-          ref={inputRef}
-          placeholder="Search markdown snippets..."
-          value={search}
-          onValueChange={setSearch}
-          className="border-0 focus:ring-0"
-        />
-        <CommandList className="max-h-[264px] overflow-y-auto">
-          <CommandEmpty>No snippets found.</CommandEmpty>
-          <CommandGroup heading="Markdown & Components">
-            {filteredFragments.map((fragment) => {
-              const Icon = fragment.icon;
-              return (
-                <CommandItem
-                  key={fragment.id}
-                  value={fragment.id}
-                  onSelect={() => {
-                    onInsert(fragment.content);
-                    onClose();
-                  }}
-                  className="flex items-center gap-3 p-3 cursor-pointer hover:bg-accent rounded-md"
-                >
-                  <Icon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    <div className="font-medium text-sm truncate">{fragment.title}</div>
-                    <div className="text-xs text-muted-foreground truncate">{fragment.description}</div>
-                  </div>
-                </CommandItem>
-              );
-            })}
-          </CommandGroup>
-        </CommandList>
-      </Command>
-    </div>
+    <>
+      {/* Backdrop */}
+      <div 
+        className="fixed inset-0 z-40 bg-transparent" 
+        onClick={onClose}
+      />
+      
+      {/* Command Palette */}
+      <div 
+        className="fixed z-50 w-80"
+        style={{ 
+          top: Math.min(position.top, window.innerHeight - 400),
+          left: Math.min(position.left, window.innerWidth - 320)
+        }}
+      >
+        <Card className="shadow-lg border-2">
+          <CardContent className="p-0">
+            {/* Search Input */}
+            <div className="p-3 border-b">
+              <input
+                type="text"
+                placeholder="Search commands..."
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                className="w-full px-3 py-2 text-sm bg-transparent border rounded-md focus:outline-none focus:ring-2 focus:ring-primary"
+                autoFocus
+              />
+            </div>
+            
+            {/* Commands List */}
+            <div className="max-h-64 overflow-y-auto">
+              {filteredCommands.length === 0 ? (
+                <div className="p-4 text-center text-muted-foreground text-sm">
+                  No commands found
+                </div>
+              ) : (
+                filteredCommands.map((command, index) => {
+                  const Icon = command.icon;
+                  return (
+                    <div
+                      key={command.id}
+                      className={`p-3 flex items-center gap-3 cursor-pointer transition-colors ${
+                        index === selectedIndex ? 'bg-muted' : 'hover:bg-muted/50'
+                      }`}
+                      onClick={() => onInsert(command.content)}
+                    >
+                      <Icon className="h-4 w-4 text-muted-foreground" />
+                      <div className="flex-1">
+                        <div className="text-sm font-medium">{command.label}</div>
+                        <div className="text-xs text-muted-foreground">{command.description}</div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            
+            {/* Footer */}
+            <div className="p-2 border-t bg-muted/50 text-xs text-muted-foreground text-center">
+              ↑↓ to navigate • Enter to select • Esc to cancel
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    </>
   );
 }

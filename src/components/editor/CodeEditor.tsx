@@ -96,6 +96,7 @@ You can use:
 • Code: ```language or `inline`
 • Links: [text](url)
 • Images: ![alt](src)
+• Callouts: :::info content :::
 • And many more..."
             style={{ 
               background: 'transparent',

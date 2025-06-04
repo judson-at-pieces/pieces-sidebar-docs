@@ -79,7 +79,7 @@ ${markdownContent}`;
               className="h-8 px-3 gap-2 text-xs font-medium transition-all duration-200 bg-gradient-to-r from-purple-500/10 to-pink-500/10 hover:from-purple-500/20 hover:to-pink-500/20 border-purple-200 dark:border-purple-800"
             >
               <Wand2 className="h-3.5 w-3.5" />
-              Edit
+              Edit Mode
             </Button>
           </div>
         )}
