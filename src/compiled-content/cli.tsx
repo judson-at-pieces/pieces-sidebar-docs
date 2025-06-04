@@ -29,7 +29,7 @@ export const frontmatter = {
 // MDX compiled content
 function _createMdxContent(props: { components?: Record<string, React.ComponentType<any>> }) {
   const _components = {
-    div: "div",
+    div: "div" as const,
     ...props.components
   };
   return _jsx(_components.div, {});
