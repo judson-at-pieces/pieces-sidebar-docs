@@ -5,7 +5,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Plus, Type, Image as ImageIcon, AlertCircle, List, Hash, Quote, Code, Save } from 'lucide-react';
+import { Plus, Type, Image as ImageIcon, AlertCircle, List, Hash, Quote, Code, Save, Edit } from 'lucide-react';
 import HashnodeMarkdownRenderer from '@/components/HashnodeMarkdownRenderer';
 
 interface WYSIWYGEditorProps {

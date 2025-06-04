@@ -115,7 +115,7 @@ export default function ${componentName}() {
 \${Object.entries(frontmatter).map(([key, value]) => \`\${key}: "\${value}"\`).join('\\n')}
 ---
 ***
-\${${JSON.stringify(escapedContent)}}\`;
+${escapedContent}\`;
 
   return <HashnodeMarkdownRenderer content={combinedContent} />;
 }
