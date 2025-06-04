@@ -76,7 +76,7 @@ export class MDXCompiler {
     // Parse frontmatter
     const { data: frontmatter, content: markdownContent } = matter(content);
     
-    // Generate TSX component that uses HashnodeMarkdownRenderer
+    // Generate TSX component
     const tsxContent = this.generateTSXComponent(
       filePath,
       markdownContent,
@@ -111,7 +111,7 @@ export interface ${componentName}Props extends MDXProps {}
 export const frontmatter = ${JSON.stringify(frontmatter, null, 2)};
 
 // Export our wrapper component
-export default function ${componentName}({ components = {} }: ${componentName}Props) {
+export default function ${componentName}(props: ${componentName}Props = {}) {
   console.log('🚀 Rendering ${componentName} component');
   
   const combinedContent = \`---

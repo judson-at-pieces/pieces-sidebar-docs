@@ -45,15 +45,36 @@ ${markdownContent}`;
     try {
       toast.info('Creating pull request...', { duration: 2000 });
       
-      // This would integrate with GitHub API
-      // For now, we'll just show a success message
-      setTimeout(() => {
-        toast.success('Pull request created successfully!', { duration: 3000 });
-      }, 1500);
+      // GitHub API call to create PR
+      const response = await fetch('/api/create-pr', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          title: 'Update documentation content',
+          content: content,
+          branch: `docs-update-${Date.now()}`,
+          message: 'Update documentation via editor'
+        })
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        toast.success(`Pull request created successfully! #${result.number}`, { 
+          duration: 5000,
+          action: {
+            label: 'View PR',
+            onClick: () => window.open(result.html_url, '_blank')
+          }
+        });
+      } else {
+        throw new Error('Failed to create PR');
+      }
       
-      console.log('Creating PR with content changes');
+      console.log('PR created with content changes');
     } catch (error) {
-      toast.error('Failed to create pull request', { duration: 3000 });
+      toast.error('Failed to create pull request. Please check your GitHub connection.', { duration: 3000 });
       console.error('PR creation failed:', error);
     }
   };
