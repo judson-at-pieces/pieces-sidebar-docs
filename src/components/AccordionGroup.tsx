@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { ChevronRight, ChevronDown } from 'lucide-react';
 
@@ -81,15 +82,16 @@ const AccordionGroup: React.FC<AccordionGroupProps> = ({ children, allowMultiple
         }
         
         // If it's an Accordion component with title prop, convert it to AccordionItem
-        if (React.isValidElement(child) && child.props.title) {
+        if (React.isValidElement(child) && typeof child.props === 'object' && child.props && 'title' in child.props) {
+          const props = child.props as { title: string; children: React.ReactNode };
           return (
             <AccordionItem
               key={index}
-              title={child.props.title}
+              title={props.title}
               isOpen={openItems.has(index)}
               onToggle={() => toggleItem(index)}
             >
-              {child.props.children}
+              {props.children}
             </AccordionItem>
           );
         }
