@@ -735,6 +735,7 @@ const HashnodeMarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) 
       }
       
       case 'markdown':
+        console.log('📝 Rendering markdown section with content:', section.content.substring(0, 100));
         return (
           <div key={section.index} className="hn-markdown-section">
             <MarkdownSection content={section.content} />
@@ -743,7 +744,11 @@ const HashnodeMarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) 
         
       default:
         console.log('⚠️ Unhandled section type:', section.type);
-        return null;
+        return (
+          <div key={section.index} className="hn-markdown-section">
+            <MarkdownSection content={section.content} />
+          </div>
+        );
     }
   };
 
