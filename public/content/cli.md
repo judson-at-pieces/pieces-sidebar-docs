@@ -15,6 +15,8 @@ The Pieces CLI offers users a straightforward way to manage and utilize saved co
 
 * [Pieces Copilot](https://docs.pieces.app/products/cli/copilot): Utilize AI-driven conversations to enhance productivity by offering contextual assistance for your projects. It facilitates understanding of code, writing of comments, troubleshooting, and more by incorporating files and folders as context, with or without the powerful Long-Term Memory Engine (LTM-2).
 
+s
+
 * [Pieces Drive](https://docs.pieces.app/products/cli/drive): Effortlessly save, find, and share your frequently used code snippets in your Pieces Drive. This makes organizing your work easy, allows for quick access to the code you need, and facilitates effective collaboration with others.
 
 <CardGroup cols={2}>
