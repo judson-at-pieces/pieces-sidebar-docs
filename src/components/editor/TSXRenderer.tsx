@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { WYSIWYGEditor } from './WYSIWYGEditor';
@@ -7,6 +8,7 @@ import { toast } from 'sonner';
 import { githubAppService } from '@/services/githubAppService';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
+import { getContentComponent } from '@/compiled-content';
 
 interface TSXRendererProps {
   content: string;
@@ -24,21 +26,27 @@ export function TSXRenderer({ content, onContentChange, readOnly = false, filePa
     if (!filePath) return null;
     
     try {
-      // Try to dynamically import the compiled component
       // Convert file path to match compiled structure
       let compiledPath = filePath;
       if (compiledPath.startsWith('public/content/')) {
         compiledPath = compiledPath.replace('public/content/', '');
       }
-      if (compiledPath.endsWith('.md')) {
-        compiledPath = compiledPath.replace('.md', '');
+      if (!compiledPath.endsWith('.md')) {
+        compiledPath = `${compiledPath}.md`;
       }
       
-      // Since we can't use dynamic imports here, we'll fall back to HashnodeMarkdownRenderer
-      console.log('🔍 Would try to load compiled component for:', compiledPath);
+      console.log('🔍 Looking for compiled component:', compiledPath);
+      const componentData = getContentComponent(compiledPath);
+      
+      if (componentData) {
+        console.log('✅ Found compiled component for:', compiledPath);
+        return componentData.component;
+      }
+      
+      console.log('📝 No compiled component found, using HashnodeMarkdownRenderer');
       return null;
     } catch (error) {
-      console.log('📝 No compiled component found, using HashnodeMarkdownRenderer');
+      console.log('📝 Error loading compiled component, using HashnodeMarkdownRenderer:', error);
       return null;
     }
   }, [filePath]);
@@ -85,7 +93,9 @@ ${markdownContent}`;
               <div className="text-xs text-muted-foreground">
                 {mode === 'wysiwyg' 
                   ? "✨ Click elements to edit them directly" 
-                  : "👀 100% identical to published docs"
+                  : CompiledComponent 
+                    ? "🚀 Using compiled content (docs-identical)"
+                    : "👀 Hashnode renderer preview"
                 }
               </div>
             </div>
