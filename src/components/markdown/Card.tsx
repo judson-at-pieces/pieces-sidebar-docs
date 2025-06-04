@@ -61,9 +61,9 @@ export function Card({ title, image, icon, href, external, children, className }
                   {children}
                 </em>
               ),
-              // Handle inline code properly
+              // Handle inline code properly - FIX FOR THE STYLING ISSUE
               code: ({ children, ...props }) => (
-                <code className="bg-gray-100 dark:bg-gray-800 px-1 py-0.5 rounded text-sm font-mono text-inherit" {...props}>
+                <code className="bg-gray-100 dark:bg-gray-800 px-1.5 py-0.5 rounded text-sm font-mono text-gray-800 dark:text-gray-200 border border-gray-200 dark:border-gray-700" {...props}>
                   {children}
                 </code>
               ),
