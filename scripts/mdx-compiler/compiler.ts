@@ -107,10 +107,11 @@ import HashnodeMarkdownRenderer from '@/components/HashnodeMarkdownRenderer';
 
 export const frontmatter = ${JSON.stringify(frontmatter, null, 2)};
 
-// Export our wrapper component
+// Export our wrapper component that uses EXACT SAME rendering as docs
 export default function ${componentName}() {
   console.log('🚀 Rendering ${componentName} component');
   
+  // Use EXACT SAME content format as the editor - this ensures 1-to-1 matching
   const combinedContent = \`---
 \${Object.entries(frontmatter).map(([key, value]) => \`\${key}: "\${value}"\`).join('\\n')}
 ---

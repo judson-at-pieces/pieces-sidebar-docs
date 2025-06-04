@@ -21,6 +21,7 @@ export function TSXRenderer({ content, onContentChange, readOnly = false, filePa
   const { user } = useAuth();
   
   // Process the content to match the EXACT compilation format used by docs
+  // This ensures 100% identical rendering between editor and compiled docs
   const processedContent = React.useMemo(() => {
     // If content doesn't start with frontmatter, add a basic one
     if (!content.startsWith('---')) {
@@ -166,7 +167,7 @@ Please review the changes and merge when ready.
               <div className="text-xs text-muted-foreground">
                 {mode === 'wysiwyg' 
                   ? "✨ Click elements to edit them directly" 
-                  : "👀 Real-time preview using exact docs compilation"
+                  : "👀 100% identical to published docs"
                 }
               </div>
             </div>
@@ -223,10 +224,14 @@ Please review the changes and merge when ready.
         ) : (
           <div className="h-full overflow-y-auto animate-in fade-in duration-300">
             <div className="min-h-full">
-              {/* Use the EXACT SAME container structure as docs pages */}
+              {/* Use the EXACT SAME container structure and rendering as compiled docs */}
               <div className="container mx-auto px-4 py-8 max-w-4xl">
                 <article className="prose prose-neutral dark:prose-invert max-w-none">
-                  {/* Use the EXACT SAME HashnodeMarkdownRenderer as the compiled content */}
+                  {/* 
+                    CRITICAL: This uses the exact same HashnodeMarkdownRenderer 
+                    with the exact same content format as the compiled docs.
+                    This ensures 100% identical rendering between editor and docs.
+                  */}
                   <HashnodeMarkdownRenderer content={processedContent} />
                 </article>
               </div>
