@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { WYSIWYGEditor } from './WYSIWYGEditor';
@@ -7,7 +8,6 @@ import { toast } from 'sonner';
 import { githubAppService } from '@/services/githubAppService';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
-import { getContentComponent } from '@/compiled-content';
 
 interface TSXRendererProps {
   content: string;
@@ -19,36 +19,6 @@ interface TSXRendererProps {
 export function TSXRenderer({ content, onContentChange, readOnly = false, filePath }: TSXRendererProps) {
   const [mode, setMode] = useState<'preview' | 'wysiwyg'>('preview');
   const { user } = useAuth();
-  
-  // Check if we have a compiled component for this file path
-  const getCompiledComponent = React.useCallback(() => {
-    if (!filePath) return null;
-    
-    try {
-      // Convert file path to match compiled structure
-      let compiledPath = filePath;
-      if (compiledPath.startsWith('public/content/')) {
-        compiledPath = compiledPath.replace('public/content/', '');
-      }
-      if (!compiledPath.endsWith('.md')) {
-        compiledPath = `${compiledPath}.md`;
-      }
-      
-      console.log('🔍 Looking for compiled component:', compiledPath);
-      const componentData = getContentComponent(compiledPath);
-      
-      if (componentData) {
-        console.log('✅ Found compiled component for:', compiledPath);
-        return componentData.component;
-      }
-      
-      console.log('📝 No compiled component found, using HashnodeMarkdownRenderer');
-      return null;
-    } catch (error) {
-      console.log('📝 Error loading compiled component, using HashnodeMarkdownRenderer:', error);
-      return null;
-    }
-  }, [filePath]);
 
   // Process the content to match the compiled content format
   const processedContent = React.useMemo(() => {
@@ -76,8 +46,6 @@ ${markdownContent}`;
     return content;
   }, [content]);
 
-  const CompiledComponent = getCompiledComponent();
-
   return (
     <div className="h-full flex flex-col bg-gradient-to-br from-background to-muted/10">
       {/* Enhanced Header */}
@@ -92,9 +60,7 @@ ${markdownContent}`;
               <div className="text-xs text-muted-foreground">
                 {mode === 'wysiwyg' 
                   ? "✨ Click elements to edit them directly" 
-                  : CompiledComponent 
-                    ? "🚀 Using compiled content (docs-identical)"
-                    : "👀 Hashnode renderer preview"
+                  : "📝 Real-time Hashnode markdown rendering"
                 }
               </div>
             </div>
@@ -155,14 +121,10 @@ ${markdownContent}`;
                 <div className="bg-background rounded-lg border border-border p-6 shadow-sm">
                   <div className="mb-4 text-sm text-muted-foreground border-b border-border pb-2">
                     <span className="font-medium">Live Preview</span>
-                    <p className="text-xs mt-1">This shows exactly how the content will appear on the docs site.</p>
+                    <p className="text-xs mt-1">This shows exactly how the content will appear using Hashnode renderer.</p>
                   </div>
                   <div className="markdown-content">
-                    {CompiledComponent ? (
-                      <CompiledComponent />
-                    ) : (
-                      <HashnodeMarkdownRenderer content={processedContent} />
-                    )}
+                    <HashnodeMarkdownRenderer content={processedContent} />
                   </div>
                 </div>
               </div>
