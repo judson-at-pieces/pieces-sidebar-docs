@@ -238,16 +238,13 @@ const parseButton = (content: string): ButtonData => {
   };
 };
 
-// Parse Steps - Updated to properly handle Steps/Step pattern
+// Parse Steps
 interface StepData {
   title: string;
   content: string;
 }
 
 const parseSteps = (content: string): StepData[] => {
-  console.log('🔧 Parsing Steps content:', content.substring(0, 200) + '...');
-  
-  // Handle both <Step> tags and markdown-style Steps
   const stepRegex = /<Step\s+([^>]*)>([\s\S]*?)<\/Step>/g;
   const steps: StepData[] = [];
   
@@ -265,37 +262,6 @@ const parseSteps = (content: string): StepData[] => {
     });
   }
   
-  // If no <Step> tags found, try to parse markdown-style steps
-  if (steps.length === 0) {
-    const lines = content.split('\n');
-    let currentStep: StepData | null = null;
-    
-    for (const line of lines) {
-      const stepMatch = line.match(/^\s*<Step\s+title="([^"]*)">/);
-      if (stepMatch) {
-        if (currentStep) {
-          steps.push(currentStep);
-        }
-        currentStep = {
-          title: stepMatch[1],
-          content: ''
-        };
-      } else if (line.trim() === '</Step>') {
-        if (currentStep) {
-          steps.push(currentStep);
-          currentStep = null;
-        }
-      } else if (currentStep && line.trim()) {
-        currentStep.content += (currentStep.content ? '\n' : '') + line.trim();
-      }
-    }
-    
-    if (currentStep) {
-      steps.push(currentStep);
-    }
-  }
-  
-  console.log('🔧 Parsed Steps:', steps.length, 'steps found');
   return steps;
 };
 
@@ -321,8 +287,6 @@ const Callout: React.FC<{ type: string; content: string }> = ({ type, content })
         return 'border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200';
       case 'tip':
         return 'border-purple-200 bg-purple-50 text-purple-800 dark:border-purple-800 dark:bg-purple-950 dark:text-purple-200';
-      case 'alert':
-        return 'border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200';
       default:
         return 'border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200';
     }
@@ -444,40 +408,36 @@ const Button: React.FC<ButtonData> = ({ label, linkHref, openLinkInNewTab, align
   );
 };
 
-const Steps: React.FC<{ steps: StepData[] }> = ({ steps }) => {
-  console.log('🔧 Rendering Steps component with', steps.length, 'steps');
-  
-  return (
-    <div className="my-6 [&>.step:last-of-type]:mb-0">
-      {steps.map((step, index) => {
-        const isLast = index === steps.length - 1;
-        
-        return (
-          <div key={index} className="flex gap-4 step mb-5">
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-6 h-6 text-xs font-semibold border rounded-md flex items-center justify-center border-slate-100 bg-slate-50 dark:bg-slate-900 dark:border-slate-800/40 text-slate-700 dark:text-slate-200">
-                {index + 1}
-              </div>
-              {!isLast && (
-                <div className="h-[20px] w-[1px] bg-slate-200 dark:bg-slate-800/80"></div>
-              )}
+const Steps: React.FC<{ steps: StepData[] }> = ({ steps }) => (
+  <div className="my-6 [&>.step:last-of-type]:mb-0">
+    {steps.map((step, index) => {
+      const isLast = index === steps.length - 1;
+      
+      return (
+        <div key={index} className="flex gap-4 step mb-5">
+          <div className="flex flex-col items-center gap-2">
+            <div className="w-6 h-6 text-xs font-semibold border rounded-md flex items-center justify-center border-slate-100 bg-slate-50 dark:bg-slate-900 dark:border-slate-800/40 text-slate-700 dark:text-slate-200">
+              {index + 1}
             </div>
-            <div className="flex-1 w-60">
-              <div className="flex flex-col gap-3">
-                <h3 className="font-medium text-base text-slate-700 dark:text-slate-200 m-0">
-                  {step.title}
-                </h3>
-                <div className="text-base text-slate-600 dark:text-slate-300 prose prose-sm dark:prose-invert max-w-none">
-                  {renderMarkdown(step.content)}
-                </div>
+            {!isLast && (
+              <div className="h-[20px] w-[1px] bg-slate-200 dark:bg-slate-800/80"></div>
+            )}
+          </div>
+          <div className="flex-1 w-60">
+            <div className="flex flex-col gap-3">
+              <h3 className="font-medium text-base text-slate-700 dark:text-slate-200 m-0">
+                {step.title}
+              </h3>
+              <div className="text-base text-slate-600 dark:text-slate-300 prose prose-sm dark:prose-invert max-w-none">
+                {renderMarkdown(step.content)}
               </div>
             </div>
           </div>
-        );
-      })}
-    </div>
-  );
-};
+        </div>
+      );
+    })}
+  </div>
+);
 
 // Basic markdown renderer
 const renderMarkdown = (content: string): React.ReactNode => {
@@ -543,12 +503,8 @@ const renderMarkdown = (content: string): React.ReactNode => {
     } else if (line.startsWith('# ')) {
       elements.push(React.createElement('h1', { key: index, className: 'text-2xl font-bold mt-8 mb-4' }, line.slice(2)));
     } else {
-      // Regular paragraph - handle HTML content
-      elements.push(React.createElement('p', { 
-        key: index, 
-        className: 'mb-3 leading-relaxed',
-        dangerouslySetInnerHTML: { __html: line }
-      }));
+      // Regular paragraph
+      elements.push(React.createElement('p', { key: index, className: 'mb-3 leading-relaxed' }, line));
     }
   });
 
@@ -559,13 +515,10 @@ const renderMarkdown = (content: string): React.ReactNode => {
 // Main component
 const HashnodeMarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
   const sections = parseSections(content);
-  console.log('🔧 HashnodeMarkdownRenderer: Processing', sections.length, 'sections');
 
   return (
     <div className="markdown-content">
       {sections.map((section) => {
-        console.log('🔧 Rendering section type:', section.type);
-        
         switch (section.type) {
           case 'image': {
             const imageData = extractImageData(section.content);
@@ -581,7 +534,6 @@ const HashnodeMarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) 
           }
           case 'cardgroup': {
             const cardGroupData = parseCardGroup(section.content);
-            console.log('🔧 Rendering CardGroup with', cardGroupData.cards.length, 'cards');
             return <CardGroup key={section.index} {...cardGroupData} />;
           }
           case 'accordion': {
@@ -602,7 +554,6 @@ const HashnodeMarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) 
           }
           case 'steps': {
             const stepsData = parseSteps(section.content);
-            console.log('🔧 Rendering Steps with', stepsData.length, 'steps');
             return <Steps key={section.index} steps={stepsData} />;
           }
           case 'markdown': {
