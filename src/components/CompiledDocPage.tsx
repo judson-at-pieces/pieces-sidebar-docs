@@ -28,27 +28,50 @@ export function CompiledDocPage() {
       foundPath = currentPath;
       console.log('CompiledDocPage: Found exact match:', foundPath);
     } else {
-      // Strategy 2: Try different path formats
-      const pathVariations = [
-        currentPath,
-        currentPath.replace(/^\/docs\//, '/'),
-        currentPath.replace(/^\//, '/docs/'),
-        `/docs${currentPath}`,
-        currentPath.replace(/^\/docs/, ''),
-      ].filter((path, index, arr) => arr.indexOf(path) === index); // Remove duplicates
+      // Strategy 2: Try folder-to-md mapping
+      // For /cli -> try /cli.md, /cli/drive -> try /cli/drive.md, etc.
+      const folderToMdVariations = [
+        currentPath + '.md',
+        currentPath.replace(/^\/docs/, '') + '.md',
+        currentPath.replace(/^\//, '') + '.md',
+        '/docs' + currentPath + '.md',
+        currentPath.replace(/^\/docs\//, '') + '.md'
+      ];
       
-      console.log('CompiledDocPage: Trying path variations:', pathVariations);
+      console.log('CompiledDocPage: Trying folder-to-md variations:', folderToMdVariations);
       
-      for (const variation of pathVariations) {
+      for (const variation of folderToMdVariations) {
         foundContent = getContentComponent(variation);
         if (foundContent) {
           foundPath = variation;
-          console.log('CompiledDocPage: Found variation match:', foundPath, 'for route:', currentPath);
+          console.log('CompiledDocPage: Found folder-to-md match:', foundPath, 'for route:', currentPath);
           break;
         }
       }
       
-      // Strategy 3: Try to match segments using registry keys
+      // Strategy 3: Try different path formats if folder-to-md didn't work
+      if (!foundContent) {
+        const pathVariations = [
+          currentPath,
+          currentPath.replace(/^\/docs\//, '/'),
+          currentPath.replace(/^\//, '/docs/'),
+          `/docs${currentPath}`,
+          currentPath.replace(/^\/docs/, ''),
+        ].filter((path, index, arr) => arr.indexOf(path) === index); // Remove duplicates
+        
+        console.log('CompiledDocPage: Trying other path variations:', pathVariations);
+        
+        for (const variation of pathVariations) {
+          foundContent = getContentComponent(variation);
+          if (foundContent) {
+            foundPath = variation;
+            console.log('CompiledDocPage: Found variation match:', foundPath, 'for route:', currentPath);
+            break;
+          }
+        }
+      }
+      
+      // Strategy 4: Try to match segments using registry keys
       if (!foundContent) {
         const registryKeys = Object.keys(contentComponents);
         for (const registryPath of registryKeys) {
