@@ -203,6 +203,17 @@
   opacity: 0.8 !important;
 }
 
+/* General inline code styling */
+.prose code {
+  background-color: hsl(var(--muted)) !important;
+  color: hsl(var(--foreground)) !important;
+  padding: 0.125rem 0.375rem !important;
+  border-radius: 0.25rem !important;
+  font-size: 0.875rem !important;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace !important;
+  border: 1px solid hsl(var(--border)) !important;
+}
+
 /* Ensure markdown content wrapper has proper styling */
 .markdown-content {
   color: hsl(var(--foreground)) !important;
@@ -238,27 +249,52 @@
   color: hsl(var(--foreground)) !important;
 }
 
-/* Card-specific overrides to ensure consistent styling */
-.markdown-content [data-card="true"] {
+/* Card-specific overrides - HIGHEST PRIORITY */
+.markdown-content [data-card="true"],
+.markdown-content [data-card-component="true"] {
   color: #374151 !important; /* gray-700 */
 }
 
-.dark .markdown-content [data-card="true"] {
+.dark .markdown-content [data-card="true"],
+.dark .markdown-content [data-card-component="true"] {
   color: #d1d5db !important; /* gray-300 */
 }
 
-.markdown-content [data-card="true"] p {
+.markdown-content [data-card="true"] p,
+.markdown-content [data-card-component="true"] p {
   color: inherit !important;
 }
 
-.markdown-content [data-card="true"] strong {
+.markdown-content [data-card="true"] strong,
+.markdown-content [data-card-component="true"] strong {
   color: inherit !important;
 }
 
-.markdown-content [data-card="true"] em {
+.markdown-content [data-card="true"] em,
+.markdown-content [data-card-component="true"] em {
   color: inherit !important;
 }
 
-.markdown-content [data-card="true"] * {
+.markdown-content [data-card="true"] *,
+.markdown-content [data-card-component="true"] * {
   font-weight: inherit !important;
+}
+
+/* CRITICAL: Card inline code overrides - Must come last for highest specificity */
+.markdown-content [data-card="true"] code,
+.markdown-content [data-card-component="true"] code {
+  background-color: rgb(243 244 246) !important; /* gray-100 */
+  color: rgb(31 41 55) !important; /* gray-800 */
+  border: 1px solid rgb(229 231 235) !important; /* gray-200 */
+  padding: 0.125rem 0.375rem !important;
+  border-radius: 0.25rem !important;
+  font-size: 0.875rem !important;
+  font-family: ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace !important;
+}
+
+.dark .markdown-content [data-card="true"] code,
+.dark .markdown-content [data-card-component="true"] code {
+  background-color: rgb(31 41 55) !important; /* gray-800 */
+  color: rgb(229 231 235) !important; /* gray-200 */
+  border: 1px solid rgb(75 85 99) !important; /* gray-600 */
 }
