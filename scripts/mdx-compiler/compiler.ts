@@ -154,23 +154,7 @@ ${componentName}.frontmatter = frontmatter;
       const importPath = './' + relativePath.replace(/\.(md|mdx)$/, '');
       
       imports.push(`import ${componentName}, { frontmatter as ${componentName}_frontmatter } from '${importPath}';`);
-      
-      // Add the original file path
       exports.push(`  '${relativePath}': { component: ${componentName}, frontmatter: ${componentName}_frontmatter },`);
-      
-      // If the file ends with .md, also add folder path mappings
-      if (relativePath.endsWith('.md')) {
-        const folderPath = relativePath.replace(/\.md$/, '');
-        
-        // Add folder path without leading slash
-        exports.push(`  '${folderPath}': { component: ${componentName}, frontmatter: ${componentName}_frontmatter },`);
-        
-        // Add folder path with leading slash for routes like /cli
-        exports.push(`  '/${folderPath}': { component: ${componentName}, frontmatter: ${componentName}_frontmatter },`);
-        
-        // Add with /docs prefix
-        exports.push(`  '/docs/${folderPath}': { component: ${componentName}, frontmatter: ${componentName}_frontmatter },`);
-      }
     }
     
     const indexContent = `// Auto-generated file. Do not edit manually.
