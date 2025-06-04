@@ -33,10 +33,15 @@ interface MarkdownRendererProps {
 
 // Utility functions
 const parseSections = (text: string): ParsedSection[] => {
+  console.log('🔍 parseSections: Input text length:', text.length);
+  console.log('🔍 parseSections: Full input text:', text);
+  
   const sections = text.split(SECTION_DELIMITER).map(section => section.trim()).filter(Boolean);
+  console.log('🔍 parseSections: Split into', sections.length, 'sections');
   
   return sections.map((section, index) => {
     console.log(`🔍 Parsing section ${index}:`, section.substring(0, 100));
+    console.log(`🔍 Full section ${index} content:`, section);
     
     if (section.startsWith(FRONTMATTER_PATTERN) && section.includes(TITLE_PATTERN)) {
       console.log('📋 Found frontmatter section');
@@ -291,6 +296,8 @@ const parseSteps = (content: string): StepData[] => {
 };
 
 const processInlineMarkdown = (text: string): React.ReactNode => {
+  console.log('🔄 processInlineMarkdown: Processing text:', text);
+  
   // Handle inline code
   text = text.replace(/`([^`]+)`/g, '<code class="hn-inline-code">$1</code>');
   
@@ -303,21 +310,28 @@ const processInlineMarkdown = (text: string): React.ReactNode => {
   // Handle links
   text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="hn-link">$1</a>');
   
+  console.log('🔄 processInlineMarkdown: Result:', text);
   return <span dangerouslySetInnerHTML={{ __html: text }} />;
 };
 
 // Components
-const ImageSection: React.FC<{ src: string; alt: string; align: string; fullwidth: boolean }> = ({ src, alt, align, fullwidth }) => (
-  <div className={`hn-image-container ${align} ${fullwidth ? 'fullwidth' : ''}`}>
-    <img src={src} alt={alt} className="hn-image" />
-  </div>
-);
+const ImageSection: React.FC<{ src: string; alt: string; align: string; fullwidth: boolean }> = ({ src, alt, align, fullwidth }) => {
+  console.log('🖼️ ImageSection rendering:', { src, alt, align, fullwidth });
+  return (
+    <div className={`hn-image-container ${align} ${fullwidth ? 'fullwidth' : ''}`}>
+      <img src={src} alt={alt} className="hn-image" />
+    </div>
+  );
+};
 
-const CalloutSection: React.FC<{ type: string; content: string }> = ({ type, content }) => (
-  <Callout type={type as 'info' | 'tip' | 'alert'}>
-    {processInlineMarkdown(content)}
-  </Callout>
-);
+const CalloutSection: React.FC<{ type: string; content: string }> = ({ type, content }) => {
+  console.log('💬 CalloutSection rendering:', { type, content });
+  return (
+    <Callout type={type as 'info' | 'tip' | 'alert'}>
+      {processInlineMarkdown(content)}
+    </Callout>
+  );
+};
 
 const CardSection: React.FC<{ card: CardData }> = ({ card }) => {
   console.log('🎯 Rendering individual Card:', { title: card.title, image: card.image });
@@ -347,6 +361,8 @@ const CardGroupSection: React.FC<{ cols: number; cards: CardData[] }> = ({ cols,
 const AccordionSection: React.FC<{ accordion: AccordionData }> = ({ accordion }) => {
   const [isOpen, setIsOpen] = useState(false);
   
+  console.log('📂 AccordionSection rendering:', { title: accordion.title, content: accordion.content });
+  
   return (
     <div className="hn-accordion">
       <button 
@@ -366,17 +382,22 @@ const AccordionSection: React.FC<{ accordion: AccordionData }> = ({ accordion })
 };
 
 // Parse AccordionGroup
-const AccordionGroupSection: React.FC<{ accordions: AccordionData[] }> = ({ accordions }) => (
-  <div className="hn-accordion-group">
-    {accordions.map((accordion, index) => (
-      <AccordionSection key={index} accordion={accordion} />
-    ))}
-  </div>
-);
+const AccordionGroupSection: React.FC<{ accordions: AccordionData[] }> = ({ accordions }) => {
+  console.log('📁 AccordionGroupSection rendering:', { count: accordions.length });
+  return (
+    <div className="hn-accordion-group">
+      {accordions.map((accordion, index) => (
+        <AccordionSection key={index} accordion={accordion} />
+      ))}
+    </div>
+  );
+};
 
 // Parse Tabs
 const TabsSection: React.FC<{ tabs: TabData[] }> = ({ tabs }) => {
   const [activeTab, setActiveTab] = useState(0);
+  
+  console.log('📑 TabsSection rendering:', { tabCount: tabs.length });
   
   return (
     <div className="hn-tabs">
@@ -399,44 +420,57 @@ const TabsSection: React.FC<{ tabs: TabData[] }> = ({ tabs }) => {
 };
 
 // Parse Button
-const ButtonSection: React.FC<{ button: ButtonData }> = ({ button }) => (
-  <div className={`hn-button-container ${button.align}`}>
-    <a
-      href={button.linkHref}
-      target={button.openLinkInNewTab ? '_blank' : '_self'}
-      rel={button.openLinkInNewTab ? 'noopener noreferrer' : undefined}
-      className="hn-button"
-      style={({
-        backgroundColor: button.lightColor,
-        '--dark-color': button.darkColor
-      } as React.CSSProperties)}
-    >
-      {button.label}
-    </a>
-  </div>
-);
+const ButtonSection: React.FC<{ button: ButtonData }> = ({ button }) => {
+  console.log('🔘 ButtonSection rendering:', button);
+  return (
+    <div className={`hn-button-container ${button.align}`}>
+      <a
+        href={button.linkHref}
+        target={button.openLinkInNewTab ? '_blank' : '_self'}
+        rel={button.openLinkInNewTab ? 'noopener noreferrer' : undefined}
+        className="hn-button"
+        style={({
+          backgroundColor: button.lightColor,
+          '--dark-color': button.darkColor
+        } as React.CSSProperties)}
+      >
+        {button.label}
+      </a>
+    </div>
+  );
+};
 
 // Parse Steps
-const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => (
-  <div className="hn-steps">
-    {steps.map((step, index) => (
-      <div key={index} className="hn-step">
-        <div className="hn-step-number">{index + 1}</div>
-        <div className="hn-step-content">
-          <h4 className="hn-step-title">{step.title}</h4>
-          <div className="hn-step-description">
-            {processInlineMarkdown(step.content)}
+const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => {
+  console.log('👣 StepsSection rendering:', { stepCount: steps.length });
+  return (
+    <div className="hn-steps">
+      {steps.map((step, index) => (
+        <div key={index} className="hn-step">
+          <div className="hn-step-number">{index + 1}</div>
+          <div className="hn-step-content">
+            <h4 className="hn-step-title">{step.title}</h4>
+            <div className="hn-step-description">
+              {processInlineMarkdown(step.content)}
+            </div>
           </div>
         </div>
-      </div>
-    ))}
-  </div>
-);
+      ))}
+    </div>
+  );
+};
 
 // Parse Markdown
 const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
+  console.log('📝 MarkdownSection: Starting with content length:', content.length);
+  console.log('📝 MarkdownSection: Full content:', content);
+  
   const processContent = (text: string): React.ReactNode[] => {
+    console.log('📝 processContent: Starting with text:', text);
+    
     const lines = text.split('\n');
+    console.log('📝 processContent: Split into', lines.length, 'lines');
+    
     const elements: React.ReactNode[] = [];
     let currentList: React.ReactNode[] = [];
     let listType: ListType = null;
@@ -448,6 +482,7 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
 
     const flushList = () => {
       if (currentList.length > 0) {
+        console.log('📝 Flushing list with', currentList.length, 'items, type:', listType);
         if (listType === 'ordered') {
           elements.push(
             <ol key={`list-${elements.length}`} className="hn-ordered-list">
@@ -468,6 +503,7 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
 
     const flushTable = () => {
       if (tableRows.length > 0) {
+        console.log('📝 Flushing table with', tableRows.length, 'rows');
         const headerRow = tableRows[0].split('|').filter(cell => cell.trim());
         const alignmentRow = tableRows[1]?.split('|').filter(cell => cell.trim());
         const dataRows = tableRows.slice(2);
@@ -502,22 +538,27 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
     };
 
     lines.forEach((line, index) => {
+      console.log(`📝 Processing line ${index}:`, line);
+      
       // Skip lines that are part of special elements - they'll be handled by section parsing
       if (line.includes('<CardGroup') || line.includes('</CardGroup>') || 
           line.includes('<Card') || line.includes('</Card>') ||
           line.includes('<Callout') || line.includes('</Callout>') ||
           line.includes('<Image')) {
+        console.log(`📝 Skipping special element line ${index}:`, line);
         return;
       }
 
       // Code blocks
       if (line.startsWith('```')) {
         if (!inCodeBlock) {
+          console.log(`📝 Starting code block at line ${index}:`, line);
           flushList();
           flushTable();
           inCodeBlock = true;
           codeLanguage = line.slice(3).trim();
         } else {
+          console.log(`📝 Ending code block at line ${index}, language:`, codeLanguage);
           elements.push(
             <pre key={`code-${index}`} className="hn-code-block">
               <code className={`language-${codeLanguage}`}>
@@ -533,6 +574,7 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
       }
 
       if (inCodeBlock) {
+        console.log(`📝 Adding to code block at line ${index}:`, line);
         codeBlock.push(line);
         return;
       }
@@ -540,6 +582,7 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
       // Tables
       if (line.includes('|') && line.trim().startsWith('|')) {
         if (!inTable) {
+          console.log(`📝 Starting table at line ${index}:`, line);
           flushList();
           inTable = true;
         }
@@ -551,6 +594,7 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
 
       // Headers
       if (line.startsWith('# ')) {
+        console.log(`📝 Found H1 at line ${index}:`, line);
         flushList();
         flushTable();
         elements.push(
@@ -561,6 +605,7 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
         return;
       }
       if (line.startsWith('## ')) {
+        console.log(`📝 Found H2 at line ${index}:`, line);
         flushList();
         flushTable();
         elements.push(
@@ -571,6 +616,7 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
         return;
       }
       if (line.startsWith('### ')) {
+        console.log(`📝 Found H3 at line ${index}:`, line);
         flushList();
         flushTable();
         elements.push(
@@ -583,6 +629,7 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
 
       // Lists
       if (line.match(/^\d+\./)) {
+        console.log(`📝 Found ordered list item at line ${index}:`, line);
         if (listType !== 'ordered') {
           flushList();
           flushTable();
@@ -597,6 +644,7 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
       }
 
       if (line.startsWith('* ')) {
+        console.log(`📝 Found unordered list item at line ${index}:`, line);
         if (listType !== 'unordered') {
           flushList();
           flushTable();
@@ -612,6 +660,7 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
 
       // Blockquotes
       if (line.startsWith('> ')) {
+        console.log(`📝 Found blockquote at line ${index}:`, line);
         flushList();
         flushTable();
         elements.push(
@@ -624,6 +673,7 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
 
       // Regular paragraphs
       if (line.trim()) {
+        console.log(`📝 Found paragraph at line ${index}:`, line);
         flushList();
         flushTable();
         elements.push(
@@ -631,6 +681,8 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
             {processInlineMarkdown(line)}
           </p>
         );
+      } else {
+        console.log(`📝 Empty line at ${index}`);
       }
     });
 
@@ -638,10 +690,13 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
     flushList();
     flushTable();
 
+    console.log('📝 processContent: Generated', elements.length, 'elements');
     return elements;
   };
 
-  return <>{processContent(content)}</>;
+  const result = processContent(content);
+  console.log('📝 MarkdownSection: Returning', result.length, 'elements');
+  return <>{result}</>;
 };
 
 // Main component
@@ -653,77 +708,108 @@ const HashnodeMarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) 
   
   const renderSection = (section: ParsedSection): React.ReactNode => {
     console.log('🔄 Rendering section:', section.type, 'at index:', section.index);
+    console.log('🔄 Section content preview:', section.content.substring(0, 100));
+    
+    let result: React.ReactNode = null;
     
     switch (section.type) {
       case 'frontmatter':
-        return null;
+        console.log('📋 Skipping frontmatter section');
+        result = null;
+        break;
         
       case 'image': {
         const data = extractImageData(section.content);
-        return <ImageSection key={section.index} {...data} />;
+        console.log('🖼️ Rendering ImageSection with data:', data);
+        result = <ImageSection key={section.index} {...data} />;
+        break;
       }
       
       case 'card': {
         const card = parseCard(section.content);
-        return <CardSection key={section.index} card={card} />;
+        console.log('🎯 Rendering CardSection with data:', card);
+        result = <CardSection key={section.index} card={card} />;
+        break;
       }
       
       case 'cardgroup': {
         const { cols, cards } = parseCardGroup(section.content);
-        return <CardGroupSection key={section.index} cols={cols || 2} cards={cards} />;
+        console.log('🃏 Rendering CardGroupSection with data:', { cols, cardCount: cards.length });
+        result = <CardGroupSection key={section.index} cols={cols || 2} cards={cards} />;
+        break;
       }
         
       case 'callout': {
         const data = extractCalloutData(section.content);
-        return <CalloutSection key={section.index} type={data.type} content={data.content} />;
+        console.log('💬 Rendering CalloutSection with data:', data);
+        result = <CalloutSection key={section.index} type={data.type} content={data.content} />;
+        break;
       }
       
       case 'accordion': {
         const accordion = parseAccordion(section.content);
-        return <AccordionSection key={section.index} accordion={accordion} />;
+        console.log('📂 Rendering AccordionSection with data:', accordion);
+        result = <AccordionSection key={section.index} accordion={accordion} />;
+        break;
       }
       
       case 'accordiongroup': {
         const accordions = parseAccordionGroup(section.content);
-        return <AccordionGroupSection key={section.index} accordions={accordions} />;
+        console.log('📁 Rendering AccordionGroupSection with data:', { count: accordions.length });
+        result = <AccordionGroupSection key={section.index} accordions={accordions} />;
+        break;
       }
       
       case 'tabs': {
         const tabs = parseTabs(section.content);
-        return <TabsSection key={section.index} tabs={tabs} />;
+        console.log('📑 Rendering TabsSection with data:', { count: tabs.length });
+        result = <TabsSection key={section.index} tabs={tabs} />;
+        break;
       }
       
       case 'button': {
         const button = parseButton(section.content);
-        return <ButtonSection key={section.index} button={button} />;
+        console.log('🔘 Rendering ButtonSection with data:', button);
+        result = <ButtonSection key={section.index} button={button} />;
+        break;
       }
       
       case 'steps': {
         const steps = parseSteps(section.content);
-        return <StepsSection key={section.index} steps={steps} />;
+        console.log('👣 Rendering StepsSection with data:', { count: steps.length });
+        result = <StepsSection key={section.index} steps={steps} />;
+        break;
       }
       
       case 'markdown':
         console.log('📝 Rendering markdown section with content:', section.content.substring(0, 100));
-        return (
+        result = (
           <div key={section.index} className="hn-markdown-section">
             <MarkdownSection content={section.content} />
           </div>
         );
+        break;
         
       default:
         console.log('⚠️ Unhandled section type:', section.type);
-        return (
+        result = (
           <div key={section.index} className="hn-markdown-section">
             <MarkdownSection content={section.content} />
           </div>
         );
+        break;
     }
+    
+    console.log('🔄 Rendered section result:', result ? 'Component created' : 'null');
+    return result;
   };
+
+  const renderedSections = sections.map(renderSection).filter(Boolean);
+  console.log('🚀 HashnodeMarkdownRenderer: Returning', renderedSections.length, 'rendered sections');
 
   return (
     <div className="hn-markdown-renderer">
-      {sections.map(renderSection)}
+      {renderedSections}
     </div>
   );
 };
