@@ -435,17 +435,44 @@ export function AvailableFilesPanel({ fileStructure, isFileUsed, sections, onAdd
 
     console.log('Processing bulk move for', pendingAdditions.length, 'items to section', bulkSelectedSection);
 
-    // Create a flattened list of all items to be added
+    // Process items while preserving hierarchy
     const allPreviewItems: NavigationItem[] = [];
+    const tempIdMap = new Map<string, string>(); // original path -> temp ID
 
     pendingAdditions.forEach((addition, index) => {
       console.log(`Processing item ${index + 1}:`, addition.node.name, 'type:', addition.type);
       
       if (addition.type === 'folder') {
-        // For folders, flatten all items and add them as individual items
-        const flattenedItems = flattenFolderItems(addition.node);
-        console.log('Flattened folder items:', flattenedItems);
-        allPreviewItems.push(...flattenedItems);
+        // For folders, preserve the hierarchy structure
+        const hierarchicalItems = createNavigationItemsFromFolder(addition.node);
+        console.log('Created hierarchical folder items:', hierarchicalItems);
+        
+        // Update order indices and collect all items (including nested ones)
+        const updateOrderAndCollect = (items: NavigationItem[], baseOrder: number): NavigationItem[] => {
+          const collected: NavigationItem[] = [];
+          items.forEach((item, idx) => {
+            const updatedItem = {
+              ...item,
+              order_index: baseOrder + idx
+            };
+            collected.push(updatedItem);
+            
+            // Store temp ID mapping for potential parent references
+            if (item.file_path) {
+              tempIdMap.set(item.file_path, updatedItem.id);
+            }
+            
+            // Recursively collect nested items
+            if (item.items && item.items.length > 0) {
+              const nestedItems = updateOrderAndCollect(item.items, 0);
+              collected.push(...nestedItems);
+            }
+          });
+          return collected;
+        };
+        
+        const collectedItems = updateOrderAndCollect(hierarchicalItems, allPreviewItems.length);
+        allPreviewItems.push(...collectedItems);
       } else {
         const filePreviewItem: NavigationItem = {
           id: `temp-${Date.now()}-${Math.random()}-${index}`,
@@ -453,23 +480,24 @@ export function AvailableFilesPanel({ fileStructure, isFileUsed, sections, onAdd
           href: `/${addition.node.path.replace('.md', '')}`,
           file_path: addition.node.path,
           order_index: allPreviewItems.length,
-          parent_id: undefined, // All items become root level
+          parent_id: undefined,
           is_auto_generated: true
         };
         
         console.log('Created file preview item:', filePreviewItem);
+        tempIdMap.set(addition.node.path, filePreviewItem.id);
         allPreviewItems.push(filePreviewItem);
       }
     });
 
-    // Create a single pending change with all flattened items
+    // Create a single pending change with all hierarchical items
     const bulkPendingChange: PendingChange = {
-      type: 'file', // Use 'file' as the type for bulk operations
+      type: 'folder', // Use 'folder' to indicate hierarchical structure
       sectionId: bulkSelectedSection,
       previewItems: allPreviewItems
     };
 
-    console.log('Bulk move completed, showing preview with', allPreviewItems.length, 'items');
+    console.log('Bulk move completed, showing preview with', allPreviewItems.length, 'items with preserved hierarchy');
     
     // Show preview for the bulk operation
     onAddToSection(bulkPendingChange);

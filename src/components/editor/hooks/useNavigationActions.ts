@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { NavigationSection, NavigationItem, navigationService } from "@/services/navigationService";
 import { FileNode } from "@/utils/fileSystem";
@@ -98,6 +97,71 @@ export function useNavigationActions(
     return addedItems;
   };
 
+  // Enhanced bulk operations that maintain hierarchy
+  const processBulkItemsWithHierarchy = async (previewItems: NavigationItem[], sectionId: string): Promise<NavigationItem[]> => {
+    const addedItems: NavigationItem[] = [];
+    const parentMap = new Map<string, string>(); // temp ID -> real DB ID mapping
+    
+    console.log('Processing hierarchical bulk items:', previewItems.length, 'items');
+    
+    // Sort items by hierarchy - root items first, then children by depth
+    const sortedItems = [...previewItems].sort((a, b) => {
+      // Root items (no parent_id) come first
+      if (!a.parent_id && b.parent_id) return -1;
+      if (a.parent_id && !b.parent_id) return 1;
+      
+      // If both have parents, sort by the depth of nesting (fewer parents = higher priority)
+      const aDepth = getItemDepth(a, previewItems);
+      const bDepth = getItemDepth(b, previewItems);
+      if (aDepth !== bDepth) return aDepth - bDepth;
+      
+      return a.order_index - b.order_index;
+    });
+    
+    for (const item of sortedItems) {
+      console.log('Processing hierarchical item:', item.title, 'parent_id:', item.parent_id);
+      
+      // Map parent_id if it's a temp ID to the real DB ID
+      let realParentId = item.parent_id;
+      if (item.parent_id && parentMap.has(item.parent_id)) {
+        realParentId = parentMap.get(item.parent_id);
+        console.log('Mapped parent ID from', item.parent_id, 'to', realParentId);
+      }
+      
+      const itemData: Omit<NavigationItem, 'id'> = {
+        title: item.title,
+        href: item.href,
+        description: item.description,
+        icon: item.icon,
+        order_index: item.order_index,
+        parent_id: realParentId,
+        is_auto_generated: item.is_auto_generated,
+        file_path: item.file_path
+      };
+      
+      const savedItem = await addNavigationItemToDb(itemData, sectionId);
+      addedItems.push(savedItem);
+      
+      // Store mapping for children to reference
+      if (item.id) {
+        parentMap.set(item.id, savedItem.id);
+        console.log('Stored parent mapping:', item.id, '->', savedItem.id);
+      }
+    }
+    
+    return addedItems;
+  };
+
+  // Helper function to calculate item depth for proper sorting
+  const getItemDepth = (item: NavigationItem, allItems: NavigationItem[]): number => {
+    if (!item.parent_id) return 0;
+    
+    const parent = allItems.find(i => i.id === item.parent_id);
+    if (!parent) return 1;
+    
+    return 1 + getItemDepth(parent, allItems);
+  };
+
   // Process bulk operations that contain multiple items
   const processBulkItems = async (previewItems: NavigationItem[], sectionId: string): Promise<NavigationItem[]> => {
     const addedItems: NavigationItem[] = [];
@@ -154,7 +218,7 @@ export function useNavigationActions(
       console.log('Saving pending changes:', pendingChange.type, 'with', pendingChange.previewItems.length, 'items');
 
       if (pendingChange.type === 'folder' && pendingChange.folderNode) {
-        // Single folder operation
+        // Single folder operation - preserve hierarchy
         const addedItems = await saveFolderStructureToDb(pendingChange.folderNode, pendingChange.sectionId);
         toast.success(`Added ${pendingChange.folderNode.name} folder with ${addedItems.length} items to navigation`);
       } else if (pendingChange.type === 'file' && pendingChange.fileNode) {
@@ -171,10 +235,18 @@ export function useNavigationActions(
         await addNavigationItemToDb(newItemData, pendingChange.sectionId);
         toast.success(`Added ${pendingChange.fileNode.name.replace('.md', '')} to navigation`);
       } else if (pendingChange.previewItems.length > 0) {
-        // Bulk operation - process all preview items
-        console.log('Processing bulk operation with', pendingChange.previewItems.length, 'items');
-        const addedItems = await processBulkItems(pendingChange.previewItems, pendingChange.sectionId);
-        toast.success(`Added ${addedItems.length} items to navigation`);
+        // Bulk operation - check if it's hierarchical or flat based on type
+        if (pendingChange.type === 'folder') {
+          // Hierarchical bulk operation
+          console.log('Processing hierarchical bulk operation with', pendingChange.previewItems.length, 'items');
+          const addedItems = await processBulkItemsWithHierarchy(pendingChange.previewItems, pendingChange.sectionId);
+          toast.success(`Added ${addedItems.length} items with preserved hierarchy to navigation`);
+        } else {
+          // Flat bulk operation (fallback)
+          console.log('Processing flat bulk operation with', pendingChange.previewItems.length, 'items');
+          const addedItems = await processBulkItems(pendingChange.previewItems, pendingChange.sectionId);
+          toast.success(`Added ${addedItems.length} items to navigation`);
+        }
       }
       
       // Refresh navigation data
