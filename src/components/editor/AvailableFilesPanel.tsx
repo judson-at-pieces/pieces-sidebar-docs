@@ -435,16 +435,17 @@ export function AvailableFilesPanel({ fileStructure, isFileUsed, sections, onAdd
 
     console.log('Processing bulk move for', pendingAdditions.length, 'items to section', bulkSelectedSection);
 
-    // Create a single combined preview with all items
+    // Create a flattened list of all items to be added
     const allPreviewItems: NavigationItem[] = [];
 
     pendingAdditions.forEach((addition, index) => {
       console.log(`Processing item ${index + 1}:`, addition.node.name, 'type:', addition.type);
       
       if (addition.type === 'folder') {
-        const folderPreviewItems = createNavigationItemsFromFolder(addition.node);
-        console.log('Created folder preview items:', folderPreviewItems);
-        allPreviewItems.push(...folderPreviewItems);
+        // For folders, flatten all items and add them as individual items
+        const flattenedItems = flattenFolderItems(addition.node);
+        console.log('Flattened folder items:', flattenedItems);
+        allPreviewItems.push(...flattenedItems);
       } else {
         const filePreviewItem: NavigationItem = {
           id: `temp-${Date.now()}-${Math.random()}-${index}`,
@@ -452,7 +453,7 @@ export function AvailableFilesPanel({ fileStructure, isFileUsed, sections, onAdd
           href: `/${addition.node.path.replace('.md', '')}`,
           file_path: addition.node.path,
           order_index: allPreviewItems.length,
-          parent_id: undefined,
+          parent_id: undefined, // All items become root level
           is_auto_generated: true
         };
         
@@ -461,7 +462,7 @@ export function AvailableFilesPanel({ fileStructure, isFileUsed, sections, onAdd
       }
     });
 
-    // Create a single pending change with all items
+    // Create a single pending change with all flattened items
     const bulkPendingChange: PendingChange = {
       type: 'file', // Use 'file' as the type for bulk operations
       sectionId: bulkSelectedSection,
@@ -480,7 +481,42 @@ export function AvailableFilesPanel({ fileStructure, isFileUsed, sections, onAdd
     setBulkSelectedSection("");
   };
 
-  // Helper function used in bulk operations
+  // Helper function to flatten folder structure into individual items
+  const flattenFolderItems = (folderNode: FileNode): NavigationItem[] => {
+    const items: NavigationItem[] = [];
+    
+    if (!folderNode.children) return items;
+    
+    const indexFileName = `${folderNode.name}.md`;
+    
+    // Process all files in this folder
+    folderNode.children.forEach((child, index) => {
+      if (child.type === 'file' && child.name !== indexFileName) {
+        const item: NavigationItem = {
+          id: `temp-${Date.now()}-${Math.random()}-${child.path}`,
+          title: child.name.replace('.md', '').replace(/-/g, ' '),
+          href: `/${child.path.replace('.md', '')}`,
+          file_path: child.path,
+          order_index: items.length,
+          parent_id: undefined, // All items become root level
+          is_auto_generated: true
+        };
+        items.push(item);
+      }
+    });
+    
+    // Recursively process subfolders
+    folderNode.children.forEach(child => {
+      if (child.type === 'folder') {
+        const subItems = flattenFolderItems(child);
+        items.push(...subItems);
+      }
+    });
+    
+    return items;
+  };
+
+  // Helper function used in individual operations (unchanged)
   const createNavigationItemsFromFolder = (folderNode: FileNode, parentId?: string): NavigationItem[] => {
     const indexFileName = `${folderNode.name}.md`;
     const indexFile = folderNode.children?.find(child => 
