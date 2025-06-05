@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigation } from "@/hooks/useNavigation";
 import { FileNode } from "@/utils/fileSystem";
@@ -9,6 +10,7 @@ import { BulkDeleteDialog } from "./BulkDeleteDialog";
 import { useNavigationActions } from "./hooks/useNavigationActions";
 import { usePendingDeletions } from "./hooks/usePendingDeletions";
 import { navigationService } from "@/services/navigationService";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface NavigationEditorProps {
   fileStructure: FileNode[];
@@ -221,7 +223,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-4 border-b">
+      <div className="p-4 border-b flex-shrink-0">
         <h2 className="text-lg font-semibold mb-2">Navigation Editor</h2>
         <p className="text-sm text-muted-foreground">
           Add files or folders to organize your documentation. Drag sections to reorder them. Click on titles to edit them.
@@ -229,27 +231,33 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
       </div>
       
       <div className="flex-1 overflow-hidden">
-        <div className="grid grid-cols-2 gap-4 h-full p-4">
-          <AvailableFilesPanel 
-            fileStructure={fileStructure}
-            isFileUsed={isFileUsed}
-            sections={sections}
-            onAddToSection={setPendingChange}
-            onShowPreview={setShowConfirmDialog}
-          />
-          <NavigationStructurePanel
-            sections={sections}
-            pendingDeletions={pendingDeletions}
-            onAddSection={handleAddSection}
-            onUpdateSectionTitle={handleUpdateSectionTitle}
-            onUpdateItemTitle={handleUpdateItemTitle}
-            onTogglePendingDeletion={handleTogglePendingDeletion}
-            onBulkDelete={handleBulkDelete}
-            onResetPendingDeletions={clearPendingDeletions}
-            onSectionReorder={handleSectionReorder}
-            onNavigationChange={handleNavigationRefresh}
-          />
-        </div>
+        <ScrollArea className="h-full">
+          <div className="grid grid-cols-2 gap-4 h-full p-4">
+            <div className="h-full">
+              <AvailableFilesPanel 
+                fileStructure={fileStructure}
+                isFileUsed={isFileUsed}
+                sections={sections}
+                onAddToSection={setPendingChange}
+                onShowPreview={setShowConfirmDialog}
+              />
+            </div>
+            <div className="h-full">
+              <NavigationStructurePanel
+                sections={sections}
+                pendingDeletions={pendingDeletions}
+                onAddSection={handleAddSection}
+                onUpdateSectionTitle={handleUpdateSectionTitle}
+                onUpdateItemTitle={handleUpdateItemTitle}
+                onTogglePendingDeletion={handleTogglePendingDeletion}
+                onBulkDelete={handleBulkDelete}
+                onResetPendingDeletions={clearPendingDeletions}
+                onSectionReorder={handleSectionReorder}
+                onNavigationChange={handleNavigationRefresh}
+              />
+            </div>
+          </div>
+        </ScrollArea>
       </div>
 
       <FolderPreviewDialog
