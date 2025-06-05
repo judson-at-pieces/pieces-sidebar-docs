@@ -15,7 +15,7 @@ const Step: React.FC<StepProps> = ({ children }) => {
 };
 
 const Steps: React.FC<StepsProps> = ({ children }) => {
-  // Process children to handle both JSX Step components and data-attribute divs
+  // Process children to handle both JSX Step components and markdown-processed content
   const processedSteps = React.useMemo(() => {
     if (!children) return [];
     
@@ -41,36 +41,65 @@ const Steps: React.FC<StepsProps> = ({ children }) => {
           };
         }
         
-        // Handle data-attribute divs (from markdown processing)
-        if (child.type === 'div' && child.props) {
-          const props = child.props as any;
-          const stepNum = props['data-step'];
-          const stepTitle = props['data-step-title'];
-          
-          console.log('🔧 Found div with data attributes:', { stepNum, stepTitle });
-          
-          if (stepNum && stepTitle) {
-            return {
-              number: parseInt(stepNum, 10) || index + 1,
-              title: stepTitle,
-              content: props.children
-            };
-          }
-        }
-        
-        // Handle regular divs that might contain step content
+        // Handle markdown-processed content that might be wrapped in elements
         if (child.props) {
           const props = child.props as any;
-          console.log('🔧 Processing regular element:', { type: child.type, props: Object.keys(props) });
+          console.log('🔧 Processing element with props:', { type: child.type, propKeys: Object.keys(props) });
           
-          // If it has a title prop, treat it as a step
+          // Check for title in props
           if (props.title) {
+            console.log('🔧 Found element with title prop:', props.title);
             return {
               number: index + 1,
               title: props.title,
-              content: props.children
+              content: props.children || child
             };
           }
+          
+          // Check for data attributes
+          const stepTitle = props['data-step-title'] || props['data-title'];
+          if (stepTitle) {
+            console.log('🔧 Found element with data-step-title:', stepTitle);
+            return {
+              number: index + 1,
+              title: stepTitle,
+              content: props.children || child
+            };
+          }
+          
+          // Check if this is a text node that might contain step info
+          if (typeof props.children === 'string') {
+            const text = props.children;
+            // Look for patterns like "Step 1: Title" or just extract first line as title
+            const lines = text.split('\n').filter(line => line.trim());
+            if (lines.length > 0) {
+              const firstLine = lines[0].trim();
+              const restContent = lines.slice(1).join('\n').trim();
+              
+              console.log('🔧 Extracting title from text:', { firstLine, restContent });
+              return {
+                number: index + 1,
+                title: firstLine,
+                content: restContent || text
+              };
+            }
+          }
+        }
+      }
+      
+      // Handle text nodes or other content
+      if (typeof child === 'string') {
+        const lines = child.split('\n').filter(line => line.trim());
+        if (lines.length > 0) {
+          const firstLine = lines[0].trim();
+          const restContent = lines.slice(1).join('\n').trim();
+          
+          console.log('🔧 Processing string child:', { firstLine, restContent });
+          return {
+            number: index + 1,
+            title: firstLine || `Step ${index + 1}`,
+            content: restContent || child
+          };
         }
       }
       
@@ -87,6 +116,7 @@ const Steps: React.FC<StepsProps> = ({ children }) => {
   console.log('🔧 Final processed steps:', processedSteps);
 
   if (!processedSteps.length) {
+    console.log('🔧 No steps to render');
     return null;
   }
 
