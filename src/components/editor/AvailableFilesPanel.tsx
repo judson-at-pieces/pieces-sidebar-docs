@@ -297,7 +297,36 @@ function FileTreeItem({ node, depth, isUsed, sections, onAddToSection, onShowPre
 }
 
 export function AvailableFilesPanel({ fileStructure, isFileUsed, sections, onAddToSection, onShowPreview }: AvailableFilesPanelProps) {
-  const availableFiles = fileStructure.filter(node => {
+  // Count all files recursively
+  const countAllFiles = (nodes: FileNode[]): number => {
+    return nodes.reduce((count, node) => {
+      if (node.type === 'file') {
+        return count + 1;
+      } else if (node.children) {
+        return count + countAllFiles(node.children);
+      }
+      return count;
+    }, 0);
+  };
+
+  // Count available files recursively
+  const countAvailableFiles = (nodes: FileNode[]): number => {
+    return nodes.reduce((count, node) => {
+      if (node.type === 'file') {
+        return count + (isFileUsed(node.path) ? 0 : 1);
+      } else if (node.children) {
+        return count + countAvailableFiles(node.children);
+      }
+      return count;
+    }, 0);
+  };
+
+  const totalFiles = countAllFiles(fileStructure);
+  const availableFiles = countAvailableFiles(fileStructure);
+  const usedFiles = totalFiles - availableFiles;
+
+  // Filter to show only available files/folders
+  const availableFileNodes = fileStructure.filter(node => {
     const hasAvailableChildren = (node: FileNode): boolean => {
       if (!node.children) return false;
       
@@ -322,17 +351,27 @@ export function AvailableFilesPanel({ fileStructure, isFileUsed, sections, onAdd
         <CardTitle className="text-lg flex items-center gap-2">
           <FileText className="h-5 w-5" />
           Available Files
-          <Badge variant="outline" className="ml-auto text-xs">
-            {availableFiles.length} available
-          </Badge>
+          <div className="flex items-center gap-2 ml-auto">
+            <Badge variant="outline" className="text-xs">
+              {availableFiles} available
+            </Badge>
+            <Badge variant="secondary" className="text-xs">
+              {totalFiles} total
+            </Badge>
+          </div>
         </CardTitle>
+        {totalFiles > 0 && (
+          <div className="text-xs text-muted-foreground">
+            {usedFiles} files already in navigation • {availableFiles} files available to add
+          </div>
+        )}
       </CardHeader>
       <CardContent className="flex-1 min-h-0 p-0">
         <ScrollArea className="h-full w-full">
           <div className="p-4">
-            {availableFiles.length > 0 ? (
+            {availableFileNodes.length > 0 ? (
               <div className="space-y-2">
-                {availableFiles.map((node) => (
+                {availableFileNodes.map((node) => (
                   <FileTreeItem 
                     key={node.path} 
                     node={node} 
@@ -344,11 +383,17 @@ export function AvailableFilesPanel({ fileStructure, isFileUsed, sections, onAdd
                   />
                 ))}
               </div>
+            ) : totalFiles === 0 ? (
+              <div className="text-center text-muted-foreground py-12">
+                <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                <p className="text-lg font-medium mb-2">No files found</p>
+                <p className="text-sm">No markdown files could be loaded from the repository</p>
+              </div>
             ) : (
               <div className="text-center text-muted-foreground py-12">
                 <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p className="text-lg font-medium mb-2">All files are in use</p>
-                <p className="text-sm">All available files have been added to navigation sections</p>
+                <p className="text-sm">All {totalFiles} files have been added to navigation sections</p>
               </div>
             )}
           </div>
