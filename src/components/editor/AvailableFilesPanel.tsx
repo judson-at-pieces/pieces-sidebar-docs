@@ -1,6 +1,5 @@
-
 import { useState } from "react";
-import { FileText, Folder, FolderOpen, Plus, ChevronDown, ChevronRight } from "lucide-react";
+import { FileText, Folder, FolderOpen, Plus, ChevronDown, ChevronRight, Check, Save, RotateCcw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -8,6 +7,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { FileNode } from "@/utils/fileSystem";
 import { NavigationSection, NavigationItem } from "@/services/navigationService";
+import { BulkAddDialog } from "./BulkAddDialog";
+import { usePendingAdditions } from "./hooks/usePendingAdditions";
 
 interface PendingChange {
   type: 'folder' | 'file';
@@ -32,10 +33,20 @@ interface FileTreeItemProps {
   sections: NavigationSection[];
   onAddToSection: (change: PendingChange) => void;
   onShowPreview: (show: boolean) => void;
+  onTogglePendingAddition: (node: FileNode) => void;
+  isPendingAddition: (path: string) => boolean;
 }
 
-function FileTreeItem({ node, depth, isUsed, sections, onAddToSection, onShowPreview }: FileTreeItemProps) {
-  // Start with folders collapsed by default
+function FileTreeItem({ 
+  node, 
+  depth, 
+  isUsed, 
+  sections, 
+  onAddToSection, 
+  onShowPreview,
+  onTogglePendingAddition,
+  isPendingAddition
+}: FileTreeItemProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedSection, setSelectedSection] = useState<string>("");
   const paddingLeft = depth * 16;
@@ -191,9 +202,15 @@ function FileTreeItem({ node, depth, isUsed, sections, onAddToSection, onShowPre
     const used = isUsed(node.path);
     if (used) return null;
 
+    const isSelected = isPendingAddition(node.path);
+
     return (
       <div
-        className="p-3 mb-2 border rounded-lg flex items-center gap-3 hover:bg-accent/50 hover:border-primary/20 transition-all"
+        className={`p-3 mb-2 border rounded-lg flex items-center gap-3 transition-all ${
+          isSelected 
+            ? 'border-primary bg-primary/10' 
+            : 'hover:bg-accent/50 hover:border-primary/20'
+        }`}
         style={{ marginLeft: paddingLeft }}
       >
         <FileText className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
@@ -203,6 +220,22 @@ function FileTreeItem({ node, depth, isUsed, sections, onAddToSection, onShowPre
           </span>
         </div>
         <div className="flex items-center gap-2 flex-shrink-0">
+          <Button
+            size="sm"
+            variant={isSelected ? "default" : "ghost"}
+            onClick={() => onTogglePendingAddition(node)}
+            className={`h-6 w-6 p-0 transition-all ${
+              isSelected 
+                ? 'bg-primary hover:bg-primary/90 text-primary-foreground' 
+                : 'opacity-0 group-hover:opacity-100 hover:bg-primary hover:text-primary-foreground'
+            }`}
+          >
+            {isSelected ? (
+              <Check className="h-3 w-3" />
+            ) : (
+              <div className="h-3 w-3 border border-current rounded-sm" />
+            )}
+          </Button>
           <Select value={selectedSection} onValueChange={setSelectedSection}>
             <SelectTrigger className="w-32 h-8 text-xs bg-background border-border">
               <SelectValue placeholder="Section" />
@@ -233,6 +266,8 @@ function FileTreeItem({ node, depth, isUsed, sections, onAddToSection, onShowPre
   const showFolder = hasIndexFile(node) || hasAvailableChildren(node);
   if (!showFolder) return null;
 
+  const isSelected = isPendingAddition(node.path);
+
   // Count all files and available files including subfolders
   const totalFilesInFolder = countAllFilesInFolder(node);
   const availableFilesInFolder = countAvailableFilesInFolder(node);
@@ -250,7 +285,9 @@ function FileTreeItem({ node, depth, isUsed, sections, onAddToSection, onShowPre
 
   return (
     <div style={{ marginLeft: paddingLeft }} className="mb-2">
-      <div className="p-3 border rounded-lg hover:bg-accent/30 transition-all">
+      <div className={`p-3 border rounded-lg transition-all ${
+        isSelected ? 'border-primary bg-primary/10' : 'hover:bg-accent/30'
+      }`}>
         <div className="flex items-center gap-3">
           <Button
             variant="ghost"
@@ -300,6 +337,22 @@ function FileTreeItem({ node, depth, isUsed, sections, onAddToSection, onShowPre
             </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
+            <Button
+              size="sm"
+              variant={isSelected ? "default" : "ghost"}
+              onClick={() => onTogglePendingAddition(node)}
+              className={`h-6 w-6 p-0 transition-all ${
+                isSelected 
+                  ? 'bg-primary hover:bg-primary/90 text-primary-foreground' 
+                  : 'opacity-0 group-hover:opacity-100 hover:bg-primary hover:text-primary-foreground'
+              }`}
+            >
+              {isSelected ? (
+                <Check className="h-3 w-3" />
+              ) : (
+                <div className="h-3 w-3 border border-current rounded-sm" />
+              )}
+            </Button>
             <Select value={selectedSection} onValueChange={setSelectedSection}>
               <SelectTrigger className="w-32 h-8 text-xs bg-background border-border">
                 <SelectValue placeholder="Section" />
@@ -341,6 +394,8 @@ function FileTreeItem({ node, depth, isUsed, sections, onAddToSection, onShowPre
                   sections={sections}
                   onAddToSection={onAddToSection}
                   onShowPreview={onShowPreview}
+                  onTogglePendingAddition={onTogglePendingAddition}
+                  isPendingAddition={isPendingAddition}
                 />
               ))}
           </div>
@@ -351,6 +406,125 @@ function FileTreeItem({ node, depth, isUsed, sections, onAddToSection, onShowPre
 }
 
 export function AvailableFilesPanel({ fileStructure, isFileUsed, sections, onAddToSection, onShowPreview }: AvailableFilesPanelProps) {
+  const {
+    pendingAdditions,
+    addPendingAddition,
+    removePendingAddition,
+    clearPendingAdditions,
+    isPendingAddition
+  } = usePendingAdditions();
+
+  const [showBulkAddDialog, setShowBulkAddDialog] = useState(false);
+  const [bulkSelectedSection, setBulkSelectedSection] = useState("");
+
+  const handleTogglePendingAddition = (node: FileNode) => {
+    if (isPendingAddition(node.path)) {
+      removePendingAddition(node.path);
+    } else {
+      addPendingAddition(node);
+    }
+  };
+
+  const handleBulkAdd = () => {
+    if (pendingAdditions.length === 0) return;
+    setShowBulkAddDialog(true);
+  };
+
+  const handleConfirmBulkAdd = () => {
+    if (!bulkSelectedSection) return;
+
+    // Process each pending addition
+    pendingAdditions.forEach(addition => {
+      if (addition.type === 'folder') {
+        const previewItems = createNavigationItemsFromFolder(addition.node);
+        onAddToSection({
+          type: 'folder',
+          sectionId: bulkSelectedSection,
+          folderNode: addition.node,
+          previewItems
+        });
+      } else {
+        const previewItem: NavigationItem = {
+          id: `temp-${Date.now()}-${Math.random()}`,
+          title: addition.node.name.replace('.md', '').replace(/-/g, ' '),
+          href: `/${addition.node.path.replace('.md', '')}`,
+          file_path: addition.node.path,
+          order_index: 0,
+          parent_id: undefined,
+          is_auto_generated: true
+        };
+        
+        onAddToSection({
+          type: 'file',
+          sectionId: bulkSelectedSection,
+          fileNode: addition.node,
+          previewItems: [previewItem]
+        });
+      }
+    });
+
+    onShowPreview(true);
+    clearPendingAdditions();
+    setShowBulkAddDialog(false);
+    setBulkSelectedSection("");
+  };
+
+  // Helper function used in bulk operations
+  const createNavigationItemsFromFolder = (folderNode: FileNode, parentId?: string): NavigationItem[] => {
+    const indexFileName = `${folderNode.name}.md`;
+    const indexFile = folderNode.children?.find(child => 
+      child.type === 'file' && child.name === indexFileName
+    );
+    
+    const folderId = `temp-${Date.now()}-${Math.random()}`;
+    const folderItem: NavigationItem = {
+      id: folderId,
+      title: folderNode.name.replace(/-/g, ' '),
+      href: indexFile ? `/${indexFile.path.replace('.md', '')}` : `/${folderNode.path}`,
+      file_path: indexFile?.path || folderNode.path,
+      order_index: 0,
+      parent_id: parentId,
+      is_auto_generated: true,
+      items: []
+    };
+
+    if (folderNode.children) {
+      let childOrder = 0;
+      
+      // Add files first (except index file)
+      for (const child of folderNode.children) {
+        if (child.type === 'file' && child.name !== indexFileName) {
+          const childItem: NavigationItem = {
+            id: `temp-${Date.now()}-${Math.random()}`,
+            title: child.name.replace('.md', '').replace(/-/g, ' '),
+            href: `/${child.path.replace('.md', '')}`,
+            file_path: child.path,
+            order_index: childOrder++,
+            parent_id: folderId,
+            is_auto_generated: true
+          };
+          
+          folderItem.items!.push(childItem);
+        }
+      }
+      
+      // Add subfolders recursively
+      for (const child of folderNode.children) {
+        if (child.type === 'folder') {
+          const subFolderItems = createNavigationItemsFromFolder(child, folderId);
+          if (subFolderItems.length > 0) {
+            const subFolder = subFolderItems[0];
+            subFolder.order_index = childOrder++;
+            subFolder.parent_id = folderId;
+            folderItem.items!.push(subFolder);
+          }
+        }
+      }
+    }
+    
+    return [folderItem];
+  };
+
   // Count all files recursively
   const countAllFiles = (nodes: FileNode[]): number => {
     return nodes.reduce((count, node) => {
@@ -402,28 +576,57 @@ export function AvailableFilesPanel({ fileStructure, isFileUsed, sections, onAdd
   return (
     <Card className="h-full flex flex-col overflow-hidden border-border/50">
       <CardHeader className="pb-4 flex-shrink-0 border-b border-border/50">
-        <CardTitle className="text-lg flex items-center gap-2">
-          <FileText className="h-5 w-5" />
-          Available Files
-          <div className="flex items-center gap-2 ml-auto">
-            <Badge variant="outline" className="text-xs">
-              {availableFiles} available
-            </Badge>
-            <Badge variant="secondary" className="text-xs">
-              {totalFiles} total
-            </Badge>
-            {usedFiles > 0 && (
-              <Badge variant="default" className="text-xs bg-muted text-muted-foreground">
-                {usedFiles} used
+        <div className="flex items-center justify-between">
+          <CardTitle className="text-lg flex items-center gap-2">
+            <FileText className="h-5 w-5" />
+            Available Files
+            <div className="flex items-center gap-2 ml-auto">
+              <Badge variant="outline" className="text-xs">
+                {availableFiles} available
               </Badge>
+              <Badge variant="secondary" className="text-xs">
+                {totalFiles} total
+              </Badge>
+              {usedFiles > 0 && (
+                <Badge variant="default" className="text-xs bg-muted text-muted-foreground">
+                  {usedFiles} used
+                </Badge>
+              )}
+            </div>
+          </CardTitle>
+          <div className="flex items-center gap-2">
+            {pendingAdditions.length > 0 && (
+              <>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={clearPendingAdditions}
+                  className="gap-2"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Reset
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="default" 
+                  onClick={handleBulkAdd}
+                  className="gap-2"
+                >
+                  <Save className="h-4 w-4" />
+                  Add {pendingAdditions.length}
+                </Button>
+              </>
             )}
           </div>
-        </CardTitle>
-        {totalFiles > 0 && (
-          <div className="text-xs text-muted-foreground">
-            {usedFiles} files already in navigation • {availableFiles} files available to add
-          </div>
-        )}
+        </div>
+        <div className="text-xs text-muted-foreground">
+          {usedFiles} files already in navigation • {availableFiles} files available to add
+          {pendingAdditions.length > 0 && (
+            <span className="text-primary font-medium">
+              {' • '}{pendingAdditions.length} item{pendingAdditions.length !== 1 ? 's' : ''} selected for addition
+            </span>
+          )}
+        </div>
       </CardHeader>
       <CardContent className="flex-1 min-h-0 p-0">
         <ScrollArea className="h-full w-full">
@@ -439,6 +642,8 @@ export function AvailableFilesPanel({ fileStructure, isFileUsed, sections, onAdd
                     sections={sections}
                     onAddToSection={onAddToSection}
                     onShowPreview={onShowPreview}
+                    onTogglePendingAddition={handleTogglePendingAddition}
+                    isPendingAddition={isPendingAddition}
                   />
                 ))}
               </div>
@@ -458,6 +663,17 @@ export function AvailableFilesPanel({ fileStructure, isFileUsed, sections, onAdd
           </div>
         </ScrollArea>
       </CardContent>
+
+      <BulkAddDialog
+        open={showBulkAddDialog}
+        onOpenChange={setShowBulkAddDialog}
+        pendingAdditions={pendingAdditions}
+        sections={sections}
+        selectedSection={bulkSelectedSection}
+        onSectionChange={setBulkSelectedSection}
+        onConfirm={handleConfirmBulkAdd}
+        onCancel={() => setShowBulkAddDialog(false)}
+      />
     </Card>
   );
 }
