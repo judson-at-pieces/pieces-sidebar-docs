@@ -5,7 +5,7 @@ import { WYSIWYGEditor } from './WYSIWYGEditor';
 import HashnodeMarkdownRenderer from '@/components/HashnodeMarkdownRenderer';
 import { Edit, Eye, Sparkles, Wand2, GitPullRequest } from 'lucide-react';
 import { toast } from 'sonner';
-import { githubAppService } from '@/services/githubAppService';
+import { githubService } from '@/services/githubService';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -45,6 +45,111 @@ ${markdownContent}`;
     
     return content;
   }, [content]);
+
+  async function handleCreatePR() {
+    try {
+      toast.info('Creating pull request...', { duration: 2000 });
+      
+      // Get GitHub token from session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.provider_token) {
+        toast.error('GitHub authentication required. Please reconnect to GitHub in Admin settings.', { duration: 5000 });
+        return;
+      }
+
+      // Get GitHub configuration
+      const config = await githubService.getRepoConfig();
+      if (!config) {
+        toast.error('GitHub repository not configured. Please configure it in Admin settings.', { duration: 5000 });
+        return;
+      }
+
+      const { owner, repo } = config;
+
+      if (!filePath) {
+        toast.error('No file selected for editing. Please select a file first.', { duration: 3000 });
+        return;
+      }
+
+      // Extract title from frontmatter or use filename
+      let title = 'Update documentation content';
+      const frontmatterMatch = content.match(/^---\s*\n([\s\S]*?)\n---/);
+      if (frontmatterMatch) {
+        const titleMatch = frontmatterMatch[1].match(/title:\s*["']?([^"'\n]+)["']?/);
+        if (titleMatch) {
+          title = `Update: ${titleMatch[1]}`;
+        }
+      } else {
+        // Use filename as fallback
+        const fileName = filePath.split('/').pop()?.replace(/\.md$/, '') || 'content';
+        title = `Update: ${fileName.replace(/-/g, ' ')}`;
+      }
+
+      // Get user information for PR attribution
+      const userEmail = user?.email || 'unknown@pieces.app';
+      const userName = user?.user_metadata?.full_name || user?.user_metadata?.name || userEmail.split('@')[0];
+
+      // Determine the correct file path in the repository
+      let repoFilePath = filePath;
+      
+      // If it's a content file, place it in public/content
+      if (!filePath.startsWith('public/') && !filePath.startsWith('src/')) {
+        repoFilePath = `public/content/${filePath}`;
+      }
+      
+      // Ensure .md extension
+      if (!repoFilePath.endsWith('.md')) {
+        repoFilePath = `${repoFilePath}.md`;
+      }
+
+      // Create the pull request using our GitHub service
+      const result = await githubService.createPullRequest(
+        {
+          title,
+          body: `This pull request updates documentation content via the Pieces documentation editor.
+
+## Changes
+- Updated content for: \`${repoFilePath}\`
+- Content reviewed and ready for publication
+
+## Authored By
+- **Editor:** ${userName} (${userEmail})
+- **Date:** ${new Date().toISOString().split('T')[0]}
+
+## Review Notes
+Please review the changes and merge when ready.
+
+---
+*This PR was created automatically by the Pieces Documentation Editor*`,
+          files: [
+            {
+              path: repoFilePath,
+              content: content
+            }
+          ]
+        },
+        session.provider_token,
+        config
+      );
+
+      if (result.success && result.prNumber && result.prUrl) {
+        toast.success(`Pull request created successfully! #${result.prNumber}`, { 
+          duration: 5000,
+          action: {
+            label: 'View PR',
+            onClick: () => window.open(result.prUrl, '_blank')
+          }
+        });
+      } else {
+        throw new Error(result.error || 'Failed to create PR');
+      }
+      
+      console.log('PR created with content changes for file:', repoFilePath);
+    } catch (error) {
+      toast.error('Failed to create pull request. Please check your GitHub connection.', { duration: 3000 });
+      console.error('PR creation failed:', error);
+    }
+  }
 
   return (
     <div className="h-full flex flex-col bg-gradient-to-br from-background to-muted/10">
@@ -134,110 +239,4 @@ ${markdownContent}`;
       </div>
     </div>
   );
-
-  async function handleCreatePR() {
-    try {
-      toast.info('Creating pull request...', { duration: 2000 });
-      
-      // Get GitHub configuration
-      const { data: configData, error: configError } = await supabase.rpc('get_current_github_config');
-      
-      if (configError || !configData || configData.length === 0) {
-        toast.error('GitHub repository not configured. Please configure it in Admin settings.', { duration: 5000 });
-        return;
-      }
-
-      const config = configData[0];
-      const { repo_owner, repo_name, installation_id } = config;
-
-      if (!installation_id) {
-        toast.error('GitHub App installation not found. Please reinstall the GitHub App.', { duration: 5000 });
-        return;
-      }
-
-      if (!filePath) {
-        toast.error('No file selected for editing. Please select a file first.', { duration: 3000 });
-        return;
-      }
-
-      // Extract title from frontmatter or use filename
-      let title = 'Update documentation content';
-      const frontmatterMatch = content.match(/^---\s*\n([\s\S]*?)\n---/);
-      if (frontmatterMatch) {
-        const titleMatch = frontmatterMatch[1].match(/title:\s*["']?([^"'\n]+)["']?/);
-        if (titleMatch) {
-          title = `Update: ${titleMatch[1]}`;
-        }
-      } else {
-        // Use filename as fallback
-        const fileName = filePath.split('/').pop()?.replace(/\.md$/, '') || 'content';
-        title = `Update: ${fileName.replace(/-/g, ' ')}`;
-      }
-
-      // Get user information for PR attribution
-      const userEmail = user?.email || 'unknown@pieces.app';
-      const userName = user?.user_metadata?.full_name || user?.user_metadata?.name || userEmail.split('@')[0];
-
-      // Determine the correct file path in the repository
-      let repoFilePath = filePath;
-      
-      // If it's a content file, place it in public/content
-      if (!filePath.startsWith('public/') && !filePath.startsWith('src/')) {
-        repoFilePath = `public/content/${filePath}`;
-      }
-      
-      // Ensure .md extension
-      if (!repoFilePath.endsWith('.md')) {
-        repoFilePath = `${repoFilePath}.md`;
-      }
-
-      // Create the pull request using our GitHub service
-      const result = await githubAppService.createBranchAndPR(
-        installation_id,
-        repo_owner,
-        repo_name,
-        {
-          title,
-          body: `This pull request updates documentation content via the Pieces documentation editor.
-
-## Changes
-- Updated content for: \`${repoFilePath}\`
-- Content reviewed and ready for publication
-
-## Authored By
-- **Editor:** ${userName} (${userEmail})
-- **Date:** ${new Date().toISOString().split('T')[0]}
-
-## Review Notes
-Please review the changes and merge when ready.
-
----
-*This PR was created automatically by the Pieces Documentation Editor*`,
-          files: [
-            {
-              path: repoFilePath,
-              content: content
-            }
-          ]
-        }
-      );
-
-      if (result.success) {
-        toast.success(`Pull request created successfully! #${result.prNumber}`, { 
-          duration: 5000,
-          action: {
-            label: 'View PR',
-            onClick: () => window.open(result.prUrl, '_blank')
-          }
-        });
-      } else {
-        throw new Error('Failed to create PR');
-      }
-      
-      console.log('PR created with content changes for file:', repoFilePath);
-    } catch (error) {
-      toast.error('Failed to create pull request. Please check your GitHub connection.', { duration: 3000 });
-      console.error('PR creation failed:', error);
-    }
-  }
 }
