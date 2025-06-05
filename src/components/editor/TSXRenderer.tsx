@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { WYSIWYGEditor } from './WYSIWYGEditor';
@@ -30,16 +31,21 @@ export function TSXRenderer({ content, onContentChange, readOnly = false, filePa
   const processedContent = React.useMemo(() => {
     console.log('🔧 TSXRenderer processing content with EXACT docs process...');
     
-    // Apply custom syntax processing (same as MarkdownRenderer)
-    const processedMarkdown = processCustomSyntax(content);
-    
-    console.log('🔧 TSXRenderer content processed:', {
-      originalLength: content.length,
-      processedLength: processedMarkdown.length,
-      hasCustomSyntax: processedMarkdown !== content
-    });
+    try {
+      // Apply custom syntax processing (same as MarkdownRenderer)
+      const processedMarkdown = processCustomSyntax(content);
+      
+      console.log('🔧 TSXRenderer content processed:', {
+        originalLength: content.length,
+        processedLength: processedMarkdown.length,
+        hasCustomSyntax: processedMarkdown !== content
+      });
 
-    return processedMarkdown;
+      return processedMarkdown;
+    } catch (error) {
+      console.error('Error processing content:', error);
+      return content; // Fallback to original content
+    }
   }, [content]);
 
   async function handleCreatePR() {
