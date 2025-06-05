@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { FileText, Folder, FolderOpen, Plus, ChevronDown, ChevronRight, Check, Save, RotateCcw, ArrowRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,7 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { FileNode } from "@/utils/fileSystem";
 import { NavigationSection, NavigationItem } from "@/services/navigationService";
-import { BulkAddDialog } from "./BulkAddDialog";
+import { BulkMoveDialog } from "./BulkMoveDialog";
 import { usePendingAdditions } from "./hooks/usePendingAdditions";
 
 interface PendingChange {
@@ -206,7 +207,7 @@ function FileTreeItem({
 
     return (
       <div
-        className={`p-3 mb-2 border rounded-lg flex items-center gap-3 transition-all ${
+        className={`p-3 mb-2 border rounded-lg flex items-center gap-3 transition-all group ${
           isSelected 
             ? 'border-primary bg-primary/10' 
             : 'hover:bg-accent/50 hover:border-primary/20'
@@ -285,7 +286,7 @@ function FileTreeItem({
 
   return (
     <div style={{ marginLeft: paddingLeft }} className="mb-2">
-      <div className={`p-3 border rounded-lg transition-all ${
+      <div className={`p-3 border rounded-lg transition-all group ${
         isSelected ? 'border-primary bg-primary/10' : 'hover:bg-accent/30'
       }`}>
         <div className="flex items-center gap-3">
@@ -414,7 +415,7 @@ export function AvailableFilesPanel({ fileStructure, isFileUsed, sections, onAdd
     isPendingAddition
   } = usePendingAdditions();
 
-  const [showBulkAddDialog, setShowBulkAddDialog] = useState(false);
+  const [showBulkMoveDialog, setShowBulkMoveDialog] = useState(false);
   const [bulkSelectedSection, setBulkSelectedSection] = useState("");
 
   const handleTogglePendingAddition = (node: FileNode) => {
@@ -425,12 +426,12 @@ export function AvailableFilesPanel({ fileStructure, isFileUsed, sections, onAdd
     }
   };
 
-  const handleBulkAdd = () => {
+  const handleBulkMove = () => {
     if (pendingAdditions.length === 0) return;
-    setShowBulkAddDialog(true);
+    setShowBulkMoveDialog(true);
   };
 
-  const handleConfirmBulkAdd = () => {
+  const handleConfirmBulkMove = () => {
     if (!bulkSelectedSection) return;
 
     // Process each pending addition
@@ -465,7 +466,7 @@ export function AvailableFilesPanel({ fileStructure, isFileUsed, sections, onAdd
 
     onShowPreview(true);
     clearPendingAdditions();
-    setShowBulkAddDialog(false);
+    setShowBulkMoveDialog(false);
     setBulkSelectedSection("");
   };
 
@@ -609,7 +610,7 @@ export function AvailableFilesPanel({ fileStructure, isFileUsed, sections, onAdd
                 <Button 
                   size="sm" 
                   variant="default" 
-                  onClick={handleBulkAdd}
+                  onClick={handleBulkMove}
                   className="gap-2"
                 >
                   <ArrowRight className="h-4 w-4" />
@@ -664,15 +665,15 @@ export function AvailableFilesPanel({ fileStructure, isFileUsed, sections, onAdd
         </ScrollArea>
       </CardContent>
 
-      <BulkAddDialog
-        open={showBulkAddDialog}
-        onOpenChange={setShowBulkAddDialog}
+      <BulkMoveDialog
+        open={showBulkMoveDialog}
+        onOpenChange={setShowBulkMoveDialog}
         pendingAdditions={pendingAdditions}
         sections={sections}
         selectedSection={bulkSelectedSection}
         onSectionChange={setBulkSelectedSection}
-        onConfirm={handleConfirmBulkAdd}
-        onCancel={() => setShowBulkAddDialog(false)}
+        onConfirm={handleConfirmBulkMove}
+        onCancel={() => setShowBulkMoveDialog(false)}
       />
     </Card>
   );
