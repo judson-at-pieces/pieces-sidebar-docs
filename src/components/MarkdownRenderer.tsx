@@ -7,11 +7,18 @@ import { createComponentMappings } from './markdown/componentMappings';
 
 interface MarkdownRendererProps {
   content: string;
+  components?: any;
 }
 
-const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
+const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, components: customComponents }) => {
   const processedContent = processCustomSyntax(content);
-  const components = createComponentMappings();
+  const defaultComponents = createComponentMappings();
+  
+  // Merge custom components with default ones
+  const components = {
+    ...defaultComponents,
+    ...customComponents
+  };
   
   return (
     <ReactMarkdown 
