@@ -93,7 +93,7 @@ const integrations = [{
   }, {
     name: "Raycast",
     description: "Extension for Raycast productivity tool",
-    logo: "/assets/icons/raycast.png",
+    logo: "/assets/icons/new_raycast_1.png",
     repoUrl: "https://github.com/pieces-app/pieces-raycast"
   }]
 }];
