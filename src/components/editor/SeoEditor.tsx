@@ -136,6 +136,29 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
     }
   };
 
+  // Helper function to load existing file content
+  const loadExistingContent = async (filePath: string): Promise<string> => {
+    try {
+      let markdownPath = filePath;
+      if (!markdownPath.endsWith('.md')) {
+        markdownPath = `${filePath}.md`;
+      }
+      markdownPath = markdownPath.replace(/^\/+/, '');
+      
+      const response = await fetch(`/content/${markdownPath}`);
+      if (response.ok) {
+        return await response.text();
+      }
+    } catch (error) {
+      console.warn('Could not load existing content:', error);
+    }
+    
+    // Return default content if file doesn't exist
+    return `# ${seoData.metaTitle || seoData.title || 'Page Title'}
+
+${seoData.metaDescription || seoData.description || 'Page content goes here...'}`;
+  };
+
   const handleSeoChange = (updates: Partial<SeoData>) => {
     updateSeoData(updates);
     onSeoDataChange({ ...seoData, ...updates });
@@ -231,6 +254,19 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
     return frontmatterLines.join('\n');
   };
 
+  const updateContentWithSeoData = async (existingContent: string, seoData: SeoData): Promise<string> => {
+    const frontmatter = generateFrontmatter(seoData);
+    
+    // If content has existing frontmatter, replace it
+    const frontmatterRegex = /^---\n([\s\S]*?)\n---\n?/;
+    if (frontmatterRegex.test(existingContent)) {
+      return existingContent.replace(frontmatterRegex, `${frontmatter}\n\n`);
+    }
+    
+    // If no frontmatter exists, prepend it
+    return `${frontmatter}\n\n${existingContent}`;
+  };
+
   const handleCreatePRForCurrentFile = async () => {
     if (!selectedFile) {
       showToast('No file selected', 'error');
@@ -302,16 +338,9 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
         repoFilePath = `${repoFilePath}.md`;
       }
 
-      // Generate the updated frontmatter content
-      const frontmatterContent = generateFrontmatter(seoData);
-      
-      // Create file content with frontmatter and basic content
-      const fileContent = `${frontmatterContent}
-
-# ${seoData.metaTitle || seoData.title || 'Page Title'}
-
-${seoData.metaDescription || seoData.description || 'Page content goes here...'}
-`;
+      // Load existing content and update with SEO data
+      const existingContent = await loadExistingContent(selectedFile);
+      const updatedContent = await updateContentWithSeoData(existingContent, seoData);
 
       console.log('Creating SEO PR with GitHub App token for:', { 
         title, 
@@ -338,14 +367,14 @@ ${seoData.metaDescription || seoData.description || 'Page content goes here...'}
 - **Date:** ${new Date().toISOString().split('T')[0]}
 
 ## Review Notes
-Please review the SEO changes and merge when ready.
+Please review the SEO changes and merge when ready. The existing content has been preserved.
 
 ---
 *This PR was created automatically by the Pieces Documentation SEO Editor*`,
           files: [
             {
               path: repoFilePath,
-              content: fileContent
+              content: updatedContent
             }
           ]
         },
@@ -425,9 +454,7 @@ Please review the SEO changes and merge when ready.
       const userName = user?.user_metadata?.full_name || user?.user_metadata?.name || userEmail.split('@')[0];
 
       // Prepare files for all pending changes
-      const files = pendingChanges.map(filePath => {
-        const frontmatterContent = generateFrontmatter(seoData);
-        
+      const files = await Promise.all(pendingChanges.map(async filePath => {
         let repoFilePath = filePath;
         if (!filePath.startsWith('public/') && !filePath.startsWith('src/')) {
           repoFilePath = `public/content/${filePath}`;
@@ -436,18 +463,15 @@ Please review the SEO changes and merge when ready.
           repoFilePath = `${repoFilePath}.md`;
         }
 
-        const fileContent = `${frontmatterContent}
-
-# Page Title
-
-Page content goes here...
-`;
+        // Load existing content and update with SEO data
+        const existingContent = await loadExistingContent(filePath);
+        const updatedContent = await updateContentWithSeoData(existingContent, seoData);
 
         return {
           path: repoFilePath,
-          content: fileContent
+          content: updatedContent
         };
-      });
+      }));
 
       // Create the pull request using the GitHub App token
       const result = await githubService.createPullRequest(
@@ -463,7 +487,7 @@ ${pendingChanges.map(path => `- \`${path}\``).join('\n')}
 - **Date:** ${new Date().toISOString().split('T')[0]}
 
 ## Review Notes
-Please review all SEO changes and merge when ready.
+Please review all SEO changes and merge when ready. All existing content has been preserved.
 
 ---
 *This PR was created automatically by the Pieces Documentation SEO Editor*`,
