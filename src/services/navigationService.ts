@@ -28,51 +28,60 @@ export interface NavigationStructure {
   sections: NavigationSection[];
 }
 
+// Helper function to build hierarchical structure from flat array
+function buildHierarchy(items: NavigationItem[]): NavigationItem[] {
+  console.log('Building hierarchy from', items.length, 'items');
+  
+  const itemMap = new Map<string, NavigationItem>();
+  const rootItems: NavigationItem[] = [];
+  
+  // First pass: create map of all items
+  items.forEach(item => {
+    itemMap.set(item.id, { ...item, items: [] });
+  });
+  
+  // Second pass: build parent-child relationships
+  items.forEach(item => {
+    const itemWithChildren = itemMap.get(item.id)!;
+    
+    if (item.parent_id && itemMap.has(item.parent_id)) {
+      // This item has a parent, add it to parent's children
+      const parent = itemMap.get(item.parent_id)!;
+      if (!parent.items) parent.items = [];
+      parent.items.push(itemWithChildren);
+      parent.items.sort((a, b) => a.order_index - b.order_index);
+    } else {
+      // This is a root item
+      rootItems.push(itemWithChildren);
+    }
+  });
+  
+  // Sort root items by order_index
+  rootItems.sort((a, b) => a.order_index - b.order_index);
+  
+  console.log('Built hierarchy:', {
+    totalItems: items.length,
+    rootItems: rootItems.length,
+    hierarchy: rootItems.map(item => ({
+      title: item.title,
+      childCount: item.items?.length || 0,
+      children: item.items?.map(child => child.title) || []
+    }))
+  });
+  
+  return rootItems;
+}
+
 // Helper function to merge folder and markdown file entries
 function mergeFolderAndMarkdownItems(items: NavigationItem[]): NavigationItem[] {
-  const itemMap = new Map<string, NavigationItem>();
-  const mergedItems: NavigationItem[] = [];
-
-  // First pass: collect all items by their base path
-  for (const item of items) {
-    const basePath = item.href.replace(/\.md$/, ''); // Remove .md extension if present
-    
-    if (itemMap.has(basePath)) {
-      const existing = itemMap.get(basePath)!;
-      
-      // If we have both folder and markdown file, merge them
-      if (item.href.endsWith('.md') && !existing.href.endsWith('.md')) {
-        // Current item is markdown, existing is folder - use markdown as base, keep folder's children
-        itemMap.set(basePath, {
-          ...item,
-          items: existing.items || [],
-        });
-      } else if (!item.href.endsWith('.md') && existing.href.endsWith('.md')) {
-        // Current item is folder, existing is markdown - use markdown as base, add folder's children
-        itemMap.set(basePath, {
-          ...existing,
-          items: item.items || [],
-        });
-      } else if (item.href.endsWith('.md') && existing.href.endsWith('.md')) {
-        // Both are markdown files - keep the existing one
-        continue;
-      } else {
-        // Both are folders - merge their children
-        itemMap.set(basePath, {
-          ...existing,
-          items: mergeFolderAndMarkdownItems([...(existing.items || []), ...(item.items || [])]),
-        });
-      }
-    } else {
-      itemMap.set(basePath, {
-        ...item,
-        items: item.items ? mergeFolderAndMarkdownItems(item.items) : undefined,
-      });
-    }
-  }
-
-  // Convert map back to array and sort by order_index
-  return Array.from(itemMap.values()).sort((a, b) => a.order_index - b.order_index);
+  console.log('Merging folder and markdown items:', items.length);
+  
+  // Build hierarchical structure first
+  const hierarchicalItems = buildHierarchy(items);
+  
+  console.log('After building hierarchy, root items:', hierarchicalItems.length);
+  
+  return hierarchicalItems;
 }
 
 export class NavigationService {
@@ -102,7 +111,7 @@ export class NavigationService {
     console.log('Processing navigation data:', data);
     
     const processedSections = data.sections.map(section => {
-      console.log(`Processing section "${section.title}" with items:`, section.items);
+      console.log(`Processing section "${section.title}" with ${section.items?.length || 0} items`);
       
       // Check for potential issues with the items
       if (section.items) {

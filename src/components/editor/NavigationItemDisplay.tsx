@@ -37,24 +37,22 @@ export function NavigationItemDisplay({
   globalIndex,
   allItems
 }: NavigationItemDisplayProps) {
-  const [isExpanded, setIsExpanded] = useState(false);
+  const [isExpanded, setIsExpanded] = useState(true);
   const paddingLeft = depth * 16;
   
-  // Debug logging
+  // Use the items property from the hierarchical structure
+  const children = item.items || [];
+  const hasChildren = children.length > 0;
+  
   console.log('NavigationItemDisplay rendering:', {
     itemId: item.id,
     title: item.title,
     depth,
     globalIndex,
     parentId: item.parent_id,
-    allItemsCount: allItems.length
+    childrenCount: children.length,
+    children: children.map(c => c.title)
   });
-  
-  // Find children based on parent_id
-  const children = allItems.filter(child => child.parent_id === item.id);
-  const hasChildren = children.length > 0;
-  
-  console.log('Children for item', item.title, ':', children.map(c => c.title));
   
   // Determine if this item is a folder (has children or ends without .md)
   const isFolder = hasChildren || (!item.href.endsWith('.md') && !item.file_path?.endsWith('.md'));
@@ -148,25 +146,19 @@ export function NavigationItemDisplay({
           
           {hasChildren && isExpanded && (
             <div className="mt-1">
-              {children
-                .sort((a, b) => a.order_index - b.order_index)
-                .map((childItem, childIndex) => {
-                  const childGlobalIndex = allItems.findIndex(item => item.id === childItem.id);
-                  console.log('Rendering child:', childItem.title, 'globalIndex:', childGlobalIndex);
-                  return (
-                    <NavigationItemDisplay
-                      key={childItem.id}
-                      item={childItem}
-                      index={childIndex}
-                      sectionId={sectionId}
-                      pendingDeletions={pendingDeletions}
-                      onTogglePendingDeletion={onTogglePendingDeletion}
-                      depth={depth + 1}
-                      globalIndex={childGlobalIndex}
-                      allItems={allItems}
-                    />
-                  );
-                })}
+              {children.map((childItem, childIndex) => (
+                <NavigationItemDisplay
+                  key={childItem.id}
+                  item={childItem}
+                  index={childIndex}
+                  sectionId={sectionId}
+                  pendingDeletions={pendingDeletions}
+                  onTogglePendingDeletion={onTogglePendingDeletion}
+                  depth={depth + 1}
+                  globalIndex={globalIndex + childIndex + 1}
+                  allItems={allItems}
+                />
+              ))}
             </div>
           )}
         </div>
