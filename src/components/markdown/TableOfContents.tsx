@@ -12,7 +12,7 @@ export function TableOfContents({ content }: TableOfContentsProps) {
   const [activeId, setActiveId] = useState<string>('');
 
   useEffect(() => {
-    // Extract headings from markdown content
+    // Extract headings from markdown content and find actual rendered headings
     const headingRegex = /^(#{1,3})\s+(.+)$/gm;
     const items: TOCItem[] = [];
     let match;
@@ -29,12 +29,24 @@ export function TableOfContents({ content }: TableOfContentsProps) {
       });
     }
 
+    // Also try to find actual headings in the DOM and add IDs if they don't exist
+    setTimeout(() => {
+      const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+      headings.forEach((heading) => {
+        if (!heading.id) {
+          const text = heading.textContent || '';
+          const id = text.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
+          heading.id = id;
+        }
+      });
+    }, 100);
+
     setTocItems(items);
   }, [content]);
 
   useEffect(() => {
     // Set up intersection observer to track active heading
-    const headingElements = tocItems.map(item => document.getElementById(item.id)).filter(Boolean);
+    const headingElements = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6')).filter(Boolean);
     
     if (headingElements.length === 0) return;
 
@@ -65,11 +77,32 @@ export function TableOfContents({ content }: TableOfContentsProps) {
   }, [tocItems]);
 
   const scrollToHeading = (id: string) => {
-    const element = document.getElementById(id);
+    // First try to find the element by ID
+    let element = document.getElementById(id);
+    
+    // If not found, try to find by text content
+    if (!element) {
+      const headings = document.querySelectorAll('h1, h2, h3, h4, h5, h6');
+      const targetItem = tocItems.find(item => item.id === id);
+      if (targetItem) {
+        element = Array.from(headings).find(heading => 
+          heading.textContent?.toLowerCase().includes(targetItem.text.toLowerCase())
+        ) as HTMLElement;
+        
+        // Add the ID to the element if found
+        if (element && !element.id) {
+          element.id = id;
+        }
+      }
+    }
+    
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
       // Update the URL hash without triggering a page reload
       window.history.replaceState(null, '', `#${id}`);
+      setActiveId(id);
+    } else {
+      console.warn(`Could not find heading element for ID: ${id}`);
     }
   };
 
