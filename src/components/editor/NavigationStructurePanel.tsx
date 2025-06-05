@@ -1,7 +1,7 @@
 
 import { useState } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
-import { Plus, Settings, Trash2, GripVertical } from "lucide-react";
+import { Plus, Settings, Trash2, GripVertical, Save, RotateCcw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -10,21 +10,28 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Badge } from "@/components/ui/badge";
 import { NavigationSection, NavigationItem } from "@/services/navigationService";
 import { NavigationItemList } from "./NavigationItemList";
+import { PendingDeletion } from "./hooks/usePendingDeletions";
 
 interface NavigationStructurePanelProps {
   sections: NavigationSection[];
+  pendingDeletions: PendingDeletion[];
   onAddSection: (title: string) => void;
   onUpdateSectionTitle: (sectionId: string, title: string) => void;
-  onRemoveItem: (sectionId: string, itemIndex: number) => void;
+  onTogglePendingDeletion: (sectionId: string, itemIndex: number) => void;
+  onBulkDelete: () => void;
+  onResetPendingDeletions: () => void;
   onSectionReorder: (newSections: NavigationSection[]) => void;
   onNavigationChange: () => void;
 }
 
 export function NavigationStructurePanel({ 
   sections, 
+  pendingDeletions,
   onAddSection, 
   onUpdateSectionTitle,
-  onRemoveItem,
+  onTogglePendingDeletion,
+  onBulkDelete,
+  onResetPendingDeletions,
   onSectionReorder,
   onNavigationChange 
 }: NavigationStructurePanelProps) {
@@ -88,39 +95,68 @@ export function NavigationStructurePanel({
             <Settings className="h-5 w-5" />
             Navigation Structure
           </CardTitle>
-          <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
-            <DialogTrigger asChild>
-              <Button size="sm" className="gap-2">
-                <Plus className="h-4 w-4" />
-                Add Section
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>Add New Section</DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4">
-                <Input
-                  placeholder="Section title"
-                  value={newSectionTitle}
-                  onChange={(e) => setNewSectionTitle(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && handleAddSection()}
-                  autoFocus
-                />
-                <div className="flex gap-2 justify-end">
-                  <Button variant="outline" onClick={() => setShowAddDialog(false)}>
-                    Cancel
-                  </Button>
-                  <Button onClick={handleAddSection} disabled={!newSectionTitle.trim()}>
-                    Add Section
-                  </Button>
+          <div className="flex items-center gap-2">
+            {pendingDeletions.length > 0 && (
+              <>
+                <Button 
+                  size="sm" 
+                  variant="outline" 
+                  onClick={onResetPendingDeletions}
+                  className="gap-2"
+                >
+                  <RotateCcw className="h-4 w-4" />
+                  Reset
+                </Button>
+                <Button 
+                  size="sm" 
+                  variant="destructive" 
+                  onClick={onBulkDelete}
+                  className="gap-2"
+                >
+                  <Save className="h-4 w-4" />
+                  Delete {pendingDeletions.length}
+                </Button>
+              </>
+            )}
+            <Dialog open={showAddDialog} onOpenChange={setShowAddDialog}>
+              <DialogTrigger asChild>
+                <Button size="sm" className="gap-2">
+                  <Plus className="h-4 w-4" />
+                  Add Section
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Add New Section</DialogTitle>
+                </DialogHeader>
+                <div className="space-y-4">
+                  <Input
+                    placeholder="Section title"
+                    value={newSectionTitle}
+                    onChange={(e) => setNewSectionTitle(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && handleAddSection()}
+                    autoFocus
+                  />
+                  <div className="flex gap-2 justify-end">
+                    <Button variant="outline" onClick={() => setShowAddDialog(false)}>
+                      Cancel
+                    </Button>
+                    <Button onClick={handleAddSection} disabled={!newSectionTitle.trim()}>
+                      Add Section
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </DialogContent>
-          </Dialog>
+              </DialogContent>
+            </Dialog>
+          </div>
         </div>
         <div className="text-xs text-muted-foreground">
           {sections.length} sections • Drag sections to reorder
+          {pendingDeletions.length > 0 && (
+            <span className="text-destructive font-medium">
+              {' • '}{pendingDeletions.length} item{pendingDeletions.length !== 1 ? 's' : ''} selected for deletion
+            </span>
+          )}
         </div>
       </CardHeader>
       
@@ -174,6 +210,11 @@ export function NavigationStructurePanel({
                                         <Badge variant="secondary" className="text-xs">
                                           {section.items?.length || 0} items
                                         </Badge>
+                                        {pendingDeletions.filter(d => d.sectionId === section.id).length > 0 && (
+                                          <Badge variant="destructive" className="text-xs">
+                                            {pendingDeletions.filter(d => d.sectionId === section.id).length} pending deletion
+                                          </Badge>
+                                        )}
                                       </div>
                                     </div>
                                     <Button
@@ -193,7 +234,8 @@ export function NavigationStructurePanel({
                               <NavigationItemList
                                 sectionId={section.id}
                                 items={section.items || []}
-                                onRemoveItem={(itemIndex) => onRemoveItem(section.id, itemIndex)}
+                                pendingDeletions={pendingDeletions}
+                                onTogglePendingDeletion={onTogglePendingDeletion}
                                 onNavigationChange={onNavigationChange}
                               />
                             </div>

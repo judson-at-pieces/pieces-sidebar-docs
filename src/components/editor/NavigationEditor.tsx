@@ -6,7 +6,9 @@ import { toast } from "sonner";
 import { AvailableFilesPanel } from "./AvailableFilesPanel";
 import { NavigationStructurePanel } from "./NavigationStructurePanel";
 import { FolderPreviewDialog } from "./FolderPreviewDialog";
+import { BulkDeleteDialog } from "./BulkDeleteDialog";
 import { useNavigationActions } from "./hooks/useNavigationActions";
+import { usePendingDeletions } from "./hooks/usePendingDeletions";
 import { navigationService } from "@/services/navigationService";
 
 interface NavigationEditorProps {
@@ -17,6 +19,16 @@ interface NavigationEditorProps {
 export function NavigationEditor({ fileStructure, onNavigationChange }: NavigationEditorProps) {
   const { navigation, refetch } = useNavigation();
   const [sections, setSections] = useState(navigation?.sections || []);
+
+  const {
+    pendingDeletions,
+    addPendingDeletion,
+    removePendingDeletion,
+    clearPendingDeletions,
+    isPendingDeletion
+  } = usePendingDeletions();
+
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
 
   useEffect(() => {
     if (navigation?.sections) {
@@ -84,38 +96,59 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
     }
   };
 
-  const handleRemoveItem = async (sectionId: string, itemIndex: number) => {
-    try {
-      const section = sections.find(s => s.id === sectionId);
-      if (!section || !section.items || !section.items[itemIndex]) {
-        toast.error("Item not found");
-        return;
-      }
+  const handleTogglePendingDeletion = (sectionId: string, itemIndex: number) => {
+    const section = sections.find(s => s.id === sectionId);
+    if (!section || !section.items || !section.items[itemIndex]) {
+      return;
+    }
 
-      const itemToRemove = section.items[itemIndex];
+    const item = section.items[itemIndex];
+    
+    if (isPendingDeletion(sectionId, itemIndex)) {
+      removePendingDeletion(sectionId, itemIndex);
+    } else {
+      addPendingDeletion(sectionId, itemIndex, item);
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (pendingDeletions.length === 0) return;
+    setShowBulkDeleteDialog(true);
+  };
+
+  const handleConfirmBulkDelete = async () => {
+    try {
+      // Sort deletions by index in descending order to delete from end to beginning
+      const sortedDeletions = [...pendingDeletions].sort((a, b) => b.itemIndex - a.itemIndex);
       
-      // Delete from database
-      await navigationService.deleteNavigationItem(itemToRemove.id);
+      for (const deletion of sortedDeletions) {
+        await navigationService.deleteNavigationItem(deletion.item.id);
+      }
       
       // Update local state
-      const updatedSections = sections.map(s => {
-        if (s.id === sectionId && s.items) {
-          const newItems = [...s.items];
-          newItems.splice(itemIndex, 1);
-          return { 
-            ...s, 
-            items: newItems.map((item, index) => ({ ...item, order_index: index }))
-          };
-        }
-        return s;
+      const updatedSections = sections.map(section => {
+        const sectionDeletions = sortedDeletions.filter(d => d.sectionId === section.id);
+        if (sectionDeletions.length === 0) return section;
+        
+        let newItems = [...(section.items || [])];
+        sectionDeletions.forEach(deletion => {
+          newItems.splice(deletion.itemIndex, 1);
+        });
+        
+        // Update order indices
+        newItems = newItems.map((item, index) => ({ ...item, order_index: index }));
+        
+        return { ...section, items: newItems };
       });
       
       setSections(updatedSections);
+      clearPendingDeletions();
+      setShowBulkDeleteDialog(false);
       onNavigationChange();
-      toast.success(`Removed "${itemToRemove.title}" from navigation`);
+      toast.success(`Deleted ${sortedDeletions.length} item${sortedDeletions.length !== 1 ? 's' : ''} from navigation`);
     } catch (error) {
-      console.error('Error removing item:', error);
-      toast.error("Failed to remove item from navigation");
+      console.error('Error deleting items:', error);
+      toast.error("Failed to delete items from navigation");
     }
   };
 
@@ -161,9 +194,12 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
           />
           <NavigationStructurePanel
             sections={sections}
+            pendingDeletions={pendingDeletions}
             onAddSection={handleAddSection}
             onUpdateSectionTitle={handleUpdateSectionTitle}
-            onRemoveItem={handleRemoveItem}
+            onTogglePendingDeletion={handleTogglePendingDeletion}
+            onBulkDelete={handleBulkDelete}
+            onResetPendingDeletions={clearPendingDeletions}
             onSectionReorder={handleSectionReorder}
             onNavigationChange={async () => {
               const refreshedNavigation = await refetch();
@@ -185,6 +221,15 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
           setPendingChange(null);
           setShowConfirmDialog(false);
         }}
+      />
+
+      <BulkDeleteDialog
+        open={showBulkDeleteDialog}
+        onOpenChange={setShowBulkDeleteDialog}
+        pendingDeletions={pendingDeletions}
+        sections={sections}
+        onConfirm={handleConfirmBulkDelete}
+        onCancel={() => setShowBulkDeleteDialog(false)}
       />
     </div>
   );
