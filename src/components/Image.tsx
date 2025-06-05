@@ -1,3 +1,4 @@
+
 import React from 'react';
 
 interface ImageProps {
@@ -28,13 +29,13 @@ const Image: React.FC<ImageProps> = ({
 
   const getImageClass = () => {
     if (fullwidth) {
-      return 'w-full h-auto';
+      return 'w-full h-auto rounded-lg';
     }
-    return 'max-w-full h-auto';
+    return 'max-w-full h-auto rounded-lg';
   };
 
   return (
-    <div className={`flex my-4 not-prose [&>_img]:!rounded-none ${getAlignmentClass()}`}>
+    <div className={`flex my-4 not-prose [&>_img]:!rounded-lg ${getAlignmentClass()}`}>
       <img
         src={src}
         alt={alt}

@@ -111,6 +111,11 @@ export const createComponentMappings = () => ({
     return <ExpandableImageComponent src={src} alt={caption as string} caption={(caption as string) || ''} {...props} />;
   },
 
+  // Standard image handler - ensure rounded edges for ALL images
+  img: ({ src, alt, ...props }: ImageProps) => {
+    return <img src={src} alt={alt} className="rounded-lg max-w-full h-auto" {...props} />;
+  },
+
   // Custom div handler for callouts, steps, cards, and card groups
   div: ({ children, ...props }: DivProps) => {
     // Get data attributes directly from props object
