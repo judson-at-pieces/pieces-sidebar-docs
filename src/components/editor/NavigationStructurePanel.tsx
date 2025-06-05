@@ -38,6 +38,14 @@ export function NavigationStructurePanel({
   const [newSectionTitle, setNewSectionTitle] = useState("");
   const [showAddDialog, setShowAddDialog] = useState(false);
 
+  // Debug logging
+  console.log('NavigationStructurePanel sections:', sections);
+  sections.forEach(section => {
+    console.log(`Section "${section.title}" has ${section.items?.length || 0} items:`, 
+      section.items?.map(item => ({ id: item.id, title: item.title, parent_id: item.parent_id }))
+    );
+  });
+
   const handleAddSection = () => {
     if (newSectionTitle.trim()) {
       onAddSection(newSectionTitle.trim());
@@ -147,56 +155,65 @@ export function NavigationStructurePanel({
               <Droppable droppableId="sections" type="SECTION">
                 {(provided) => (
                   <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-4">
-                    {sections.map((section, index) => (
-                      <Draggable key={section.id} draggableId={`section-${section.id}`} index={index}>
-                        {(provided, snapshot) => (
-                          <div
-                            ref={provided.innerRef}
-                            {...provided.draggableProps}
-                            className={`border rounded-lg transition-all ${
-                              snapshot.isDragging ? 'shadow-lg border-primary' : 'border-border'
-                            }`}
-                          >
-                            <NavigationSectionHeader
-                              section={section}
-                              pendingDeletions={pendingDeletions}
-                              onUpdateTitle={onUpdateSectionTitle}
-                              dragHandleProps={provided.dragHandleProps}
-                            />
-                            
-                            <div className="p-3">
-                              {section.items && section.items.length > 0 ? (
-                                <div className="space-y-1">
-                                  {/* Only show root items (items without parent_id) */}
-                                  {section.items
-                                    .filter(item => !item.parent_id)
-                                    .sort((a, b) => a.order_index - b.order_index)
-                                    .map((item, itemIndex) => {
-                                      const globalIndex = section.items!.findIndex(sectionItem => sectionItem.id === item.id);
-                                      return (
-                                        <NavigationItemDisplay
-                                          key={item.id}
-                                          item={item}
-                                          index={itemIndex}
-                                          sectionId={section.id}
-                                          pendingDeletions={pendingDeletions}
-                                          onTogglePendingDeletion={onTogglePendingDeletion}
-                                          globalIndex={globalIndex}
-                                          allItems={section.items || []}
-                                        />
-                                      );
-                                    })}
-                                </div>
-                              ) : (
-                                <div className="text-center text-muted-foreground py-4">
-                                  <p className="text-sm">No items in this section</p>
-                                </div>
-                              )}
+                    {sections.map((section, index) => {
+                      console.log(`Rendering section "${section.title}" with ${section.items?.length || 0} items`);
+                      
+                      return (
+                        <Draggable key={section.id} draggableId={`section-${section.id}`} index={index}>
+                          {(provided, snapshot) => (
+                            <div
+                              ref={provided.innerRef}
+                              {...provided.draggableProps}
+                              className={`border rounded-lg transition-all ${
+                                snapshot.isDragging ? 'shadow-lg border-primary' : 'border-border'
+                              }`}
+                            >
+                              <NavigationSectionHeader
+                                section={section}
+                                pendingDeletions={pendingDeletions}
+                                onUpdateTitle={onUpdateSectionTitle}
+                                dragHandleProps={provided.dragHandleProps}
+                              />
+                              
+                              <div className="p-3">
+                                {section.items && section.items.length > 0 ? (
+                                  <div className="space-y-1">
+                                    {/* Only show root items (items without parent_id) */}
+                                    {section.items
+                                      .filter(item => {
+                                        const isRootItem = !item.parent_id;
+                                        console.log(`Item "${item.title}" is root:`, isRootItem, 'parent_id:', item.parent_id);
+                                        return isRootItem;
+                                      })
+                                      .sort((a, b) => a.order_index - b.order_index)
+                                      .map((item, itemIndex) => {
+                                        const globalIndex = section.items!.findIndex(sectionItem => sectionItem.id === item.id);
+                                        console.log(`Rendering root item "${item.title}" with globalIndex:`, globalIndex);
+                                        return (
+                                          <NavigationItemDisplay
+                                            key={item.id}
+                                            item={item}
+                                            index={itemIndex}
+                                            sectionId={section.id}
+                                            pendingDeletions={pendingDeletions}
+                                            onTogglePendingDeletion={onTogglePendingDeletion}
+                                            globalIndex={globalIndex}
+                                            allItems={section.items || []}
+                                          />
+                                        );
+                                      })}
+                                  </div>
+                                ) : (
+                                  <div className="text-center text-muted-foreground py-4">
+                                    <p className="text-sm">No items in this section</p>
+                                  </div>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                        )}
-                      </Draggable>
-                    ))}
+                          )}
+                        </Draggable>
+                      );
+                    })}
                     {provided.placeholder}
                   </div>
                 )}

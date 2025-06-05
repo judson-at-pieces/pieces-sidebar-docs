@@ -85,7 +85,12 @@ export class NavigationService {
         return this.processStaticNavigation();
       }
       
+      console.log('Raw navigation data from database:', data);
+      
       const processedData = this.processNavigationData(data as NavigationStructure);
+      
+      console.log('Processed navigation data:', processedData);
+      
       return processedData || this.processStaticNavigation();
     } catch (error) {
       console.warn('Error in getNavigationStructure, using static navigation:', error);
@@ -94,11 +99,42 @@ export class NavigationService {
   }
 
   private processNavigationData(data: NavigationStructure): NavigationStructure {
-    return {
-      sections: data.sections.map(section => ({
+    console.log('Processing navigation data:', data);
+    
+    const processedSections = data.sections.map(section => {
+      console.log(`Processing section "${section.title}" with items:`, section.items);
+      
+      // Check for potential issues with the items
+      if (section.items) {
+        const duplicateTitles = section.items.reduce((acc, item, index) => {
+          const count = section.items.filter(i => i.title === item.title).length;
+          if (count > 1) acc.push(`${item.title} (appears ${count} times)`);
+          return acc;
+        }, [] as string[]);
+        
+        if (duplicateTitles.length > 0) {
+          console.warn(`Section "${section.title}" has duplicate items:`, duplicateTitles);
+        }
+        
+        // Check for circular parent references
+        section.items.forEach(item => {
+          if (item.parent_id) {
+            const parent = section.items.find(i => i.id === item.parent_id);
+            if (!parent) {
+              console.warn(`Item "${item.title}" has parent_id "${item.parent_id}" but parent not found in section`);
+            }
+          }
+        });
+      }
+      
+      return {
         ...section,
         items: mergeFolderAndMarkdownItems(section.items || []),
-      })),
+      };
+    });
+    
+    return {
+      sections: processedSections,
     };
   }
 
