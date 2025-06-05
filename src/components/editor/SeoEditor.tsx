@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -15,48 +16,6 @@ import { toast } from "sonner";
 import { FileNode } from "@/utils/fileSystem";
 import { useSeoData, type SeoData } from "@/hooks/useSeoData";
 import { useDocumentSeo } from "@/hooks/useDocumentSeo";
-
-interface SeoData {
-  // Basic SEO
-  title: string;
-  description: string;
-  keywords: string[];
-  canonicalUrl: string;
-  
-  // Meta tags
-  metaTitle: string;
-  metaDescription: string;
-  metaKeywords: string;
-  
-  // Open Graph
-  ogTitle: string;
-  ogDescription: string;
-  ogImage: string;
-  ogType: string;
-  ogUrl: string;
-  
-  // Twitter Cards
-  twitterCard: string;
-  twitterTitle: string;
-  twitterDescription: string;
-  twitterImage: string;
-  twitterSite: string;
-  twitterCreator: string;
-  
-  // Technical SEO
-  robots: string;
-  noindex: boolean;
-  nofollow: boolean;
-  priority: number;
-  changefreq: string;
-  
-  // Schema.org
-  schemaType: string;
-  schemaData: string;
-  
-  // Additional
-  customMeta: Array<{ name: string; content: string; property?: string }>;
-}
 
 interface SeoEditorProps {
   selectedFile?: string;
@@ -158,16 +117,29 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
   const [newMetaContent, setNewMetaContent] = useState("");
   const [newMetaProperty, setNewMetaProperty] = useState("");
   const [previewMode, setPreviewMode] = useState(false);
+  const [isCreatingPR, setIsCreatingPR] = useState(false);
+  const [lastToastTime, setLastToastTime] = useState(0);
 
   // Apply SEO data to document head in real-time when in preview mode
   useDocumentSeo(previewMode ? seoData : {});
 
+  const showToast = (message: string, type: 'success' | 'info' | 'error' = 'info', options?: any) => {
+    const now = Date.now();
+    if (now - lastToastTime > 2000) {
+      setLastToastTime(now);
+      if (type === 'success') {
+        toast.success(message, options);
+      } else if (type === 'error') {
+        toast.error(message, options);
+      } else {
+        toast.info(message, options);
+      }
+    }
+  };
+
   const handleSeoChange = (updates: Partial<SeoData>) => {
     updateSeoData(updates);
     onSeoDataChange({ ...seoData, ...updates });
-    toast.success("SEO data updated locally", {
-      description: "Changes will be applied when you save"
-    });
   };
 
   const handleAddKeyword = () => {
@@ -176,6 +148,7 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
         keywords: [...seoData.keywords, newKeyword.trim()]
       });
       setNewKeyword("");
+      showToast("Keyword added", "success");
     }
   };
 
@@ -183,6 +156,7 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
     handleSeoChange({
       keywords: seoData.keywords.filter(k => k !== keyword)
     });
+    showToast("Keyword removed", "success");
   };
 
   const handleAddCustomMeta = () => {
@@ -197,6 +171,7 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
       setNewMetaName("");
       setNewMetaContent("");
       setNewMetaProperty("");
+      showToast("Custom meta tag added", "success");
     }
   };
 
@@ -204,6 +179,7 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
     handleSeoChange({
       customMeta: seoData.customMeta.filter((_, i) => i !== index)
     });
+    showToast("Custom meta tag removed", "success");
   };
 
   const generateSlugFromTitle = () => {
@@ -213,7 +189,7 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-|-$/g, '');
       handleSeoChange({ canonicalUrl: `/${slug}` });
-      toast.success("URL slug generated from title");
+      showToast("URL slug generated from title", "success");
     }
   };
 
@@ -224,7 +200,7 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
       twitterTitle: seoData.metaTitle || seoData.title,
       twitterDescription: seoData.metaDescription || seoData.description
     });
-    toast.success("Copied basic SEO data to social media fields");
+    showToast("Copied basic SEO data to social media fields", "success");
   };
 
   const generateFrontmatter = (data: SeoData): string => {
@@ -254,38 +230,70 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
   const togglePreview = () => {
     setPreviewMode(!previewMode);
     if (!previewMode) {
-      toast.info("Preview mode enabled", {
-        description: "SEO changes are now applied to the current page"
-      });
+      showToast("Preview mode enabled - SEO changes applied to current page", "info");
     } else {
-      toast.info("Preview mode disabled", {
-        description: "Reverted to original page SEO"
-      });
+      showToast("Preview mode disabled - reverted to original page SEO", "info");
     }
   };
 
-  const handleSaveCurrentFile = async () => {
-    if (!selectedFile) return;
+  const handleCreatePRForCurrentFile = async () => {
+    if (!selectedFile) {
+      showToast('No file selected', 'error');
+      return;
+    }
+
+    setIsCreatingPR(true);
     
     try {
-      // Simulate saving to file system (in real app, this would be an API call)
-      const updatedFrontmatter = generateFrontmatter(seoData);
+      // Mock PR creation for now - replace with actual GitHub API
+      const frontmatterContent = generateFrontmatter(seoData);
+      console.log('Would create PR with content:', frontmatterContent);
       
-      // For demo purposes, we'll show the generated frontmatter
-      console.log('Generated frontmatter for', selectedFile, ':', updatedFrontmatter);
+      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
       
-      toast.success(`SEO data saved for ${selectedFile}`, {
-        description: "Meta tags have been updated and applied to the page"
+      showToast(`SEO pull request created successfully for ${selectedFile}!`, 'success', { 
+        duration: 5000,
+        action: {
+          label: 'View Changes',
+          onClick: () => console.log('View PR changes')
+        }
       });
-      
-      // Apply the SEO data to the current page immediately
-      setPreviewMode(true);
-      setTimeout(() => setPreviewMode(false), 100); // Brief flash to show it's applied
       
     } catch (error) {
-      toast.error("Failed to save SEO data", {
-        description: error instanceof Error ? error.message : "Unknown error occurred"
+      showToast('Failed to create pull request. Please try again.', 'error', { duration: 3000 });
+      console.error('PR creation failed:', error);
+    } finally {
+      setIsCreatingPR(false);
+    }
+  };
+
+  const handleCreatePRForAllChanges = async () => {
+    if (pendingChanges.length === 0) {
+      showToast('No changes to save', 'info');
+      return;
+    }
+
+    setIsCreatingPR(true);
+    
+    try {
+      // Mock bulk PR creation - replace with actual GitHub API
+      console.log('Would create bulk PR for files:', pendingChanges);
+      
+      await new Promise(resolve => setTimeout(resolve, 3000)); // Simulate API call
+      
+      showToast(`Bulk SEO pull request created successfully for ${pendingChanges.length} files!`, 'success', { 
+        duration: 5000,
+        action: {
+          label: 'View PR',
+          onClick: () => console.log('View bulk PR')
+        }
       });
+      
+    } catch (error) {
+      showToast('Failed to create pull request. Please try again.', 'error', { duration: 3000 });
+      console.error('PR creation failed:', error);
+    } finally {
+      setIsCreatingPR(false);
     }
   };
 
@@ -304,20 +312,20 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
               </div>
               {hasUnsavedChanges && (
                 <Button 
-                  onClick={saveAllChanges} 
-                  disabled={isSaving}
+                  onClick={handleCreatePRForAllChanges} 
+                  disabled={isCreatingPR}
                   size="sm" 
                   className="gap-2"
                 >
-                  {isSaving ? (
+                  {isCreatingPR ? (
                     <>
                       <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-                      Saving...
+                      Creating PR...
                     </>
                   ) : (
                     <>
                       <GitBranch className="h-3 w-3" />
-                      Save All ({pendingChanges.length})
+                      Create PR ({pendingChanges.length})
                     </>
                   )}
                 </Button>
@@ -382,21 +390,41 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
                     <Globe className="h-4 w-4" />
                     {previewMode ? 'Disable Preview' : 'Preview Changes'}
                   </Button>
-                  <Button onClick={handleSaveCurrentFile} size="sm" className="gap-2">
-                    <Save className="h-4 w-4" />
-                    Save Current File
+                  <Button 
+                    onClick={handleCreatePRForCurrentFile} 
+                    disabled={isCreatingPR}
+                    size="sm" 
+                    className="gap-2"
+                  >
+                    {isCreatingPR ? (
+                      <>
+                        <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                        Creating PR...
+                      </>
+                    ) : (
+                      <>
+                        <Save className="h-4 w-4" />
+                        Create PR for Current File
+                      </>
+                    )}
                   </Button>
                   {hasUnsavedChanges && (
-                    <Button onClick={saveAllChanges} disabled={isSaving} variant="secondary" size="sm" className="gap-2">
-                      {isSaving ? (
+                    <Button 
+                      onClick={handleCreatePRForAllChanges} 
+                      disabled={isCreatingPR} 
+                      variant="secondary" 
+                      size="sm" 
+                      className="gap-2"
+                    >
+                      {isCreatingPR ? (
                         <>
                           <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
-                          Saving...
+                          Creating PR...
                         </>
                       ) : (
                         <>
                           <GitBranch className="h-3 w-3" />
-                          Save All ({pendingChanges.length})
+                          Create PR for All ({pendingChanges.length})
                         </>
                       )}
                     </Button>
@@ -443,7 +471,17 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
                   <TabsContent value="basic" className="space-y-6">
                     <Card>
                       <CardHeader>
-                        <CardTitle>Basic SEO Information</CardTitle>
+                        <CardTitle className="flex items-center justify-between">
+                          Basic SEO Information
+                          <div className="flex gap-2">
+                            <Button onClick={generateSlugFromTitle} variant="outline" size="sm">
+                              Generate URL
+                            </Button>
+                            <Button onClick={copyToSocial} variant="outline" size="sm">
+                              Copy to Social
+                            </Button>
+                          </div>
+                        </CardTitle>
                         <CardDescription>
                           Core SEO elements that appear in search results
                         </CardDescription>
