@@ -23,8 +23,11 @@ const Steps: React.FC<StepsProps> = ({ children }) => {
     console.log('Steps processing children:', childrenArray.length, childrenArray);
     
     return childrenArray.map((child, index) => {
+      console.log(`Processing child ${index}:`, child);
+      
       // Handle React Step components (traditional JSX)
       if (React.isValidElement(child) && child.type === Step) {
+        console.log('Found Step component with props:', child.props);
         return {
           number: index + 1,
           title: child.props.title,
@@ -38,6 +41,8 @@ const Steps: React.FC<StepsProps> = ({ children }) => {
         const stepNum = props['data-step'];
         const stepTitle = props['data-step-title'];
         
+        console.log('Found div with data attributes:', { stepNum, stepTitle });
+        
         if (stepNum && stepTitle) {
           return {
             number: parseInt(stepNum, 10) || index + 1,
@@ -47,14 +52,43 @@ const Steps: React.FC<StepsProps> = ({ children }) => {
         }
       }
       
-      // Fallback for any other content
+      // Handle regular divs that might contain step content
+      if (React.isValidElement(child) && child.props) {
+        const props = child.props as any;
+        console.log('Processing regular element:', { type: child.type, props: Object.keys(props) });
+        
+        // If it has a title prop, treat it as a step
+        if (props.title) {
+          return {
+            number: index + 1,
+            title: props.title,
+            content: props.children
+          };
+        }
+      }
+      
+      // Fallback for any other content - try to extract title from content
+      let title = `Step ${index + 1}`;
+      let content = child;
+      
+      // If child is a string that starts with a heading-like pattern, extract it
+      if (typeof child === 'string') {
+        const match = child.match(/^(.+?)\n\n?([\s\S]*)$/);
+        if (match) {
+          title = match[1].trim();
+          content = match[2].trim();
+        }
+      }
+      
       return {
         number: index + 1,
-        title: `Step ${index + 1}`,
-        content: child
+        title,
+        content
       };
-    }).filter(step => step.content !== undefined && step.content !== null);
+    }).filter(step => step.content !== undefined && step.content !== null && step.content !== '');
   }, [children]);
+
+  console.log('Final processed steps:', processedSteps);
 
   if (!processedSteps.length) {
     return null;
