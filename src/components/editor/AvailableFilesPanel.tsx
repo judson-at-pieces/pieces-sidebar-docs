@@ -432,9 +432,9 @@ export function AvailableFilesPanel({ fileStructure, isFileUsed, sections, onAdd
   };
 
   const handleConfirmBulkMove = () => {
-    if (!bulkSelectedSection) return;
+    if (!bulkSelectedSection || pendingAdditions.length === 0) return;
 
-    // Process each pending addition
+    // Process each pending addition individually
     pendingAdditions.forEach(addition => {
       if (addition.type === 'folder') {
         const previewItems = createNavigationItemsFromFolder(addition.node);
@@ -464,7 +464,10 @@ export function AvailableFilesPanel({ fileStructure, isFileUsed, sections, onAdd
       }
     });
 
+    // Show preview for the bulk operation
     onShowPreview(true);
+    
+    // Clear selections and close dialog
     clearPendingAdditions();
     setShowBulkMoveDialog(false);
     setBulkSelectedSection("");
