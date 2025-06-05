@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -166,7 +167,7 @@ function DocsSidebar({ className, onNavigate }: { className?: string; onNavigate
 
   if (isLoading) {
     return (
-      <ScrollArea className={cn("h-full w-full lg:w-64", className)}>
+      <ScrollArea className={cn("h-full w-full lg:w-72", className)}>
         <div className="space-y-4 py-4">
           <div className="px-3 py-2">
             <div className="animate-pulse space-y-2">
@@ -182,7 +183,7 @@ function DocsSidebar({ className, onNavigate }: { className?: string; onNavigate
 
   if (error) {
     return (
-      <ScrollArea className={cn("h-full w-full lg:w-64", className)}>
+      <ScrollArea className={cn("h-full w-full lg:w-72", className)}>
         <div className="space-y-4 py-4">
           <div className="px-3 py-2">
             <div className="text-sm text-muted-foreground">
@@ -195,7 +196,7 @@ function DocsSidebar({ className, onNavigate }: { className?: string; onNavigate
   }
 
   return (
-    <ScrollArea className={cn("h-full w-full lg:w-80", className)}>
+    <ScrollArea className={cn("h-full w-full lg:w-72", className)}>
       <div className="space-y-4 py-4">
         <div className="px-3 py-2">
           <div className="mb-6">
@@ -279,7 +280,7 @@ export default function DocsLayout() {
       <div className="lg:flex">
         {/* Desktop sidebar */}
         <div className="hidden lg:flex lg:flex-shrink-0">
-          <div className="flex flex-col w-80 border-r border-border bg-card/95 backdrop-blur-sm">
+          <div className="flex flex-col w-72 border-r border-border bg-card/95 backdrop-blur-sm">
             <div className="flex items-center justify-between p-4 border-b border-border">
               <Link to="/" className="flex items-center space-x-2">
                 <PiecesLogo className="w-8 h-8" alt="Pieces" />
