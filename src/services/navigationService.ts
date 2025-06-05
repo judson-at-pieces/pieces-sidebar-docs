@@ -35,13 +35,50 @@ function buildHierarchy(items: NavigationItem[]): NavigationItem[] {
   const itemMap = new Map<string, NavigationItem>();
   const rootItems: NavigationItem[] = [];
   
-  // First pass: create map of all items
+  // First, group items by their href path to identify folder/file pairs
+  const pathGroups = new Map<string, NavigationItem[]>();
+  
   items.forEach(item => {
+    const basePath = item.href;
+    if (!pathGroups.has(basePath)) {
+      pathGroups.set(basePath, []);
+    }
+    pathGroups.get(basePath)!.push(item);
+  });
+  
+  // Process items, handling folder/file conflicts
+  const processedItems: NavigationItem[] = [];
+  
+  pathGroups.forEach((groupItems, path) => {
+    if (groupItems.length === 1) {
+      // Single item, keep as is
+      processedItems.push(groupItems[0]);
+    } else {
+      // Multiple items with same path - prioritize the one that acts as a folder
+      // Look for items that have children or are parent items
+      const hasChildren = items.some(item => item.parent_id && groupItems.some(gi => gi.id === item.parent_id));
+      
+      if (hasChildren) {
+        // Find the item that should be the folder (usually the one with file_path ending in .md)
+        const folderItem = groupItems.find(item => 
+          item.file_path && (item.file_path.endsWith('.md') || item.file_path.endsWith('/index.md'))
+        ) || groupItems[0];
+        
+        processedItems.push(folderItem);
+      } else {
+        // No children, just take the first one
+        processedItems.push(groupItems[0]);
+      }
+    }
+  });
+  
+  // Now build the hierarchy with the processed items
+  processedItems.forEach(item => {
     itemMap.set(item.id, { ...item, items: [] });
   });
   
   // Second pass: build parent-child relationships
-  items.forEach(item => {
+  processedItems.forEach(item => {
     const itemWithChildren = itemMap.get(item.id)!;
     
     if (item.parent_id && itemMap.has(item.parent_id)) {
@@ -60,7 +97,7 @@ function buildHierarchy(items: NavigationItem[]): NavigationItem[] {
   rootItems.sort((a, b) => a.order_index - b.order_index);
   
   console.log('Built hierarchy:', {
-    totalItems: items.length,
+    totalItems: processedItems.length,
     rootItems: rootItems.length,
     hierarchy: rootItems.map(item => ({
       title: item.title,
