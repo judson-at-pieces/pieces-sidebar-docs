@@ -35,13 +35,47 @@ function buildHierarchy(items: NavigationItem[]): NavigationItem[] {
   const itemMap = new Map<string, NavigationItem>();
   const rootItems: NavigationItem[] = [];
   
-  // First pass: create map of all items
+  // First pass: create map of all items and identify folder/file pairs to deduplicate
+  const processedItems = new Map<string, NavigationItem>();
+  const folderPaths = new Set<string>();
+  
+  // Identify all folder paths (items that have children or are parents)
   items.forEach(item => {
-    itemMap.set(item.id, { ...item, items: [] });
+    if (items.some(i => i.parent_id === item.id)) {
+      folderPaths.add(item.href);
+    }
+  });
+  
+  // Process items, deduplicating folder/file pairs
+  items.forEach(item => {
+    const itemPath = item.href;
+    
+    // Check if this is a standalone file that has a corresponding folder
+    const hasCorrespondingFolder = folderPaths.has(itemPath);
+    
+    // If there's both a folder and file with same path, prefer the folder (parent item)
+    if (hasCorrespondingFolder) {
+      const isFolder = items.some(i => i.parent_id === item.id);
+      if (!isFolder) {
+        // This is the standalone file, skip it since we have a folder
+        console.log(`Skipping standalone file ${item.title} because folder exists`);
+        return;
+      }
+    }
+    
+    processedItems.set(item.id, { ...item, items: [] });
+  });
+  
+  // Convert processed items to array
+  const deduplicatedItems = Array.from(processedItems.values());
+  
+  // Create map for hierarchy building
+  deduplicatedItems.forEach(item => {
+    itemMap.set(item.id, item);
   });
   
   // Second pass: build parent-child relationships
-  items.forEach(item => {
+  deduplicatedItems.forEach(item => {
     const itemWithChildren = itemMap.get(item.id)!;
     
     if (item.parent_id && itemMap.has(item.parent_id)) {
@@ -61,6 +95,7 @@ function buildHierarchy(items: NavigationItem[]): NavigationItem[] {
   
   console.log('Built hierarchy:', {
     totalItems: items.length,
+    deduplicatedItems: deduplicatedItems.length,
     rootItems: rootItems.length,
     hierarchy: rootItems.map(item => ({
       title: item.title,
@@ -77,7 +112,7 @@ function buildHierarchy(items: NavigationItem[]): NavigationItem[] {
 function mergeFolderAndMarkdownItems(items: NavigationItem[]): NavigationItem[] {
   console.log('Merging folder and markdown items:', items.length);
   
-  // Build hierarchical structure first
+  // Build hierarchical structure with deduplication
   const hierarchicalItems = buildHierarchy(items);
   
   console.log('After building hierarchy, root items:', hierarchicalItems.length);
