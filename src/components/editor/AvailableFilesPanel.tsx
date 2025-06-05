@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { FileText, Folder, FolderOpen, Plus, ChevronDown, ChevronRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -38,6 +39,41 @@ function FileTreeItem({ node, depth, isUsed, sections, onAddToSection, onShowPre
   const [isExpanded, setIsExpanded] = useState(false);
   const [selectedSection, setSelectedSection] = useState<string>("");
   const paddingLeft = depth * 16;
+
+  // Recursively count all files in a folder and its subfolders
+  const countAllFilesInFolder = (folderNode: FileNode): number => {
+    if (!folderNode.children) return 0;
+    
+    let count = 0;
+    for (const child of folderNode.children) {
+      if (child.type === 'file') {
+        count++;
+      } else if (child.type === 'folder') {
+        count += countAllFilesInFolder(child);
+      }
+    }
+    return count;
+  };
+
+  // Recursively count available files in a folder and its subfolders
+  const countAvailableFilesInFolder = (folderNode: FileNode): number => {
+    if (!folderNode.children) return 0;
+    
+    const indexFileName = `${folderNode.name}.md`;
+    let count = 0;
+    
+    for (const child of folderNode.children) {
+      if (child.type === 'file') {
+        // Don't count index files or used files
+        if (child.name !== indexFileName && !isUsed(child.path)) {
+          count++;
+        }
+      } else if (child.type === 'folder') {
+        count += countAvailableFilesInFolder(child);
+      }
+    }
+    return count;
+  };
 
   // Create navigation items from folder structure with proper hierarchy
   const createNavigationItemsFromFolder = (folderNode: FileNode, parentId?: string): NavigationItem[] => {
@@ -197,7 +233,13 @@ function FileTreeItem({ node, depth, isUsed, sections, onAddToSection, onShowPre
   const showFolder = hasIndexFile(node) || hasAvailableChildren(node);
   if (!showFolder) return null;
 
-  const availableChildCount = node.children?.filter(child => {
+  // Count all files and available files including subfolders
+  const totalFilesInFolder = countAllFilesInFolder(node);
+  const availableFilesInFolder = countAvailableFilesInFolder(node);
+  const usedFilesInFolder = totalFilesInFolder - availableFilesInFolder;
+
+  // Count direct children for immediate visibility
+  const directAvailableChildren = node.children?.filter(child => {
     if (child.type === 'file') {
       return child.name !== `${node.name}.md` && !isUsed(child.path);
     }
@@ -239,11 +281,23 @@ function FileTreeItem({ node, depth, isUsed, sections, onAddToSection, onShowPre
           )}
           <div className="flex-1 min-w-0">
             <span className="text-sm font-medium">{node.name}</span>
-            {availableChildCount > 0 && (
-              <Badge variant="outline" className="ml-2 text-xs">
-                {availableChildCount} available
-              </Badge>
-            )}
+            <div className="flex items-center gap-2 mt-1">
+              {availableFilesInFolder > 0 && (
+                <Badge variant="outline" className="text-xs">
+                  {availableFilesInFolder} available
+                </Badge>
+              )}
+              {totalFilesInFolder > 0 && (
+                <Badge variant="secondary" className="text-xs">
+                  {totalFilesInFolder} total
+                </Badge>
+              )}
+              {usedFilesInFolder > 0 && (
+                <Badge variant="default" className="text-xs bg-muted text-muted-foreground">
+                  {usedFilesInFolder} used
+                </Badge>
+              )}
+            </div>
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             <Select value={selectedSection} onValueChange={setSelectedSection}>
@@ -358,6 +412,11 @@ export function AvailableFilesPanel({ fileStructure, isFileUsed, sections, onAdd
             <Badge variant="secondary" className="text-xs">
               {totalFiles} total
             </Badge>
+            {usedFiles > 0 && (
+              <Badge variant="default" className="text-xs bg-muted text-muted-foreground">
+                {usedFiles} used
+              </Badge>
+            )}
           </div>
         </CardTitle>
         {totalFiles > 0 && (
