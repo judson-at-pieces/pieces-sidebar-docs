@@ -1,14 +1,14 @@
 
 import { useState } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
-import { Plus, Settings, Trash2, GripVertical, Save, RotateCcw } from "lucide-react";
+import { Plus, Settings, GripVertical, Save, RotateCcw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { NavigationSection, NavigationItem } from "@/services/navigationService";
+import { NavigationSection } from "@/services/navigationService";
 import { NavigationItemList } from "./NavigationItemList";
 import { PendingDeletion } from "./hooks/usePendingDeletions";
 
