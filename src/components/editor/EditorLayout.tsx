@@ -3,9 +3,10 @@ import { useFileStructure } from "@/hooks/useFileStructure";
 import { NavigationEditor } from "./NavigationEditor";
 import { EditorSidebar } from "./EditorSidebar";
 import { EditorMain } from "./EditorMain";
+import { SeoEditor } from "./SeoEditor";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/auth/UserMenu";
-import { Settings, FileText, Navigation, Home } from "lucide-react";
+import { Settings, FileText, Navigation, Home, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 
@@ -16,7 +17,7 @@ export function EditorLayout() {
   const [content, setContent] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
   const [modifiedFiles, setModifiedFiles] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<'navigation' | 'content'>('content');
+  const [activeTab, setActiveTab] = useState<'navigation' | 'content' | 'seo'>('content');
   const [loadingContent, setLoadingContent] = useState(false);
 
   const handleFileSelect = async (filePath: string) => {
@@ -155,6 +156,12 @@ Start editing to see the live preview!
     handleFileSelect(filePath);
   };
 
+  const handleSeoDataChange = (seoData: any) => {
+    console.log('SEO data updated for:', selectedFile, seoData);
+    // Here you would typically save the SEO data to your backend or local storage
+    // For now, we'll just log it
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted/20">
@@ -271,6 +278,15 @@ Start editing to see the live preview!
                   <FileText className="h-4 w-4" />
                   Content
                 </Button>
+                <Button
+                  onClick={() => setActiveTab('seo')}
+                  variant={activeTab === 'seo' ? 'default' : 'ghost'}
+                  size="sm"
+                  className="gap-2 transition-all duration-200"
+                >
+                  <Search className="h-4 w-4" />
+                  SEO
+                </Button>
               </div>
               
               {activeTab === 'content' && modifiedFiles.size > 0 && (
@@ -289,6 +305,13 @@ Start editing to see the live preview!
                 <NavigationEditor 
                   fileStructure={fileStructure} 
                   onNavigationChange={refetch}
+                />
+              </div>
+            ) : activeTab === 'seo' ? (
+              <div className="h-full animate-in fade-in slide-in-from-right-2 duration-300">
+                <SeoEditor
+                  selectedFile={selectedFile}
+                  onSeoDataChange={handleSeoDataChange}
                 />
               </div>
             ) : (

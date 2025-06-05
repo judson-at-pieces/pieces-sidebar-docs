@@ -1,9 +1,10 @@
 
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Navigation, Settings } from "lucide-react";
+import { FileText, Navigation, Settings, Search } from "lucide-react";
 import { EditorMain } from "./EditorMain";
 import { NavigationEditor } from "./NavigationEditor";
+import { SeoEditor } from "./SeoEditor";
 import { FileNode } from "@/utils/fileSystem";
 
 interface EditorTabsProps {
@@ -27,9 +28,14 @@ export function EditorTabs({
 }: EditorTabsProps) {
   const [activeTab, setActiveTab] = useState("content");
 
+  const handleSeoDataChange = (seoData: any) => {
+    console.log('SEO data updated for:', selectedFile, seoData);
+    // Here you would typically save the SEO data to your backend or local storage
+  };
+
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
-      <TabsList className="grid w-full grid-cols-3 m-4 mb-0">
+      <TabsList className="grid w-full grid-cols-4 m-4 mb-0">
         <TabsTrigger value="content" className="flex items-center gap-2">
           <FileText className="h-4 w-4" />
           Content Editor
@@ -37,6 +43,10 @@ export function EditorTabs({
         <TabsTrigger value="navigation" className="flex items-center gap-2">
           <Navigation className="h-4 w-4" />
           Navigation Editor
+        </TabsTrigger>
+        <TabsTrigger value="seo" className="flex items-center gap-2">
+          <Search className="h-4 w-4" />
+          SEO Editor
         </TabsTrigger>
         <TabsTrigger value="settings" className="flex items-center gap-2">
           <Settings className="h-4 w-4" />
@@ -51,6 +61,7 @@ export function EditorTabs({
           onContentChange={onContentChange}
           onSave={onSave}
           hasChanges={hasChanges}
+          saving={false}
         />
       </TabsContent>
       
@@ -58,6 +69,13 @@ export function EditorTabs({
         <NavigationEditor
           fileStructure={fileStructure}
           onNavigationChange={onNavigationChange}
+        />
+      </TabsContent>
+      
+      <TabsContent value="seo" className="flex-1 m-0">
+        <SeoEditor
+          selectedFile={selectedFile}
+          onSeoDataChange={handleSeoDataChange}
         />
       </TabsContent>
       
