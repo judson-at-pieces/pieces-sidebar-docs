@@ -167,17 +167,25 @@ export function NavigationStructurePanel({
                             <div className="p-3">
                               {section.items && section.items.length > 0 ? (
                                 <div className="space-y-1">
-                                  {section.items.map((item, itemIndex) => (
-                                    <NavigationItemDisplay
-                                      key={item.id}
-                                      item={item}
-                                      index={itemIndex}
-                                      sectionId={section.id}
-                                      pendingDeletions={pendingDeletions}
-                                      onTogglePendingDeletion={onTogglePendingDeletion}
-                                      globalIndex={itemIndex}
-                                    />
-                                  ))}
+                                  {/* Only show root items (items without parent_id) */}
+                                  {section.items
+                                    .filter(item => !item.parent_id)
+                                    .sort((a, b) => a.order_index - b.order_index)
+                                    .map((item, itemIndex) => {
+                                      const globalIndex = section.items!.findIndex(sectionItem => sectionItem.id === item.id);
+                                      return (
+                                        <NavigationItemDisplay
+                                          key={item.id}
+                                          item={item}
+                                          index={itemIndex}
+                                          sectionId={section.id}
+                                          pendingDeletions={pendingDeletions}
+                                          onTogglePendingDeletion={onTogglePendingDeletion}
+                                          globalIndex={globalIndex}
+                                          allItems={section.items || []}
+                                        />
+                                      );
+                                    })}
                                 </div>
                               ) : (
                                 <div className="text-center text-muted-foreground py-4">

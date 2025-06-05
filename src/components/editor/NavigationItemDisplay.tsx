@@ -24,6 +24,7 @@ interface NavigationItemDisplayProps {
   onTogglePendingDeletion: (sectionId: string, itemIndex: number) => void;
   depth?: number;
   globalIndex: number;
+  allItems: NavigationItem[];
 }
 
 export function NavigationItemDisplay({ 
@@ -33,12 +34,18 @@ export function NavigationItemDisplay({
   pendingDeletions, 
   onTogglePendingDeletion, 
   depth = 0,
-  globalIndex
+  globalIndex,
+  allItems
 }: NavigationItemDisplayProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const paddingLeft = depth * 16;
   
-  const hasChildren = item.items && item.items.length > 0;
+  // Find children based on parent_id
+  const children = allItems.filter(child => child.parent_id === item.id);
+  const hasChildren = children.length > 0;
+  
+  // Determine if this item is a folder (has children or ends without .md)
+  const isFolder = hasChildren || (!item.href.endsWith('.md') && !item.file_path?.endsWith('.md'));
   
   // Find if this item is pending deletion using global index
   const isPendingDeletion = pendingDeletions.some(
@@ -82,7 +89,11 @@ export function NavigationItemDisplay({
               </Button>
             ) : (
               <div className="h-6 w-6 flex items-center justify-center">
-                <FileText className="h-4 w-4 text-muted-foreground" />
+                {isFolder ? (
+                  <Folder className="h-4 w-4 text-blue-600" />
+                ) : (
+                  <FileText className="h-4 w-4 text-muted-foreground" />
+                )}
               </div>
             )}
             
@@ -100,7 +111,7 @@ export function NavigationItemDisplay({
               </span>
               {hasChildren && (
                 <Badge variant="secondary" className="text-xs mt-1">
-                  {item.items!.length} items
+                  {children.length} items
                 </Badge>
               )}
             </div>
@@ -125,21 +136,24 @@ export function NavigationItemDisplay({
           
           {hasChildren && isExpanded && (
             <div className="mt-1">
-              {item.items!.map((childItem, childIndex) => {
-                const childGlobalIndex = globalIndex + childIndex + 1; // Simple increment for nested items
-                return (
-                  <NavigationItemDisplay
-                    key={childItem.id}
-                    item={childItem}
-                    index={childIndex}
-                    sectionId={sectionId}
-                    pendingDeletions={pendingDeletions}
-                    onTogglePendingDeletion={onTogglePendingDeletion}
-                    depth={depth + 1}
-                    globalIndex={childGlobalIndex}
-                  />
-                );
-              })}
+              {children
+                .sort((a, b) => a.order_index - b.order_index)
+                .map((childItem, childIndex) => {
+                  const childGlobalIndex = allItems.findIndex(item => item.id === childItem.id);
+                  return (
+                    <NavigationItemDisplay
+                      key={childItem.id}
+                      item={childItem}
+                      index={childIndex}
+                      sectionId={sectionId}
+                      pendingDeletions={pendingDeletions}
+                      onTogglePendingDeletion={onTogglePendingDeletion}
+                      depth={depth + 1}
+                      globalIndex={childGlobalIndex}
+                      allItems={allItems}
+                    />
+                  );
+                })}
             </div>
           )}
         </div>
