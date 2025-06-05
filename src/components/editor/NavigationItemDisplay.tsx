@@ -37,7 +37,7 @@ export function NavigationItemDisplay({
   globalIndex,
   allItems
 }: NavigationItemDisplayProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false); // Changed from true to false
   const paddingLeft = depth * 16;
   
   // Find children based on parent_id

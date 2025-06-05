@@ -1,13 +1,38 @@
 
-import React from 'react';
+import { ReactNode, FC } from 'react';
 
-export interface MDXProps {
-  components?: Record<string, React.ComponentType<any>>;
-  children?: React.ReactNode;
-  [key: string]: any;
+export interface MDXComponentProps {
+  components?: {
+    [key: string]: React.ComponentType<any>;
+  };
+  children?: ReactNode;
 }
 
-export interface MDXComponent extends React.ComponentType<MDXProps> {
-  frontmatter?: Record<string, any>;
-  displayName?: string;
+export interface CustomTableProps {
+  children: ReactNode;
 }
+
+export interface CustomCodeProps {
+  children: ReactNode;
+  className?: string;
+  inline?: boolean;
+}
+
+export interface CustomCardProps {
+  title?: string;
+  icon?: string;
+  href?: string;
+  children?: ReactNode;
+}
+
+export interface CustomCardGroupProps {
+  children: ReactNode;
+}
+
+export const CardGroup: FC<CustomCardGroupProps> = ({ children }) => {
+  return (
+    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 my-6">
+      {children}
+    </div>
+  );
+};
