@@ -244,20 +244,40 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
     try {
       showToast('Creating pull request...', 'info');
 
-      // Get GitHub token from session
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.provider_token) {
-        showToast('GitHub authentication required. Please reconnect to GitHub in Admin settings.', 'error');
-        return;
-      }
-
-      // Get GitHub configuration
+      // Get GitHub configuration first
       const config = await githubService.getRepoConfig();
       if (!config) {
         showToast('GitHub repository not configured. Please configure it in Admin settings.', 'error');
         return;
       }
 
+      // Get the installation ID from the config
+      const { data: configData, error: configError } = await supabase
+        .from('github_config')
+        .select('installation_id')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (configError || !configData?.installation_id) {
+        showToast('GitHub App not properly configured. Please check Admin settings.', 'error');
+        return;
+      }
+
+      console.log('Getting GitHub App token for installation:', configData.installation_id);
+
+      // Get GitHub App installation token using the existing edge function
+      const { data: authResponse, error: authError } = await supabase.functions.invoke('github-app-auth', {
+        body: { installationId: configData.installation_id }
+      });
+
+      if (authError || !authResponse?.token) {
+        console.error('GitHub App auth error:', authError);
+        showToast('Failed to authenticate with GitHub App. Please check the configuration.', 'error');
+        return;
+      }
+
+      const githubToken = authResponse.token;
       const { owner, repo } = config;
       
       // Get user information for PR attribution
@@ -293,7 +313,15 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
 ${seoData.metaDescription || seoData.description || 'Page content goes here...'}
 `;
 
-      // Create the pull request using the existing GitHub service
+      console.log('Creating SEO PR with GitHub App token for:', { 
+        title, 
+        repoFilePath, 
+        owner, 
+        repo,
+        installationId: configData.installation_id
+      });
+
+      // Create the pull request using the GitHub App token
       const result = await githubService.createPullRequest(
         {
           title,
@@ -321,7 +349,7 @@ Please review the SEO changes and merge when ready.
             }
           ]
         },
-        session.provider_token,
+        githubToken,
         config
       );
 
@@ -338,7 +366,7 @@ Please review the SEO changes and merge when ready.
       }
       
     } catch (error) {
-      console.error('PR creation failed:', error);
+      console.error('SEO PR creation failed:', error);
       showToast(`Failed to create pull request: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setIsCreatingPR(false);
@@ -358,20 +386,38 @@ Please review the SEO changes and merge when ready.
     try {
       showToast(`Creating pull request for ${pendingChanges.length} files...`, 'info');
 
-      // Get GitHub token from session
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.provider_token) {
-        showToast('GitHub authentication required. Please reconnect to GitHub in Admin settings.', 'error');
-        return;
-      }
-
-      // Get GitHub configuration
+      // Get GitHub configuration first
       const config = await githubService.getRepoConfig();
       if (!config) {
         showToast('GitHub repository not configured. Please configure it in Admin settings.', 'error');
         return;
       }
 
+      // Get the installation ID from the config
+      const { data: configData, error: configError } = await supabase
+        .from('github_config')
+        .select('installation_id')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (configError || !configData?.installation_id) {
+        showToast('GitHub App not properly configured. Please check Admin settings.', 'error');
+        return;
+      }
+
+      // Get GitHub App installation token using the existing edge function
+      const { data: authResponse, error: authError } = await supabase.functions.invoke('github-app-auth', {
+        body: { installationId: configData.installation_id }
+      });
+
+      if (authError || !authResponse?.token) {
+        console.error('GitHub App auth error:', authError);
+        showToast('Failed to authenticate with GitHub App. Please check the configuration.', 'error');
+        return;
+      }
+
+      const githubToken = authResponse.token;
       const { owner, repo } = config;
 
       // Get user information for PR attribution
@@ -403,7 +449,7 @@ Page content goes here...
         };
       });
 
-      // Create the pull request using the existing GitHub service
+      // Create the pull request using the GitHub App token
       const result = await githubService.createPullRequest(
         {
           title: `Bulk SEO Configuration Update (${pendingChanges.length} files)`,
@@ -423,7 +469,7 @@ Please review all SEO changes and merge when ready.
 *This PR was created automatically by the Pieces Documentation SEO Editor*`,
           files
         },
-        session.provider_token,
+        githubToken,
         config
       );
 
@@ -440,7 +486,7 @@ Please review all SEO changes and merge when ready.
       }
       
     } catch (error) {
-      console.error('Bulk PR creation failed:', error);
+      console.error('Bulk SEO PR creation failed:', error);
       showToast(`Failed to create pull request: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setIsCreatingPR(false);
