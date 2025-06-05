@@ -141,6 +141,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
             onAddSection={handleAddSection}
             onUpdateSectionTitle={handleUpdateSectionTitle}
             onRemoveItem={handleRemoveItem}
+            onSectionReorder={handleSectionReorder}
             onNavigationChange={async () => {
               const refreshedNavigation = await refetch();
               if (refreshedNavigation.data?.sections) {

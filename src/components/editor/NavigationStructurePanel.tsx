@@ -16,6 +16,7 @@ interface NavigationStructurePanelProps {
   onAddSection: (title: string) => void;
   onUpdateSectionTitle: (sectionId: string, title: string) => void;
   onRemoveItem: (sectionId: string, itemIndex: number) => void;
+  onSectionReorder: (newSections: NavigationSection[]) => void;
   onNavigationChange: () => void;
 }
 
@@ -24,6 +25,7 @@ export function NavigationStructurePanel({
   onAddSection, 
   onUpdateSectionTitle,
   onRemoveItem,
+  onSectionReorder,
   onNavigationChange 
 }: NavigationStructurePanelProps) {
   const [newSectionTitle, setNewSectionTitle] = useState("");
@@ -64,9 +66,17 @@ export function NavigationStructurePanel({
 
     // Only handle section reordering here
     if (source.droppableId === 'sections' && destination.droppableId === 'sections') {
-      // This will be handled by the parent component via onNavigationChange
-      // We need to update the sections order
-      onNavigationChange();
+      const newSections = Array.from(sections);
+      const [reorderedSection] = newSections.splice(source.index, 1);
+      newSections.splice(destination.index, 0, reorderedSection);
+      
+      // Update order_index for all sections
+      const updatedSections = newSections.map((section, index) => ({
+        ...section,
+        order_index: index
+      }));
+      
+      onSectionReorder(updatedSections);
     }
   };
 
