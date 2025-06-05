@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { WYSIWYGEditor } from './WYSIWYGEditor';
 import ReactMarkdown from 'react-markdown';
 import { useDynamicComponents } from '@/hooks/useDynamicComponents';
+import { processCustomSyntax } from '@/components/markdown/customSyntaxProcessor';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import remarkFrontmatter from 'remark-frontmatter';
@@ -26,20 +27,35 @@ export function TSXRenderer({ content, onContentChange, readOnly = false, filePa
   const { user } = useAuth();
   const components = useDynamicComponents();
 
-  // Process the content to remove frontmatter for rendering
+  // Process the content using the same method as HashnodeMarkdownRenderer
   const processedContent = React.useMemo(() => {
-    // Remove frontmatter section if present
+    console.log('🔧 TSXRenderer processing content...');
+    
+    // Remove frontmatter section if present (same as HashnodeMarkdownRenderer)
+    let cleanContent = content;
     if (content.startsWith('---')) {
       const frontmatterEnd = content.indexOf('---', 3);
       if (frontmatterEnd !== -1) {
-        const markdownContent = content.substring(frontmatterEnd + 3).trim();
+        cleanContent = content.substring(frontmatterEnd + 3).trim();
         // Also remove the *** delimiter if present
-        return markdownContent.replace(/^\*\*\*\s*/, '');
+        cleanContent = cleanContent.replace(/^\*\*\*\s*/, '');
       }
+    } else {
+      // Remove *** delimiter if it's at the start
+      cleanContent = content.replace(/^\*\*\*\s*/, '');
     }
+
+    // Apply custom syntax processing (same as HashnodeMarkdownRenderer)
+    const processedMarkdown = processCustomSyntax(cleanContent);
     
-    // Remove *** delimiter if it's at the start
-    return content.replace(/^\*\*\*\s*/, '');
+    console.log('🔧 TSXRenderer content processed:', {
+      originalLength: content.length,
+      cleanedLength: cleanContent.length,
+      processedLength: processedMarkdown.length,
+      hasCustomSyntax: processedMarkdown !== cleanContent
+    });
+
+    return processedMarkdown;
   }, [content]);
 
   async function handleCreatePR() {
@@ -267,9 +283,9 @@ Please review the changes and merge when ready.
                 <div className="bg-background rounded-lg border border-border p-6 shadow-sm">
                   <div className="mb-4 text-sm text-muted-foreground border-b border-border pb-2">
                     <span className="font-medium">Live Preview</span>
-                    <p className="text-xs mt-1">This shows exactly how the content will appear using the same components as the actual docs.</p>
+                    <p className="text-xs mt-1">This shows exactly how the content will appear using the same components and processing as the actual docs.</p>
                   </div>
-                  <div className="prose prose-sm max-w-none dark:prose-invert">
+                  <div className="markdown-content">
                     <ReactMarkdown
                       components={components}
                       remarkPlugins={[remarkGfm, remarkBreaks, remarkFrontmatter]}
