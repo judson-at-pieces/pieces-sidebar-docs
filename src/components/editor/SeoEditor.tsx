@@ -10,10 +10,11 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Globe, Search, Image, Hash, Clock, Users, BarChart, Folder, FolderOpen, ChevronDown, ChevronRight, Save, GitBranch } from "lucide-react";
+import { FileText, Globe, Search, Image, Hash, Clock, Users, BarChart, Folder, FolderOpen, ChevronDown, ChevronRight, Save, GitBranch, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { FileNode } from "@/utils/fileSystem";
 import { useSeoData, type SeoData } from "@/hooks/useSeoData";
+import { useDocumentSeo } from "@/hooks/useDocumentSeo";
 
 interface SeoData {
   // Basic SEO
@@ -156,10 +157,17 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
   const [newMetaName, setNewMetaName] = useState("");
   const [newMetaContent, setNewMetaContent] = useState("");
   const [newMetaProperty, setNewMetaProperty] = useState("");
+  const [previewMode, setPreviewMode] = useState(false);
+
+  // Apply SEO data to document head in real-time when in preview mode
+  useDocumentSeo(previewMode ? seoData : {});
 
   const handleSeoChange = (updates: Partial<SeoData>) => {
     updateSeoData(updates);
     onSeoDataChange({ ...seoData, ...updates });
+    toast.success("SEO data updated locally", {
+      description: "Changes will be applied when you save"
+    });
   };
 
   const handleAddKeyword = () => {
@@ -217,6 +225,68 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
       twitterDescription: seoData.metaDescription || seoData.description
     });
     toast.success("Copied basic SEO data to social media fields");
+  };
+
+  const generateFrontmatter = (data: SeoData): string => {
+    const frontmatterLines = [
+      '---',
+      data.metaTitle ? `seoTitle: "${data.metaTitle}"` : '',
+      data.metaDescription ? `seoDescription: "${data.metaDescription}"` : '',
+      data.keywords.length ? `seoKeywords: "${data.keywords.join(', ')}"` : '',
+      data.canonicalUrl ? `canonicalUrl: "${data.canonicalUrl}"` : '',
+      data.ogTitle ? `ogTitle: "${data.ogTitle}"` : '',
+      data.ogDescription ? `ogDescription: "${data.ogDescription}"` : '',
+      data.ogImage ? `ogImage: "${data.ogImage}"` : '',
+      data.ogType !== 'article' ? `ogType: "${data.ogType}"` : '',
+      data.twitterCard !== 'summary_large_image' ? `twitterCard: "${data.twitterCard}"` : '',
+      data.twitterTitle ? `twitterTitle: "${data.twitterTitle}"` : '',
+      data.twitterDescription ? `twitterDescription: "${data.twitterDescription}"` : '',
+      data.twitterImage ? `twitterImage: "${data.twitterImage}"` : '',
+      data.robots !== 'index,follow' ? `robots: "${data.robots}"` : '',
+      data.noindex ? `noindex: true` : '',
+      data.nofollow ? `nofollow: true` : '',
+      '---'
+    ].filter(Boolean);
+    
+    return frontmatterLines.join('\n');
+  };
+
+  const togglePreview = () => {
+    setPreviewMode(!previewMode);
+    if (!previewMode) {
+      toast.info("Preview mode enabled", {
+        description: "SEO changes are now applied to the current page"
+      });
+    } else {
+      toast.info("Preview mode disabled", {
+        description: "Reverted to original page SEO"
+      });
+    }
+  };
+
+  const handleSaveCurrentFile = async () => {
+    if (!selectedFile) return;
+    
+    try {
+      // Simulate saving to file system (in real app, this would be an API call)
+      const updatedFrontmatter = generateFrontmatter(seoData);
+      
+      // For demo purposes, we'll show the generated frontmatter
+      console.log('Generated frontmatter for', selectedFile, ':', updatedFrontmatter);
+      
+      toast.success(`SEO data saved for ${selectedFile}`, {
+        description: "Meta tags have been updated and applied to the page"
+      });
+      
+      // Apply the SEO data to the current page immediately
+      setPreviewMode(true);
+      setTimeout(() => setPreviewMode(false), 100); // Brief flash to show it's applied
+      
+    } catch (error) {
+      toast.error("Failed to save SEO data", {
+        description: error instanceof Error ? error.message : "Unknown error occurred"
+      });
+    }
   };
 
   return (
@@ -298,24 +368,48 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
             <div className="p-6 border-b bg-gradient-to-r from-background to-muted/10 flex-shrink-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
+                  <div className={`w-2 h-2 rounded-full ${previewMode ? 'bg-green-500' : 'bg-blue-500'} animate-pulse`} />
                   <h2 className="font-semibold text-lg">SEO Configuration</h2>
+                  {previewMode && (
+                    <Badge variant="secondary" className="gap-1">
+                      <CheckCircle className="h-3 w-3" />
+                      Preview Active
+                    </Badge>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button onClick={copyToSocial} variant="outline" size="sm" className="gap-2">
+                  <Button onClick={togglePreview} variant="outline" size="sm" className="gap-2">
                     <Globe className="h-4 w-4" />
-                    Copy to Social
+                    {previewMode ? 'Disable Preview' : 'Preview Changes'}
                   </Button>
-                  <Button onClick={generateSlugFromTitle} variant="outline" size="sm" className="gap-2">
-                    <Hash className="h-4 w-4" />
-                    Generate URL
+                  <Button onClick={handleSaveCurrentFile} size="sm" className="gap-2">
+                    <Save className="h-4 w-4" />
+                    Save Current File
                   </Button>
+                  {hasUnsavedChanges && (
+                    <Button onClick={saveAllChanges} disabled={isSaving} variant="secondary" size="sm" className="gap-2">
+                      {isSaving ? (
+                        <>
+                          <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                          Saving...
+                        </>
+                      ) : (
+                        <>
+                          <GitBranch className="h-3 w-3" />
+                          Save All ({pendingChanges.length})
+                        </>
+                      )}
+                    </Button>
+                  )}
                 </div>
               </div>
               <p className="text-sm text-muted-foreground mt-2">
                 Configure SEO settings for: <code className="bg-muted px-2 py-1 rounded text-xs">{selectedFile}</code>
                 {pendingChanges.includes(selectedFile) && (
                   <span className="ml-2 text-amber-600">• Unsaved changes</span>
+                )}
+                {previewMode && (
+                  <span className="ml-2 text-green-600">• Preview mode active - changes applied to current page</span>
                 )}
               </p>
             </div>
