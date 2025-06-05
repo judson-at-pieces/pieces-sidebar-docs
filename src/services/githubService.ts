@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 
 interface GitHubFile {
@@ -33,6 +32,28 @@ interface Repository {
 
 class GitHubService {
   private baseUrl = 'https://api.github.com';
+
+  // Helper function to properly encode UTF-8 content to base64
+  private encodeBase64(content: string): string {
+    try {
+      // Use TextEncoder to convert string to UTF-8 bytes, then base64 encode
+      const encoder = new TextEncoder();
+      const bytes = encoder.encode(content);
+      
+      // Convert Uint8Array to regular array for btoa
+      let binary = '';
+      for (let i = 0; i < bytes.length; i++) {
+        binary += String.fromCharCode(bytes[i]);
+      }
+      
+      return btoa(binary);
+    } catch (error) {
+      console.error('Error encoding content to base64:', error);
+      // Fallback: try to clean the content and encode again
+      const cleanContent = content.replace(/[^\x00-\x7F]/g, '?'); // Replace non-ASCII with ?
+      return btoa(cleanContent);
+    }
+  }
 
   private async makeRequest(endpoint: string, token: string, options: RequestInit = {}) {
     const url = `${this.baseUrl}${endpoint}`;
@@ -224,12 +245,12 @@ class GitHubService {
           // File doesn't exist, which is fine for new files
         }
 
-        // Update or create the file
+        // Update or create the file with proper base64 encoding
         await this.makeRequest(`/repos/${owner}/${repo}/contents/${file.path}`, token, {
           method: 'PUT',
           body: JSON.stringify({
             message: `Update ${file.path}`,
-            content: btoa(file.content), // Base64 encode the content
+            content: this.encodeBase64(file.content), // Use the proper encoding method
             branch: branchName,
             ...(currentFileSha && { sha: currentFileSha }),
           }),
