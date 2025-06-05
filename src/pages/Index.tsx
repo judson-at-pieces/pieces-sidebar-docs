@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowRight, BookOpen, ExternalLink, Github } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { PiecesLogo } from "@/components/PiecesLogo";
 
 // Social links data
 const socialLinks = [
@@ -41,7 +42,7 @@ const integrations = [{
   }, {
     name: "Neovim",
     description: "Plugin for Neovim text editor",
-    logo: "/assets/icons/new_neovim.png",
+    logo: "/assets/icons/balanced_neovim_logo.png",
     repoUrl: "https://github.com/pieces-app/pieces-neovim"
   }, {
     name: "JupyterLab",
@@ -92,7 +93,7 @@ const integrations = [{
   }, {
     name: "Raycast",
     description: "Extension for Raycast productivity tool",
-    logo: "/assets/icons/raycast.png",
+    logo: "/assets/icons/new_raycast_1.png",
     repoUrl: "https://github.com/pieces-app/pieces-raycast"
   }]
 }];
@@ -114,7 +115,7 @@ const Index = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-2">
-              <img src="/assets/icons/pieces_filled.svg" alt="Pieces" className="w-8 h-8" />
+              <PiecesLogo className="w-8 h-8" alt="Pieces" />
               <span className="text-xl font-bold">Pieces for Developers</span>
             </div>
             <nav className="flex items-center space-x-6">
@@ -151,17 +152,26 @@ const Index = () => {
           </div>
           
           <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
-            Get Up and Running with{" "}
-            <span className="bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">
-              Pieces for Developers
-            </span>
-          </h1>
+  <span
+    className="
+      bg-clip-text 
+      text-transparent 
+      bg-gradient-to-r 
+      from-gray-400 
+      to-black 
+      dark:from-gray-300 
+      dark:to-white
+    "
+  >
+    Get Up and Running with Pieces
+  </span>
+</h1>
           
           <p className="text-xl text-muted-foreground mb-12 max-w-4xl mx-auto leading-relaxed">
-            Pieces captures and resurfaces your workflow context so you never lose track of what you were doing. These docs help you install, integrate, and master the tools that make that possible.
+            Pieces captures and resurfaces your workflow context so you never lose track of what you were doing. This documentation helps you install, integrate, and master the tools that make that possible.
           </p>
           
-          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-12 py-0 px-0 mx-0 my-[56px]">
+          <div className="flex flex-col sm:flex-row gap-4 justify-center items-center py-0 px-0 mx-0 mt-[56px] mb-[56px]">
             <Link to="/docs/getting-started">
               <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg">
                 <BookOpen className="mr-2 w-5 h-5" />
@@ -174,14 +184,14 @@ const Index = () => {
       </section>
 
       {/* Meet Pieces Section */}
-      <section className="pt-16 pb-8 px-4 sm:px-6 lg:px-8 bg-muted/20">
+      <section className="pt-0 pb-8 px-4 sm:px-6 lg:px-8 bg-muted/20">
         <div className="max-w-7xl mx-auto">
           <h2 className="text-2xl font-bold mb-6 text-foreground text-left">Meet Pieces</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="bg-card border-border hover:border-muted-foreground transition-all duration-200 hover:shadow-lg cursor-pointer group" onClick={() => window.open('/docs/desktop', '_self')}>
+            <Card className="bg-white dark:bg-[#2a2b2b] border-border hover:border-muted-foreground transition-all duration-200 hover:shadow-lg cursor-pointer group" onClick={() => window.open('/docs/desktop', '_self')}>
               <CardHeader className="pb-4">
                 <div className="flex items-center space-x-3">
-                  <img src="/assets/icons/pieces_filled.svg" alt="Pieces Desktop" className="w-8 h-8 object-contain" />
+                  <PiecesLogo className="w-8 h-8 object-contain" alt="Pieces Desktop" />
                   <div className="flex-1">
                     <CardTitle className="text-lg group-hover:text-blue-400 transition-colors flex items-center text-left">
                       Pieces Desktop App
@@ -196,10 +206,10 @@ const Index = () => {
                 </CardDescription>
               </CardContent>
             </Card>
-            <Card className="bg-card border-border hover:border-muted-foreground transition-all duration-200 hover:shadow-lg cursor-pointer group" onClick={() => window.open('/docs/core-dependencies', '_self')}>
+            <Card className="bg-white dark:bg-[#2a2b2b] border-border hover:border-muted-foreground transition-all duration-200 hover:shadow-lg cursor-pointer group" onClick={() => window.open('/docs/core-dependencies', '_self')}>
               <CardHeader className="pb-4">
                 <div className="flex items-center space-x-3">
-                  <img src="/assets/icons/pieces_os_dark.svg" alt="Core Dependencies" className="w-8 h-8 object-contain" />
+                  <PiecesLogo variant="os" className="w-8 h-8 object-contain" alt="Core Dependencies" />
                   <div className="flex-1">
                     <CardTitle className="text-lg group-hover:text-blue-400 transition-colors flex items-center text-left">
                       Core Dependencies
@@ -227,7 +237,7 @@ const Index = () => {
               return (
                 <div key={categoryIndex} className={categoryIndex > 0 ? "mt-16" : ""}>
                   <h2 className="text-2xl font-bold mb-6 text-foreground text-left">{category.category}</h2>
-                  <Card className="bg-card border-border hover:border-muted-foreground transition-all duration-200 hover:shadow-lg">
+                  <Card className="bg-white dark:bg-[#2a2b2b] border-border hover:border-muted-foreground transition-all duration-200 hover:shadow-lg">
                     <CardHeader>
                       <CardTitle className="text-lg text-center">Browser Extensions</CardTitle>
                       <CardDescription className="text-muted-foreground leading-relaxed text-center">
@@ -262,7 +272,7 @@ const Index = () => {
               <div key={categoryIndex} className={categoryIndex > 0 ? "mt-16" : ""}>
                 <h2 className="text-2xl font-bold mb-6 text-foreground text-left">{category.category}</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {category.items.map((integration, index) => <Card key={index} className="bg-card border-border hover:border-muted-foreground transition-all duration-200 hover:shadow-lg cursor-pointer group" onClick={() => window.open(integration.repoUrl, '_blank')}>
+                  {category.items.map((integration, index) => <Card key={index} className="bg-white dark:bg-[#2a2b2b] border-border hover:border-muted-foreground transition-all duration-200 hover:shadow-lg cursor-pointer group" onClick={() => window.open(integration.repoUrl, '_blank')}>
                       <CardHeader className="pb-4">
                         <div className="flex items-center space-x-3">
                           <img src={integration.logo} alt={integration.name} className="w-8 h-8 object-contain" />
@@ -354,7 +364,7 @@ const Index = () => {
           <div className="pt-8 border-t border-border">
             <div className="flex flex-col md:flex-row justify-between items-center">
               <div className="flex items-center space-x-2 mb-4 md:mb-0">
-                <img src="/assets/icons/pieces_filled.svg" alt="Pieces" className="w-6 h-6" />
+                <PiecesLogo className="w-6 h-6" alt="Pieces" />
                 <span className="font-bold">Pieces for Developers</span>
               </div>
               <p className="text-muted-foreground text-sm">Copyright © 2025 Mesh Intelligent Technologies, Inc. All rights reserved.</p>
