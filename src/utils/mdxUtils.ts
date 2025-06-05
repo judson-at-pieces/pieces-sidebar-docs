@@ -5,8 +5,7 @@ export interface MDXProps {
   components?: Record<string, React.ComponentType<any>>;
 }
 
-export interface MDXComponent {
-  (props: MDXProps): JSX.Element;
+export interface MDXComponent extends React.ComponentType<MDXProps> {
   frontmatter?: Record<string, any>;
   displayName?: string;
 }

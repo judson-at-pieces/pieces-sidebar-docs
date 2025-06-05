@@ -1,7 +1,9 @@
 
+import { useState } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
-import { GripVertical, Trash2, FileText, Folder } from "lucide-react";
+import { GripVertical, Trash2, FileText, Folder, AlertTriangle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { NavigationItem } from "@/services/navigationService";
 
 interface NavigationItemListProps {
@@ -17,10 +19,23 @@ export function NavigationItemList({
   onRemoveItem, 
   onNavigationChange 
 }: NavigationItemListProps) {
+  const [itemToDelete, setItemToDelete] = useState<{ index: number; title: string } | null>(null);
+
   const handleDragEnd = (result: DropResult) => {
     if (!result.destination) return;
     // Drag end will be handled by parent component
     onNavigationChange();
+  };
+
+  const handleDeleteClick = (index: number, title: string) => {
+    setItemToDelete({ index, title });
+  };
+
+  const confirmDelete = () => {
+    if (itemToDelete) {
+      onRemoveItem(itemToDelete.index);
+      setItemToDelete(null);
+    }
   };
 
   const renderItem = (item: NavigationItem, index: number, depth = 0) => {
@@ -34,7 +49,7 @@ export function NavigationItemList({
             <div
               ref={provided.innerRef}
               {...provided.draggableProps}
-              className={`flex items-center gap-2 p-2 rounded border transition-all ${
+              className={`group flex items-center gap-2 p-2 rounded border transition-all ${
                 snapshot.isDragging ? 'shadow-lg border-primary bg-primary/5' : 'border-border hover:bg-accent/50'
               }`}
             >
@@ -53,8 +68,8 @@ export function NavigationItemList({
               <Button
                 size="sm"
                 variant="ghost"
-                onClick={() => onRemoveItem(index)}
-                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 hover:bg-destructive hover:text-destructive-foreground"
+                onClick={() => handleDeleteClick(index, item.title)}
+                className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 hover:bg-destructive hover:text-destructive-foreground transition-opacity"
               >
                 <Trash2 className="h-3 w-3" />
               </Button>
@@ -84,15 +99,42 @@ export function NavigationItemList({
   }
 
   return (
-    <DragDropContext onDragEnd={handleDragEnd}>
-      <Droppable droppableId={`section-${sectionId}`} type="ITEM">
-        {(provided) => (
-          <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-1 group">
-            {items.map((item, index) => renderItem(item, index))}
-            {provided.placeholder}
+    <>
+      <DragDropContext onDragEnd={handleDragEnd}>
+        <Droppable droppableId={`section-${sectionId}`} type="ITEM">
+          {(provided) => (
+            <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-1">
+              {items.map((item, index) => renderItem(item, index))}
+              {provided.placeholder}
+            </div>
+          )}
+        </Droppable>
+      </DragDropContext>
+
+      <Dialog open={!!itemToDelete} onOpenChange={() => setItemToDelete(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="h-5 w-5 text-destructive" />
+              Confirm Deletion
+            </DialogTitle>
+          </DialogHeader>
+          <div className="py-4">
+            <p className="text-sm text-muted-foreground">
+              Are you sure you want to remove "{itemToDelete?.title}" from the navigation? 
+              This action cannot be undone.
+            </p>
           </div>
-        )}
-      </Droppable>
-    </DragDropContext>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setItemToDelete(null)}>
+              Cancel
+            </Button>
+            <Button variant="destructive" onClick={confirmDelete}>
+              Delete
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   );
 }

@@ -84,20 +84,39 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
     }
   };
 
-  const handleRemoveItem = (sectionId: string, itemIndex: number) => {
-    const updatedSections = sections.map(s => {
-      if (s.id === sectionId && s.items) {
-        const newItems = [...s.items];
-        newItems.splice(itemIndex, 1);
-        return { 
-          ...s, 
-          items: newItems.map((item, index) => ({ ...item, order_index: index }))
-        };
+  const handleRemoveItem = async (sectionId: string, itemIndex: number) => {
+    try {
+      const section = sections.find(s => s.id === sectionId);
+      if (!section || !section.items || !section.items[itemIndex]) {
+        toast.error("Item not found");
+        return;
       }
-      return s;
-    });
-    
-    setSections(updatedSections);
+
+      const itemToRemove = section.items[itemIndex];
+      
+      // Delete from database
+      await navigationService.deleteNavigationItem(itemToRemove.id);
+      
+      // Update local state
+      const updatedSections = sections.map(s => {
+        if (s.id === sectionId && s.items) {
+          const newItems = [...s.items];
+          newItems.splice(itemIndex, 1);
+          return { 
+            ...s, 
+            items: newItems.map((item, index) => ({ ...item, order_index: index }))
+          };
+        }
+        return s;
+      });
+      
+      setSections(updatedSections);
+      onNavigationChange();
+      toast.success(`Removed "${itemToRemove.title}" from navigation`);
+    } catch (error) {
+      console.error('Error removing item:', error);
+      toast.error("Failed to remove item from navigation");
+    }
   };
 
   const handleSectionReorder = async (newSections: typeof sections) => {
