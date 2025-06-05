@@ -1,8 +1,10 @@
 ---
-title: "Generative AI Conversations"
-path: "/cli/copilot/chat"
-visibility: "PUBLIC"
+title: "seo"
+twitterSite: "@pieces_app"
+priority: 0.8
+schemaType: "Article"
 ---
+
 ***
 
 ## Accessing Copilot Chat in your Terminal
