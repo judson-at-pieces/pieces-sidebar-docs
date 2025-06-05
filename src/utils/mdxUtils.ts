@@ -1,38 +1,28 @@
 
-import { ReactNode, FC } from 'react';
-
-export interface MDXComponentProps {
-  components?: {
-    [key: string]: React.ComponentType<any>;
-  };
-  children?: ReactNode;
+export async function loadMdxContent(path: string) {
+  try {
+    // Remove leading slash and .md extension if present
+    const cleanPath = path.replace(/^\//, '').replace(/\.md$/, '');
+    
+    // Try to load the compiled content
+    const module = await import(`../compiled-content/${cleanPath}.tsx`);
+    return module.default;
+  } catch (error) {
+    console.error(`Failed to load MDX content for path: ${path}`, error);
+    return null;
+  }
 }
 
-export interface CustomTableProps {
-  children: ReactNode;
+export function getContentPath(href: string): string {
+  // Remove leading slash and ensure we have a clean path
+  const cleanPath = href.replace(/^\//, '');
+  
+  // For paths that end with a folder name but should load the index file
+  // e.g., '/extensions-plugins/jetbrains/copilot' should load 'extensions-plugins/jetbrains/copilot.md'
+  return cleanPath;
 }
 
-export interface CustomCodeProps {
-  children: ReactNode;
-  className?: string;
-  inline?: boolean;
+export function normalizeNavigationPath(path: string): string {
+  // Normalize the path by removing leading/trailing slashes
+  return path.replace(/^\/+|\/+$/g, '');
 }
-
-export interface CustomCardProps {
-  title?: string;
-  icon?: string;
-  href?: string;
-  children?: ReactNode;
-}
-
-export interface CustomCardGroupProps {
-  children: ReactNode;
-}
-
-export const CardGroup: FC<CustomCardGroupProps> = ({ children }) => {
-  return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 my-6">
-      {children}
-    </div>
-  );
-};

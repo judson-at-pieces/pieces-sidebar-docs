@@ -17,13 +17,68 @@ function DocsSidebar({ className, onNavigate }: { className?: string; onNavigate
   const [searchTerm, setSearchTerm] = useState("");
   const { navigation, isLoading, error } = useNavigation();
 
+  // Auto-expand sections and items based on current path
   useEffect(() => {
-    // Auto-open all sections by default
     if (navigation?.sections) {
+      const currentPath = location.pathname;
+      const sectionsToOpen = new Set<string>();
+      
+      // Find all parent items that should be expanded based on current path
+      const findParentsToExpand = (items: NavigationItem[], parentId?: string) => {
+        items.forEach(item => {
+          if (item.href === currentPath) {
+            // Found the current item, expand all its parents
+            let currentParentId = parentId;
+            while (currentParentId) {
+              sectionsToOpen.add(currentParentId);
+              // Find the parent of this parent
+              const findParentItem = (searchItems: NavigationItem[]): string | undefined => {
+                for (const searchItem of searchItems) {
+                  if (searchItem.id === currentParentId) {
+                    return searchItem.parent_id;
+                  }
+                  if (searchItem.items) {
+                    const found = findParentItem(searchItem.items);
+                    if (found !== undefined) return found;
+                  }
+                }
+                return undefined;
+              };
+              
+              // Search through all sections for the parent
+              let foundParent = false;
+              for (const section of navigation.sections) {
+                const parentOfParent = findParentItem(section.items || []);
+                if (parentOfParent !== undefined) {
+                  currentParentId = parentOfParent;
+                  foundParent = true;
+                  break;
+                }
+              }
+              if (!foundParent) break;
+            }
+          }
+          
+          if (item.items) {
+            findParentsToExpand(item.items, item.id);
+          }
+        });
+      };
+
+      // Check all sections for the current path
+      navigation.sections.forEach(section => {
+        if (section.items) {
+          findParentsToExpand(section.items);
+        }
+      });
+
+      // Also auto-open all sections by default (as before)
       const allSectionIds = navigation.sections.map(section => section.id);
-      setOpenSections(allSectionIds);
+      allSectionIds.forEach(id => sectionsToOpen.add(id));
+
+      setOpenSections(Array.from(sectionsToOpen));
     }
-  }, [navigation]);
+  }, [navigation, location.pathname]);
 
   const toggleSection = (sectionId: string) => {
     setOpenSections(prev => 
