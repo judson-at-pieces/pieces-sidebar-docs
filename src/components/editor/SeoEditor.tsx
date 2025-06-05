@@ -136,33 +136,58 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
     }
   };
 
-  // Helper function to load existing file content
+  // Helper function to load existing file content with better path handling
   const loadExistingContent = async (filePath: string): Promise<string> => {
     try {
-      let markdownPath = filePath;
-      if (!markdownPath.endsWith('.md')) {
-        markdownPath = `${filePath}.md`;
+      // Try different path combinations to find the file
+      const possiblePaths = [
+        `/content/${filePath}`,
+        `/content/${filePath}.md`,
+        `/${filePath}`,
+        `/${filePath}.md`
+      ];
+
+      console.log('Attempting to load content for file:', filePath);
+      console.log('Trying paths:', possiblePaths);
+
+      for (const path of possiblePaths) {
+        try {
+          console.log('Trying to fetch:', path);
+          const response = await fetch(path);
+          if (response.ok) {
+            const content = await response.text();
+            console.log('Successfully loaded content from:', path, 'Length:', content.length);
+            
+            // If content is very short or empty, it might be a directory listing or error page
+            if (content.length < 10 || content.includes('<!DOCTYPE html>')) {
+              console.log('Content appears to be invalid (too short or HTML), trying next path...');
+              continue;
+            }
+            
+            return content;
+          }
+        } catch (error) {
+          console.log('Failed to fetch from:', path, error);
+          continue;
+        }
       }
-      markdownPath = markdownPath.replace(/^\/+/, '');
       
-      console.log('Loading existing content from:', `/content/${markdownPath}`);
-      const response = await fetch(`/content/${markdownPath}`);
-      if (response.ok) {
-        const content = await response.text();
-        console.log('Successfully loaded existing content, length:', content.length);
-        return content;
-      } else {
-        console.log('Failed to load existing content, status:', response.status);
-      }
+      console.log('Could not load existing content from any path, using default');
     } catch (error) {
-      console.warn('Could not load existing content:', error);
+      console.warn('Error loading existing content:', error);
     }
     
-    // Return default content if file doesn't exist
-    const defaultContent = `# ${seoData.metaTitle || seoData.title || 'Page Title'}
+    // Return default content with proper title
+    const title = seoData.metaTitle || seoData.title || (selectedFile ? selectedFile.split('/').pop()?.replace(/\.md$/, '').replace(/-/g, ' ') : 'Page Title');
+    const description = seoData.metaDescription || seoData.description || 'Page content goes here...';
 
-${seoData.metaDescription || seoData.description || 'Page content goes here...'}`;
-    console.log('Using default content:', defaultContent);
+    const defaultContent = `# ${title}
+
+${description}
+
+This is the main content of the page. Add your documentation content here.
+`;
+    console.log('Using default content for new file:', selectedFile);
     return defaultContent;
   };
 
@@ -237,50 +262,91 @@ ${seoData.metaDescription || seoData.description || 'Page content goes here...'}
     showToast(previewMode ? "Preview disabled" : "Preview enabled", "info");
   };
 
+  // Improved frontmatter generation with better formatting
   const generateFrontmatter = (data: SeoData): string => {
-    const frontmatterLines = [
-      '---'
-    ];
+    const frontmatterLines = ['---'];
     
+    // Add basic SEO fields
+    if (data.metaTitle || data.title) frontmatterLines.push(`title: "${data.metaTitle || data.title}"`);
+    if (data.metaDescription || data.description) frontmatterLines.push(`description: "${data.metaDescription || data.description}"`);
+    if (data.keywords.length > 0) frontmatterLines.push(`keywords: "${data.keywords.join(', ')}"`);
+    if (data.canonicalUrl) frontmatterLines.push(`canonicalUrl: "${data.canonicalUrl}"`);
+    
+    // SEO specific fields
     if (data.metaTitle) frontmatterLines.push(`seoTitle: "${data.metaTitle}"`);
     if (data.metaDescription) frontmatterLines.push(`seoDescription: "${data.metaDescription}"`);
     if (data.keywords.length) frontmatterLines.push(`seoKeywords: "${data.keywords.join(', ')}"`);
-    if (data.canonicalUrl) frontmatterLines.push(`canonicalUrl: "${data.canonicalUrl}"`);
+    
+    // Open Graph fields
     if (data.ogTitle) frontmatterLines.push(`ogTitle: "${data.ogTitle}"`);
     if (data.ogDescription) frontmatterLines.push(`ogDescription: "${data.ogDescription}"`);
     if (data.ogImage) frontmatterLines.push(`ogImage: "${data.ogImage}"`);
     if (data.ogType && data.ogType !== 'article') frontmatterLines.push(`ogType: "${data.ogType}"`);
+    
+    // Twitter fields
     if (data.twitterCard && data.twitterCard !== 'summary_large_image') frontmatterLines.push(`twitterCard: "${data.twitterCard}"`);
     if (data.twitterTitle) frontmatterLines.push(`twitterTitle: "${data.twitterTitle}"`);
     if (data.twitterDescription) frontmatterLines.push(`twitterDescription: "${data.twitterDescription}"`);
     if (data.twitterImage) frontmatterLines.push(`twitterImage: "${data.twitterImage}"`);
+    if (data.twitterSite) frontmatterLines.push(`twitterSite: "${data.twitterSite}"`);
+    if (data.twitterCreator) frontmatterLines.push(`twitterCreator: "${data.twitterCreator}"`);
+    
+    // Technical SEO fields
     if (data.robots && data.robots !== 'index,follow') frontmatterLines.push(`robots: "${data.robots}"`);
     if (data.noindex) frontmatterLines.push(`noindex: true`);
     if (data.nofollow) frontmatterLines.push(`nofollow: true`);
+    if (data.priority !== undefined && data.priority !== 0.5) frontmatterLines.push(`priority: ${data.priority}`);
+    if (data.changefreq && data.changefreq !== 'weekly') frontmatterLines.push(`changefreq: "${data.changefreq}"`);
+    
+    // Schema fields
+    if (data.schemaType) frontmatterLines.push(`schemaType: "${data.schemaType}"`);
+    if (data.schemaData) {
+      // For complex schema data, we might want to handle it differently
+      frontmatterLines.push(`schemaData: |`);
+      const schemaLines = data.schemaData.split('\n');
+      schemaLines.forEach(line => {
+        frontmatterLines.push(`  ${line}`);
+      });
+    }
+    
+    // Custom meta tags
+    if (data.customMeta.length > 0) {
+      frontmatterLines.push(`customMeta:`);
+      data.customMeta.forEach(meta => {
+        frontmatterLines.push(`  - name: "${meta.name}"`);
+        frontmatterLines.push(`    content: "${meta.content}"`);
+        if (meta.property) frontmatterLines.push(`    property: "${meta.property}"`);
+      });
+    }
     
     frontmatterLines.push('---');
-    
     return frontmatterLines.join('\n');
   };
 
+  // Improved content merging function
   const updateContentWithSeoData = async (existingContent: string, seoData: SeoData): Promise<string> => {
-    const frontmatter = generateFrontmatter(seoData);
-    console.log('Generated frontmatter:', frontmatter);
+    const newFrontmatter = generateFrontmatter(seoData);
+    console.log('Generated frontmatter:', newFrontmatter);
     
-    // If content has existing frontmatter, replace it
+    // Check if content has existing frontmatter
     const frontmatterRegex = /^---\n([\s\S]*?)\n---\n?/;
-    if (frontmatterRegex.test(existingContent)) {
+    const match = existingContent.match(frontmatterRegex);
+    
+    if (match) {
+      // Replace existing frontmatter
       console.log('Replacing existing frontmatter');
-      const result = existingContent.replace(frontmatterRegex, `${frontmatter}\n\n`);
-      console.log('Updated content length:', result.length);
+      const bodyContent = existingContent.substring(match[0].length).trim();
+      const result = `${newFrontmatter}\n\n${bodyContent}`;
+      console.log('Final content with replaced frontmatter, length:', result.length);
+      console.log('Body content preserved, length:', bodyContent.length);
+      return result;
+    } else {
+      // No existing frontmatter, prepend new frontmatter
+      console.log('Adding frontmatter to content without existing frontmatter');
+      const result = `${newFrontmatter}\n\n${existingContent.trim()}`;
+      console.log('Final content with new frontmatter, length:', result.length);
       return result;
     }
-    
-    // If no frontmatter exists, prepend it
-    console.log('Adding frontmatter to content without existing frontmatter');
-    const result = `${frontmatter}\n\n${existingContent}`;
-    console.log('Final content length:', result.length);
-    return result;
   };
 
   const handleCreatePRForCurrentFile = async () => {
@@ -360,13 +426,13 @@ ${seoData.metaDescription || seoData.description || 'Page content goes here...'}
       const existingContent = await loadExistingContent(selectedFile);
       const updatedContent = await updateContentWithSeoData(existingContent, seoData);
 
-      console.log('Creating SEO PR with GitHub App token for:', { 
-        title, 
-        repoFilePath, 
-        owner, 
-        repo,
-        installationId: configData.installation_id,
-        contentLength: updatedContent.length
+      console.log('Creating SEO PR with content length:', updatedContent.length);
+      console.log('SEO data being applied:', {
+        title: seoData.metaTitle || seoData.title,
+        description: seoData.metaDescription || seoData.description,
+        keywords: seoData.keywords.length,
+        hasOgData: !!(seoData.ogTitle || seoData.ogDescription),
+        hasTwitterData: !!(seoData.twitterTitle || seoData.twitterDescription)
       });
 
       // Create the pull request using the GitHub App token
@@ -380,13 +446,20 @@ ${seoData.metaDescription || seoData.description || 'Page content goes here...'}
 - **Title:** ${seoData.metaTitle || seoData.title || 'Not set'}
 - **Description:** ${seoData.metaDescription || seoData.description || 'Not set'}
 - **Keywords:** ${seoData.keywords.join(', ') || 'Not set'}
+- **Open Graph:** ${seoData.ogTitle ? 'Configured' : 'Not configured'}
+- **Twitter Cards:** ${seoData.twitterTitle ? 'Configured' : 'Not configured'}
+
+## Technical SEO
+- **Robots:** ${seoData.robots || 'index,follow'}
+- **Schema Type:** ${seoData.schemaType || 'Not set'}
+- **Custom Meta Tags:** ${seoData.customMeta.length} tags
 
 ## Authored By
 - **Editor:** ${userName} (${userEmail})
 - **Date:** ${new Date().toISOString().split('T')[0]}
 
 ## Review Notes
-Please review the SEO changes and merge when ready. The existing content has been preserved.
+Please review the SEO changes and merge when ready. The existing content has been preserved and enhanced with proper SEO metadata.
 
 ---
 *This PR was created automatically by the Pieces Documentation SEO Editor*`,
