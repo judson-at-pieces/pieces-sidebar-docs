@@ -201,7 +201,7 @@ Start editing to see the live preview!
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
       {/* Enhanced Header - Hide completely when in navigation tab */}
-      {activeTab === 'content' && (
+      {(activeTab === 'content' || activeTab === 'seo') && (
         <div className="border-b border-border/50 bg-background/95 backdrop-blur-md shadow-sm">
           <div className="flex h-16 items-center justify-between px-6">
             <div className="flex items-center space-x-6">
@@ -214,7 +214,9 @@ Start editing to see the live preview!
               <div className="h-6 w-px bg-gradient-to-b from-transparent via-border to-transparent"></div>
               <div className="flex items-center gap-2">
                 <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                <h1 className="text-lg font-medium text-muted-foreground">Content Editor</h1>
+                <h1 className="text-lg font-medium text-muted-foreground">
+                  {activeTab === 'content' ? 'Content Editor' : 'SEO Editor'}
+                </h1>
               </div>
             </div>
             
@@ -239,7 +241,7 @@ Start editing to see the live preview!
         </div>
       )}
       
-      <div className={`flex ${activeTab === 'content' ? 'h-[calc(100vh-4rem)]' : 'h-screen'}`}>
+      <div className={`flex ${(activeTab === 'content' || activeTab === 'seo') ? 'h-[calc(100vh-4rem)]' : 'h-screen'}`}>
         {/* Enhanced Sidebar - Hide when in navigation tab */}
         {activeTab === 'content' && (
           <div className="w-80 border-r border-border/50 bg-muted/20 backdrop-blur-sm">
@@ -312,6 +314,8 @@ Start editing to see the live preview!
                 <SeoEditor
                   selectedFile={selectedFile}
                   onSeoDataChange={handleSeoDataChange}
+                  fileStructure={fileStructure}
+                  onFileSelect={handleFileSelect}
                 />
               </div>
             ) : (
