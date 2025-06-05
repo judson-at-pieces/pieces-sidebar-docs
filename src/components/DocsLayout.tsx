@@ -23,58 +23,32 @@ function DocsSidebar({ className, onNavigate }: { className?: string; onNavigate
       const currentPath = location.pathname;
       const sectionsToOpen = new Set<string>();
       
-      // Find all parent items that should be expanded based on current path
-      const findParentsToExpand = (items: NavigationItem[], parentId?: string) => {
+      // Find all items that match the current path and expand their entire parent chain
+      const findAndExpandParents = (items: NavigationItem[], parentChain: string[] = []) => {
         items.forEach(item => {
+          const currentChain = [...parentChain, item.id];
+          
           if (item.href === currentPath) {
-            // Found the current item, expand all its parents
-            let currentParentId = parentId;
-            while (currentParentId) {
-              sectionsToOpen.add(currentParentId);
-              // Find the parent of this parent
-              const findParentItem = (searchItems: NavigationItem[]): string | undefined => {
-                for (const searchItem of searchItems) {
-                  if (searchItem.id === currentParentId) {
-                    return searchItem.parent_id;
-                  }
-                  if (searchItem.items) {
-                    const found = findParentItem(searchItem.items);
-                    if (found !== undefined) return found;
-                  }
-                }
-                return undefined;
-              };
-              
-              // Search through all sections for the parent
-              let foundParent = false;
-              for (const section of navigation.sections) {
-                const parentOfParent = findParentItem(section.items || []);
-                if (parentOfParent !== undefined) {
-                  currentParentId = parentOfParent;
-                  foundParent = true;
-                  break;
-                }
-              }
-              if (!foundParent) break;
-            }
+            // Found the current item, expand all parents in the chain
+            currentChain.forEach(id => sectionsToOpen.add(id));
           }
           
-          if (item.items) {
-            findParentsToExpand(item.items, item.id);
+          if (item.items && item.items.length > 0) {
+            // Recursively check children
+            findAndExpandParents(item.items, currentChain);
           }
         });
       };
 
       // Check all sections for the current path
       navigation.sections.forEach(section => {
+        // Always auto-open all sections by default
+        sectionsToOpen.add(section.id);
+        
         if (section.items) {
-          findParentsToExpand(section.items);
+          findAndExpandParents(section.items);
         }
       });
-
-      // Also auto-open all sections by default (as before)
-      const allSectionIds = navigation.sections.map(section => section.id);
-      allSectionIds.forEach(id => sectionsToOpen.add(id));
 
       setOpenSections(Array.from(sectionsToOpen));
     }
