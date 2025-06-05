@@ -68,6 +68,8 @@ export function TableOfContents({ content }: TableOfContentsProps) {
     const element = document.getElementById(id);
     if (element) {
       element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      // Update the URL hash without triggering a page reload
+      window.history.replaceState(null, '', `#${id}`);
     }
   };
 
@@ -91,10 +93,10 @@ export function TableOfContents({ content }: TableOfContentsProps) {
               <button
                 key={item.id}
                 onClick={() => scrollToHeading(item.id)}
-                className={`block w-full text-left text-sm transition-colors hover:text-foreground ${
+                className={`block w-full text-left text-sm transition-colors hover:text-foreground cursor-pointer ${
                   activeId === item.id 
                     ? 'text-foreground font-medium border-l-2 border-primary' 
-                    : 'text-muted-foreground border-l-2 border-transparent'
+                    : 'text-muted-foreground border-l-2 border-transparent hover:border-primary/50'
                 } ${
                   item.level === 1 ? 'pl-3' : 
                   item.level === 2 ? 'pl-7' : 
@@ -119,10 +121,10 @@ export function TableOfContents({ content }: TableOfContentsProps) {
               <button
                 key={item.id}
                 onClick={() => scrollToHeading(item.id)}
-                className={`block w-full text-left text-sm transition-colors hover:text-foreground ${
+                className={`block w-full text-left text-sm transition-colors hover:text-foreground cursor-pointer ${
                   activeId === item.id 
                     ? 'text-foreground font-medium border-l-2 border-primary' 
-                    : 'text-muted-foreground border-l-2 border-transparent'
+                    : 'text-muted-foreground border-l-2 border-transparent hover:border-primary/50'
                 } ${
                   item.level === 1 ? 'pl-3' : 
                   item.level === 2 ? 'pl-7' : 
