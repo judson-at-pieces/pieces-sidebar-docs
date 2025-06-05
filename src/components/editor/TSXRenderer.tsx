@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { WYSIWYGEditor } from './WYSIWYGEditor';
@@ -287,4 +288,154 @@ Please review the changes and merge when ready.
       </div>
     </div>
   );
+}
+
+async function handleCreatePR() {
+  try {
+    toast.info('Creating pull request...', { duration: 2000 });
+    
+    // Get GitHub configuration first
+    const config = await githubService.getRepoConfig();
+    if (!config) {
+      toast.error('GitHub repository not configured. Please configure it in Admin settings.', { duration: 5000 });
+      return;
+    }
+
+    // Check if we have the file path
+    if (!filePath) {
+      toast.error('No file selected for editing. Please select a file first.', { duration: 3000 });
+      return;
+    }
+
+    // Get the installation ID from the config
+    const { data: configData, error: configError } = await supabase
+      .from('github_config')
+      .select('installation_id')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (configError || !configData?.installation_id) {
+      toast.error('GitHub App not properly configured. Please check Admin settings.', { duration: 5000 });
+      return;
+    }
+
+    console.log('Getting GitHub App token for installation:', configData.installation_id);
+
+    // Get GitHub App installation token using your existing edge function
+    const { data: authResponse, error: authError } = await supabase.functions.invoke('github-app-auth', {
+      body: { installationId: configData.installation_id }
+    });
+
+    if (authError || !authResponse?.token) {
+      console.error('GitHub App auth error:', authError);
+      toast.error('Failed to authenticate with GitHub App. Please check the configuration.', { duration: 5000 });
+      return;
+    }
+
+    const githubToken = authResponse.token;
+    const { owner, repo } = config;
+
+    // Extract title from frontmatter or use filename
+    let title = 'Update documentation content';
+    const frontmatterMatch = content.match(/^---\s*\n([\s\S]*?)\n---/);
+    if (frontmatterMatch) {
+      const titleMatch = frontmatterMatch[1].match(/title:\s*["']?([^"'\n]+)["']?/);
+      if (titleMatch) {
+        title = `Update: ${titleMatch[1]}`;
+      }
+    } else {
+      // Use filename as fallback
+      const fileName = filePath.split('/').pop()?.replace(/\.md$/, '') || 'content';
+      title = `Update: ${fileName.replace(/-/g, ' ')}`;
+    }
+
+    // Get user information for PR attribution
+    const userEmail = user?.email || 'unknown@pieces.app';
+    const userName = user?.user_metadata?.full_name || user?.user_metadata?.name || userEmail.split('@')[0];
+
+    // Determine the correct file path in the repository
+    let repoFilePath = filePath;
+    
+    // If it's a content file, place it in public/content
+    if (!filePath.startsWith('public/') && !filePath.startsWith('src/')) {
+      repoFilePath = `public/content/${filePath}`;
+    }
+    
+    // Ensure .md extension
+    if (!repoFilePath.endsWith('.md')) {
+      repoFilePath = `${repoFilePath}.md`;
+    }
+
+    console.log('Creating PR with GitHub App token for:', { 
+      title, 
+      repoFilePath, 
+      owner, 
+      repo,
+      installationId: configData.installation_id
+    });
+
+    // Create the pull request using the GitHub App token
+    const result = await githubService.createPullRequest(
+      {
+        title,
+        body: `This pull request updates documentation content via the Pieces documentation editor.
+
+## Changes
+- Updated content for: \`${repoFilePath}\`
+- Content reviewed and ready for publication
+
+## Authored By
+- **Editor:** ${userName} (${userEmail})
+- **Date:** ${new Date().toISOString().split('T')[0]}
+
+## Review Notes
+Please review the changes and merge when ready.
+
+---
+*This PR was created automatically by the Pieces Documentation Editor*`,
+        files: [
+          {
+            path: repoFilePath,
+            content: content
+          }
+        ]
+      },
+      githubToken,
+      config
+    );
+
+    if (result.success && result.prNumber && result.prUrl) {
+      toast.success(`Pull request created successfully! #${result.prNumber}`, { 
+        duration: 5000,
+        action: {
+          label: 'View PR',
+          onClick: () => window.open(result.prUrl, '_blank')
+        }
+      });
+    } else {
+      throw new Error(result.error || 'Failed to create PR');
+    }
+    
+    console.log('PR created successfully for file:', repoFilePath);
+  } catch (error: any) {
+    console.error('PR creation failed:', error);
+    
+    // Provide more specific error messages
+    if (error.message?.includes('401') || error.message?.includes('Authentication failed')) {
+      toast.error('GitHub App authentication failed. Please check the GitHub App configuration in Admin settings.', { 
+        duration: 5000,
+        action: {
+          label: 'Go to Admin',
+          onClick: () => window.location.href = '/admin'
+        }
+      });
+    } else if (error.message?.includes('403') || error.message?.includes('Access forbidden')) {
+      toast.error('Access forbidden. Please ensure the GitHub App is installed on the repository with proper permissions.', { duration: 5000 });
+    } else if (error.message?.includes('404')) {
+      toast.error('Repository not found. Please check the repository configuration in Admin settings.', { duration: 5000 });
+    } else {
+      toast.error(`Failed to create pull request: ${error.message || 'Unknown error'}`, { duration: 5000 });
+    }
+  }
 }
