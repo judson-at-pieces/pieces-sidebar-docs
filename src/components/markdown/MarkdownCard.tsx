@@ -16,7 +16,7 @@ const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, children }) =
   });
 
   return (
-    <div className="p-6 my-4 border rounded-xl dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+    <div className="p-6 my-4 border rounded-xl bg-white dark:bg-[#2a2b2b] dark:border-gray-700 hover:border-slate-300 dark:hover:border-gray-600 transition-colors shadow-sm">
       {image && (
         <div className="w-10 h-10 mb-6 relative rounded-lg">
           <img

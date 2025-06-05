@@ -10,6 +10,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/component
 import { useNavigation } from "@/hooks/useNavigation";
 import Footer from "./Footer";
 import type { NavigationItem, NavigationSection } from "@/services/navigationService";
+import { PiecesLogo } from "./PiecesLogo";
 
 function DocsSidebar({ className, onNavigate }: { className?: string; onNavigate?: () => void }) {
   const location = useLocation();
@@ -258,7 +259,18 @@ export default function DocsLayout() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-muted/20 relative">
+      {/* Full Page Background Gradient */}
+      <div className="fixed inset-0 z-0">
+        <img 
+          src="/assets/icons/backgrounds/tacPbCFHcXRdioUoSpbbhgk8.png" 
+          alt="" 
+          className="w-full h-full object-cover"
+        />
+      </div>
+      
+      {/* Content Wrapper */}
+      <div className="relative z-10 min-h-screen">
       {/* Mobile sidebar */}
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
         <div className="lg:hidden">
@@ -283,12 +295,10 @@ export default function DocsLayout() {
       <div className="lg:flex">
         {/* Desktop sidebar */}
         <div className="hidden lg:flex lg:flex-shrink-0">
-          <div className="flex flex-col w-64 border-r border-border bg-card">
+          <div className="flex flex-col w-64 border-r border-border bg-card/95 backdrop-blur-sm">
             <div className="flex items-center justify-between p-4 border-b border-border">
               <Link to="/" className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-gradient-to-br from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">P</span>
-                </div>
+                <PiecesLogo className="w-8 h-8" alt="Pieces" />
                 <span className="text-xl font-bold">Docs</span>
               </Link>
               <ThemeToggle />
@@ -310,6 +320,7 @@ export default function DocsLayout() {
             </div>
           </main>
         </div>
+      </div>
       </div>
     </div>
   );

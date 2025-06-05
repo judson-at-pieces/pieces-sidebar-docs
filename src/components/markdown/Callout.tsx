@@ -11,11 +11,11 @@ const Callout: React.FC<CalloutProps> = ({ type = 'info', children }) => {
   const getCalloutStyles = () => {
     switch (type) {
       case 'tip':
-        return 'border-green-200 bg-green-50/70 dark:border-green-800/50 dark:bg-green-950/40';
+        return 'border-green-200 bg-green-50 dark:border-green-800/50 dark:bg-[#2a2b2b]/90';
       case 'alert':
-        return 'border-orange-200 bg-orange-50/70 dark:border-orange-800/50 dark:bg-orange-950/40';
+        return 'border-orange-200 bg-orange-50 dark:border-orange-800/50 dark:bg-[#2a2b2b]/90';
       default:
-        return 'border-slate-200 bg-slate-50/80 dark:border-slate-700/50 dark:bg-slate-900/50';
+        return 'border-slate-200 bg-slate-50 dark:border-slate-700/50 dark:bg-[#2a2b2b]';
     }
   };
 

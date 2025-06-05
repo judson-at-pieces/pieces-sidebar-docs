@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { ArrowRight, BookOpen, ExternalLink, Github } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
+import { PiecesLogo } from "@/components/PiecesLogo";
 
 // Social links data
 const socialLinks = [
@@ -41,7 +42,7 @@ const integrations = [{
   }, {
     name: "Neovim",
     description: "Plugin for Neovim text editor",
-    logo: "/assets/icons/new_neovim.png",
+    logo: "/assets/icons/balanced_neovim_logo.png",
     repoUrl: "https://github.com/pieces-app/pieces-neovim"
   }, {
     name: "JupyterLab",
@@ -114,7 +115,7 @@ const Index = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-2">
-              <img src="/assets/icons/pieces_filled.svg" alt="Pieces" className="w-8 h-8" />
+              <PiecesLogo className="w-8 h-8" alt="Pieces" />
               <span className="text-xl font-bold">Pieces for Developers</span>
             </div>
             <nav className="flex items-center space-x-6">
@@ -178,10 +179,10 @@ const Index = () => {
         <div className="max-w-7xl mx-auto">
           <h2 className="text-2xl font-bold mb-6 text-foreground text-left">Meet Pieces</h2>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <Card className="bg-card border-border hover:border-muted-foreground transition-all duration-200 hover:shadow-lg cursor-pointer group" onClick={() => window.open('/docs/desktop', '_self')}>
+            <Card className="bg-white dark:bg-[#2a2b2b] border-border hover:border-muted-foreground transition-all duration-200 hover:shadow-lg cursor-pointer group" onClick={() => window.open('/docs/desktop', '_self')}>
               <CardHeader className="pb-4">
                 <div className="flex items-center space-x-3">
-                  <img src="/assets/icons/pieces_filled.svg" alt="Pieces Desktop" className="w-8 h-8 object-contain" />
+                  <PiecesLogo className="w-8 h-8 object-contain" alt="Pieces Desktop" />
                   <div className="flex-1">
                     <CardTitle className="text-lg group-hover:text-blue-400 transition-colors flex items-center text-left">
                       Pieces Desktop App
@@ -196,10 +197,10 @@ const Index = () => {
                 </CardDescription>
               </CardContent>
             </Card>
-            <Card className="bg-card border-border hover:border-muted-foreground transition-all duration-200 hover:shadow-lg cursor-pointer group" onClick={() => window.open('/docs/core-dependencies', '_self')}>
+            <Card className="bg-white dark:bg-[#2a2b2b] border-border hover:border-muted-foreground transition-all duration-200 hover:shadow-lg cursor-pointer group" onClick={() => window.open('/docs/core-dependencies', '_self')}>
               <CardHeader className="pb-4">
                 <div className="flex items-center space-x-3">
-                  <img src="/assets/icons/pieces_os_dark.svg" alt="Core Dependencies" className="w-8 h-8 object-contain" />
+                  <PiecesLogo variant="os" className="w-8 h-8 object-contain" alt="Core Dependencies" />
                   <div className="flex-1">
                     <CardTitle className="text-lg group-hover:text-blue-400 transition-colors flex items-center text-left">
                       Core Dependencies
@@ -227,7 +228,7 @@ const Index = () => {
               return (
                 <div key={categoryIndex} className={categoryIndex > 0 ? "mt-16" : ""}>
                   <h2 className="text-2xl font-bold mb-6 text-foreground text-left">{category.category}</h2>
-                  <Card className="bg-card border-border hover:border-muted-foreground transition-all duration-200 hover:shadow-lg">
+                  <Card className="bg-white dark:bg-[#2a2b2b] border-border hover:border-muted-foreground transition-all duration-200 hover:shadow-lg">
                     <CardHeader>
                       <CardTitle className="text-lg text-center">Browser Extensions</CardTitle>
                       <CardDescription className="text-muted-foreground leading-relaxed text-center">
@@ -262,7 +263,7 @@ const Index = () => {
               <div key={categoryIndex} className={categoryIndex > 0 ? "mt-16" : ""}>
                 <h2 className="text-2xl font-bold mb-6 text-foreground text-left">{category.category}</h2>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {category.items.map((integration, index) => <Card key={index} className="bg-card border-border hover:border-muted-foreground transition-all duration-200 hover:shadow-lg cursor-pointer group" onClick={() => window.open(integration.repoUrl, '_blank')}>
+                  {category.items.map((integration, index) => <Card key={index} className="bg-white dark:bg-[#2a2b2b] border-border hover:border-muted-foreground transition-all duration-200 hover:shadow-lg cursor-pointer group" onClick={() => window.open(integration.repoUrl, '_blank')}>
                       <CardHeader className="pb-4">
                         <div className="flex items-center space-x-3">
                           <img src={integration.logo} alt={integration.name} className="w-8 h-8 object-contain" />
@@ -354,7 +355,7 @@ const Index = () => {
           <div className="pt-8 border-t border-border">
             <div className="flex flex-col md:flex-row justify-between items-center">
               <div className="flex items-center space-x-2 mb-4 md:mb-0">
-                <img src="/assets/icons/pieces_filled.svg" alt="Pieces" className="w-6 h-6" />
+                <PiecesLogo className="w-6 h-6" alt="Pieces" />
                 <span className="font-bold">Pieces for Developers</span>
               </div>
               <p className="text-muted-foreground text-sm">Copyright © 2025 Mesh Intelligent Technologies, Inc. All rights reserved.</p>
