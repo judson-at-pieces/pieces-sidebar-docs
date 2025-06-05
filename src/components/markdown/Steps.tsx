@@ -15,38 +15,35 @@ const Step: React.FC<StepProps> = ({ children }) => {
 };
 
 const Steps: React.FC<StepsProps> = ({ children }) => {
-  // Safely handle children and extract step information
+  // Process children to handle both JSX Step components and data-attribute divs
   const processedSteps = React.useMemo(() => {
     if (!children) return [];
     
     const childrenArray = React.Children.toArray(children);
-    console.log('Steps processing children:', childrenArray.length);
+    console.log('Steps processing children:', childrenArray.length, childrenArray);
     
     return childrenArray.map((child, index) => {
-      // Handle different types of children safely
-      if (React.isValidElement(child)) {
-        // Check if it's a div with step data attributes
-        if (child.type === 'div' && child.props) {
-          const props = child.props as any;
-          const stepNum = props['data-step'];
-          const stepTitle = props['data-step-title'];
-          
-          if (stepNum && stepTitle) {
-            return {
-              number: parseInt(stepNum, 10) || index + 1,
-              title: stepTitle,
-              content: props.children
-            };
-          }
-          
-          // Check if it's a Step component
-          if (props.title) {
-            return {
-              number: index + 1,
-              title: props.title,
-              content: props.children
-            };
-          }
+      // Handle React Step components (traditional JSX)
+      if (React.isValidElement(child) && child.type === Step) {
+        return {
+          number: index + 1,
+          title: child.props.title,
+          content: child.props.children
+        };
+      }
+      
+      // Handle data-attribute divs (from markdown processing)
+      if (React.isValidElement(child) && child.type === 'div' && child.props) {
+        const props = child.props as any;
+        const stepNum = props['data-step'];
+        const stepTitle = props['data-step-title'];
+        
+        if (stepNum && stepTitle) {
+          return {
+            number: parseInt(stepNum, 10) || index + 1,
+            title: stepTitle,
+            content: props.children
+          };
         }
       }
       
@@ -56,7 +53,7 @@ const Steps: React.FC<StepsProps> = ({ children }) => {
         title: `Step ${index + 1}`,
         content: child
       };
-    }).filter(step => step.content); // Only include steps with content
+    }).filter(step => step.content !== undefined && step.content !== null);
   }, [children]);
 
   if (!processedSteps.length) {
