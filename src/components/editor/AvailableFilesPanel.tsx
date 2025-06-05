@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { FileText, Folder, FolderOpen, Plus, ChevronDown, ChevronRight, Check, Save, RotateCcw, ArrowRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -436,43 +435,43 @@ export function AvailableFilesPanel({ fileStructure, isFileUsed, sections, onAdd
 
     console.log('Processing bulk move for', pendingAdditions.length, 'items to section', bulkSelectedSection);
 
-    // Process each pending addition individually
+    // Create a single combined preview with all items
+    const allPreviewItems: NavigationItem[] = [];
+
     pendingAdditions.forEach((addition, index) => {
       console.log(`Processing item ${index + 1}:`, addition.node.name, 'type:', addition.type);
       
       if (addition.type === 'folder') {
-        const previewItems = createNavigationItemsFromFolder(addition.node);
-        console.log('Created folder preview items:', previewItems);
-        onAddToSection({
-          type: 'folder',
-          sectionId: bulkSelectedSection,
-          folderNode: addition.node,
-          previewItems
-        });
+        const folderPreviewItems = createNavigationItemsFromFolder(addition.node);
+        console.log('Created folder preview items:', folderPreviewItems);
+        allPreviewItems.push(...folderPreviewItems);
       } else {
-        const previewItem: NavigationItem = {
+        const filePreviewItem: NavigationItem = {
           id: `temp-${Date.now()}-${Math.random()}-${index}`,
           title: addition.node.name.replace('.md', '').replace(/-/g, ' '),
           href: `/${addition.node.path.replace('.md', '')}`,
           file_path: addition.node.path,
-          order_index: 0,
+          order_index: allPreviewItems.length,
           parent_id: undefined,
           is_auto_generated: true
         };
         
-        console.log('Created file preview item:', previewItem);
-        onAddToSection({
-          type: 'file',
-          sectionId: bulkSelectedSection,
-          fileNode: addition.node,
-          previewItems: [previewItem]
-        });
+        console.log('Created file preview item:', filePreviewItem);
+        allPreviewItems.push(filePreviewItem);
       }
     });
 
-    console.log('Bulk move completed, showing preview');
+    // Create a single pending change with all items
+    const bulkPendingChange: PendingChange = {
+      type: 'file', // Use 'file' as the type for bulk operations
+      sectionId: bulkSelectedSection,
+      previewItems: allPreviewItems
+    };
+
+    console.log('Bulk move completed, showing preview with', allPreviewItems.length, 'items');
     
     // Show preview for the bulk operation
+    onAddToSection(bulkPendingChange);
     onShowPreview(true);
     
     // Clear selections and close dialog
