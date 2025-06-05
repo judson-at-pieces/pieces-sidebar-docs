@@ -1,15 +1,15 @@
 
 import { useState } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
-import { Plus, Settings, GripVertical, Save, RotateCcw } from "lucide-react";
+import { Plus, Settings, Save, RotateCcw } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Badge } from "@/components/ui/badge";
 import { NavigationSection } from "@/services/navigationService";
-import { NavigationItemList } from "./NavigationItemList";
+import { NavigationSectionHeader } from "./NavigationSectionHeader";
+import { NavigationItemDisplay } from "./NavigationItemDisplay";
 import { PendingDeletion } from "./hooks/usePendingDeletions";
 
 interface NavigationStructurePanelProps {
@@ -37,8 +37,6 @@ export function NavigationStructurePanel({
 }: NavigationStructurePanelProps) {
   const [newSectionTitle, setNewSectionTitle] = useState("");
   const [showAddDialog, setShowAddDialog] = useState(false);
-  const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
-  const [editingSectionTitle, setEditingSectionTitle] = useState("");
 
   const handleAddSection = () => {
     if (newSectionTitle.trim()) {
@@ -46,24 +44,6 @@ export function NavigationStructurePanel({
       setNewSectionTitle("");
       setShowAddDialog(false);
     }
-  };
-
-  const handleEditSection = (section: NavigationSection) => {
-    setEditingSectionId(section.id);
-    setEditingSectionTitle(section.title);
-  };
-
-  const handleSaveEdit = () => {
-    if (editingSectionId && editingSectionTitle.trim()) {
-      onUpdateSectionTitle(editingSectionId, editingSectionTitle.trim());
-      setEditingSectionId(null);
-      setEditingSectionTitle("");
-    }
-  };
-
-  const handleCancelEdit = () => {
-    setEditingSectionId(null);
-    setEditingSectionTitle("");
   };
 
   const handleDragEnd = (result: DropResult) => {
@@ -177,67 +157,33 @@ export function NavigationStructurePanel({
                               snapshot.isDragging ? 'shadow-lg border-primary' : 'border-border'
                             }`}
                           >
-                            <div className="p-3 border-b border-border bg-muted/20">
-                              <div className="flex items-center gap-3">
-                                <div {...provided.dragHandleProps} className="cursor-grab hover:cursor-grabbing">
-                                  <GripVertical className="h-4 w-4 text-muted-foreground" />
-                                </div>
-                                
-                                {editingSectionId === section.id ? (
-                                  <div className="flex-1 flex items-center gap-2">
-                                    <Input
-                                      value={editingSectionTitle}
-                                      onChange={(e) => setEditingSectionTitle(e.target.value)}
-                                      onKeyDown={(e) => {
-                                        if (e.key === 'Enter') handleSaveEdit();
-                                        if (e.key === 'Escape') handleCancelEdit();
-                                      }}
-                                      className="text-sm"
-                                      autoFocus
-                                    />
-                                    <Button size="sm" onClick={handleSaveEdit}>
-                                      Save
-                                    </Button>
-                                    <Button size="sm" variant="outline" onClick={handleCancelEdit}>
-                                      Cancel
-                                    </Button>
-                                  </div>
-                                ) : (
-                                  <>
-                                    <div className="flex-1">
-                                      <h3 className="font-medium text-sm">{section.title}</h3>
-                                      <div className="flex items-center gap-2 mt-1">
-                                        <Badge variant="secondary" className="text-xs">
-                                          {section.items?.length || 0} items
-                                        </Badge>
-                                        {pendingDeletions.filter(d => d.sectionId === section.id).length > 0 && (
-                                          <Badge variant="destructive" className="text-xs">
-                                            {pendingDeletions.filter(d => d.sectionId === section.id).length} pending deletion
-                                          </Badge>
-                                        )}
-                                      </div>
-                                    </div>
-                                    <Button
-                                      size="sm"
-                                      variant="ghost"
-                                      onClick={() => handleEditSection(section)}
-                                      className="h-8 w-8 p-0"
-                                    >
-                                      <Settings className="h-3 w-3" />
-                                    </Button>
-                                  </>
-                                )}
-                              </div>
-                            </div>
+                            <NavigationSectionHeader
+                              section={section}
+                              pendingDeletions={pendingDeletions}
+                              onUpdateTitle={onUpdateSectionTitle}
+                              dragHandleProps={provided.dragHandleProps}
+                            />
                             
                             <div className="p-3">
-                              <NavigationItemList
-                                sectionId={section.id}
-                                items={section.items || []}
-                                pendingDeletions={pendingDeletions}
-                                onTogglePendingDeletion={onTogglePendingDeletion}
-                                onNavigationChange={onNavigationChange}
-                              />
+                              {section.items && section.items.length > 0 ? (
+                                <div className="space-y-1">
+                                  {section.items.map((item, itemIndex) => (
+                                    <NavigationItemDisplay
+                                      key={item.id}
+                                      item={item}
+                                      index={itemIndex}
+                                      sectionId={section.id}
+                                      pendingDeletions={pendingDeletions}
+                                      onTogglePendingDeletion={onTogglePendingDeletion}
+                                      globalIndex={itemIndex}
+                                    />
+                                  ))}
+                                </div>
+                              ) : (
+                                <div className="text-center text-muted-foreground py-4">
+                                  <p className="text-sm">No items in this section</p>
+                                </div>
+                              )}
                             </div>
                           </div>
                         )}
