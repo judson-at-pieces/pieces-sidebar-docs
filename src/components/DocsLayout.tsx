@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -296,7 +297,7 @@ export default function DocsLayout() {
           <main className="flex-1 relative overflow-y-auto focus:outline-none">
             <div className="min-h-full flex flex-col">
               <div className="flex-1 py-4 sm:py-6 lg:py-8">
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
                   <Outlet />
                 </div>
               </div>
