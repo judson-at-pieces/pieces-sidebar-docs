@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -196,7 +195,7 @@ function DocsSidebar({ className, onNavigate }: { className?: string; onNavigate
   }
 
   return (
-    <ScrollArea className={cn("h-full w-full lg:w-64", className)}>
+    <ScrollArea className={cn("h-full w-full lg:w-80", className)}>
       <div className="space-y-4 py-4">
         <div className="px-3 py-2">
           <div className="mb-6">
@@ -280,7 +279,7 @@ export default function DocsLayout() {
       <div className="lg:flex">
         {/* Desktop sidebar */}
         <div className="hidden lg:flex lg:flex-shrink-0">
-          <div className="flex flex-col w-64 border-r border-border bg-card/95 backdrop-blur-sm">
+          <div className="flex flex-col w-80 border-r border-border bg-card/95 backdrop-blur-sm">
             <div className="flex items-center justify-between p-4 border-b border-border">
               <Link to="/" className="flex items-center space-x-2">
                 <PiecesLogo className="w-8 h-8" alt="Pieces" />
@@ -297,7 +296,7 @@ export default function DocsLayout() {
           <main className="flex-1 relative overflow-y-auto focus:outline-none">
             <div className="min-h-full flex flex-col">
               <div className="flex-1 py-4 sm:py-6 lg:py-8">
-                <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
                   <Outlet />
                 </div>
               </div>
