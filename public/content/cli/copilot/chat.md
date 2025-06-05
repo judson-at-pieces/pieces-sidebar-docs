@@ -1,8 +1,6 @@
 ---
-title: "Generative AI Conversations"
-path: "/cli/copilot/chat"
-visibility: "PUBLIC"
 ---
+
 ***
 
 ## Accessing Copilot Chat in your Terminal
