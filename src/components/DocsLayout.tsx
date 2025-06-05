@@ -36,45 +36,6 @@ function DocsSidebar({ className, onNavigate }: { className?: string; onNavigate
   const isActive = (href: string) => location.pathname === href;
   const isSectionOpen = (sectionId: string) => openSections.includes(sectionId);
 
-  // Build hierarchical structure from flat items
-  const buildHierarchy = (items: NavigationItem[]): NavigationItem[] => {
-    const itemMap = new Map<string, NavigationItem>();
-    const rootItems: NavigationItem[] = [];
-
-    // First pass: create map of all items
-    items.forEach(item => {
-      itemMap.set(item.id, { ...item, items: [] });
-    });
-
-    // Second pass: build hierarchy
-    items.forEach(item => {
-      const mappedItem = itemMap.get(item.id)!;
-      
-      if (item.parent_id && itemMap.has(item.parent_id)) {
-        // This is a child item
-        const parent = itemMap.get(item.parent_id)!;
-        if (!parent.items) parent.items = [];
-        parent.items.push(mappedItem);
-      } else {
-        // This is a root item
-        rootItems.push(mappedItem);
-      }
-    });
-
-    // Sort items by order_index
-    const sortItems = (items: NavigationItem[]) => {
-      items.sort((a, b) => a.order_index - b.order_index);
-      items.forEach(item => {
-        if (item.items && item.items.length > 0) {
-          sortItems(item.items);
-        }
-      });
-    };
-
-    sortItems(rootItems);
-    return rootItems;
-  };
-
   const filterItems = (items: NavigationItem[], searchTerm: string): NavigationItem[] => {
     return items.filter(item => {
       const matchesSearch = item.title.toLowerCase().includes(searchTerm.toLowerCase());
@@ -95,20 +56,14 @@ function DocsSidebar({ className, onNavigate }: { className?: string; onNavigate
   };
 
   const filteredNavigation = searchTerm 
-    ? navigation.sections.map(section => {
-        const hierarchicalItems = buildHierarchy(section.items);
-        return {
-          ...section,
-          items: filterItems(hierarchicalItems, searchTerm)
-        };
-      }).filter(section => 
-        section.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        section.items.length > 0
-      )
-    : navigation.sections.map(section => ({
+    ? navigation.sections.map(section => ({
         ...section,
-        items: buildHierarchy(section.items)
-      }));
+        items: filterItems(section.items || [], searchTerm)
+      })).filter(section => 
+        section.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (section.items && section.items.length > 0)
+      )
+    : navigation.sections;
 
   const renderNavItem = (item: NavigationItem, depth = 0) => {
     const hasSubItems = item.items && item.items.length > 0;
