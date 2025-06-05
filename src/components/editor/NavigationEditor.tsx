@@ -176,27 +176,33 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
 
   const handleSectionReorder = async (newSections: typeof sections) => {
     try {
-      console.log('Reordering sections');
-      // Update sections with new order
+      console.log('Reordering sections with new order:', newSections.map(s => ({ id: s.id, title: s.title, order_index: s.order_index })));
+      
+      // Optimistically update local state first
       setSections(newSections);
       
-      // Update order in database
-      for (let i = 0; i < newSections.length; i++) {
-        await navigationService.updateNavigationSection(newSections[i].id, {
-          order_index: i
-        });
-      }
+      // Update each section's order_index in the database
+      const updatePromises = newSections.map((section, index) => 
+        navigationService.updateNavigationSection(section.id, {
+          order_index: index
+        })
+      );
       
+      await Promise.all(updatePromises);
+      console.log('All section orders updated successfully');
+      
+      // Refresh data from database to ensure consistency
       const refreshedData = await refetch();
       if (refreshedData.data?.sections) {
         setSections(refreshedData.data.sections);
       }
       onNavigationChange();
-      toast.success("Sections reordered");
+      toast.success("Sections reordered successfully");
     } catch (error) {
       console.error('Error reordering sections:', error);
       toast.error("Failed to reorder sections");
-      // Revert on error
+      
+      // Revert to original state on error
       const refreshedData = await refetch();
       if (refreshedData.data?.sections) {
         setSections(refreshedData.data.sections);

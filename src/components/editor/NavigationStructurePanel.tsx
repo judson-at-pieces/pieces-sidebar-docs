@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { DragDropContext, Droppable, DropResult } from "@hello-pangea/dnd";
+import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -9,6 +9,7 @@ import { Separator } from "@/components/ui/separator";
 import { Plus, Trash2, RotateCcw, RefreshCw } from "lucide-react";
 import { NavigationSection } from "@/services/navigationService";
 import { NavigationItemDisplay } from "./NavigationItemDisplay";
+import { NavigationSectionHeader } from "./NavigationSectionHeader";
 import { PendingDeletion } from "./hooks/usePendingDeletions";
 import { toast } from "sonner";
 
@@ -38,32 +39,12 @@ export function NavigationStructurePanel({
   onNavigationChange
 }: NavigationStructurePanelProps) {
   const [newSectionTitle, setNewSectionTitle] = useState("");
-  const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
-  const [editSectionTitle, setEditSectionTitle] = useState("");
 
   const handleAddSection = () => {
     if (newSectionTitle.trim()) {
       onAddSection(newSectionTitle.trim());
       setNewSectionTitle("");
     }
-  };
-
-  const handleStartEditSection = (sectionId: string, currentTitle: string) => {
-    setEditingSectionId(sectionId);
-    setEditSectionTitle(currentTitle);
-  };
-
-  const handleSaveSectionTitle = () => {
-    if (editingSectionId && editSectionTitle.trim()) {
-      onUpdateSectionTitle(editingSectionId, editSectionTitle.trim());
-      setEditingSectionId(null);
-      setEditSectionTitle("");
-    }
-  };
-
-  const handleCancelEditSection = () => {
-    setEditingSectionId(null);
-    setEditSectionTitle("");
   };
 
   const handleDragEnd = (result: DropResult) => {
@@ -76,7 +57,14 @@ export function NavigationStructurePanel({
       const newSections = Array.from(sections);
       const [reorderedSection] = newSections.splice(source.index, 1);
       newSections.splice(destination.index, 0, reorderedSection);
-      onSectionReorder(newSections);
+      
+      // Update order_index for each section
+      const sectionsWithNewOrder = newSections.map((section, index) => ({
+        ...section,
+        order_index: index
+      }));
+      
+      onSectionReorder(sectionsWithNewOrder);
     }
   };
 
@@ -160,70 +148,59 @@ export function NavigationStructurePanel({
               {(provided) => (
                 <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-4">
                   {sections.map((section, sectionIndex) => (
-                    <div key={section.id} className="border rounded-lg p-3 bg-muted/20">
-                      <div className="flex items-center justify-between mb-3">
-                        {editingSectionId === section.id ? (
-                          <div className="flex items-center gap-2 flex-1">
-                            <Input
-                              value={editSectionTitle}
-                              onChange={(e) => setEditSectionTitle(e.target.value)}
-                              className="text-base font-semibold"
-                              onKeyPress={(e) => {
-                                if (e.key === 'Enter') handleSaveSectionTitle();
-                                if (e.key === 'Escape') handleCancelEditSection();
-                              }}
-                              autoFocus
-                            />
-                            <Button size="sm" onClick={handleSaveSectionTitle} variant="ghost">
-                              ✓
-                            </Button>
-                            <Button size="sm" onClick={handleCancelEditSection} variant="ghost">
-                              ✕
-                            </Button>
+                    <Draggable key={section.id} draggableId={section.id} index={sectionIndex}>
+                      {(provided, snapshot) => (
+                        <div
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          className={`border rounded-lg bg-muted/20 ${
+                            snapshot.isDragging ? 'shadow-lg ring-2 ring-primary/20' : ''
+                          }`}
+                        >
+                          <NavigationSectionHeader
+                            section={section}
+                            pendingDeletions={pendingDeletions}
+                            onUpdateTitle={onUpdateSectionTitle}
+                            dragHandleProps={provided.dragHandleProps}
+                          />
+                          
+                          <div className="p-3">
+                            <Droppable droppableId={`section-${section.id}`} type="item">
+                              {(sectionProvided) => (
+                                <div
+                                  {...sectionProvided.droppableProps}
+                                  ref={sectionProvided.innerRef}
+                                  className="space-y-1"
+                                >
+                                  {section.items?.map((item, itemIndex) => {
+                                    const globalIndex = getGlobalIndex(sectionIndex, itemIndex);
+                                    return (
+                                      <NavigationItemDisplay
+                                        key={item.id}
+                                        item={item}
+                                        index={itemIndex}
+                                        sectionId={section.id}
+                                        pendingDeletions={pendingDeletions}
+                                        onTogglePendingDeletion={onTogglePendingDeletion}
+                                        onUpdateTitle={onUpdateItemTitle}
+                                        globalIndex={globalIndex}
+                                      />
+                                    );
+                                  })}
+                                  {sectionProvided.placeholder}
+                                </div>
+                              )}
+                            </Droppable>
+                            
+                            {(!section.items || section.items.length === 0) && (
+                              <p className="text-sm text-muted-foreground italic text-center py-4">
+                                No items in this section. Add files from the left panel.
+                              </p>
+                            )}
                           </div>
-                        ) : (
-                          <h4 
-                            className="text-base font-semibold cursor-pointer hover:text-primary"
-                            onClick={() => handleStartEditSection(section.id, section.title)}
-                          >
-                            {section.title}
-                          </h4>
-                        )}
-                      </div>
-                      
-                      <Droppable droppableId={`section-${section.id}`} type="item">
-                        {(sectionProvided) => (
-                          <div
-                            {...sectionProvided.droppableProps}
-                            ref={sectionProvided.innerRef}
-                            className="space-y-1"
-                          >
-                            {section.items?.map((item, itemIndex) => {
-                              const globalIndex = getGlobalIndex(sectionIndex, itemIndex);
-                              return (
-                                <NavigationItemDisplay
-                                  key={item.id}
-                                  item={item}
-                                  index={itemIndex}
-                                  sectionId={section.id}
-                                  pendingDeletions={pendingDeletions}
-                                  onTogglePendingDeletion={onTogglePendingDeletion}
-                                  onUpdateTitle={onUpdateItemTitle}
-                                  globalIndex={globalIndex}
-                                />
-                              );
-                            })}
-                            {sectionProvided.placeholder}
-                          </div>
-                        )}
-                      </Droppable>
-                      
-                      {(!section.items || section.items.length === 0) && (
-                        <p className="text-sm text-muted-foreground italic text-center py-4">
-                          No items in this section. Add files from the left panel.
-                        </p>
+                        </div>
                       )}
-                    </div>
+                    </Draggable>
                   ))}
                   {provided.placeholder}
                 </div>
