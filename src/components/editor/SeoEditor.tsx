@@ -223,8 +223,8 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
     <div className="h-full flex">
       {/* File Navigation Sidebar */}
       {fileStructure && onFileSelect && (
-        <div className="w-80 border-r border-border/50 bg-muted/20 backdrop-blur-sm">
-          <div className="p-4 border-b">
+        <div className="w-80 border-r border-border/50 bg-muted/20 backdrop-blur-sm flex flex-col">
+          <div className="p-4 border-b flex-shrink-0">
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="font-medium text-sm">Select Page for SEO</h3>
@@ -259,19 +259,21 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
               </div>
             )}
           </div>
-          <ScrollArea className="flex-1">
-            <div className="p-2">
-              {fileStructure.map((node) => (
-                <FileTreeItem
-                  key={node.path}
-                  node={node}
-                  selectedFile={selectedFile}
-                  onFileSelect={onFileSelect}
-                  pendingChanges={pendingChanges}
-                />
-              ))}
-            </div>
-          </ScrollArea>
+          <div className="flex-1 min-h-0">
+            <ScrollArea className="h-full">
+              <div className="p-2">
+                {fileStructure.map((node) => (
+                  <FileTreeItem
+                    key={node.path}
+                    node={node}
+                    selectedFile={selectedFile}
+                    onFileSelect={onFileSelect}
+                    pendingChanges={pendingChanges}
+                  />
+                ))}
+              </div>
+            </ScrollArea>
+          </div>
         </div>
       )}
 
@@ -293,7 +295,7 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
           </div>
         ) : (
           <>
-            <div className="p-6 border-b bg-gradient-to-r from-background to-muted/10">
+            <div className="p-6 border-b bg-gradient-to-r from-background to-muted/10 flex-shrink-0">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
@@ -318,434 +320,436 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
               </p>
             </div>
 
-            <ScrollArea className="flex-1 p-6">
-              <Tabs defaultValue="basic" className="space-y-6">
-                <TabsList className="grid w-full grid-cols-5">
-                  <TabsTrigger value="basic" className="gap-2">
-                    <FileText className="h-4 w-4" />
-                    Basic
-                  </TabsTrigger>
-                  <TabsTrigger value="social" className="gap-2">
-                    <Globe className="h-4 w-4" />
-                    Social
-                  </TabsTrigger>
-                  <TabsTrigger value="technical" className="gap-2">
-                    <Search className="h-4 w-4" />
-                    Technical
-                  </TabsTrigger>
-                  <TabsTrigger value="schema" className="gap-2">
-                    <BarChart className="h-4 w-4" />
-                    Schema
-                  </TabsTrigger>
-                  <TabsTrigger value="advanced" className="gap-2">
-                    <Hash className="h-4 w-4" />
-                    Advanced
-                  </TabsTrigger>
-                </TabsList>
+            <ScrollArea className="flex-1">
+              <div className="p-6">
+                <Tabs defaultValue="basic" className="space-y-6">
+                  <TabsList className="grid w-full grid-cols-5">
+                    <TabsTrigger value="basic" className="gap-2">
+                      <FileText className="h-4 w-4" />
+                      Basic
+                    </TabsTrigger>
+                    <TabsTrigger value="social" className="gap-2">
+                      <Globe className="h-4 w-4" />
+                      Social
+                    </TabsTrigger>
+                    <TabsTrigger value="technical" className="gap-2">
+                      <Search className="h-4 w-4" />
+                      Technical
+                    </TabsTrigger>
+                    <TabsTrigger value="schema" className="gap-2">
+                      <BarChart className="h-4 w-4" />
+                      Schema
+                    </TabsTrigger>
+                    <TabsTrigger value="advanced" className="gap-2">
+                      <Hash className="h-4 w-4" />
+                      Advanced
+                    </TabsTrigger>
+                  </TabsList>
 
-                <TabsContent value="basic" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Basic SEO Information</CardTitle>
-                      <CardDescription>
-                        Core SEO elements that appear in search results
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="title">Page Title</Label>
-                        <Input
-                          id="title"
-                          value={seoData.title}
-                          onChange={(e) => handleSeoChange({ title: e.target.value })}
-                          placeholder="Enter page title (50-60 characters recommended)"
-                          maxLength={60}
-                        />
-                        <div className="text-xs text-muted-foreground">
-                          {seoData.title.length}/60 characters
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="description">Meta Description</Label>
-                        <Textarea
-                          id="description"
-                          value={seoData.description}
-                          onChange={(e) => handleSeoChange({ description: e.target.value })}
-                          placeholder="Brief description for search results (150-160 characters)"
-                          maxLength={160}
-                          rows={3}
-                        />
-                        <div className="text-xs text-muted-foreground">
-                          {seoData.description.length}/160 characters
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="canonical">Canonical URL</Label>
-                        <Input
-                          id="canonical"
-                          value={seoData.canonicalUrl}
-                          onChange={(e) => handleSeoChange({ canonicalUrl: e.target.value })}
-                          placeholder="/page-url"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Keywords</Label>
-                        <div className="flex gap-2">
-                          <Input
-                            value={newKeyword}
-                            onChange={(e) => setNewKeyword(e.target.value)}
-                            placeholder="Add keyword"
-                            onKeyPress={(e) => e.key === 'Enter' && handleAddKeyword()}
-                          />
-                          <Button onClick={handleAddKeyword} size="sm">Add</Button>
-                        </div>
-                        <div className="flex flex-wrap gap-2 mt-2">
-                          {seoData.keywords.map((keyword) => (
-                            <Badge key={keyword} variant="secondary" className="gap-1">
-                              {keyword}
-                              <button
-                                onClick={() => handleRemoveKeyword(keyword)}
-                                className="text-xs hover:text-destructive"
-                              >
-                                ×
-                              </button>
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="social" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Open Graph (Facebook, LinkedIn)</CardTitle>
-                      <CardDescription>
-                        How your content appears when shared on social platforms
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="og-title">OG Title</Label>
-                        <Input
-                          id="og-title"
-                          value={seoData.ogTitle}
-                          onChange={(e) => handleSeoChange({ ogTitle: e.target.value })}
-                          placeholder="Title for social sharing"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="og-description">OG Description</Label>
-                        <Textarea
-                          id="og-description"
-                          value={seoData.ogDescription}
-                          onChange={(e) => handleSeoChange({ ogDescription: e.target.value })}
-                          placeholder="Description for social sharing"
-                          rows={2}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="og-image">OG Image URL</Label>
-                        <Input
-                          id="og-image"
-                          value={seoData.ogImage}
-                          onChange={(e) => handleSeoChange({ ogImage: e.target.value })}
-                          placeholder="https://example.com/image.jpg"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="og-type">OG Type</Label>
-                        <Select
-                          value={seoData.ogType}
-                          onValueChange={(value) => handleSeoChange({ ogType: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="article">Article</SelectItem>
-                            <SelectItem value="website">Website</SelectItem>
-                            <SelectItem value="product">Product</SelectItem>
-                            <SelectItem value="profile">Profile</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Twitter Cards</CardTitle>
-                      <CardDescription>
-                        Optimize appearance on Twitter/X
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="twitter-card">Card Type</Label>
-                        <Select
-                          value={seoData.twitterCard}
-                          onValueChange={(value) => handleSeoChange({ twitterCard: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="summary">Summary</SelectItem>
-                            <SelectItem value="summary_large_image">Summary Large Image</SelectItem>
-                            <SelectItem value="app">App</SelectItem>
-                            <SelectItem value="player">Player</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="twitter-title">Twitter Title</Label>
-                        <Input
-                          id="twitter-title"
-                          value={seoData.twitterTitle}
-                          onChange={(e) => handleSeoChange({ twitterTitle: e.target.value })}
-                          placeholder="Title for Twitter"
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="twitter-description">Twitter Description</Label>
-                        <Textarea
-                          id="twitter-description"
-                          value={seoData.twitterDescription}
-                          onChange={(e) => handleSeoChange({ twitterDescription: e.target.value })}
-                          placeholder="Description for Twitter"
-                          rows={2}
-                        />
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="twitter-image">Twitter Image</Label>
-                        <Input
-                          id="twitter-image"
-                          value={seoData.twitterImage}
-                          onChange={(e) => handleSeoChange({ twitterImage: e.target.value })}
-                          placeholder="https://example.com/twitter-image.jpg"
-                        />
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-4">
+                  <TabsContent value="basic" className="space-y-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Basic SEO Information</CardTitle>
+                        <CardDescription>
+                          Core SEO elements that appear in search results
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
                         <div className="space-y-2">
-                          <Label htmlFor="twitter-site">Twitter Site</Label>
+                          <Label htmlFor="title">Page Title</Label>
                           <Input
-                            id="twitter-site"
-                            value={seoData.twitterSite}
-                            onChange={(e) => handleSeoChange({ twitterSite: e.target.value })}
-                            placeholder="@username"
+                            id="title"
+                            value={seoData.title}
+                            onChange={(e) => handleSeoChange({ title: e.target.value })}
+                            placeholder="Enter page title (50-60 characters recommended)"
+                            maxLength={60}
+                          />
+                          <div className="text-xs text-muted-foreground">
+                            {seoData.title.length}/60 characters
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="description">Meta Description</Label>
+                          <Textarea
+                            id="description"
+                            value={seoData.description}
+                            onChange={(e) => handleSeoChange({ description: e.target.value })}
+                            placeholder="Brief description for search results (150-160 characters)"
+                            maxLength={160}
+                            rows={3}
+                          />
+                          <div className="text-xs text-muted-foreground">
+                            {seoData.description.length}/160 characters
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="canonical">Canonical URL</Label>
+                          <Input
+                            id="canonical"
+                            value={seoData.canonicalUrl}
+                            onChange={(e) => handleSeoChange({ canonicalUrl: e.target.value })}
+                            placeholder="/page-url"
                           />
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="twitter-creator">Twitter Creator</Label>
-                          <Input
-                            id="twitter-creator"
-                            value={seoData.twitterCreator}
-                            onChange={(e) => handleSeoChange({ twitterCreator: e.target.value })}
-                            placeholder="@username"
-                          />
+                          <Label>Keywords</Label>
+                          <div className="flex gap-2">
+                            <Input
+                              value={newKeyword}
+                              onChange={(e) => setNewKeyword(e.target.value)}
+                              placeholder="Add keyword"
+                              onKeyPress={(e) => e.key === 'Enter' && handleAddKeyword()}
+                            />
+                            <Button onClick={handleAddKeyword} size="sm">Add</Button>
+                          </div>
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {seoData.keywords.map((keyword) => (
+                              <Badge key={keyword} variant="secondary" className="gap-1">
+                                {keyword}
+                                <button
+                                  onClick={() => handleRemoveKeyword(keyword)}
+                                  className="text-xs hover:text-destructive"
+                                >
+                                  ×
+                                </button>
+                              </Badge>
+                            ))}
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
 
-                <TabsContent value="technical" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Search Engine Instructions</CardTitle>
-                      <CardDescription>
-                        Control how search engines crawl and index this page
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="robots">Robots Meta</Label>
-                        <Input
-                          id="robots"
-                          value={seoData.robots}
-                          onChange={(e) => handleSeoChange({ robots: e.target.value })}
-                          placeholder="index,follow"
-                        />
-                        <div className="text-xs text-muted-foreground">
-                          Common values: index,follow | noindex,nofollow | index,nofollow
-                        </div>
-                      </div>
-
-                      <div className="flex items-center space-x-4">
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            id="noindex"
-                            checked={seoData.noindex}
-                            onCheckedChange={(checked) => handleSeoChange({ noindex: checked })}
-                          />
-                          <Label htmlFor="noindex">No Index</Label>
-                        </div>
-
-                        <div className="flex items-center space-x-2">
-                          <Switch
-                            id="nofollow"
-                            checked={seoData.nofollow}
-                            onCheckedChange={(checked) => handleSeoChange({ nofollow: checked })}
-                          />
-                          <Label htmlFor="nofollow">No Follow</Label>
-                        </div>
-                      </div>
-
-                      <Separator />
-
-                      <div className="grid grid-cols-2 gap-4">
+                  <TabsContent value="social" className="space-y-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Open Graph (Facebook, LinkedIn)</CardTitle>
+                        <CardDescription>
+                          How your content appears when shared on social platforms
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
                         <div className="space-y-2">
-                          <Label htmlFor="priority">Sitemap Priority</Label>
+                          <Label htmlFor="og-title">OG Title</Label>
                           <Input
-                            id="priority"
-                            type="number"
-                            min="0"
-                            max="1"
-                            step="0.1"
-                            value={seoData.priority}
-                            onChange={(e) => handleSeoChange({ priority: parseFloat(e.target.value) })}
+                            id="og-title"
+                            value={seoData.ogTitle}
+                            onChange={(e) => handleSeoChange({ ogTitle: e.target.value })}
+                            placeholder="Title for social sharing"
                           />
                         </div>
 
                         <div className="space-y-2">
-                          <Label htmlFor="changefreq">Change Frequency</Label>
+                          <Label htmlFor="og-description">OG Description</Label>
+                          <Textarea
+                            id="og-description"
+                            value={seoData.ogDescription}
+                            onChange={(e) => handleSeoChange({ ogDescription: e.target.value })}
+                            placeholder="Description for social sharing"
+                            rows={2}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="og-image">OG Image URL</Label>
+                          <Input
+                            id="og-image"
+                            value={seoData.ogImage}
+                            onChange={(e) => handleSeoChange({ ogImage: e.target.value })}
+                            placeholder="https://example.com/image.jpg"
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="og-type">OG Type</Label>
                           <Select
-                            value={seoData.changefreq}
-                            onValueChange={(value) => handleSeoChange({ changefreq: value })}
+                            value={seoData.ogType}
+                            onValueChange={(value) => handleSeoChange({ ogType: value })}
                           >
                             <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="always">Always</SelectItem>
-                              <SelectItem value="hourly">Hourly</SelectItem>
-                              <SelectItem value="daily">Daily</SelectItem>
-                              <SelectItem value="weekly">Weekly</SelectItem>
-                              <SelectItem value="monthly">Monthly</SelectItem>
-                              <SelectItem value="yearly">Yearly</SelectItem>
-                              <SelectItem value="never">Never</SelectItem>
+                              <SelectItem value="article">Article</SelectItem>
+                              <SelectItem value="website">Website</SelectItem>
+                              <SelectItem value="product">Product</SelectItem>
+                              <SelectItem value="profile">Profile</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
+                      </CardContent>
+                    </Card>
 
-                <TabsContent value="schema" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Schema.org Structured Data</CardTitle>
-                      <CardDescription>
-                        Help search engines understand your content better
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="space-y-2">
-                        <Label htmlFor="schema-type">Schema Type</Label>
-                        <Select
-                          value={seoData.schemaType}
-                          onValueChange={(value) => handleSeoChange({ schemaType: value })}
-                        >
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Article">Article</SelectItem>
-                            <SelectItem value="BlogPosting">Blog Posting</SelectItem>
-                            <SelectItem value="TechArticle">Technical Article</SelectItem>
-                            <SelectItem value="HowTo">How-To Guide</SelectItem>
-                            <SelectItem value="FAQ">FAQ</SelectItem>
-                            <SelectItem value="Product">Product</SelectItem>
-                            <SelectItem value="Organization">Organization</SelectItem>
-                            <SelectItem value="WebPage">Web Page</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label htmlFor="schema-data">Custom Schema JSON-LD</Label>
-                        <Textarea
-                          id="schema-data"
-                          value={seoData.schemaData}
-                          onChange={(e) => handleSeoChange({ schemaData: e.target.value })}
-                          placeholder='{"@context": "https://schema.org", "@type": "Article", ...}'
-                          rows={8}
-                          className="font-mono text-xs"
-                        />
-                        <div className="text-xs text-muted-foreground">
-                          Enter custom JSON-LD structured data (optional - will be auto-generated based on schema type if empty)
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Twitter Cards</CardTitle>
+                        <CardDescription>
+                          Optimize appearance on Twitter/X
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="twitter-card">Card Type</Label>
+                          <Select
+                            value={seoData.twitterCard}
+                            onValueChange={(value) => handleSeoChange({ twitterCard: value })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="summary">Summary</SelectItem>
+                              <SelectItem value="summary_large_image">Summary Large Image</SelectItem>
+                              <SelectItem value="app">App</SelectItem>
+                              <SelectItem value="player">Player</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
 
-                <TabsContent value="advanced" className="space-y-6">
-                  <Card>
-                    <CardHeader>
-                      <CardTitle>Custom Meta Tags</CardTitle>
-                      <CardDescription>
-                        Add additional meta tags for specific requirements
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent className="space-y-4">
-                      <div className="grid grid-cols-3 gap-2">
-                        <Input
-                          value={newMetaName}
-                          onChange={(e) => setNewMetaName(e.target.value)}
-                          placeholder="Meta name"
-                        />
-                        <Input
-                          value={newMetaContent}
-                          onChange={(e) => setNewMetaContent(e.target.value)}
-                          placeholder="Content"
-                        />
-                        <div className="flex gap-2">
+                        <div className="space-y-2">
+                          <Label htmlFor="twitter-title">Twitter Title</Label>
                           <Input
-                            value={newMetaProperty}
-                            onChange={(e) => setNewMetaProperty(e.target.value)}
-                            placeholder="Property (optional)"
-                            className="flex-1"
+                            id="twitter-title"
+                            value={seoData.twitterTitle}
+                            onChange={(e) => handleSeoChange({ twitterTitle: e.target.value })}
+                            placeholder="Title for Twitter"
                           />
-                          <Button onClick={handleAddCustomMeta} size="sm">Add</Button>
                         </div>
-                      </div>
 
-                      <div className="space-y-2">
-                        {seoData.customMeta.map((meta, index) => (
-                          <div key={index} className="flex items-center gap-2 p-2 border rounded">
-                            <code className="text-xs flex-1">
-                              &lt;meta {meta.property ? `property="${meta.property}"` : `name="${meta.name}"`} content="{meta.content}" /&gt;
-                            </code>
-                            <Button
-                              onClick={() => handleRemoveCustomMeta(index)}
-                              variant="ghost"
-                              size="sm"
-                              className="text-destructive"
-                            >
-                              Remove
-                            </Button>
+                        <div className="space-y-2">
+                          <Label htmlFor="twitter-description">Twitter Description</Label>
+                          <Textarea
+                            id="twitter-description"
+                            value={seoData.twitterDescription}
+                            onChange={(e) => handleSeoChange({ twitterDescription: e.target.value })}
+                            placeholder="Description for Twitter"
+                            rows={2}
+                          />
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="twitter-image">Twitter Image</Label>
+                          <Input
+                            id="twitter-image"
+                            value={seoData.twitterImage}
+                            onChange={(e) => handleSeoChange({ twitterImage: e.target.value })}
+                            placeholder="https://example.com/twitter-image.jpg"
+                          />
+                        </div>
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="twitter-site">Twitter Site</Label>
+                            <Input
+                              id="twitter-site"
+                              value={seoData.twitterSite}
+                              onChange={(e) => handleSeoChange({ twitterSite: e.target.value })}
+                              placeholder="@username"
+                            />
                           </div>
-                        ))}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </TabsContent>
-              </Tabs>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="twitter-creator">Twitter Creator</Label>
+                            <Input
+                              id="twitter-creator"
+                              value={seoData.twitterCreator}
+                              onChange={(e) => handleSeoChange({ twitterCreator: e.target.value })}
+                              placeholder="@username"
+                            />
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  <TabsContent value="technical" className="space-y-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Search Engine Instructions</CardTitle>
+                        <CardDescription>
+                          Control how search engines crawl and index this page
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="robots">Robots Meta</Label>
+                          <Input
+                            id="robots"
+                            value={seoData.robots}
+                            onChange={(e) => handleSeoChange({ robots: e.target.value })}
+                            placeholder="index,follow"
+                          />
+                          <div className="text-xs text-muted-foreground">
+                            Common values: index,follow | noindex,nofollow | index,nofollow
+                          </div>
+                        </div>
+
+                        <div className="flex items-center space-x-4">
+                          <div className="flex items-center space-x-2">
+                            <Switch
+                              id="noindex"
+                              checked={seoData.noindex}
+                              onCheckedChange={(checked) => handleSeoChange({ noindex: checked })}
+                            />
+                            <Label htmlFor="noindex">No Index</Label>
+                          </div>
+
+                          <div className="flex items-center space-x-2">
+                            <Switch
+                              id="nofollow"
+                              checked={seoData.nofollow}
+                              onCheckedChange={(checked) => handleSeoChange({ nofollow: checked })}
+                            />
+                            <Label htmlFor="nofollow">No Follow</Label>
+                          </div>
+                        </div>
+
+                        <Separator />
+
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="space-y-2">
+                            <Label htmlFor="priority">Sitemap Priority</Label>
+                            <Input
+                              id="priority"
+                              type="number"
+                              min="0"
+                              max="1"
+                              step="0.1"
+                              value={seoData.priority}
+                              onChange={(e) => handleSeoChange({ priority: parseFloat(e.target.value) })}
+                            />
+                          </div>
+
+                          <div className="space-y-2">
+                            <Label htmlFor="changefreq">Change Frequency</Label>
+                            <Select
+                              value={seoData.changefreq}
+                              onValueChange={(value) => handleSeoChange({ changefreq: value })}
+                            >
+                              <SelectTrigger>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="always">Always</SelectItem>
+                                <SelectItem value="hourly">Hourly</SelectItem>
+                                <SelectItem value="daily">Daily</SelectItem>
+                                <SelectItem value="weekly">Weekly</SelectItem>
+                                <SelectItem value="monthly">Monthly</SelectItem>
+                                <SelectItem value="yearly">Yearly</SelectItem>
+                                <SelectItem value="never">Never</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  <TabsContent value="schema" className="space-y-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Schema.org Structured Data</CardTitle>
+                        <CardDescription>
+                          Help search engines understand your content better
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="schema-type">Schema Type</Label>
+                          <Select
+                            value={seoData.schemaType}
+                            onValueChange={(value) => handleSeoChange({ schemaType: value })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="Article">Article</SelectItem>
+                              <SelectItem value="BlogPosting">Blog Posting</SelectItem>
+                              <SelectItem value="TechArticle">Technical Article</SelectItem>
+                              <SelectItem value="HowTo">How-To Guide</SelectItem>
+                              <SelectItem value="FAQ">FAQ</SelectItem>
+                              <SelectItem value="Product">Product</SelectItem>
+                              <SelectItem value="Organization">Organization</SelectItem>
+                              <SelectItem value="WebPage">Web Page</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label htmlFor="schema-data">Custom Schema JSON-LD</Label>
+                          <Textarea
+                            id="schema-data"
+                            value={seoData.schemaData}
+                            onChange={(e) => handleSeoChange({ schemaData: e.target.value })}
+                            placeholder='{"@context": "https://schema.org", "@type": "Article", ...}'
+                            rows={8}
+                            className="font-mono text-xs"
+                          />
+                          <div className="text-xs text-muted-foreground">
+                            Enter custom JSON-LD structured data (optional - will be auto-generated based on schema type if empty)
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+
+                  <TabsContent value="advanced" className="space-y-6">
+                    <Card>
+                      <CardHeader>
+                        <CardTitle>Custom Meta Tags</CardTitle>
+                        <CardDescription>
+                          Add additional meta tags for specific requirements
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="space-y-4">
+                        <div className="grid grid-cols-3 gap-2">
+                          <Input
+                            value={newMetaName}
+                            onChange={(e) => setNewMetaName(e.target.value)}
+                            placeholder="Meta name"
+                          />
+                          <Input
+                            value={newMetaContent}
+                            onChange={(e) => setNewMetaContent(e.target.value)}
+                            placeholder="Content"
+                          />
+                          <div className="flex gap-2">
+                            <Input
+                              value={newMetaProperty}
+                              onChange={(e) => setNewMetaProperty(e.target.value)}
+                              placeholder="Property (optional)"
+                              className="flex-1"
+                            />
+                            <Button onClick={handleAddCustomMeta} size="sm">Add</Button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-2">
+                          {seoData.customMeta.map((meta, index) => (
+                            <div key={index} className="flex items-center gap-2 p-2 border rounded">
+                              <code className="text-xs flex-1">
+                                &lt;meta {meta.property ? `property="${meta.property}"` : `name="${meta.name}"`} content="{meta.content}" /&gt;
+                              </code>
+                              <Button
+                                onClick={() => handleRemoveCustomMeta(index)}
+                                variant="ghost"
+                                size="sm"
+                                className="text-destructive"
+                              >
+                                Remove
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </TabsContent>
+                </Tabs>
+              </div>
             </ScrollArea>
           </>
         )}
