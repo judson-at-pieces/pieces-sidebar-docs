@@ -14,8 +14,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { FileText, Globe, Search, Image, Hash, Clock, Users, BarChart, Folder, FolderOpen, ChevronDown, ChevronRight, Save, GitBranch, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { FileNode } from "@/utils/fileSystem";
-import { useSeoData, type SeoData } from "@/hooks/useSeoData";
+import { useSeoData } from "@/hooks/useSeoData";
 import { useDocumentSeo } from "@/hooks/useDocumentSeo";
+import { supabase } from "@/integrations/supabase/client";
+
+import type { SeoData } from "@/hooks/useSeoData";
 
 interface SeoEditorProps {
   selectedFile?: string;
@@ -118,22 +121,16 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
   const [newMetaProperty, setNewMetaProperty] = useState("");
   const [previewMode, setPreviewMode] = useState(false);
   const [isCreatingPR, setIsCreatingPR] = useState(false);
-  const [lastToastTime, setLastToastTime] = useState(0);
 
-  // Apply SEO data to document head in real-time when in preview mode
   useDocumentSeo(previewMode ? seoData : {});
 
   const showToast = (message: string, type: 'success' | 'info' | 'error' = 'info', options?: any) => {
-    const now = Date.now();
-    if (now - lastToastTime > 2000) {
-      setLastToastTime(now);
-      if (type === 'success') {
-        toast.success(message, options);
-      } else if (type === 'error') {
-        toast.error(message, options);
-      } else {
-        toast.info(message, options);
-      }
+    if (type === 'success') {
+      toast.success(message, options);
+    } else if (type === 'error') {
+      toast.error(message, options);
+    } else {
+      toast.info(message, options);
     }
   };
 
@@ -203,37 +200,9 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
     showToast("Copied basic SEO data to social media fields", "success");
   };
 
-  const generateFrontmatter = (data: SeoData): string => {
-    const frontmatterLines = [
-      '---',
-      data.metaTitle ? `seoTitle: "${data.metaTitle}"` : '',
-      data.metaDescription ? `seoDescription: "${data.metaDescription}"` : '',
-      data.keywords.length ? `seoKeywords: "${data.keywords.join(', ')}"` : '',
-      data.canonicalUrl ? `canonicalUrl: "${data.canonicalUrl}"` : '',
-      data.ogTitle ? `ogTitle: "${data.ogTitle}"` : '',
-      data.ogDescription ? `ogDescription: "${data.ogDescription}"` : '',
-      data.ogImage ? `ogImage: "${data.ogImage}"` : '',
-      data.ogType !== 'article' ? `ogType: "${data.ogType}"` : '',
-      data.twitterCard !== 'summary_large_image' ? `twitterCard: "${data.twitterCard}"` : '',
-      data.twitterTitle ? `twitterTitle: "${data.twitterTitle}"` : '',
-      data.twitterDescription ? `twitterDescription: "${data.twitterDescription}"` : '',
-      data.twitterImage ? `twitterImage: "${data.twitterImage}"` : '',
-      data.robots !== 'index,follow' ? `robots: "${data.robots}"` : '',
-      data.noindex ? `noindex: true` : '',
-      data.nofollow ? `nofollow: true` : '',
-      '---'
-    ].filter(Boolean);
-    
-    return frontmatterLines.join('\n');
-  };
-
   const togglePreview = () => {
     setPreviewMode(!previewMode);
-    if (!previewMode) {
-      showToast("Preview mode enabled - SEO changes applied to current page", "info");
-    } else {
-      showToast("Preview mode disabled - reverted to original page SEO", "info");
-    }
+    showToast(previewMode ? "Preview disabled" : "Preview enabled", "info");
   };
 
   const handleCreatePRForCurrentFile = async () => {
@@ -245,23 +214,22 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
     setIsCreatingPR(true);
     
     try {
-      // Mock PR creation for now - replace with actual GitHub API
-      const frontmatterContent = generateFrontmatter(seoData);
-      console.log('Would create PR with content:', frontmatterContent);
+      // Mock PR creation
+      await new Promise(resolve => setTimeout(resolve, 2000));
       
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate API call
+      const prNumber = Math.floor(Math.random() * 1000) + 1;
+      const prUrl = `https://github.com/mock/repo/pull/${prNumber}`;
       
-      showToast(`SEO pull request created successfully for ${selectedFile}!`, 'success', { 
+      showToast(`SEO pull request created successfully! #${prNumber}`, 'success', { 
         duration: 5000,
         action: {
-          label: 'View Changes',
-          onClick: () => console.log('View PR changes')
+          label: 'View PR',
+          onClick: () => window.open(prUrl, '_blank')
         }
       });
       
     } catch (error) {
-      showToast('Failed to create pull request. Please try again.', 'error', { duration: 3000 });
-      console.error('PR creation failed:', error);
+      showToast('Failed to create pull request', 'error');
     } finally {
       setIsCreatingPR(false);
     }
@@ -276,22 +244,22 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
     setIsCreatingPR(true);
     
     try {
-      // Mock bulk PR creation - replace with actual GitHub API
-      console.log('Would create bulk PR for files:', pendingChanges);
+      // Mock bulk PR creation
+      await new Promise(resolve => setTimeout(resolve, 3000));
       
-      await new Promise(resolve => setTimeout(resolve, 3000)); // Simulate API call
+      const prNumber = Math.floor(Math.random() * 1000) + 1;
+      const prUrl = `https://github.com/mock/repo/pull/${prNumber}`;
       
-      showToast(`Bulk SEO pull request created successfully for ${pendingChanges.length} files!`, 'success', { 
+      showToast(`Bulk SEO pull request created successfully! #${prNumber}`, 'success', { 
         duration: 5000,
         action: {
           label: 'View PR',
-          onClick: () => console.log('View bulk PR')
+          onClick: () => window.open(prUrl, '_blank')
         }
       });
       
     } catch (error) {
-      showToast('Failed to create pull request. Please try again.', 'error', { duration: 3000 });
-      console.error('PR creation failed:', error);
+      showToast('Failed to create pull request', 'error');
     } finally {
       setIsCreatingPR(false);
     }
