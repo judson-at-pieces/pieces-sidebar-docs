@@ -9,7 +9,7 @@ import { CardGroup } from './CardGroup';
 import { CustomTable } from './CustomTable';
 import { TableOfContents } from './TableOfContents';
 import { Tabs } from './Tabs';
-import { Accordion, AccordionItem } from './Accordion';
+import { Accordion } from './Accordion';
 import { AccordionGroup } from './AccordionGroup';
 import { Button } from './Button';
 import { Image } from './Image';
@@ -81,7 +81,6 @@ export const createComponentMappings = () => ({
   TableOfContents,
   Tabs,
   Accordion,
-  AccordionItem,
   AccordionGroup,
   Button,
 });
