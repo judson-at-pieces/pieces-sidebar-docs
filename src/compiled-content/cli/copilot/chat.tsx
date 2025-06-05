@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ExpandableImage } from '@/components/markdown/ExpandableImage';
@@ -26,14 +27,15 @@ export const frontmatter = {
 };
 
 // MDX compiled content
-function _createMdxContent(props) {
+function _createMdxContent(props: any) {
   const _components = {
     div: "div",
     ...props.components
   };
   return _jsx(_components.div, {});
 }
-function MDXContent(props = {}) {
+
+function MDXContent(props: any = {}) {
   const {wrapper: MDXLayout} = props.components || ({});
   return MDXLayout ? _jsx(MDXLayout, {
     ...props,
