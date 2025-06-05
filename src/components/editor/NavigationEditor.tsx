@@ -96,12 +96,34 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
     setSections(updatedSections);
   };
 
+  const handleSectionReorder = async (newSections: typeof sections) => {
+    try {
+      // Update sections with new order
+      setSections(newSections);
+      
+      // Update order in database
+      for (let i = 0; i < newSections.length; i++) {
+        await navigationService.updateNavigationSection(newSections[i].id, {
+          order_index: i
+        });
+      }
+      
+      await refetch();
+      onNavigationChange();
+      toast.success("Sections reordered");
+    } catch (error) {
+      toast.error("Failed to reorder sections");
+      // Revert on error
+      await refetch();
+    }
+  };
+
   return (
     <div className="h-full flex flex-col">
       <div className="p-4 border-b">
         <h2 className="text-lg font-semibold mb-2">Navigation Editor</h2>
         <p className="text-sm text-muted-foreground">
-          Add files or folders to organize your documentation. Folder structure will be preserved.
+          Add files or folders to organize your documentation. Drag sections to reorder them.
         </p>
       </div>
       
