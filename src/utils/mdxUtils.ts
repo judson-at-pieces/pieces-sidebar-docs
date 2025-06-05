@@ -1,4 +1,8 @@
 
+export interface MDXProps {
+  components?: Record<string, React.ComponentType<any>>;
+}
+
 export async function loadMdxContent(path: string) {
   try {
     // Remove leading slash and .md extension if present

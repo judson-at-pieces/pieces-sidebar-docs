@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigation } from "@/hooks/useNavigation";
 import { FileNode } from "@/utils/fileSystem";
@@ -106,6 +105,23 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
     }
   };
 
+  const handleUpdateItemTitle = async (itemId: string, title: string) => {
+    try {
+      await navigationService.updateNavigationItem(itemId, { title });
+      
+      console.log('Navigation item title updated, refreshing navigation data');
+      const refreshedData = await refetch();
+      if (refreshedData.data?.sections) {
+        setSections(refreshedData.data.sections);
+      }
+      onNavigationChange();
+      toast.success("Navigation item title updated");
+    } catch (error) {
+      console.error('Error updating navigation item title:', error);
+      toast.error("Failed to update navigation item title");
+    }
+  };
+
   const handleTogglePendingDeletion = (sectionId: string, itemIndex: number) => {
     const section = sections.find(s => s.id === sectionId);
     if (!section || !section.items || !section.items[itemIndex]) {
@@ -208,7 +224,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
       <div className="p-4 border-b">
         <h2 className="text-lg font-semibold mb-2">Navigation Editor</h2>
         <p className="text-sm text-muted-foreground">
-          Add files or folders to organize your documentation. Drag sections to reorder them.
+          Add files or folders to organize your documentation. Drag sections to reorder them. Click on titles to edit them.
         </p>
       </div>
       
@@ -226,6 +242,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
             pendingDeletions={pendingDeletions}
             onAddSection={handleAddSection}
             onUpdateSectionTitle={handleUpdateSectionTitle}
+            onUpdateItemTitle={handleUpdateItemTitle}
             onTogglePendingDeletion={handleTogglePendingDeletion}
             onBulkDelete={handleBulkDelete}
             onResetPendingDeletions={clearPendingDeletions}
