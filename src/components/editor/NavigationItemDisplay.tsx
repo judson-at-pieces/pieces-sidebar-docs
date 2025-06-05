@@ -24,7 +24,6 @@ interface NavigationItemDisplayProps {
   onTogglePendingDeletion: (sectionId: string, itemIndex: number) => void;
   depth?: number;
   globalIndex: number;
-  allItems: NavigationItem[];
 }
 
 export function NavigationItemDisplay({ 
@@ -34,8 +33,7 @@ export function NavigationItemDisplay({
   pendingDeletions, 
   onTogglePendingDeletion, 
   depth = 0,
-  globalIndex,
-  allItems
+  globalIndex
 }: NavigationItemDisplayProps) {
   const [isExpanded, setIsExpanded] = useState(true);
   const paddingLeft = depth * 16;
@@ -47,15 +45,16 @@ export function NavigationItemDisplay({
   console.log('NavigationItemDisplay rendering:', {
     itemId: item.id,
     title: item.title,
+    href: item.href,
     depth,
     globalIndex,
     parentId: item.parent_id,
     childrenCount: children.length,
-    children: children.map(c => c.title)
+    children: children.map(c => ({ title: c.title, href: c.href }))
   });
   
-  // Determine if this item is a folder (has children or ends without .md)
-  const isFolder = hasChildren || (!item.href.endsWith('.md') && !item.file_path?.endsWith('.md'));
+  // Determine if this item is a folder (has children OR is a parent page)
+  const isFolder = hasChildren;
   
   // Find if this item is pending deletion using global index
   const isPendingDeletion = pendingDeletions.some(
@@ -119,6 +118,9 @@ export function NavigationItemDisplay({
               <span className="text-sm font-medium truncate block">
                 {item.title}
               </span>
+              <div className="text-xs text-muted-foreground truncate">
+                {item.href}
+              </div>
               {hasChildren && (
                 <Badge variant="secondary" className="text-xs mt-1">
                   {children.length} items
@@ -146,19 +148,21 @@ export function NavigationItemDisplay({
           
           {hasChildren && isExpanded && (
             <div className="mt-1">
-              {children.map((childItem, childIndex) => (
-                <NavigationItemDisplay
-                  key={childItem.id}
-                  item={childItem}
-                  index={childIndex}
-                  sectionId={sectionId}
-                  pendingDeletions={pendingDeletions}
-                  onTogglePendingDeletion={onTogglePendingDeletion}
-                  depth={depth + 1}
-                  globalIndex={globalIndex + childIndex + 1}
-                  allItems={allItems}
-                />
-              ))}
+              {children.map((childItem, childIndex) => {
+                const childGlobalIndex = globalIndex + childIndex + 1;
+                return (
+                  <NavigationItemDisplay
+                    key={childItem.id}
+                    item={childItem}
+                    index={childIndex}
+                    sectionId={sectionId}
+                    pendingDeletions={pendingDeletions}
+                    onTogglePendingDeletion={onTogglePendingDeletion}
+                    depth={depth + 1}
+                    globalIndex={childGlobalIndex}
+                  />
+                );
+              })}
             </div>
           )}
         </div>

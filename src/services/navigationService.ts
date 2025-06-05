@@ -64,15 +64,16 @@ function buildHierarchy(items: NavigationItem[]): NavigationItem[] {
     rootItems: rootItems.length,
     hierarchy: rootItems.map(item => ({
       title: item.title,
+      href: item.href,
       childCount: item.items?.length || 0,
-      children: item.items?.map(child => child.title) || []
+      children: item.items?.map(child => ({ title: child.title, href: child.href })) || []
     }))
   });
   
   return rootItems;
 }
 
-// Helper function to merge folder and markdown file entries
+// Enhanced merge function that creates proper folder structure
 function mergeFolderAndMarkdownItems(items: NavigationItem[]): NavigationItem[] {
   console.log('Merging folder and markdown items:', items.length);
   
@@ -122,7 +123,7 @@ export class NavigationService {
         }, [] as string[]);
         
         if (duplicateTitles.length > 0) {
-          console.warn(`Section "${section.title}" has duplicate items:`, duplicateTitles);
+          console.warn(`Section "${section.title}" has duplicate items:`, [...new Set(duplicateTitles)]);
         }
         
         // Check for circular parent references
