@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,9 +10,10 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FileText, Globe, Search, Image, Hash, Clock, Users, BarChart, Folder, FolderOpen, ChevronDown, ChevronRight } from "lucide-react";
+import { FileText, Globe, Search, Image, Hash, Clock, Users, BarChart, Folder, FolderOpen, ChevronDown, ChevronRight, Save, GitBranch } from "lucide-react";
 import { toast } from "sonner";
 import { FileNode } from "@/utils/fileSystem";
+import { useSeoData, type SeoData } from "@/hooks/useSeoData";
 
 interface SeoData {
   // Basic SEO
@@ -68,17 +69,20 @@ function FileTreeItem({
   node, 
   selectedFile, 
   onFileSelect, 
-  depth = 0 
+  depth = 0,
+  pendingChanges
 }: { 
   node: FileNode; 
   selectedFile?: string; 
   onFileSelect?: (filePath: string) => void;
   depth?: number;
+  pendingChanges: string[];
 }) {
   const [isExpanded, setIsExpanded] = useState(true);
   const hasChildren = node.children && node.children.length > 0;
   const isFile = node.type === 'file';
   const isSelected = selectedFile === node.path;
+  const hasChanges = pendingChanges.includes(node.path);
 
   const handleClick = () => {
     if (isFile && onFileSelect) {
@@ -119,9 +123,13 @@ function FileTreeItem({
           )
         ) : null}
         
-        <span className="text-sm truncate">
+        <span className="text-sm truncate flex-1">
           {node.name}
         </span>
+        
+        {hasChanges && (
+          <div className="w-2 h-2 rounded-full bg-amber-500" title="Unsaved changes" />
+        )}
       </div>
       
       {hasChildren && isExpanded && (
@@ -133,6 +141,7 @@ function FileTreeItem({
               selectedFile={selectedFile}
               onFileSelect={onFileSelect}
               depth={depth + 1}
+              pendingChanges={pendingChanges}
             />
           ))}
         </div>
@@ -142,71 +151,41 @@ function FileTreeItem({
 }
 
 export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFileSelect }: SeoEditorProps) {
-  const [seoData, setSeoData] = useState<SeoData>({
-    title: "",
-    description: "",
-    keywords: [],
-    canonicalUrl: "",
-    metaTitle: "",
-    metaDescription: "",
-    metaKeywords: "",
-    ogTitle: "",
-    ogDescription: "",
-    ogImage: "",
-    ogType: "article",
-    ogUrl: "",
-    twitterCard: "summary_large_image",
-    twitterTitle: "",
-    twitterDescription: "",
-    twitterImage: "",
-    twitterSite: "@pieces_app",
-    twitterCreator: "",
-    robots: "index,follow",
-    noindex: false,
-    nofollow: false,
-    priority: 0.8,
-    changefreq: "weekly",
-    schemaType: "Article",
-    schemaData: "",
-    customMeta: []
-  });
-
+  const { seoData, updateSeoData, saveAllChanges, pendingChanges, isSaving, hasUnsavedChanges } = useSeoData(selectedFile);
   const [newKeyword, setNewKeyword] = useState("");
   const [newMetaName, setNewMetaName] = useState("");
   const [newMetaContent, setNewMetaContent] = useState("");
   const [newMetaProperty, setNewMetaProperty] = useState("");
 
-  useEffect(() => {
-    onSeoDataChange(seoData);
-  }, [seoData, onSeoDataChange]);
+  const handleSeoChange = (updates: Partial<SeoData>) => {
+    updateSeoData(updates);
+    onSeoDataChange({ ...seoData, ...updates });
+  };
 
   const handleAddKeyword = () => {
     if (newKeyword.trim() && !seoData.keywords.includes(newKeyword.trim())) {
-      setSeoData(prev => ({
-        ...prev,
-        keywords: [...prev.keywords, newKeyword.trim()]
-      }));
+      handleSeoChange({
+        keywords: [...seoData.keywords, newKeyword.trim()]
+      });
       setNewKeyword("");
     }
   };
 
   const handleRemoveKeyword = (keyword: string) => {
-    setSeoData(prev => ({
-      ...prev,
-      keywords: prev.keywords.filter(k => k !== keyword)
-    }));
+    handleSeoChange({
+      keywords: seoData.keywords.filter(k => k !== keyword)
+    });
   };
 
   const handleAddCustomMeta = () => {
     if (newMetaName.trim() && newMetaContent.trim()) {
-      setSeoData(prev => ({
-        ...prev,
-        customMeta: [...prev.customMeta, {
+      handleSeoChange({
+        customMeta: [...seoData.customMeta, {
           name: newMetaName.trim(),
           content: newMetaContent.trim(),
           property: newMetaProperty.trim() || undefined
         }]
-      }));
+      });
       setNewMetaName("");
       setNewMetaContent("");
       setNewMetaProperty("");
@@ -214,10 +193,9 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
   };
 
   const handleRemoveCustomMeta = (index: number) => {
-    setSeoData(prev => ({
-      ...prev,
-      customMeta: prev.customMeta.filter((_, i) => i !== index)
-    }));
+    handleSeoChange({
+      customMeta: seoData.customMeta.filter((_, i) => i !== index)
+    });
   };
 
   const generateSlugFromTitle = () => {
@@ -226,19 +204,18 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-|-$/g, '');
-      setSeoData(prev => ({ ...prev, canonicalUrl: `/${slug}` }));
+      handleSeoChange({ canonicalUrl: `/${slug}` });
       toast.success("URL slug generated from title");
     }
   };
 
   const copyToSocial = () => {
-    setSeoData(prev => ({
-      ...prev,
-      ogTitle: prev.metaTitle || prev.title,
-      ogDescription: prev.metaDescription || prev.description,
-      twitterTitle: prev.metaTitle || prev.title,
-      twitterDescription: prev.metaDescription || prev.description
-    }));
+    handleSeoChange({
+      ogTitle: seoData.metaTitle || seoData.title,
+      ogDescription: seoData.metaDescription || seoData.description,
+      twitterTitle: seoData.metaTitle || seoData.title,
+      twitterDescription: seoData.metaDescription || seoData.description
+    });
     toast.success("Copied basic SEO data to social media fields");
   };
 
@@ -248,10 +225,39 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
       {fileStructure && onFileSelect && (
         <div className="w-80 border-r border-border/50 bg-muted/20 backdrop-blur-sm">
           <div className="p-4 border-b">
-            <h3 className="font-medium text-sm">Select Page for SEO</h3>
-            <p className="text-xs text-muted-foreground mt-1">
-              Choose a page to configure its SEO settings
-            </p>
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-medium text-sm">Select Page for SEO</h3>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Choose a page to configure its SEO settings
+                </p>
+              </div>
+              {hasUnsavedChanges && (
+                <Button 
+                  onClick={saveAllChanges} 
+                  disabled={isSaving}
+                  size="sm" 
+                  className="gap-2"
+                >
+                  {isSaving ? (
+                    <>
+                      <div className="w-3 h-3 border border-current border-t-transparent rounded-full animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <GitBranch className="h-3 w-3" />
+                      Save All ({pendingChanges.length})
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+            {pendingChanges.length > 0 && (
+              <div className="mt-2 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
+                {pendingChanges.length} file(s) with unsaved SEO changes
+              </div>
+            )}
           </div>
           <ScrollArea className="flex-1">
             <div className="p-2">
@@ -261,6 +267,7 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
                   node={node}
                   selectedFile={selectedFile}
                   onFileSelect={onFileSelect}
+                  pendingChanges={pendingChanges}
                 />
               ))}
             </div>
@@ -305,6 +312,9 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
               </div>
               <p className="text-sm text-muted-foreground mt-2">
                 Configure SEO settings for: <code className="bg-muted px-2 py-1 rounded text-xs">{selectedFile}</code>
+                {pendingChanges.includes(selectedFile) && (
+                  <span className="ml-2 text-amber-600">• Unsaved changes</span>
+                )}
               </p>
             </div>
 
@@ -347,7 +357,7 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
                         <Input
                           id="title"
                           value={seoData.title}
-                          onChange={(e) => setSeoData(prev => ({ ...prev, title: e.target.value }))}
+                          onChange={(e) => handleSeoChange({ title: e.target.value })}
                           placeholder="Enter page title (50-60 characters recommended)"
                           maxLength={60}
                         />
@@ -361,7 +371,7 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
                         <Textarea
                           id="description"
                           value={seoData.description}
-                          onChange={(e) => setSeoData(prev => ({ ...prev, description: e.target.value }))}
+                          onChange={(e) => handleSeoChange({ description: e.target.value })}
                           placeholder="Brief description for search results (150-160 characters)"
                           maxLength={160}
                           rows={3}
@@ -376,7 +386,7 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
                         <Input
                           id="canonical"
                           value={seoData.canonicalUrl}
-                          onChange={(e) => setSeoData(prev => ({ ...prev, canonicalUrl: e.target.value }))}
+                          onChange={(e) => handleSeoChange({ canonicalUrl: e.target.value })}
                           placeholder="/page-url"
                         />
                       </div>
@@ -424,7 +434,7 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
                         <Input
                           id="og-title"
                           value={seoData.ogTitle}
-                          onChange={(e) => setSeoData(prev => ({ ...prev, ogTitle: e.target.value }))}
+                          onChange={(e) => handleSeoChange({ ogTitle: e.target.value })}
                           placeholder="Title for social sharing"
                         />
                       </div>
@@ -434,7 +444,7 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
                         <Textarea
                           id="og-description"
                           value={seoData.ogDescription}
-                          onChange={(e) => setSeoData(prev => ({ ...prev, ogDescription: e.target.value }))}
+                          onChange={(e) => handleSeoChange({ ogDescription: e.target.value })}
                           placeholder="Description for social sharing"
                           rows={2}
                         />
@@ -445,7 +455,7 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
                         <Input
                           id="og-image"
                           value={seoData.ogImage}
-                          onChange={(e) => setSeoData(prev => ({ ...prev, ogImage: e.target.value }))}
+                          onChange={(e) => handleSeoChange({ ogImage: e.target.value })}
                           placeholder="https://example.com/image.jpg"
                         />
                       </div>
@@ -454,7 +464,7 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
                         <Label htmlFor="og-type">OG Type</Label>
                         <Select
                           value={seoData.ogType}
-                          onValueChange={(value) => setSeoData(prev => ({ ...prev, ogType: value }))}
+                          onValueChange={(value) => handleSeoChange({ ogType: value })}
                         >
                           <SelectTrigger>
                             <SelectValue />
@@ -482,7 +492,7 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
                         <Label htmlFor="twitter-card">Card Type</Label>
                         <Select
                           value={seoData.twitterCard}
-                          onValueChange={(value) => setSeoData(prev => ({ ...prev, twitterCard: value }))}
+                          onValueChange={(value) => handleSeoChange({ twitterCard: value })}
                         >
                           <SelectTrigger>
                             <SelectValue />
@@ -501,7 +511,7 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
                         <Input
                           id="twitter-title"
                           value={seoData.twitterTitle}
-                          onChange={(e) => setSeoData(prev => ({ ...prev, twitterTitle: e.target.value }))}
+                          onChange={(e) => handleSeoChange({ twitterTitle: e.target.value })}
                           placeholder="Title for Twitter"
                         />
                       </div>
@@ -511,7 +521,7 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
                         <Textarea
                           id="twitter-description"
                           value={seoData.twitterDescription}
-                          onChange={(e) => setSeoData(prev => ({ ...prev, twitterDescription: e.target.value }))}
+                          onChange={(e) => handleSeoChange({ twitterDescription: e.target.value })}
                           placeholder="Description for Twitter"
                           rows={2}
                         />
@@ -522,7 +532,7 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
                         <Input
                           id="twitter-image"
                           value={seoData.twitterImage}
-                          onChange={(e) => setSeoData(prev => ({ ...prev, twitterImage: e.target.value }))}
+                          onChange={(e) => handleSeoChange({ twitterImage: e.target.value })}
                           placeholder="https://example.com/twitter-image.jpg"
                         />
                       </div>
@@ -533,7 +543,7 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
                           <Input
                             id="twitter-site"
                             value={seoData.twitterSite}
-                            onChange={(e) => setSeoData(prev => ({ ...prev, twitterSite: e.target.value }))}
+                            onChange={(e) => handleSeoChange({ twitterSite: e.target.value })}
                             placeholder="@username"
                           />
                         </div>
@@ -543,7 +553,7 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
                           <Input
                             id="twitter-creator"
                             value={seoData.twitterCreator}
-                            onChange={(e) => setSeoData(prev => ({ ...prev, twitterCreator: e.target.value }))}
+                            onChange={(e) => handleSeoChange({ twitterCreator: e.target.value })}
                             placeholder="@username"
                           />
                         </div>
@@ -566,7 +576,7 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
                         <Input
                           id="robots"
                           value={seoData.robots}
-                          onChange={(e) => setSeoData(prev => ({ ...prev, robots: e.target.value }))}
+                          onChange={(e) => handleSeoChange({ robots: e.target.value })}
                           placeholder="index,follow"
                         />
                         <div className="text-xs text-muted-foreground">
@@ -579,7 +589,7 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
                           <Switch
                             id="noindex"
                             checked={seoData.noindex}
-                            onCheckedChange={(checked) => setSeoData(prev => ({ ...prev, noindex: checked }))}
+                            onCheckedChange={(checked) => handleSeoChange({ noindex: checked })}
                           />
                           <Label htmlFor="noindex">No Index</Label>
                         </div>
@@ -588,7 +598,7 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
                           <Switch
                             id="nofollow"
                             checked={seoData.nofollow}
-                            onCheckedChange={(checked) => setSeoData(prev => ({ ...prev, nofollow: checked }))}
+                            onCheckedChange={(checked) => handleSeoChange({ nofollow: checked })}
                           />
                           <Label htmlFor="nofollow">No Follow</Label>
                         </div>
@@ -606,7 +616,7 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
                             max="1"
                             step="0.1"
                             value={seoData.priority}
-                            onChange={(e) => setSeoData(prev => ({ ...prev, priority: parseFloat(e.target.value) }))}
+                            onChange={(e) => handleSeoChange({ priority: parseFloat(e.target.value) })}
                           />
                         </div>
 
@@ -614,7 +624,7 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
                           <Label htmlFor="changefreq">Change Frequency</Label>
                           <Select
                             value={seoData.changefreq}
-                            onValueChange={(value) => setSeoData(prev => ({ ...prev, changefreq: value }))}
+                            onValueChange={(value) => handleSeoChange({ changefreq: value })}
                           >
                             <SelectTrigger>
                               <SelectValue />
@@ -648,7 +658,7 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
                         <Label htmlFor="schema-type">Schema Type</Label>
                         <Select
                           value={seoData.schemaType}
-                          onValueChange={(value) => setSeoData(prev => ({ ...prev, schemaType: value }))}
+                          onValueChange={(value) => handleSeoChange({ schemaType: value })}
                         >
                           <SelectTrigger>
                             <SelectValue />
@@ -671,7 +681,7 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
                         <Textarea
                           id="schema-data"
                           value={seoData.schemaData}
-                          onChange={(e) => setSeoData(prev => ({ ...prev, schemaData: e.target.value }))}
+                          onChange={(e) => handleSeoChange({ schemaData: e.target.value })}
                           placeholder='{"@context": "https://schema.org", "@type": "Article", ...}'
                           rows={8}
                           className="font-mono text-xs"
