@@ -1,5 +1,5 @@
-
 import React, { useState } from 'react';
+import { ChevronRight, ChevronDown } from 'lucide-react';
 
 interface AccordionProps {
   title: string;
@@ -7,33 +7,40 @@ interface AccordionProps {
   defaultOpen?: boolean;
 }
 
-export const Accordion: React.FC<AccordionProps> = ({ 
-  title, 
-  children, 
-  defaultOpen = false 
-}) => {
+const Accordion: React.FC<AccordionProps> = ({ title, children, defaultOpen = false }) => {
   const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
-    <div className="border border-border rounded-lg my-4">
-      <button
+    <div className="my-4 border border-slate-200 rounded-xl overflow-hidden dark:border-slate-800/80">
+      <div
+        role="button"
+        data-state={isOpen ? 'open' : 'closed'}
+        aria-expanded={isOpen}
+        className="w-full px-5 py-4 flex items-start gap-3 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer group"
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-4 py-3 text-left font-medium hover:bg-muted/50 transition-colors flex items-center justify-between"
       >
-        <span>{title}</span>
-        <span className={`transform transition-transform ${isOpen ? 'rotate-180' : ''}`}>
-          ▼
-        </span>
-      </button>
+        <div className="mt-0.5">
+          {isOpen ? (
+            <ChevronDown size={16} className="text-slate-600 dark:text-slate-400" />
+          ) : (
+            <ChevronRight size={16} className="text-slate-600 dark:text-slate-400" />
+          )}
+        </div>
+        <div className="font-medium text-base text-slate-700 dark:text-slate-200">
+          {title}
+        </div>
+      </div>
       {isOpen && (
-        <div className="px-4 pb-4 border-t border-border">
-          <div className="pt-3">{children}</div>
+        <div
+          role="region"
+          aria-labelledby="accordion-trigger"
+          className="px-6 py-4 text-base text-slate-600 dark:text-slate-300"
+        >
+          {children}
         </div>
       )}
     </div>
   );
 };
-
-export const AccordionItem: React.FC<AccordionProps> = Accordion;
 
 export default Accordion;
