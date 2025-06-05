@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { NavigationEditor } from "./NavigationEditor";
@@ -7,99 +6,9 @@ import { EditorMain } from "./EditorMain";
 import { SeoEditor } from "./SeoEditor";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/auth/UserMenu";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Settings, FileText, Navigation, Home, Search, Folder, FolderOpen, ChevronDown, ChevronRight } from "lucide-react";
+import { Settings, FileText, Navigation, Home, Search } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
-import { FileNode } from "@/utils/fileSystem";
-import { cn } from "@/lib/utils";
-
-// File tree component for content navigation (same as SEO editor)
-function FileTreeItem({ 
-  node, 
-  selectedFile, 
-  onFileSelect, 
-  depth = 0,
-  modifiedFiles = new Set()
-}: { 
-  node: FileNode; 
-  selectedFile?: string; 
-  onFileSelect?: (filePath: string) => void;
-  depth?: number;
-  modifiedFiles?: Set<string>;
-}) {
-  const [isExpanded, setIsExpanded] = useState(true);
-  const hasChildren = node.children && node.children.length > 0;
-  const isFile = node.type === 'file';
-  const isSelected = selectedFile === node.path;
-  const hasChanges = modifiedFiles.has(node.path);
-
-  const handleClick = () => {
-    if (isFile && onFileSelect) {
-      onFileSelect(node.path);
-    } else if (hasChildren) {
-      setIsExpanded(!isExpanded);
-    }
-  };
-
-  return (
-    <div>
-      <div 
-        className={cn(
-          "flex items-center gap-2 px-2 py-1 cursor-pointer hover:bg-accent/50 rounded-sm",
-          isSelected && "bg-accent"
-        )}
-        style={{ paddingLeft: `${depth * 12 + 8}px` }}
-        onClick={handleClick}
-      >
-        {hasChildren && (
-          <Button variant="ghost" size="sm" className="h-4 w-4 p-0">
-            {isExpanded ? (
-              <ChevronDown className="h-3 w-3" />
-            ) : (
-              <ChevronRight className="h-3 w-3" />
-            )}
-          </Button>
-        )}
-        
-        {!hasChildren && <div className="w-4" />}
-        
-        {isFile ? (
-          <FileText className="h-4 w-4 text-blue-600 flex-shrink-0" />
-        ) : hasChildren ? (
-          isExpanded ? (
-            <FolderOpen className="h-4 w-4 text-blue-600 flex-shrink-0" />
-          ) : (
-            <Folder className="h-4 w-4 text-blue-600 flex-shrink-0" />
-          )
-        ) : null}
-        
-        <span className="text-sm truncate flex-1">
-          {node.name}
-        </span>
-        
-        {hasChanges && (
-          <div className="w-2 h-2 rounded-full bg-amber-500" title="Unsaved changes" />
-        )}
-      </div>
-      
-      {hasChildren && isExpanded && (
-        <div>
-          {node.children?.map((child) => (
-            <FileTreeItem
-              key={child.path}
-              node={child}
-              selectedFile={selectedFile}
-              onFileSelect={onFileSelect}
-              depth={depth + 1}
-              modifiedFiles={modifiedFiles}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 export function EditorLayout() {
   const { fileStructure, isLoading, error, refetch } = useFileStructure();
@@ -333,95 +242,95 @@ Start editing to see the live preview!
       )}
       
       <div className={`flex ${(activeTab === 'content' || activeTab === 'seo') ? 'h-[calc(100vh-4rem)]' : 'h-screen'}`}>
-        {/* Enhanced Sidebar - Show for both content and SEO tabs */}
-        {(activeTab === 'content' || activeTab === 'seo') && fileStructure && (
-          <div className="w-80 border-r border-border/50 bg-muted/20 backdrop-blur-sm flex flex-col">
-            <div className="p-4 border-b flex-shrink-0">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h3 className="font-medium text-sm">
-                    {activeTab === 'content' ? 'Select Page to Edit' : 'Select Page for SEO'}
-                  </h3>
-                  <p className="text-xs text-muted-foreground mt-1">
-                    {activeTab === 'content' 
-                      ? 'Choose a page to edit its content'
-                      : 'Choose a page to configure its SEO settings'
-                    }
-                  </p>
-                </div>
-                {activeTab === 'content' && (
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant={activeTab === 'content' ? 'default' : 'ghost'}
-                      size="sm"
-                      onClick={() => setActiveTab('content')}
-                      className="gap-2"
-                    >
-                      <FileText className="h-3 w-3" />
-                      Content
-                    </Button>
-                    <Button
-                      variant={activeTab === 'seo' ? 'default' : 'ghost'}
-                      size="sm"
-                      onClick={() => setActiveTab('seo')}
-                      className="gap-2"
-                    >
-                      <Search className="h-3 w-3" />
-                      SEO
-                    </Button>
-                  </div>
-                )}
+        {/* Enhanced Sidebar - Hide when in navigation tab */}
+        {activeTab === 'content' && (
+          <div className="w-80 border-r border-border/50 bg-muted/20 backdrop-blur-sm">
+            <EditorSidebar
+              selectedFile={selectedFile}
+              onFileSelect={handleFileSelect}
+              modifiedFiles={modifiedFiles}
+              onCreateFile={handleCreateFile}
+              fileStructure={fileStructure}
+              isLoading={false}
+            />
+          </div>
+        )}
+        
+        {/* Main Content */}
+        <div className="flex-1 flex flex-col">
+          {/* Enhanced Tab Navigation */}
+          <div className="border-b border-border/50 px-6 py-4 bg-background/95 backdrop-blur-sm">
+            <div className="flex items-center justify-between">
+              <div className="flex space-x-1 bg-muted/30 p-1 rounded-lg">
+                <Button
+                  onClick={() => setActiveTab('navigation')}
+                  variant={activeTab === 'navigation' ? 'default' : 'ghost'}
+                  size="sm"
+                  className="gap-2 transition-all duration-200"
+                >
+                  <Navigation className="h-4 w-4" />
+                  Navigation
+                </Button>
+                <Button
+                  onClick={() => setActiveTab('content')}
+                  variant={activeTab === 'content' ? 'default' : 'ghost'}
+                  size="sm"
+                  className="gap-2 transition-all duration-200"
+                >
+                  <FileText className="h-4 w-4" />
+                  Content
+                </Button>
+                <Button
+                  onClick={() => setActiveTab('seo')}
+                  variant={activeTab === 'seo' ? 'default' : 'ghost'}
+                  size="sm"
+                  className="gap-2 transition-all duration-200"
+                >
+                  <Search className="h-4 w-4" />
+                  SEO
+                </Button>
               </div>
-              {modifiedFiles.size > 0 && activeTab === 'content' && (
-                <div className="mt-2 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
-                  {modifiedFiles.size} file(s) with unsaved changes
+              
+              {activeTab === 'content' && modifiedFiles.size > 0 && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
+                  {modifiedFiles.size} file{modifiedFiles.size !== 1 ? 's' : ''} modified
                 </div>
               )}
             </div>
-            <div className="flex-1 min-h-0">
-              <ScrollArea className="h-full">
-                <div className="p-2">
-                  {fileStructure.map((node) => (
-                    <FileTreeItem
-                      key={node.path}
-                      node={node}
-                      selectedFile={selectedFile}
-                      onFileSelect={handleFileSelect}
-                      modifiedFiles={modifiedFiles}
-                    />
-                  ))}
-                </div>
-              </ScrollArea>
-            </div>
           </div>
-        )}
-
-        {/* Main Content Area */}
-        <div className="flex-1 flex flex-col">
-          {activeTab === 'navigation' && (
-            <NavigationEditor />
-          )}
           
-          {activeTab === 'content' && (
-            <EditorMain
-              selectedFile={selectedFile}
-              content={content}
-              onContentChange={handleContentChange}
-              onSave={handleSave}
-              hasChanges={hasChanges}
-              loadingContent={loadingContent}
-              onCreateFile={handleCreateFile}
-            />
-          )}
-          
-          {activeTab === 'seo' && (
-            <SeoEditor
-              selectedFile={selectedFile}
-              onSeoDataChange={handleSeoDataChange}
-              fileStructure={fileStructure}
-              onFileSelect={handleFileSelect}
-            />
-          )}
+          {/* Enhanced Tab Content */}
+          <div className="flex-1 overflow-hidden">
+            {activeTab === 'navigation' ? (
+              <div className="h-full animate-in fade-in slide-in-from-top-2 duration-300">
+                <NavigationEditor 
+                  fileStructure={fileStructure} 
+                  onNavigationChange={refetch}
+                />
+              </div>
+            ) : activeTab === 'seo' ? (
+              <div className="h-full animate-in fade-in slide-in-from-right-2 duration-300">
+                <SeoEditor
+                  selectedFile={selectedFile}
+                  onSeoDataChange={handleSeoDataChange}
+                  fileStructure={fileStructure}
+                  onFileSelect={handleFileSelect}
+                />
+              </div>
+            ) : (
+              <div className="h-full animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <EditorMain 
+                  selectedFile={selectedFile}
+                  content={loadingContent ? "Loading content..." : content}
+                  onContentChange={handleContentChange}
+                  onSave={handleSave}
+                  hasChanges={hasChanges}
+                  saving={false}
+                />
+              </div>
+            )}
+          </div>
         </div>
       </div>
     </div>
