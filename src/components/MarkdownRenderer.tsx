@@ -7,11 +7,15 @@ import { createComponentMappings } from './markdown/componentMappings';
 
 interface MarkdownRendererProps {
   content: string;
+  components?: Record<string, React.ComponentType<any>>;
 }
 
-const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
+const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, components: externalComponents }) => {
   const processedContent = processCustomSyntax(content);
-  const components = createComponentMappings();
+  const defaultComponents = createComponentMappings();
+  
+  // Merge external components with default ones, external takes precedence
+  const components = externalComponents ? { ...defaultComponents, ...externalComponents } : defaultComponents;
   
   return (
     <ReactMarkdown 
