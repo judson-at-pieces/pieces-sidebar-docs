@@ -50,26 +50,47 @@ ${markdownContent}`;
     try {
       toast.info('Creating pull request...', { duration: 2000 });
       
-      // Get GitHub token from session
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.provider_token) {
-        toast.error('GitHub authentication required. Please reconnect to GitHub in Admin settings.', { duration: 5000 });
-        return;
-      }
-
-      // Get GitHub configuration
+      // Get GitHub configuration first
       const config = await githubService.getRepoConfig();
       if (!config) {
         toast.error('GitHub repository not configured. Please configure it in Admin settings.', { duration: 5000 });
         return;
       }
 
-      const { owner, repo } = config;
-
+      // Check if we have the file path
       if (!filePath) {
         toast.error('No file selected for editing. Please select a file first.', { duration: 3000 });
         return;
       }
+
+      // Get the installation ID from the config
+      const { data: configData, error: configError } = await supabase
+        .from('github_config')
+        .select('installation_id')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (configError || !configData?.installation_id) {
+        toast.error('GitHub App not properly configured. Please check Admin settings.', { duration: 5000 });
+        return;
+      }
+
+      console.log('Getting GitHub App token for installation:', configData.installation_id);
+
+      // Get GitHub App installation token using your existing edge function
+      const { data: authResponse, error: authError } = await supabase.functions.invoke('github-app-auth', {
+        body: { installationId: configData.installation_id }
+      });
+
+      if (authError || !authResponse?.token) {
+        console.error('GitHub App auth error:', authError);
+        toast.error('Failed to authenticate with GitHub App. Please check the configuration.', { duration: 5000 });
+        return;
+      }
+
+      const githubToken = authResponse.token;
+      const { owner, repo } = config;
 
       // Extract title from frontmatter or use filename
       let title = 'Update documentation content';
@@ -102,7 +123,15 @@ ${markdownContent}`;
         repoFilePath = `${repoFilePath}.md`;
       }
 
-      // Create the pull request using our GitHub service
+      console.log('Creating PR with GitHub App token for:', { 
+        title, 
+        repoFilePath, 
+        owner, 
+        repo,
+        installationId: configData.installation_id
+      });
+
+      // Create the pull request using the GitHub App token
       const result = await githubService.createPullRequest(
         {
           title,
@@ -128,7 +157,7 @@ Please review the changes and merge when ready.
             }
           ]
         },
-        session.provider_token,
+        githubToken,
         config
       );
 
@@ -144,10 +173,26 @@ Please review the changes and merge when ready.
         throw new Error(result.error || 'Failed to create PR');
       }
       
-      console.log('PR created with content changes for file:', repoFilePath);
-    } catch (error) {
-      toast.error('Failed to create pull request. Please check your GitHub connection.', { duration: 3000 });
+      console.log('PR created successfully for file:', repoFilePath);
+    } catch (error: any) {
       console.error('PR creation failed:', error);
+      
+      // Provide more specific error messages
+      if (error.message?.includes('401') || error.message?.includes('Authentication failed')) {
+        toast.error('GitHub App authentication failed. Please check the GitHub App configuration in Admin settings.', { 
+          duration: 5000,
+          action: {
+            label: 'Go to Admin',
+            onClick: () => window.location.href = '/admin'
+          }
+        });
+      } else if (error.message?.includes('403') || error.message?.includes('Access forbidden')) {
+        toast.error('Access forbidden. Please ensure the GitHub App is installed on the repository with proper permissions.', { duration: 5000 });
+      } else if (error.message?.includes('404')) {
+        toast.error('Repository not found. Please check the repository configuration in Admin settings.', { duration: 5000 });
+      } else {
+        toast.error(`Failed to create pull request: ${error.message || 'Unknown error'}`, { duration: 5000 });
+      }
     }
   }
 
