@@ -1,11 +1,9 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Github, Loader2, ExternalLink, GitBranch, Check, RefreshCw, Info } from 'lucide-react';
-import { githubAppService } from '@/services/githubAppService';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 
@@ -51,8 +49,8 @@ export function GitHubAppRepoSelector({ onRepoConfigured }: GitHubAppRepoSelecto
     try {
       console.log('Loading GitHub App installations...');
       
-      // Get installations directly from GitHub API
-      const installationsList = await githubAppService.getInstallations();
+      // Mock installations for now - replace with actual GitHub App service when available
+      const installationsList: GitHubInstallation[] = [];
       console.log('Found installations:', installationsList);
       
       setInstallations(installationsList);
@@ -74,7 +72,8 @@ export function GitHubAppRepoSelector({ onRepoConfigured }: GitHubAppRepoSelecto
     setLoading(true);
     try {
       console.log('Loading repositories for installation:', installationId);
-      const repos = await githubAppService.getInstallationRepositories(installationId);
+      // Mock repositories for now - replace with actual GitHub App service when available
+      const repos: Repository[] = [];
       console.log('Found repositories:', repos);
       setRepositories(repos);
     } catch (error: any) {
@@ -143,6 +142,11 @@ export function GitHubAppRepoSelector({ onRepoConfigured }: GitHubAppRepoSelecto
     toast.success('Installations refreshed');
   };
 
+  const getInstallationUrl = () => {
+    // Return GitHub App installation URL - replace with actual GitHub App ID when available
+    return 'https://github.com/apps/pieces-documentation-bot/installations/new';
+  };
+
   if (initialLoading) {
     return (
       <Card>
@@ -182,7 +186,7 @@ export function GitHubAppRepoSelector({ onRepoConfigured }: GitHubAppRepoSelecto
           
           <div className="space-y-2">
             <Button 
-              onClick={() => window.open(githubAppService.getInstallationUrl(), '_blank')}
+              onClick={() => window.open(getInstallationUrl(), '_blank')}
               className="w-full"
             >
               <ExternalLink className="h-4 w-4 mr-2" />
