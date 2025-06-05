@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { NavigationEditor } from "./NavigationEditor";
@@ -311,7 +310,7 @@ Start editing to see the live preview!
                 </div>
               </>
             ) : activeTab === 'seo' ? (
-              <div className="flex-1 animate-in fade-in slide-in-from-right-2 duration-300">
+              <div className="flex-1">
                 <SeoEditor
                   selectedFile={selectedFile}
                   onSeoDataChange={handleSeoDataChange}
