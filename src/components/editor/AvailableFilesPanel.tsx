@@ -434,10 +434,15 @@ export function AvailableFilesPanel({ fileStructure, isFileUsed, sections, onAdd
   const handleConfirmBulkMove = () => {
     if (!bulkSelectedSection || pendingAdditions.length === 0) return;
 
+    console.log('Processing bulk move for', pendingAdditions.length, 'items to section', bulkSelectedSection);
+
     // Process each pending addition individually
-    pendingAdditions.forEach(addition => {
+    pendingAdditions.forEach((addition, index) => {
+      console.log(`Processing item ${index + 1}:`, addition.node.name, 'type:', addition.type);
+      
       if (addition.type === 'folder') {
         const previewItems = createNavigationItemsFromFolder(addition.node);
+        console.log('Created folder preview items:', previewItems);
         onAddToSection({
           type: 'folder',
           sectionId: bulkSelectedSection,
@@ -446,7 +451,7 @@ export function AvailableFilesPanel({ fileStructure, isFileUsed, sections, onAdd
         });
       } else {
         const previewItem: NavigationItem = {
-          id: `temp-${Date.now()}-${Math.random()}`,
+          id: `temp-${Date.now()}-${Math.random()}-${index}`,
           title: addition.node.name.replace('.md', '').replace(/-/g, ' '),
           href: `/${addition.node.path.replace('.md', '')}`,
           file_path: addition.node.path,
@@ -455,6 +460,7 @@ export function AvailableFilesPanel({ fileStructure, isFileUsed, sections, onAdd
           is_auto_generated: true
         };
         
+        console.log('Created file preview item:', previewItem);
         onAddToSection({
           type: 'file',
           sectionId: bulkSelectedSection,
@@ -464,6 +470,8 @@ export function AvailableFilesPanel({ fileStructure, isFileUsed, sections, onAdd
       }
     });
 
+    console.log('Bulk move completed, showing preview');
+    
     // Show preview for the bulk operation
     onShowPreview(true);
     

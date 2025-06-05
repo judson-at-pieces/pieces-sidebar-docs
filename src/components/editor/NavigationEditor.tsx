@@ -73,10 +73,15 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
         order_index: sections.length
       });
       
-      await refetch();
+      console.log('Section added, refreshing navigation data');
+      const refreshedData = await refetch();
+      if (refreshedData.data?.sections) {
+        setSections(refreshedData.data.sections);
+      }
       onNavigationChange();
       toast.success(`Added section: ${title}`);
     } catch (error) {
+      console.error('Error adding section:', error);
       toast.error("Failed to add section");
     }
   };
@@ -88,10 +93,15 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
         slug: title.toLowerCase().replace(/\s+/g, '-')
       });
       
-      await refetch();
+      console.log('Section updated, refreshing navigation data');
+      const refreshedData = await refetch();
+      if (refreshedData.data?.sections) {
+        setSections(refreshedData.data.sections);
+      }
       onNavigationChange();
       toast.success("Section updated");
     } catch (error) {
+      console.error('Error updating section:', error);
       toast.error("Failed to update section");
     }
   };
@@ -118,33 +128,29 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
 
   const handleConfirmBulkDelete = async () => {
     try {
+      console.log('Starting bulk delete for', pendingDeletions.length, 'items');
+      
       // Sort deletions by index in descending order to delete from end to beginning
       const sortedDeletions = [...pendingDeletions].sort((a, b) => b.itemIndex - a.itemIndex);
       
       for (const deletion of sortedDeletions) {
+        console.log('Deleting item:', deletion.item.title, 'ID:', deletion.item.id);
         await navigationService.deleteNavigationItem(deletion.item.id);
       }
       
-      // Update local state
-      const updatedSections = sections.map(section => {
-        const sectionDeletions = sortedDeletions.filter(d => d.sectionId === section.id);
-        if (sectionDeletions.length === 0) return section;
-        
-        let newItems = [...(section.items || [])];
-        sectionDeletions.forEach(deletion => {
-          newItems.splice(deletion.itemIndex, 1);
-        });
-        
-        // Update order indices
-        newItems = newItems.map((item, index) => ({ ...item, order_index: index }));
-        
-        return { ...section, items: newItems };
-      });
+      console.log('All items deleted, refreshing navigation data');
       
-      setSections(updatedSections);
+      // Force refresh from the database
+      const refreshedData = await refetch();
+      if (refreshedData.data?.sections) {
+        console.log('Setting new sections data:', refreshedData.data.sections);
+        setSections(refreshedData.data.sections);
+      }
+      
       clearPendingDeletions();
       setShowBulkDeleteDialog(false);
       onNavigationChange();
+      
       toast.success(`Deleted ${sortedDeletions.length} item${sortedDeletions.length !== 1 ? 's' : ''} from navigation`);
     } catch (error) {
       console.error('Error deleting items:', error);
@@ -154,6 +160,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
 
   const handleSectionReorder = async (newSections: typeof sections) => {
     try {
+      console.log('Reordering sections');
       // Update sections with new order
       setSections(newSections);
       
@@ -164,13 +171,35 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
         });
       }
       
-      await refetch();
+      const refreshedData = await refetch();
+      if (refreshedData.data?.sections) {
+        setSections(refreshedData.data.sections);
+      }
       onNavigationChange();
       toast.success("Sections reordered");
     } catch (error) {
+      console.error('Error reordering sections:', error);
       toast.error("Failed to reorder sections");
       // Revert on error
-      await refetch();
+      const refreshedData = await refetch();
+      if (refreshedData.data?.sections) {
+        setSections(refreshedData.data.sections);
+      }
+    }
+  };
+
+  // Enhanced navigation refresh handler
+  const handleNavigationRefresh = async () => {
+    console.log('Refreshing navigation data');
+    try {
+      const refreshedData = await refetch();
+      if (refreshedData.data?.sections) {
+        console.log('Updated sections from database:', refreshedData.data.sections);
+        setSections(refreshedData.data.sections);
+      }
+      onNavigationChange();
+    } catch (error) {
+      console.error('Error refreshing navigation:', error);
     }
   };
 
@@ -201,13 +230,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
             onBulkDelete={handleBulkDelete}
             onResetPendingDeletions={clearPendingDeletions}
             onSectionReorder={handleSectionReorder}
-            onNavigationChange={async () => {
-              const refreshedNavigation = await refetch();
-              if (refreshedNavigation.data?.sections) {
-                setSections(refreshedNavigation.data.sections);
-              }
-              onNavigationChange();
-            }}
+            onNavigationChange={handleNavigationRefresh}
           />
         </div>
       </div>
@@ -216,7 +239,10 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
         open={showConfirmDialog}
         onOpenChange={setShowConfirmDialog}
         pendingChange={pendingChange}
-        onConfirm={savePendingChanges}
+        onConfirm={async () => {
+          await savePendingChanges();
+          await handleNavigationRefresh();
+        }}
         onCancel={() => {
           setPendingChange(null);
           setShowConfirmDialog(false);
