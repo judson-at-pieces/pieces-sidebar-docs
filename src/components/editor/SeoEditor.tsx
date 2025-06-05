@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -16,7 +15,9 @@ import { toast } from "sonner";
 import { FileNode } from "@/utils/fileSystem";
 import { useSeoData } from "@/hooks/useSeoData";
 import { useDocumentSeo } from "@/hooks/useDocumentSeo";
+import { githubService } from "@/services/githubService";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
 
 import type { SeoData } from "@/hooks/useSeoData";
 
@@ -115,6 +116,7 @@ function FileTreeItem({
 
 export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFileSelect }: SeoEditorProps) {
   const { seoData, updateSeoData, saveAllChanges, pendingChanges, isSaving, hasUnsavedChanges } = useSeoData(selectedFile);
+  const { user } = useAuth();
   const [newKeyword, setNewKeyword] = useState("");
   const [newMetaName, setNewMetaName] = useState("");
   const [newMetaContent, setNewMetaContent] = useState("");
@@ -205,31 +207,139 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
     showToast(previewMode ? "Preview disabled" : "Preview enabled", "info");
   };
 
+  const generateFrontmatter = (data: SeoData): string => {
+    const frontmatterLines = [
+      '---',
+      data.metaTitle ? `seoTitle: "${data.metaTitle}"` : '',
+      data.metaDescription ? `seoDescription: "${data.metaDescription}"` : '',
+      data.keywords.length ? `seoKeywords: "${data.keywords.join(', ')}"` : '',
+      data.canonicalUrl ? `canonicalUrl: "${data.canonicalUrl}"` : '',
+      data.ogTitle ? `ogTitle: "${data.ogTitle}"` : '',
+      data.ogDescription ? `ogDescription: "${data.ogDescription}"` : '',
+      data.ogImage ? `ogImage: "${data.ogImage}"` : '',
+      data.ogType !== 'article' ? `ogType: "${data.ogType}"` : '',
+      data.twitterCard !== 'summary_large_image' ? `twitterCard: "${data.twitterCard}"` : '',
+      data.twitterTitle ? `twitterTitle: "${data.twitterTitle}"` : '',
+      data.twitterDescription ? `twitterDescription: "${data.twitterDescription}"` : '',
+      data.twitterImage ? `twitterImage: "${data.twitterImage}"` : '',
+      data.robots !== 'index,follow' ? `robots: "${data.robots}"` : '',
+      data.noindex ? `noindex: true` : '',
+      data.nofollow ? `nofollow: true` : '',
+      '---'
+    ].filter(Boolean);
+    
+    return frontmatterLines.join('\n');
+  };
+
   const handleCreatePRForCurrentFile = async () => {
     if (!selectedFile) {
       showToast('No file selected', 'error');
       return;
     }
 
+    if (isCreatingPR) return;
+
     setIsCreatingPR(true);
     
     try {
-      // Mock PR creation
-      await new Promise(resolve => setTimeout(resolve, 2000));
+      showToast('Creating pull request...', 'info');
+
+      // Get GitHub token from session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.provider_token) {
+        showToast('GitHub authentication required. Please reconnect to GitHub in Admin settings.', 'error');
+        return;
+      }
+
+      // Get GitHub configuration
+      const config = await githubService.getRepoConfig();
+      if (!config) {
+        showToast('GitHub repository not configured. Please configure it in Admin settings.', 'error');
+        return;
+      }
+
+      const { owner, repo } = config;
       
-      const prNumber = Math.floor(Math.random() * 1000) + 1;
-      const prUrl = `https://github.com/mock/repo/pull/${prNumber}`;
+      // Get user information for PR attribution
+      const userEmail = user?.email || 'unknown@pieces.app';
+      const userName = user?.user_metadata?.full_name || user?.user_metadata?.name || userEmail.split('@')[0];
+
+      // Generate title
+      let title = 'Update SEO configuration';
+      if (seoData.metaTitle || seoData.title) {
+        title = `SEO Update: ${seoData.metaTitle || seoData.title}`;
+      } else {
+        const fileName = selectedFile.split('/').pop()?.replace(/\.md$/, '') || 'content';
+        title = `SEO Update: ${fileName.replace(/-/g, ' ')}`;
+      }
+
+      // Determine the correct file path in the repository
+      let repoFilePath = selectedFile;
+      if (!selectedFile.startsWith('public/') && !selectedFile.startsWith('src/')) {
+        repoFilePath = `public/content/${selectedFile}`;
+      }
+      if (!repoFilePath.endsWith('.md')) {
+        repoFilePath = `${repoFilePath}.md`;
+      }
+
+      // Generate the updated frontmatter content
+      const frontmatterContent = generateFrontmatter(seoData);
       
-      showToast(`SEO pull request created successfully! #${prNumber}`, 'success', { 
-        duration: 5000,
-        action: {
-          label: 'View PR',
-          onClick: () => window.open(prUrl, '_blank')
-        }
-      });
+      // Create file content with frontmatter and basic content
+      const fileContent = `${frontmatterContent}
+
+# ${seoData.metaTitle || seoData.title || 'Page Title'}
+
+${seoData.metaDescription || seoData.description || 'Page content goes here...'}
+`;
+
+      // Create the pull request using the existing GitHub service
+      const result = await githubService.createPullRequest(
+        {
+          title,
+          body: `This pull request updates SEO configuration for the documentation.
+
+## SEO Changes
+- **File:** \`${repoFilePath}\`
+- **Title:** ${seoData.metaTitle || seoData.title || 'Not set'}
+- **Description:** ${seoData.metaDescription || seoData.description || 'Not set'}
+- **Keywords:** ${seoData.keywords.join(', ') || 'Not set'}
+
+## Authored By
+- **Editor:** ${userName} (${userEmail})
+- **Date:** ${new Date().toISOString().split('T')[0]}
+
+## Review Notes
+Please review the SEO changes and merge when ready.
+
+---
+*This PR was created automatically by the Pieces Documentation SEO Editor*`,
+          files: [
+            {
+              path: repoFilePath,
+              content: fileContent
+            }
+          ]
+        },
+        session.provider_token,
+        config
+      );
+
+      if (result.success && result.prNumber && result.prUrl) {
+        showToast(`SEO pull request created successfully! #${result.prNumber}`, 'success', { 
+          duration: 5000,
+          action: {
+            label: 'View PR',
+            onClick: () => window.open(result.prUrl, '_blank')
+          }
+        });
+      } else {
+        throw new Error(result.error || 'Failed to create PR');
+      }
       
     } catch (error) {
-      showToast('Failed to create pull request', 'error');
+      console.error('PR creation failed:', error);
+      showToast(`Failed to create pull request: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setIsCreatingPR(false);
     }
@@ -241,25 +351,97 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
       return;
     }
 
+    if (isCreatingPR) return;
+
     setIsCreatingPR(true);
     
     try {
-      // Mock bulk PR creation
-      await new Promise(resolve => setTimeout(resolve, 3000));
-      
-      const prNumber = Math.floor(Math.random() * 1000) + 1;
-      const prUrl = `https://github.com/mock/repo/pull/${prNumber}`;
-      
-      showToast(`Bulk SEO pull request created successfully! #${prNumber}`, 'success', { 
-        duration: 5000,
-        action: {
-          label: 'View PR',
-          onClick: () => window.open(prUrl, '_blank')
+      showToast(`Creating pull request for ${pendingChanges.length} files...`, 'info');
+
+      // Get GitHub token from session
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.provider_token) {
+        showToast('GitHub authentication required. Please reconnect to GitHub in Admin settings.', 'error');
+        return;
+      }
+
+      // Get GitHub configuration
+      const config = await githubService.getRepoConfig();
+      if (!config) {
+        showToast('GitHub repository not configured. Please configure it in Admin settings.', 'error');
+        return;
+      }
+
+      const { owner, repo } = config;
+
+      // Get user information for PR attribution
+      const userEmail = user?.email || 'unknown@pieces.app';
+      const userName = user?.user_metadata?.full_name || user?.user_metadata?.name || userEmail.split('@')[0];
+
+      // Prepare files for all pending changes
+      const files = pendingChanges.map(filePath => {
+        const frontmatterContent = generateFrontmatter(seoData);
+        
+        let repoFilePath = filePath;
+        if (!filePath.startsWith('public/') && !filePath.startsWith('src/')) {
+          repoFilePath = `public/content/${filePath}`;
         }
+        if (!repoFilePath.endsWith('.md')) {
+          repoFilePath = `${repoFilePath}.md`;
+        }
+
+        const fileContent = `${frontmatterContent}
+
+# Page Title
+
+Page content goes here...
+`;
+
+        return {
+          path: repoFilePath,
+          content: fileContent
+        };
       });
+
+      // Create the pull request using the existing GitHub service
+      const result = await githubService.createPullRequest(
+        {
+          title: `Bulk SEO Configuration Update (${pendingChanges.length} files)`,
+          body: `This pull request updates SEO configuration for multiple documentation files.
+
+## Files Updated
+${pendingChanges.map(path => `- \`${path}\``).join('\n')}
+
+## Authored By
+- **Editor:** ${userName} (${userEmail})
+- **Date:** ${new Date().toISOString().split('T')[0]}
+
+## Review Notes
+Please review all SEO changes and merge when ready.
+
+---
+*This PR was created automatically by the Pieces Documentation SEO Editor*`,
+          files
+        },
+        session.provider_token,
+        config
+      );
+
+      if (result.success && result.prNumber && result.prUrl) {
+        showToast(`Bulk SEO pull request created successfully! #${result.prNumber}`, 'success', { 
+          duration: 5000,
+          action: {
+            label: 'View PR',
+            onClick: () => window.open(result.prUrl, '_blank')
+          }
+        });
+      } else {
+        throw new Error(result.error || 'Failed to create PR');
+      }
       
     } catch (error) {
-      showToast('Failed to create pull request', 'error');
+      console.error('Bulk PR creation failed:', error);
+      showToast(`Failed to create pull request: ${error instanceof Error ? error.message : 'Unknown error'}`, 'error');
     } finally {
       setIsCreatingPR(false);
     }
