@@ -34,11 +34,15 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
 
   // Check if a file is already used in navigation
   const isFileUsed = (filePath: string): boolean => {
+    // Clean up path to prevent duplicate checking
+    const cleanPath = filePath.replace(/\/([^\/]+)\/\1\//g, '/$1/').replace(/\/([^\/]+)\/\1$/, '/$1');
+    
     return sections.some(section => 
       section.items?.some(item => {
         // Check if file is used at root level or nested
         const checkNested = (navItem: any): boolean => {
-          if (navItem.file_path === filePath) return true;
+          if (navItem.file_path === filePath || navItem.file_path === cleanPath) return true;
+          if (navItem.href === `/${filePath.replace('.md', '')}` || navItem.href === `/${cleanPath.replace('.md', '')}`) return true;
           if (navItem.items && navItem.items.length > 0) {
             return navItem.items.some((nestedItem: any) => checkNested(nestedItem));
           }

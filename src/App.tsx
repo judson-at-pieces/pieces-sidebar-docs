@@ -90,37 +90,48 @@ function AppContent() {
           </Route>
 
           {/* Direct content routes (without /docs/ prefix) wrapped in DocsLayout */}
-          <Route path="/meet-pieces/*" element={<DocsLayout />}>
+          <Route path="/meet-pieces" element={<DocsLayout />}>
+            <Route index element={<CompiledDocPage />} />
             <Route path="*" element={<CompiledDocPage />} />
           </Route>
-          <Route path="/quick-guides/*" element={<DocsLayout />}>
+          <Route path="/quick-guides" element={<DocsLayout />}>
+            <Route index element={<CompiledDocPage />} />
             <Route path="*" element={<CompiledDocPage />} />
           </Route>
-          <Route path="/desktop/*" element={<DocsLayout />}>
+          <Route path="/desktop" element={<DocsLayout />}>
+            <Route index element={<CompiledDocPage />} />
             <Route path="*" element={<CompiledDocPage />} />
           </Route>
-          <Route path="/core-dependencies/*" element={<DocsLayout />}>
+          <Route path="/core-dependencies" element={<DocsLayout />}>
+            <Route index element={<CompiledDocPage />} />
             <Route path="*" element={<CompiledDocPage />} />
           </Route>
-          <Route path="/mcp/*" element={<DocsLayout />}>
+          <Route path="/mcp" element={<DocsLayout />}>
+            <Route index element={<CompiledDocPage />} />
             <Route path="*" element={<CompiledDocPage />} />
           </Route>
-          <Route path="/extensions-plugins/*" element={<DocsLayout />}>
+          <Route path="/extensions-plugins" element={<DocsLayout />}>
+            <Route index element={<CompiledDocPage />} />
             <Route path="*" element={<CompiledDocPage />} />
           </Route>
-          <Route path="/productivity/*" element={<DocsLayout />}>
+          <Route path="/productivity" element={<DocsLayout />}>
+            <Route index element={<CompiledDocPage />} />
             <Route path="*" element={<CompiledDocPage />} />
           </Route>
-          <Route path="/large-language-models/*" element={<DocsLayout />}>
+          <Route path="/large-language-models" element={<DocsLayout />}>
+            <Route index element={<CompiledDocPage />} />
             <Route path="*" element={<CompiledDocPage />} />
           </Route>
-          <Route path="/web-extension/*" element={<DocsLayout />}>
+          <Route path="/web-extension" element={<DocsLayout />}>
+            <Route index element={<CompiledDocPage />} />
             <Route path="*" element={<CompiledDocPage />} />
           </Route>
-          <Route path="/cli/*" element={<DocsLayout />}>
+          <Route path="/cli" element={<DocsLayout />}>
+            <Route index element={<CompiledDocPage />} />
             <Route path="*" element={<CompiledDocPage />} />
           </Route>
-          <Route path="/obsidian/*" element={<DocsLayout />}>
+          <Route path="/obsidian" element={<DocsLayout />}>
+            <Route index element={<CompiledDocPage />} />
             <Route path="*" element={<CompiledDocPage />} />
           </Route>
 

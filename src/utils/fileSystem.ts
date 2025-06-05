@@ -83,11 +83,14 @@ function buildFileTree(paths: string[]): FileNode[] {
              path.includes('/');
     })
     .map(path => {
+      // Clean up duplicate path segments (e.g., /quick-guides/quick-guides -> /quick-guides)
+      const cleanPath = path.replace(/\/([^\/]+)\/\1\//g, '/$1/').replace(/\/([^\/]+)\/\1$/, '/$1');
+      
       // Ensure path ends with .md if it doesn't have an extension
-      if (!path.includes('.') && !path.endsWith('/')) {
-        return path + '.md';
+      if (!cleanPath.includes('.') && !cleanPath.endsWith('/')) {
+        return cleanPath + '.md';
       }
-      return path;
+      return cleanPath;
     });
   
   console.log('📝 Processing markdown paths:', markdownPaths.length);
