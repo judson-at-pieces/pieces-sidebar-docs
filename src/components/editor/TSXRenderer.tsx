@@ -1,9 +1,8 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { WYSIWYGEditor } from './WYSIWYGEditor';
 import ReactMarkdown from 'react-markdown';
-import { useDynamicComponents } from '@/hooks/useDynamicComponents';
+import { createComponentMappings } from '@/components/markdown/componentMappings';
 import { processCustomSyntax } from '@/components/markdown/customSyntaxProcessor';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
@@ -25,34 +24,19 @@ interface TSXRendererProps {
 export function TSXRenderer({ content, onContentChange, readOnly = false, filePath }: TSXRendererProps) {
   const [mode, setMode] = useState<'preview' | 'wysiwyg'>('preview');
   const { user } = useAuth();
-  const components = useDynamicComponents();
+  const components = createComponentMappings();
 
-  // Process the content using the same method as HashnodeMarkdownRenderer
+  // Process the content using the EXACT same method as the actual user-facing docs
   const processedContent = React.useMemo(() => {
-    console.log('🔧 TSXRenderer processing content...');
+    console.log('🔧 TSXRenderer processing content with EXACT docs process...');
     
-    // Remove frontmatter section if present (same as HashnodeMarkdownRenderer)
-    let cleanContent = content;
-    if (content.startsWith('---')) {
-      const frontmatterEnd = content.indexOf('---', 3);
-      if (frontmatterEnd !== -1) {
-        cleanContent = content.substring(frontmatterEnd + 3).trim();
-        // Also remove the *** delimiter if present
-        cleanContent = cleanContent.replace(/^\*\*\*\s*/, '');
-      }
-    } else {
-      // Remove *** delimiter if it's at the start
-      cleanContent = content.replace(/^\*\*\*\s*/, '');
-    }
-
-    // Apply custom syntax processing (same as HashnodeMarkdownRenderer)
-    const processedMarkdown = processCustomSyntax(cleanContent);
+    // Apply custom syntax processing (same as MarkdownRenderer)
+    const processedMarkdown = processCustomSyntax(content);
     
     console.log('🔧 TSXRenderer content processed:', {
       originalLength: content.length,
-      cleanedLength: cleanContent.length,
       processedLength: processedMarkdown.length,
-      hasCustomSyntax: processedMarkdown !== cleanContent
+      hasCustomSyntax: processedMarkdown !== content
     });
 
     return processedMarkdown;
@@ -222,7 +206,7 @@ Please review the changes and merge when ready.
               <div className="text-xs text-muted-foreground">
                 {mode === 'wysiwyg' 
                   ? "✨ Click elements to edit them directly" 
-                  : "📝 Real-time markdown rendering with components"
+                  : "📝 Real-time markdown rendering with exact docs processing"
                 }
               </div>
             </div>
@@ -283,12 +267,12 @@ Please review the changes and merge when ready.
                 <div className="bg-background rounded-lg border border-border p-6 shadow-sm">
                   <div className="mb-4 text-sm text-muted-foreground border-b border-border pb-2">
                     <span className="font-medium">Live Preview</span>
-                    <p className="text-xs mt-1">This shows exactly how the content will appear using the same components and processing as the actual docs.</p>
+                    <p className="text-xs mt-1">This shows exactly how the content will appear using the same processing and components as the actual docs.</p>
                   </div>
                   <div className="markdown-content">
                     <ReactMarkdown
                       components={components}
-                      remarkPlugins={[remarkGfm, remarkBreaks, remarkFrontmatter]}
+                      remarkPlugins={[remarkGfm]}
                       rehypePlugins={[rehypeRaw]}
                       skipHtml={false}
                     >
