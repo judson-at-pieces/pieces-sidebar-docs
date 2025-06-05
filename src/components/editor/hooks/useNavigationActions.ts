@@ -98,14 +98,67 @@ export function useNavigationActions(
     return addedItems;
   };
 
+  // Process bulk operations that contain multiple items
+  const processBulkItems = async (previewItems: NavigationItem[], sectionId: string): Promise<NavigationItem[]> => {
+    const addedItems: NavigationItem[] = [];
+    const parentMap = new Map<string, string>(); // temp ID -> real DB ID mapping
+    
+    console.log('Processing bulk items:', previewItems.length, 'items');
+    
+    // Sort items by hierarchy - root items first, then children
+    const sortedItems = [...previewItems].sort((a, b) => {
+      // Root items (no parent_id) come first
+      if (!a.parent_id && b.parent_id) return -1;
+      if (a.parent_id && !b.parent_id) return 1;
+      return a.order_index - b.order_index;
+    });
+    
+    for (const item of sortedItems) {
+      console.log('Processing item:', item.title, 'parent_id:', item.parent_id);
+      
+      // Map parent_id if it's a temp ID to the real DB ID
+      let realParentId = item.parent_id;
+      if (item.parent_id && parentMap.has(item.parent_id)) {
+        realParentId = parentMap.get(item.parent_id);
+        console.log('Mapped parent ID from', item.parent_id, 'to', realParentId);
+      }
+      
+      const itemData: Omit<NavigationItem, 'id'> = {
+        title: item.title,
+        href: item.href,
+        description: item.description,
+        icon: item.icon,
+        order_index: item.order_index,
+        parent_id: realParentId,
+        is_auto_generated: item.is_auto_generated,
+        file_path: item.file_path
+      };
+      
+      const savedItem = await addNavigationItemToDb(itemData, sectionId);
+      addedItems.push(savedItem);
+      
+      // Store mapping for children to reference
+      if (item.id) {
+        parentMap.set(item.id, savedItem.id);
+        console.log('Stored parent mapping:', item.id, '->', savedItem.id);
+      }
+    }
+    
+    return addedItems;
+  };
+
   const savePendingChanges = async () => {
     if (!pendingChange) return;
 
     try {
+      console.log('Saving pending changes:', pendingChange.type, 'with', pendingChange.previewItems.length, 'items');
+
       if (pendingChange.type === 'folder' && pendingChange.folderNode) {
+        // Single folder operation
         const addedItems = await saveFolderStructureToDb(pendingChange.folderNode, pendingChange.sectionId);
         toast.success(`Added ${pendingChange.folderNode.name} folder with ${addedItems.length} items to navigation`);
       } else if (pendingChange.type === 'file' && pendingChange.fileNode) {
+        // Single file operation
         const newItemData: Omit<NavigationItem, 'id'> = {
           title: pendingChange.fileNode.name.replace('.md', '').replace(/-/g, ' '),
           href: `/${pendingChange.fileNode.path.replace('.md', '')}`,
@@ -117,6 +170,11 @@ export function useNavigationActions(
         
         await addNavigationItemToDb(newItemData, pendingChange.sectionId);
         toast.success(`Added ${pendingChange.fileNode.name.replace('.md', '')} to navigation`);
+      } else if (pendingChange.previewItems.length > 0) {
+        // Bulk operation - process all preview items
+        console.log('Processing bulk operation with', pendingChange.previewItems.length, 'items');
+        const addedItems = await processBulkItems(pendingChange.previewItems, pendingChange.sectionId);
+        toast.success(`Added ${addedItems.length} items to navigation`);
       }
       
       // Refresh navigation data
