@@ -4,38 +4,49 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { ArrowRight, BookOpen, ExternalLink, Github } from "lucide-react";
 import { ThemeToggle } from "@/components/ThemeToggle";
 
+// Social links data
+const socialLinks = [
+  { name: "Discord", url: "https://pieces.app/discord?_gl=1*1vk3yhq*_gcl_au*MTM2ODE5MTYyMC4xNzQ4ODcwNTA2*_ga*MTE4MjM0Njk4MC4xNzQxMDIwNzMx*_ga_BVYEFRWCYX*czE3NDg4Njk5ODYkbzQ3JGcxJHQxNzQ4ODg0MzM4JGo2MCRsMCRoMA..", icon: "/assets/icons/discord.svg" },
+  { name: "Twitter", url: "https://twitter.com/getpieces", icon: "/assets/icons/twitter.svg" },
+  { name: "YouTube", url: "https://youtube.com/@getpieces", icon: "/assets/icons/youtube.svg" },
+  { name: "Instagram", url: "https://instagram.com/getpieces", icon: null }, // No icon available
+  { name: "GitHub", url: "https://github.com/orgs/pieces-app", icon: "/assets/icons/github.svg" },
+  { name: "LinkedIn", url: "https://linkedin.com/company/getpieces", icon: "/assets/icons/linkedin.svg" },
+  { name: "Facebook", url: "https://facebook.com/getpieces", icon: null } // No icon available
+];
+
 // Integration data with their respective repository links
 const integrations = [{
   category: "IDEs & Editors",
   items: [{
     name: "VS Code",
     description: "The flagship extension for Visual Studio Code",
-    logo: "🔵",
+    logo: "/assets/icons/vs_code.png",
     repoUrl: "https://github.com/pieces-app/pieces-vscode"
   }, {
     name: "JetBrains",
     description: "Plugin for IntelliJ IDEA, PyCharm, WebStorm, and more",
-    logo: "🔶",
+    logo: "/assets/icons/jetbrains.png",
     repoUrl: "https://github.com/pieces-app/pieces-jetbrains"
   }, {
     name: "Visual Studio",
     description: "Extension for Microsoft Visual Studio",
-    logo: "🟣",
+    logo: "/assets/icons/visual_studio.png",
     repoUrl: "https://github.com/pieces-app/pieces-visual-studio"
   }, {
     name: "Sublime Text",
     description: "Package for Sublime Text editor",
-    logo: "🟠",
+    logo: "/assets/icons/sublime.png",
     repoUrl: "https://github.com/pieces-app/pieces-sublime"
   }, {
     name: "Neovim",
     description: "Plugin for Neovim text editor",
-    logo: "🟢",
+    logo: "/assets/icons/new_neovim.png",
     repoUrl: "https://github.com/pieces-app/pieces-neovim"
   }, {
     name: "JupyterLab",
     description: "Extension for JupyterLab notebooks",
-    logo: "🟡",
+    logo: "/assets/icons/jupyter_dark.png",
     repoUrl: "https://github.com/pieces-app/pieces-jupyterlab"
   }]
 }, {
@@ -43,48 +54,67 @@ const integrations = [{
   items: [{
     name: "Google Chrome",
     description: "Browser extension for Chrome",
-    logo: "🔴",
+    logo: "/assets/icons/google_chrome.png",
     repoUrl: "https://github.com/pieces-app/pieces-chrome"
-  }, {
-    name: "Mozilla Firefox",
-    description: "Add-on for Firefox browser",
-    logo: "🟠",
-    repoUrl: "https://github.com/pieces-app/pieces-firefox"
   }, {
     name: "Microsoft Edge",
     description: "Extension for Microsoft Edge",
-    logo: "🔵",
+    logo: "/assets/icons/microsoft_edge.png",
     repoUrl: "https://github.com/pieces-app/pieces-edge"
+  }, {
+    name: "Mozilla Firefox",
+    description: "Add-on for Firefox browser",
+    logo: "/assets/icons/firefox.png",
+    repoUrl: "https://github.com/pieces-app/pieces-firefox"
+  }, {
+    name: "Brave",
+    description: "Extension for Brave browser",
+    logo: "/assets/icons/brave.png",
+    repoUrl: "https://github.com/pieces-app/pieces-brave"
+  }, {
+    name: "Opera",
+    description: "Extension for Opera browser",
+    logo: "/assets/icons/opera.png",
+    repoUrl: "https://github.com/pieces-app/pieces-opera"
   }]
 }, {
   category: "Productivity & Communication",
   items: [{
     name: "Obsidian",
     description: "Plugin for Obsidian knowledge management",
-    logo: "🟣",
+    logo: "/assets/icons/obsidian.png",
     repoUrl: "https://github.com/pieces-app/pieces-obsidian"
   }, {
     name: "Pieces CLI",
     description: "Command-line interface for Pieces",
-    logo: "⚫",
+    logo: "/assets/icons/command_prompt.png",
     repoUrl: "https://github.com/pieces-app/pieces-cli"
   }, {
-    name: "Microsoft Teams",
-    description: "Bot for Microsoft Teams integration",
-    logo: "🔵",
-    repoUrl: "https://github.com/pieces-app/pieces-teams"
+    name: "Raycast",
+    description: "Extension for Raycast productivity tool",
+    logo: "/assets/icons/raycast.png",
+    repoUrl: "https://github.com/pieces-app/pieces-raycast"
   }]
 }];
 const Index = () => {
-  return <div className="min-h-screen bg-background text-foreground overflow-y-auto">
+  return <div className="min-h-screen bg-muted/20 text-foreground overflow-y-auto relative">
+      {/* Full Page Background Gradient */}
+      <div className="fixed inset-0 z-0">
+        <img 
+          src="/assets/icons/backgrounds/tacPbCFHcXRdioUoSpbbhgk8.png" 
+          alt="" 
+          className="w-full h-full object-cover"
+        />
+      </div>
+      
+      {/* Content Wrapper */}
+      <div className="relative z-10">
       {/* Header */}
-      <header className="border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-40">
+      <header className="border-b border-border bg-background/80 backdrop-blur-sm sticky top-0 z-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center py-4">
             <div className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">P</span>
-              </div>
+              <img src="/assets/icons/pieces_filled.svg" alt="Pieces" className="w-8 h-8" />
               <span className="text-xl font-bold">Pieces for Developers</span>
             </div>
             <nav className="flex items-center space-x-6">
@@ -104,7 +134,7 @@ const Index = () => {
       </header>
 
       {/* Hero Section */}
-      <section className="px-4 sm:px-6 lg:px-8 py-0">
+      <section className="px-4 sm:px-6 lg:px-8 py-0 bg-muted/20">
         <div className="max-w-6xl mx-auto text-center py-[5px]">
           {/* Clean announcement pill with custom color border */}
           <div className="flex items-center justify-center mb-8 my-[34px]">
@@ -143,32 +173,117 @@ const Index = () => {
         </div>
       </section>
 
-      {/* Integrations Grid */}
-      <section className="py-16 px-4 sm:px-6 lg:px-8 bg-muted/20">
+      {/* Meet Pieces Section */}
+      <section className="pt-16 pb-8 px-4 sm:px-6 lg:px-8 bg-muted/20">
         <div className="max-w-7xl mx-auto">
-          {integrations.map((category, categoryIndex) => <div key={categoryIndex} className="mb-4">
-              <h2 className="text-2xl font-bold mb-6 text-foreground text-left">{category.category}</h2>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {category.items.map((integration, index) => <Card key={index} className="bg-card border-border hover:border-muted-foreground transition-all duration-200 hover:shadow-lg cursor-pointer group" onClick={() => window.open(integration.repoUrl, '_blank')}>
-                    <CardHeader className="pb-4">
-                      <div className="flex items-center space-x-3">
-                        <span className="text-2xl">{integration.logo}</span>
-                        <div className="flex-1">
-                          <CardTitle className="text-lg group-hover:text-blue-400 transition-colors flex items-center text-left">
-                            {integration.name}
-                            <ExternalLink className="w-4 h-4 ml-2 opacity-0 group-hover:opacity-100 transition-opacity" />
-                          </CardTitle>
-                        </div>
-                      </div>
-                    </CardHeader>
-                    <CardContent className="pt-0">
-                      <CardDescription className="text-muted-foreground leading-relaxed text-left">
-                        {integration.description}
+          <h2 className="text-2xl font-bold mb-6 text-foreground text-left">Meet Pieces</h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <Card className="bg-card border-border hover:border-muted-foreground transition-all duration-200 hover:shadow-lg cursor-pointer group" onClick={() => window.open('/docs/desktop', '_self')}>
+              <CardHeader className="pb-4">
+                <div className="flex items-center space-x-3">
+                  <img src="/assets/icons/pieces_filled.svg" alt="Pieces Desktop" className="w-8 h-8 object-contain" />
+                  <div className="flex-1">
+                    <CardTitle className="text-lg group-hover:text-blue-400 transition-colors flex items-center text-left">
+                      Pieces Desktop App
+                      <ArrowRight className="w-4 h-4 ml-2 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </CardTitle>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <CardDescription className="text-muted-foreground leading-relaxed text-left">
+                  The flagship desktop application with AI-powered code management, search, and generation features
+                </CardDescription>
+              </CardContent>
+            </Card>
+            <Card className="bg-card border-border hover:border-muted-foreground transition-all duration-200 hover:shadow-lg cursor-pointer group" onClick={() => window.open('/docs/core-dependencies', '_self')}>
+              <CardHeader className="pb-4">
+                <div className="flex items-center space-x-3">
+                  <img src="/assets/icons/pieces_os_dark.svg" alt="Core Dependencies" className="w-8 h-8 object-contain" />
+                  <div className="flex-1">
+                    <CardTitle className="text-lg group-hover:text-blue-400 transition-colors flex items-center text-left">
+                      Core Dependencies
+                      <ArrowRight className="w-4 h-4 ml-2 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </CardTitle>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="pt-0">
+                <CardDescription className="text-muted-foreground leading-relaxed text-left">
+                  Essential components including Pieces OS and Ollama for local LLM support
+                </CardDescription>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
+      </section>
+
+      {/* Integrations Grid */}
+      <section className="pt-8 pb-16 px-4 sm:px-6 lg:px-8 bg-muted/20">
+        <div className="max-w-7xl mx-auto">
+          {integrations.map((category, categoryIndex) => {
+            // Special handling for Web Browsers
+            if (category.category === "Web Browsers") {
+              return (
+                <div key={categoryIndex} className={categoryIndex > 0 ? "mt-16" : ""}>
+                  <h2 className="text-2xl font-bold mb-6 text-foreground text-left">{category.category}</h2>
+                  <Card className="bg-card border-border hover:border-muted-foreground transition-all duration-200 hover:shadow-lg">
+                    <CardHeader>
+                      <CardTitle className="text-lg text-center">Browser Extensions</CardTitle>
+                      <CardDescription className="text-muted-foreground leading-relaxed text-center">
+                        Available for all major web browsers
                       </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="flex flex-wrap gap-8 justify-center">
+                        {category.items.map((browser, index) => (
+                          <a
+                            key={index}
+                            href={browser.repoUrl}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-muted transition-colors group"
+                          >
+                            <img src={browser.logo} alt={browser.name} className="w-12 h-12 object-contain" />
+                            <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
+                              {browser.name}
+                            </span>
+                          </a>
+                        ))}
+                      </div>
                     </CardContent>
-                  </Card>)}
+                  </Card>
+                </div>
+              );
+            }
+            
+            // Default grid layout for other categories
+            return (
+              <div key={categoryIndex} className={categoryIndex > 0 ? "mt-16" : ""}>
+                <h2 className="text-2xl font-bold mb-6 text-foreground text-left">{category.category}</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {category.items.map((integration, index) => <Card key={index} className="bg-card border-border hover:border-muted-foreground transition-all duration-200 hover:shadow-lg cursor-pointer group" onClick={() => window.open(integration.repoUrl, '_blank')}>
+                      <CardHeader className="pb-4">
+                        <div className="flex items-center space-x-3">
+                          <img src={integration.logo} alt={integration.name} className="w-8 h-8 object-contain" />
+                          <div className="flex-1">
+                            <CardTitle className="text-lg group-hover:text-blue-400 transition-colors flex items-center text-left">
+                              {integration.name}
+                              <ExternalLink className="w-4 h-4 ml-2 opacity-0 group-hover:opacity-100 transition-opacity" />
+                            </CardTitle>
+                          </div>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="pt-0">
+                        <CardDescription className="text-muted-foreground leading-relaxed text-left">
+                          {integration.description}
+                        </CardDescription>
+                      </CardContent>
+                    </Card>)}
+                </div>
               </div>
-            </div>)}
+            );
+          })}
         </div>
       </section>
 
@@ -180,41 +295,13 @@ const Index = () => {
             <div>
               <h3 className="text-lg font-semibold mb-4">Socials</h3>
               <ul className="space-y-3">
-                <li>
-                  <a href="https://pieces.app/discord?_gl=1*1vk3yhq*_gcl_au*MTM2ODE5MTYyMC4xNzQ4ODcwNTA2*_ga*MTE4MjM0Njk4MC4xNzQxMDIwNzMx*_ga_BVYEFRWCYX*czE3NDg4Njk5ODYkbzQ3JGcxJHQxNzQ4ODg0MzM4JGo2MCRsMCRoMA.." target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors flex items-center">
-                    Discord <ExternalLink className="w-3 h-3 ml-1" />
-                  </a>
-                </li>
-                <li>
-                  <a href="https://twitter.com/getpieces" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors flex items-center">
-                    Twitter <ExternalLink className="w-3 h-3 ml-1" />
-                  </a>
-                </li>
-                <li>
-                  <a href="https://youtube.com/@getpieces" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors flex items-center">
-                    YouTube <ExternalLink className="w-3 h-3 ml-1" />
-                  </a>
-                </li>
-                <li>
-                  <a href="https://instagram.com/getpieces" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors flex items-center">
-                    Instagram <ExternalLink className="w-3 h-3 ml-1" />
-                  </a>
-                </li>
-                <li>
-                  <a href="https://github.com/orgs/pieces-app" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors flex items-center">
-                    GitHub <ExternalLink className="w-3 h-3 ml-1" />
-                  </a>
-                </li>
-                <li>
-                  <a href="https://linkedin.com/company/getpieces" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors flex items-center">
-                    LinkedIn <ExternalLink className="w-3 h-3 ml-1" />
-                  </a>
-                </li>
-                <li>
-                  <a href="https://facebook.com/getpieces" target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors flex items-center">
-                    Facebook <ExternalLink className="w-3 h-3 ml-1" />
-                  </a>
-                </li>
+                {socialLinks.map((social, index) => (
+                  <li key={index}>
+                    <a href={social.url} target="_blank" rel="noopener noreferrer" className="text-muted-foreground hover:text-foreground transition-colors flex items-center">
+                      {social.name} <ExternalLink className="w-3 h-3 ml-1" />
+                    </a>
+                  </li>
+                ))}
               </ul>
             </div>
 
@@ -267,9 +354,7 @@ const Index = () => {
           <div className="pt-8 border-t border-border">
             <div className="flex flex-col md:flex-row justify-between items-center">
               <div className="flex items-center space-x-2 mb-4 md:mb-0">
-                <div className="w-6 h-6 bg-gradient-to-br from-blue-500 to-purple-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-xs">P</span>
-                </div>
+                <img src="/assets/icons/pieces_filled.svg" alt="Pieces" className="w-6 h-6" />
                 <span className="font-bold">Pieces for Developers</span>
               </div>
               <p className="text-muted-foreground text-sm">Copyright © 2025 Mesh Intelligent Technologies, Inc. All rights reserved.</p>
@@ -277,6 +362,7 @@ const Index = () => {
           </div>
         </div>
       </footer>
+      </div>
     </div>;
 };
 export default Index;

@@ -1,0 +1,19 @@
+<svg viewBox="0 0 256 256" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="neovim-gradient-1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#5AA8D8;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4A90C7;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="neovim-gradient-2" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#57A243;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#4B8E39;stop-opacity:1" />
+    </linearGradient>
+  </defs>
+  <g>
+    <!-- Left blue part -->
+    <path d="M 55 48 L 95 88 L 95 208 L 55 248 Z" fill="url(#neovim-gradient-1)" />
+    <!-- Right green parts -->
+    <path d="M 95 88 L 201 194 L 201 48 L 161 8 Z" fill="url(#neovim-gradient-2)" />
+    <path d="M 95 208 L 161 142 L 201 182 L 201 248 Z" fill="#57A243" />
+  </g>
+</svg>
