@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, Folder, FolderOpen, Plus, ChevronDown, ChevronRight, Check, Save, RotateCcw } from "lucide-react";
+import { FileText, Folder, FolderOpen, Plus, ChevronDown, ChevronRight, Check, Save, RotateCcw, ArrowRight } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
@@ -612,8 +612,8 @@ export function AvailableFilesPanel({ fileStructure, isFileUsed, sections, onAdd
                   onClick={handleBulkAdd}
                   className="gap-2"
                 >
-                  <Save className="h-4 w-4" />
-                  Add {pendingAdditions.length}
+                  <ArrowRight className="h-4 w-4" />
+                  Move {pendingAdditions.length}
                 </Button>
               </>
             )}
