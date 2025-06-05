@@ -39,6 +39,9 @@ If you know what you’re after, jump to our [documentation on the different nav
 
 ## Core Features
 
+## New Heading
+
+
 There are three core components of Pieces that are intelligently integrated to minimize context switching and improve productivity in your daily workflow.
 
 ### LTM & Workstream Activity
