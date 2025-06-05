@@ -2,7 +2,12 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { WYSIWYGEditor } from './WYSIWYGEditor';
-import HashnodeMarkdownRenderer from '@/components/HashnodeMarkdownRenderer';
+import ReactMarkdown from 'react-markdown';
+import { useDynamicComponents } from '@/hooks/useDynamicComponents';
+import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
+import remarkFrontmatter from 'remark-frontmatter';
+import rehypeRaw from 'rehype-raw';
 import { Edit, Eye, Sparkles, Wand2, GitPullRequest } from 'lucide-react';
 import { toast } from 'sonner';
 import { githubService } from '@/services/githubService';
@@ -19,31 +24,22 @@ interface TSXRendererProps {
 export function TSXRenderer({ content, onContentChange, readOnly = false, filePath }: TSXRendererProps) {
   const [mode, setMode] = useState<'preview' | 'wysiwyg'>('preview');
   const { user } = useAuth();
+  const components = useDynamicComponents();
 
-  // Process the content to match the compiled content format
+  // Process the content to remove frontmatter for rendering
   const processedContent = React.useMemo(() => {
-    // If content doesn't start with frontmatter, add a basic one
-    if (!content.startsWith('---')) {
-      return `---
-title: "Preview"
----
-***
-${content}`;
-    }
-    
-    // If content has frontmatter but no section delimiter, add it
-    if (!content.includes('***')) {
+    // Remove frontmatter section if present
+    if (content.startsWith('---')) {
       const frontmatterEnd = content.indexOf('---', 3);
       if (frontmatterEnd !== -1) {
-        const frontmatter = content.substring(0, frontmatterEnd + 3);
         const markdownContent = content.substring(frontmatterEnd + 3).trim();
-        return `${frontmatter}
-***
-${markdownContent}`;
+        // Also remove the *** delimiter if present
+        return markdownContent.replace(/^\*\*\*\s*/, '');
       }
     }
     
-    return content;
+    // Remove *** delimiter if it's at the start
+    return content.replace(/^\*\*\*\s*/, '');
   }, [content]);
 
   async function handleCreatePR() {
@@ -210,7 +206,7 @@ Please review the changes and merge when ready.
               <div className="text-xs text-muted-foreground">
                 {mode === 'wysiwyg' 
                   ? "✨ Click elements to edit them directly" 
-                  : "📝 Real-time Hashnode markdown rendering"
+                  : "📝 Real-time markdown rendering with components"
                 }
               </div>
             </div>
@@ -271,10 +267,17 @@ Please review the changes and merge when ready.
                 <div className="bg-background rounded-lg border border-border p-6 shadow-sm">
                   <div className="mb-4 text-sm text-muted-foreground border-b border-border pb-2">
                     <span className="font-medium">Live Preview</span>
-                    <p className="text-xs mt-1">This shows exactly how the content will appear using Hashnode renderer.</p>
+                    <p className="text-xs mt-1">This shows exactly how the content will appear using the same components as the actual docs.</p>
                   </div>
-                  <div className="markdown-content">
-                    <HashnodeMarkdownRenderer content={processedContent} />
+                  <div className="prose prose-sm max-w-none dark:prose-invert">
+                    <ReactMarkdown
+                      components={components}
+                      remarkPlugins={[remarkGfm, remarkBreaks, remarkFrontmatter]}
+                      rehypePlugins={[rehypeRaw]}
+                      skipHtml={false}
+                    >
+                      {processedContent}
+                    </ReactMarkdown>
                   </div>
                 </div>
               </div>
