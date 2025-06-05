@@ -145,18 +145,25 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
       }
       markdownPath = markdownPath.replace(/^\/+/, '');
       
+      console.log('Loading existing content from:', `/content/${markdownPath}`);
       const response = await fetch(`/content/${markdownPath}`);
       if (response.ok) {
-        return await response.text();
+        const content = await response.text();
+        console.log('Successfully loaded existing content, length:', content.length);
+        return content;
+      } else {
+        console.log('Failed to load existing content, status:', response.status);
       }
     } catch (error) {
       console.warn('Could not load existing content:', error);
     }
     
     // Return default content if file doesn't exist
-    return `# ${seoData.metaTitle || seoData.title || 'Page Title'}
+    const defaultContent = `# ${seoData.metaTitle || seoData.title || 'Page Title'}
 
 ${seoData.metaDescription || seoData.description || 'Page content goes here...'}`;
+    console.log('Using default content:', defaultContent);
+    return defaultContent;
   };
 
   const handleSeoChange = (updates: Partial<SeoData>) => {
@@ -232,39 +239,48 @@ ${seoData.metaDescription || seoData.description || 'Page content goes here...'}
 
   const generateFrontmatter = (data: SeoData): string => {
     const frontmatterLines = [
-      '---',
-      data.metaTitle ? `seoTitle: "${data.metaTitle}"` : '',
-      data.metaDescription ? `seoDescription: "${data.metaDescription}"` : '',
-      data.keywords.length ? `seoKeywords: "${data.keywords.join(', ')}"` : '',
-      data.canonicalUrl ? `canonicalUrl: "${data.canonicalUrl}"` : '',
-      data.ogTitle ? `ogTitle: "${data.ogTitle}"` : '',
-      data.ogDescription ? `ogDescription: "${data.ogDescription}"` : '',
-      data.ogImage ? `ogImage: "${data.ogImage}"` : '',
-      data.ogType !== 'article' ? `ogType: "${data.ogType}"` : '',
-      data.twitterCard !== 'summary_large_image' ? `twitterCard: "${data.twitterCard}"` : '',
-      data.twitterTitle ? `twitterTitle: "${data.twitterTitle}"` : '',
-      data.twitterDescription ? `twitterDescription: "${data.twitterDescription}"` : '',
-      data.twitterImage ? `twitterImage: "${data.twitterImage}"` : '',
-      data.robots !== 'index,follow' ? `robots: "${data.robots}"` : '',
-      data.noindex ? `noindex: true` : '',
-      data.nofollow ? `nofollow: true` : '',
       '---'
-    ].filter(Boolean);
+    ];
+    
+    if (data.metaTitle) frontmatterLines.push(`seoTitle: "${data.metaTitle}"`);
+    if (data.metaDescription) frontmatterLines.push(`seoDescription: "${data.metaDescription}"`);
+    if (data.keywords.length) frontmatterLines.push(`seoKeywords: "${data.keywords.join(', ')}"`);
+    if (data.canonicalUrl) frontmatterLines.push(`canonicalUrl: "${data.canonicalUrl}"`);
+    if (data.ogTitle) frontmatterLines.push(`ogTitle: "${data.ogTitle}"`);
+    if (data.ogDescription) frontmatterLines.push(`ogDescription: "${data.ogDescription}"`);
+    if (data.ogImage) frontmatterLines.push(`ogImage: "${data.ogImage}"`);
+    if (data.ogType && data.ogType !== 'article') frontmatterLines.push(`ogType: "${data.ogType}"`);
+    if (data.twitterCard && data.twitterCard !== 'summary_large_image') frontmatterLines.push(`twitterCard: "${data.twitterCard}"`);
+    if (data.twitterTitle) frontmatterLines.push(`twitterTitle: "${data.twitterTitle}"`);
+    if (data.twitterDescription) frontmatterLines.push(`twitterDescription: "${data.twitterDescription}"`);
+    if (data.twitterImage) frontmatterLines.push(`twitterImage: "${data.twitterImage}"`);
+    if (data.robots && data.robots !== 'index,follow') frontmatterLines.push(`robots: "${data.robots}"`);
+    if (data.noindex) frontmatterLines.push(`noindex: true`);
+    if (data.nofollow) frontmatterLines.push(`nofollow: true`);
+    
+    frontmatterLines.push('---');
     
     return frontmatterLines.join('\n');
   };
 
   const updateContentWithSeoData = async (existingContent: string, seoData: SeoData): Promise<string> => {
     const frontmatter = generateFrontmatter(seoData);
+    console.log('Generated frontmatter:', frontmatter);
     
     // If content has existing frontmatter, replace it
     const frontmatterRegex = /^---\n([\s\S]*?)\n---\n?/;
     if (frontmatterRegex.test(existingContent)) {
-      return existingContent.replace(frontmatterRegex, `${frontmatter}\n\n`);
+      console.log('Replacing existing frontmatter');
+      const result = existingContent.replace(frontmatterRegex, `${frontmatter}\n\n`);
+      console.log('Updated content length:', result.length);
+      return result;
     }
     
     // If no frontmatter exists, prepend it
-    return `${frontmatter}\n\n${existingContent}`;
+    console.log('Adding frontmatter to content without existing frontmatter');
+    const result = `${frontmatter}\n\n${existingContent}`;
+    console.log('Final content length:', result.length);
+    return result;
   };
 
   const handleCreatePRForCurrentFile = async () => {
@@ -338,6 +354,8 @@ ${seoData.metaDescription || seoData.description || 'Page content goes here...'}
         repoFilePath = `${repoFilePath}.md`;
       }
 
+      console.log('Processing file:', { selectedFile, repoFilePath });
+
       // Load existing content and update with SEO data
       const existingContent = await loadExistingContent(selectedFile);
       const updatedContent = await updateContentWithSeoData(existingContent, seoData);
@@ -347,7 +365,8 @@ ${seoData.metaDescription || seoData.description || 'Page content goes here...'}
         repoFilePath, 
         owner, 
         repo,
-        installationId: configData.installation_id
+        installationId: configData.installation_id,
+        contentLength: updatedContent.length
       });
 
       // Create the pull request using the GitHub App token
