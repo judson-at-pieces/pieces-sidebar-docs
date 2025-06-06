@@ -399,13 +399,19 @@ const ImageSection: React.FC<{ src: string; alt: string; align: string; fullwidt
   
   console.log('🖼️ ImageSection rendering:', { src, alt, align, fullwidth });
   
+  const alignmentClass = {
+    left: 'justify-start',
+    center: 'justify-center',
+    right: 'justify-end'
+  }[align] || 'justify-center';
+  
   return (
     <>
-      <div className={`hn-image-container ${align} ${fullwidth ? 'fullwidth' : ''}`}>
+      <div className={`flex my-6 ${alignmentClass}`}>
         <img 
           src={src} 
           alt={alt} 
-          className="hn-image rounded-lg cursor-pointer transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg" 
+          className={`rounded-lg cursor-pointer transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg ${fullwidth ? 'w-full' : 'max-w-full'} h-auto`}
           onClick={() => setIsModalOpen(true)}
         />
       </div>
