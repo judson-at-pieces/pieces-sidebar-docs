@@ -3,6 +3,7 @@ import { Callout } from './Callout';
 import { MarkdownCard } from './MarkdownCard';
 import { CardGroup } from './CardGroup';
 import { Steps, Step } from './Steps';
+import { X } from 'lucide-react';
 
 // Constants
 const SECTION_DELIMITER = '***';
@@ -366,12 +367,55 @@ const processInlineMarkdown = (text: string): React.ReactNode => {
 };
 
 // Components
-const ImageSection: React.FC<{ src: string; alt: string; align: string; fullwidth: boolean }> = ({ src, alt, align, fullwidth }) => {
-  console.log('🖼️ ImageSection rendering:', { src, alt, align, fullwidth });
+const ImageModal: React.FC<{ src: string; alt: string; isOpen: boolean; onClose: () => void }> = ({ src, alt, isOpen, onClose }) => {
+  if (!isOpen) return null;
+
   return (
-    <div className={`hn-image-container ${align} ${fullwidth ? 'fullwidth' : ''}`}>
-      <img src={src} alt={alt} className="hn-image rounded-lg" />
+    <div 
+      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div className="relative max-w-[90vw] max-h-[90vh]">
+        <button
+          onClick={onClose}
+          className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors bg-black/50 rounded-full p-2"
+          aria-label="Close image"
+        >
+          <X size={24} />
+        </button>
+        <img 
+          src={src} 
+          alt={alt} 
+          className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+        />
+      </div>
     </div>
+  );
+};
+
+const ImageSection: React.FC<{ src: string; alt: string; align: string; fullwidth: boolean }> = ({ src, alt, align, fullwidth }) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  console.log('🖼️ ImageSection rendering:', { src, alt, align, fullwidth });
+  
+  return (
+    <>
+      <div className={`hn-image-container ${align} ${fullwidth ? 'fullwidth' : ''}`}>
+        <img 
+          src={src} 
+          alt={alt} 
+          className="hn-image rounded-lg cursor-pointer transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg" 
+          onClick={() => setIsModalOpen(true)}
+        />
+      </div>
+      <ImageModal 
+        src={src} 
+        alt={alt} 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+      />
+    </>
   );
 };
 
@@ -491,7 +535,7 @@ const ButtonSection: React.FC<{ button: ButtonData }> = ({ button }) => {
   );
 };
 
-// Updated Steps Section to use the proper Steps component
+// Updated Steps Section to add hover effects to images
 const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => {
   console.log('👣 StepsSection rendering:', { stepCount: steps.length });
   
@@ -500,7 +544,7 @@ const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => {
       {steps.map((step, index) => (
         <Step key={index} title={step.title}>
           <div 
-            className="[&_img]:rounded-lg [&_img]:my-4" 
+            className="[&_img]:rounded-lg [&_img]:my-4 [&_img]:cursor-pointer [&_img]:transition-transform [&_img]:duration-200 [&_img:hover]:-translate-y-1 [&_img:hover]:shadow-lg" 
             dangerouslySetInnerHTML={{ __html: step.content }} 
           />
         </Step>
