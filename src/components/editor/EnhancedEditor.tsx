@@ -120,6 +120,9 @@ export function EnhancedEditor({
     );
   }
 
+  // Calculate if PR button should be disabled
+  const isPRButtonDisabled = !hasChanges || creatingPR || !session?.provider_token;
+
   return (
     <div className="flex-1 flex flex-col h-full">
       {/* Header */}
@@ -178,7 +181,7 @@ export function EnhancedEditor({
               onClick={handleCreatePR}
               variant="outline"
               size="sm"
-              disabled={!hasChanges || creatingPR || !session?.provider_token}
+              disabled={isPRButtonDisabled}
               className="flex items-center gap-2"
             >
               {creatingPR ? (
