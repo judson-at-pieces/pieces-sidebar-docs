@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { NavigationEditor } from "./NavigationEditor";
@@ -139,7 +140,14 @@ Start editing to see the live preview!
   };
 
   const handleCreatePR = async () => {
-    if (!selectedFile || !hasChanges) {
+    // Check if user is authenticated with GitHub
+    if (!session?.provider_token) {
+      toast.error('GitHub authentication required. Please sign in with GitHub to create pull requests.');
+      return;
+    }
+
+    // Check if there are changes to create PR for
+    if (!hasChanges || !selectedFile) {
       toast.error('No changes to create a pull request for');
       return;
     }
@@ -184,13 +192,8 @@ This pull request contains updates to the documentation content. The changes wer
 ---
 *This pull request was automatically created from the Pieces Docs editor.*`;
 
-      // Try to use session token first, fallback to GitHub app if needed
-      let token = session?.provider_token;
-      
-      if (!token) {
-        toast.error('GitHub authentication required. Please sign in with GitHub.');
-        return;
-      }
+      // Use session token for GitHub authentication
+      const token = session.provider_token;
 
       // Create PR with the enhanced description
       const result = await githubService.createPullRequest(
@@ -215,7 +218,7 @@ This pull request contains updates to the documentation content. The changes wer
             onClick: () => window.open(result.prUrl, '_blank')
           }
         });
-        // Auto-save after successful PR creation
+        // Clear changes after successful PR creation
         setHasChanges(false);
         if (selectedFile) {
           setModifiedFiles(prev => {
@@ -287,8 +290,8 @@ This pull request contains updates to the documentation content. The changes wer
   // Convert modifiedFiles Set to array for consistent interface
   const modifiedFilesArray = Array.from(modifiedFiles);
 
-  // ONLY disable if there are no changes or if currently creating PR
-  const isPRButtonDisabled = !hasChanges || creatingPR;
+  // Check if user has GitHub token AND there are changes
+  const canCreatePR = session?.provider_token && hasChanges && selectedFile && !creatingPR;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
@@ -381,14 +384,16 @@ This pull request contains updates to the documentation content. The changes wer
                       onClick={handleCreatePR}
                       variant="outline"
                       size="sm"
-                      disabled={isPRButtonDisabled}
+                      disabled={!canCreatePR}
                       className="flex items-center gap-2"
                       title={
-                        !hasChanges 
-                          ? "No changes to create PR for" 
-                          : creatingPR 
-                            ? "Creating PR..." 
-                            : "Create pull request"
+                        !session?.provider_token 
+                          ? "Sign in with GitHub to create pull requests" 
+                          : !hasChanges 
+                            ? "No changes to create PR for" 
+                            : creatingPR 
+                              ? "Creating PR..." 
+                              : "Create pull request"
                       }
                     >
                       {creatingPR ? (
