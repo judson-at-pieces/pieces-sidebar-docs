@@ -411,7 +411,7 @@ const ImageSection: React.FC<{ src: string; alt: string; align: string; fullwidt
         <img 
           src={src} 
           alt={alt} 
-          className={`rounded-lg cursor-pointer transition-transform duration-200 hover:-translate-y-1 hover:shadow-lg ${fullwidth ? 'w-full' : 'max-w-full'} h-auto`}
+          className={`rounded-lg cursor-pointer transition-transform duration-200 hover:-translate-y-1 ${fullwidth ? 'w-full' : 'max-w-full'} h-auto`}
           onClick={() => setIsModalOpen(true)}
         />
       </div>
@@ -550,7 +550,7 @@ const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => {
       {steps.map((step, index) => (
         <Step key={index} title={step.title}>
           <div 
-            className="[&_img]:rounded-lg [&_img]:my-4 [&_img]:cursor-pointer [&_img]:transition-transform [&_img]:duration-200 [&_img:hover]:-translate-y-1 [&_img:hover]:shadow-lg" 
+            className="[&_img]:rounded-lg [&_img]:my-4 [&_img]:cursor-pointer [&_img]:transition-transform [&_img]:duration-200 [&_img:hover]:-translate-y-1" 
             dangerouslySetInnerHTML={{ __html: step.content }} 
           />
         </Step>
