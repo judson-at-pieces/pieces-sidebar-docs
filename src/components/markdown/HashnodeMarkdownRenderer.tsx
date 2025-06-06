@@ -541,21 +541,57 @@ const ButtonSection: React.FC<{ button: ButtonData }> = ({ button }) => {
   );
 };
 
-// Updated Steps Section to add hover effects to images
+// Updated Steps Section to add click functionality to images
 const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => {
+  const [modalImage, setModalImage] = useState<{ src: string; alt: string } | null>(null);
+  
   console.log('👣 StepsSection rendering:', { stepCount: steps.length });
   
+  const handleImageClick = (event: React.MouseEvent) => {
+    const target = event.target as HTMLElement;
+    if (target.tagName === 'IMG') {
+      const img = target as HTMLImageElement;
+      setModalImage({ src: img.src, alt: img.alt || '' });
+    }
+  };
+  
   return (
-    <Steps>
-      {steps.map((step, index) => (
-        <Step key={index} title={step.title}>
-          <div 
-            className="[&_img]:rounded-lg [&_img]:my-4 [&_img]:cursor-pointer [&_img]:transition-transform [&_img]:duration-200 [&_img:hover]:-translate-y-1" 
-            dangerouslySetInnerHTML={{ __html: step.content }} 
-          />
-        </Step>
-      ))}
-    </Steps>
+    <>
+      <Steps>
+        {steps.map((step, index) => (
+          <Step key={index} title={step.title}>
+            <div 
+              className="[&_img]:rounded-lg [&_img]:my-4 [&_img]:cursor-pointer [&_img]:transition-transform [&_img]:duration-200 [&_img:hover]:-translate-y-1" 
+              dangerouslySetInnerHTML={{ __html: step.content }}
+              onClick={handleImageClick}
+            />
+          </Step>
+        ))}
+      </Steps>
+      
+      {modalImage && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setModalImage(null)}
+        >
+          <div className="relative max-w-[90vw] max-h-[90vh]">
+            <button
+              onClick={() => setModalImage(null)}
+              className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors bg-black/50 rounded-full p-2"
+              aria-label="Close image"
+            >
+              <X size={24} />
+            </button>
+            <img 
+              src={modalImage.src} 
+              alt={modalImage.alt} 
+              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
+    </>
   );
 };
 
