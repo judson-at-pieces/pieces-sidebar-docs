@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Save, Eye, Edit, AlertCircle, SplitSquareHorizontal, MousePointer, GitPullRequest } from 'lucide-react';
+import { Eye, Edit, AlertCircle, SplitSquareHorizontal, MousePointer, GitPullRequest } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import HashnodeMarkdownRenderer from '@/components/markdown/HashnodeMarkdownRenderer';
 import { WYSIWYGEditor } from './WYSIWYGEditor';
@@ -57,10 +57,6 @@ export function EnhancedEditor({
     onContentChange(newContent);
   };
 
-  const handleSave = () => {
-    onSave();
-  };
-
   const handleCreatePR = async () => {
     if (!selectedFile || !hasChanges) {
       toast.error('No changes to create a pull request for');
@@ -106,6 +102,8 @@ export function EnhancedEditor({
             onClick: () => window.open(result.prUrl, '_blank')
           }
         });
+        // Auto-save after successful PR creation
+        onSave();
       }
     } catch (error) {
       console.error('Error creating PR:', error);
@@ -118,7 +116,8 @@ export function EnhancedEditor({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 's') {
       e.preventDefault();
-      handleSave();
+      // Auto-save on Ctrl+S
+      onSave();
     }
   };
 
@@ -212,20 +211,6 @@ export function EnhancedEditor({
                 <GitPullRequest className="w-4 h-4" />
               )}
               Create PR
-            </Button>
-            
-            <Button
-              onClick={handleSave}
-              disabled={!hasChanges || saving}
-              size="sm"
-              className="flex items-center gap-2"
-            >
-              {saving ? (
-                <div className="w-4 h-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-              ) : (
-                <Save className="w-4 h-4" />
-              )}
-              Save
             </Button>
           </div>
         </div>
