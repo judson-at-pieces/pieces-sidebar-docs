@@ -9,6 +9,7 @@ import { WYSIWYGEditor } from './WYSIWYGEditor';
 import { githubService } from '@/services/githubService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface EnhancedEditorProps {
   selectedFile?: string;
@@ -32,6 +33,7 @@ export function EnhancedEditor({
   const [viewMode, setViewMode] = useState<ViewMode>('split');
   const [textareaContent, setTextareaContent] = useState(content);
   const [creatingPR, setCreatingPR] = useState(false);
+  const { session } = useAuth();
 
   // Update textarea when content prop changes
   useEffect(() => {
@@ -53,16 +55,14 @@ export function EnhancedEditor({
       return;
     }
 
+    if (!session?.provider_token) {
+      toast.error('GitHub authentication required. Please sign in with GitHub.');
+      return;
+    }
+
     setCreatingPR(true);
     
     try {
-      // Get GitHub token from auth
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session?.provider_token) {
-        toast.error('GitHub authentication required. Please sign in with GitHub.');
-        return;
-      }
-
       // Get repository configuration
       const repoConfig = await githubService.getRepoConfig();
       if (!repoConfig) {
@@ -78,7 +78,7 @@ export function EnhancedEditor({
           body: `Updated content for ${selectedFile}\n\nThis pull request was created from the editor.`,
           files: [
             {
-              path: `public/content/${selectedFile}`,
+              path: selectedFile.endsWith('.md') ? selectedFile : `${selectedFile}.md`,
               content: textareaContent
             }
           ]
@@ -179,7 +179,7 @@ export function EnhancedEditor({
               onClick={handleCreatePR}
               variant="outline"
               size="sm"
-              disabled={!hasChanges || creatingPR}
+              disabled={!hasChanges || creatingPR || !session?.provider_token}
               className="flex items-center gap-2"
             >
               {creatingPR ? (
