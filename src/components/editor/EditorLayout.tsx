@@ -6,16 +6,17 @@ import { SeoEditor } from "./SeoEditor";
 import { FileTreeSidebar } from "./FileTreeSidebar";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/auth/UserMenu";
-import { Settings, FileText, Navigation, Home, Search, GitBranch, GitPullRequest } from "lucide-react";
+import { Settings, FileText, Navigation, Home, Search, GitPullRequest } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSeoData } from "@/hooks/useSeoData";
 import { githubService } from "@/services/githubService";
+import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export function EditorLayout() {
   const { fileStructure, isLoading, error, refetch } = useFileStructure();
-  const { hasRole, session } = useAuth();
+  const { hasRole } = useAuth();
   const [selectedFile, setSelectedFile] = useState<string>();
   const [content, setContent] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
@@ -138,20 +139,54 @@ Start editing to see the live preview!
     }
   };
 
+  const getGitHubAppToken = async () => {
+    try {
+      // Get the GitHub installation ID from the database
+      const { data: installations, error } = await supabase
+        .from('github_installations')
+        .select('installation_id')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error fetching GitHub installation:', error);
+        throw new Error('Failed to get GitHub installation');
+      }
+
+      if (!installations) {
+        throw new Error('No GitHub app installation found. Please configure GitHub app first.');
+      }
+
+      // Get installation token from the edge function
+      const { data, error: tokenError } = await supabase.functions.invoke('github-app-auth', {
+        body: { installationId: installations.installation_id }
+      });
+
+      if (tokenError) {
+        console.error('Error getting GitHub app token:', tokenError);
+        throw new Error('Failed to get GitHub app token');
+      }
+
+      return data.token;
+    } catch (error) {
+      console.error('Error in getGitHubAppToken:', error);
+      throw error;
+    }
+  };
+
   const handleCreatePR = async () => {
     if (!selectedFile || !hasChanges) {
       toast.error('No changes to create a pull request for');
       return;
     }
 
-    if (!session?.provider_token) {
-      toast.error('GitHub authentication required. Please sign in with GitHub.');
-      return;
-    }
-
     setCreatingPR(true);
     
     try {
+      // Get GitHub app token instead of OAuth token
+      const token = await getGitHubAppToken();
+      
       // Get repository configuration
       const repoConfig = await githubService.getRepoConfig();
       if (!repoConfig) {
@@ -172,7 +207,7 @@ Start editing to see the live preview!
             }
           ]
         },
-        session.provider_token,
+        token,
         repoConfig
       );
 
@@ -256,7 +291,7 @@ Start editing to see the live preview!
   const modifiedFilesArray = Array.from(modifiedFiles);
 
   // Calculate if PR button should be disabled
-  const isPRButtonDisabled = !hasChanges || creatingPR || !session?.provider_token;
+  const isPRButtonDisabled = !hasChanges || creatingPR;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
@@ -354,11 +389,9 @@ Start editing to see the live preview!
                       title={
                         !hasChanges 
                           ? "No changes to create PR for" 
-                          : !session?.provider_token 
-                            ? "Sign in with GitHub to create PR" 
-                            : creatingPR 
-                              ? "Creating PR..." 
-                              : "Create pull request"
+                          : creatingPR 
+                            ? "Creating PR..." 
+                            : "Create pull request"
                       }
                     >
                       {creatingPR ? (
