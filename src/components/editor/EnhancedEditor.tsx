@@ -32,7 +32,20 @@ export function EnhancedEditor({
   const [viewMode, setViewMode] = useState<ViewMode>('split');
   const [textareaContent, setTextareaContent] = useState(content);
   const [creatingPR, setCreatingPR] = useState(false);
-  const { session } = useAuth();
+  const { session, user } = useAuth();
+
+  // Debug logging
+  useEffect(() => {
+    console.log('EnhancedEditor Debug:', {
+      hasChanges,
+      creatingPR,
+      hasSession: !!session,
+      hasUser: !!user,
+      hasProviderToken: !!session?.provider_token,
+      sessionKeys: session ? Object.keys(session) : [],
+      userEmail: user?.email
+    });
+  }, [hasChanges, creatingPR, session, user]);
 
   // Update textarea when content prop changes
   useEffect(() => {
@@ -183,6 +196,15 @@ export function EnhancedEditor({
               size="sm"
               disabled={isPRButtonDisabled}
               className="flex items-center gap-2"
+              title={
+                !hasChanges 
+                  ? "No changes to create PR for" 
+                  : !session?.provider_token 
+                    ? "Sign in with GitHub to create PR" 
+                    : creatingPR 
+                      ? "Creating PR..." 
+                      : "Create pull request"
+              }
             >
               {creatingPR ? (
                 <div className="w-4 h-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
