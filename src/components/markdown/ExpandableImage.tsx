@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { ImageModal } from './ImageModal';
 import { Loader2, ImageOff, RotateCw } from 'lucide-react';
@@ -52,6 +53,14 @@ export function ExpandableImage({ src, alt, caption, className, ...props }: Expa
     setImageLoaded(false);
   };
 
+  const handleImageClick = () => {
+    setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    setIsModalOpen(false);
+  };
+
   // Use caption from props if available, otherwise use alt text
   const displayCaption = caption || alt || '';
 
@@ -87,7 +96,7 @@ export function ExpandableImage({ src, alt, caption, className, ...props }: Expa
               className={`rounded-lg cursor-pointer max-w-full h-auto transition-all duration-300 ${
                 imageLoaded ? 'block shadow-md hover:shadow-xl group-hover:scale-[1.02]' : 'absolute opacity-0 pointer-events-none'
               }`}
-              onClick={() => setIsModalOpen(true)}
+              onClick={handleImageClick}
               onError={handleImageError}
               onLoad={handleImageLoad}
               {...props}
@@ -108,7 +117,7 @@ export function ExpandableImage({ src, alt, caption, className, ...props }: Expa
         src={src}
         alt={displayCaption}
         isOpen={isModalOpen}
-        onClose={() => setIsModalOpen(false)}
+        onClose={handleCloseModal}
       />
     </>
   );

@@ -11,7 +11,7 @@ interface ImageModalProps {
 }
 
 export function ImageModal({ src, alt, isOpen, onClose }: ImageModalProps) {
-  // Handle escape key
+  // Handle escape key and prevent body scroll
   useEffect(() => {
     const handleEscape = (event: KeyboardEvent) => {
       if (event.key === 'Escape' && isOpen) {
@@ -38,7 +38,7 @@ export function ImageModal({ src, alt, isOpen, onClose }: ImageModalProps) {
           className="fixed inset-0 z-50 bg-black/40 backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
           onClick={onClose}
         />
-        <DialogPrimitive.Content className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] p-4 border-0 bg-transparent shadow-none focus:outline-none">
+        <DialogPrimitive.Content className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] p-4 border-0 bg-transparent shadow-none focus:outline-none max-w-[95vw] max-h-[95vh] w-fit h-fit">
           <div className="relative flex items-center justify-center">
             <DialogPrimitive.Close asChild>
               <button
@@ -50,15 +50,15 @@ export function ImageModal({ src, alt, isOpen, onClose }: ImageModalProps) {
               </button>
             </DialogPrimitive.Close>
             
-            <div className="relative rounded-lg overflow-hidden bg-white/5 backdrop-blur-sm border border-white/10 cursor-pointer">
+            <div className="relative rounded-lg overflow-hidden bg-white/5 backdrop-blur-sm border border-white/10 cursor-pointer max-w-full max-h-full">
               <img
                 src={src}
                 alt={alt}
-                className="block max-w-[90vw] max-h-[90vh] w-auto h-auto object-contain"
+                className="block max-w-[90vw] max-h-[85vh] w-auto h-auto object-contain"
                 onClick={onClose}
                 style={{
                   maxWidth: 'min(90vw, 1200px)',
-                  maxHeight: 'min(90vh, 800px)'
+                  maxHeight: 'min(85vh, 800px)'
                 }}
               />
               {alt && (
