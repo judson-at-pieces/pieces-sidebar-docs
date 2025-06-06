@@ -843,16 +843,20 @@ const HashnodeMarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) 
         break;
         
       case 'image': {
-        const data = extractImageData(section.content);
-        console.log('🖼️ Rendering ImageSection with data:', data);
-        result = <ImageSection key={section.index} {...data} />;
+        const imageData = extractImageData(section.content);
+        result = <ImageSection key={section.index} {...imageData} />;
+        break;
+      }
+      
+      case 'callout': {
+        const calloutData = extractCalloutData(section.content);
+        result = <CalloutSection key={section.index} type={calloutData.type} content={calloutData.content} />;
         break;
       }
       
       case 'card': {
-        const card = parseCard(section.content);
-        console.log('🎯 Rendering CardSection with data:', card);
-        result = <CardSection key={section.index} card={card} />;
+        const cardData = parseCard(section.content);
+        result = <CardSection key={section.index} card={cardData} />;
         break;
       }
       
@@ -863,44 +867,27 @@ const HashnodeMarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) 
         break;
       }
       
-      case 'mixed': {
-        console.log('🔀 Rendering MixedContentSection');
-        result = <MixedContentSection key={section.index} content={section.content} />;
-        break;
-      }
-        
-      case 'callout': {
-        const data = extractCalloutData(section.content);
-        console.log('💬 Rendering CalloutSection with data:', data);
-        result = <CalloutSection key={section.index} type={data.type} content={data.content} />;
-        break;
-      }
-      
       case 'accordion': {
-        const accordion = parseAccordion(section.content);
-        console.log('📂 Rendering AccordionSection with data:', accordion);
-        result = <AccordionSection key={section.index} accordion={accordion} />;
+        const accordionData = parseAccordion(section.content);
+        result = <AccordionSection key={section.index} accordion={accordionData} />;
         break;
       }
       
       case 'accordiongroup': {
-        const accordions = parseAccordionGroup(section.content);
-        console.log('📁 Rendering AccordionGroupSection with data:', { count: accordions.length });
-        result = <AccordionGroupSection key={section.index} accordions={accordions} />;
+        const accordionGroupData = parseAccordionGroup(section.content);
+        result = <AccordionGroupSection key={section.index} accordions={accordionGroupData} />;
         break;
       }
       
       case 'tabs': {
-        const tabs = parseTabs(section.content);
-        console.log('📑 Rendering TabsSection with data:', { count: tabs.length });
-        result = <TabsSection key={section.index} tabs={tabs} />;
+        const tabsData = parseTabs(section.content);
+        result = <TabsSection key={section.index} tabs={tabsData} />;
         break;
       }
       
       case 'button': {
-        const button = parseButton(section.content);
-        console.log('🔘 Rendering ButtonSection with data:', button);
-        result = <ButtonSection key={section.index} button={button} />;
+        const buttonData = parseButton(section.content);
+        result = <ButtonSection key={section.index} button={buttonData} />;
         break;
       }
       
@@ -911,6 +898,12 @@ const HashnodeMarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) 
         break;
       }
       
+      case 'mixed': {
+        console.log('🔀 Rendering MixedContentSection');
+        result = <MixedContentSection key={section.index} content={section.content} />;
+        break;
+      }
+        
       case 'markdown':
         console.log('📝 Rendering markdown section with content:', section.content.substring(0, 100));
         result = (
