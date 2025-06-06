@@ -2,13 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Eye, Edit, AlertCircle, SplitSquareHorizontal, MousePointer, GitPullRequest } from 'lucide-react';
+import { Eye, Edit, AlertCircle, SplitSquareHorizontal, MousePointer } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import HashnodeMarkdownRenderer from '@/components/markdown/HashnodeMarkdownRenderer';
 import { WYSIWYGEditor } from './WYSIWYGEditor';
-import { githubService } from '@/services/githubService';
-import { useAuth } from '@/contexts/AuthContext';
-import { toast } from 'sonner';
 
 interface EnhancedEditorProps {
   selectedFile?: string;
@@ -31,21 +28,6 @@ export function EnhancedEditor({
 }: EnhancedEditorProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('split');
   const [textareaContent, setTextareaContent] = useState(content);
-  const [creatingPR, setCreatingPR] = useState(false);
-  const { session, user } = useAuth();
-
-  // Debug logging
-  useEffect(() => {
-    console.log('EnhancedEditor Debug:', {
-      hasChanges,
-      creatingPR,
-      hasSession: !!session,
-      hasUser: !!user,
-      hasProviderToken: !!session?.provider_token,
-      sessionKeys: session ? Object.keys(session) : [],
-      userEmail: user?.email
-    });
-  }, [hasChanges, creatingPR, session, user]);
 
   // Update textarea when content prop changes
   useEffect(() => {
@@ -55,62 +37,6 @@ export function EnhancedEditor({
   const handleContentChange = (newContent: string) => {
     setTextareaContent(newContent);
     onContentChange(newContent);
-  };
-
-  const handleCreatePR = async () => {
-    if (!selectedFile || !hasChanges) {
-      toast.error('No changes to create a pull request for');
-      return;
-    }
-
-    if (!session?.provider_token) {
-      toast.error('GitHub authentication required. Please sign in with GitHub.');
-      return;
-    }
-
-    setCreatingPR(true);
-    
-    try {
-      // Get repository configuration
-      const repoConfig = await githubService.getRepoConfig();
-      if (!repoConfig) {
-        toast.error('No GitHub repository configured. Please configure a repository first.');
-        return;
-      }
-
-      // Create PR with the current file changes
-      const fileName = selectedFile.split('/').pop() || selectedFile;
-      const result = await githubService.createPullRequest(
-        {
-          title: `Update ${fileName}`,
-          body: `Updated content for ${selectedFile}\n\nThis pull request was created from the editor.`,
-          files: [
-            {
-              path: selectedFile.endsWith('.md') ? selectedFile : `${selectedFile}.md`,
-              content: textareaContent
-            }
-          ]
-        },
-        session.provider_token,
-        repoConfig
-      );
-
-      if (result.success) {
-        toast.success('Pull request created successfully!', {
-          action: {
-            label: 'View PR',
-            onClick: () => window.open(result.prUrl, '_blank')
-          }
-        });
-        // Auto-save after successful PR creation
-        onSave();
-      }
-    } catch (error) {
-      console.error('Error creating PR:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to create pull request');
-    } finally {
-      setCreatingPR(false);
-    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -131,9 +57,6 @@ export function EnhancedEditor({
       </div>
     );
   }
-
-  // Calculate if PR button should be disabled
-  const isPRButtonDisabled = !hasChanges || creatingPR || !session?.provider_token;
 
   return (
     <div className="flex-1 flex flex-col h-full">
@@ -188,30 +111,6 @@ export function EnhancedEditor({
                 Preview
               </Button>
             </div>
-            
-            <Button
-              onClick={handleCreatePR}
-              variant="outline"
-              size="sm"
-              disabled={isPRButtonDisabled}
-              className="flex items-center gap-2"
-              title={
-                !hasChanges 
-                  ? "No changes to create PR for" 
-                  : !session?.provider_token 
-                    ? "Sign in with GitHub to create PR" 
-                    : creatingPR 
-                      ? "Creating PR..." 
-                      : "Create pull request"
-              }
-            >
-              {creatingPR ? (
-                <div className="w-4 h-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-              ) : (
-                <GitPullRequest className="w-4 h-4" />
-              )}
-              Create PR
-            </Button>
           </div>
         </div>
         
