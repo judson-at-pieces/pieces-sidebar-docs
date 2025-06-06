@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { NavigationEditor } from "./NavigationEditor";
@@ -144,11 +145,6 @@ Start editing to see the live preview!
       return;
     }
 
-    if (!session?.provider_token) {
-      toast.error('GitHub authentication required. Please sign in with GitHub.');
-      return;
-    }
-
     setCreatingPR(true);
     
     try {
@@ -189,6 +185,14 @@ This pull request contains updates to the documentation content. The changes wer
 ---
 *This pull request was automatically created from the Pieces Docs editor.*`;
 
+      // Try to use session token first, fallback to GitHub app if needed
+      let token = session?.provider_token;
+      
+      if (!token) {
+        toast.error('GitHub authentication required. Please sign in with GitHub.');
+        return;
+      }
+
       // Create PR with the enhanced description
       const result = await githubService.createPullRequest(
         {
@@ -201,7 +205,7 @@ This pull request contains updates to the documentation content. The changes wer
             }
           ]
         },
-        session.provider_token,
+        token,
         repoConfig
       );
 
@@ -284,8 +288,8 @@ This pull request contains updates to the documentation content. The changes wer
   // Convert modifiedFiles Set to array for consistent interface
   const modifiedFilesArray = Array.from(modifiedFiles);
 
-  // Calculate if PR button should be disabled
-  const isPRButtonDisabled = !hasChanges || creatingPR || !session?.provider_token;
+  // ONLY disable if there are no changes or if currently creating PR
+  const isPRButtonDisabled = !hasChanges || creatingPR;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
@@ -383,11 +387,9 @@ This pull request contains updates to the documentation content. The changes wer
                       title={
                         !hasChanges 
                           ? "No changes to create PR for" 
-                          : !session?.provider_token
-                            ? "Sign in with GitHub to create PR"
-                            : creatingPR 
-                              ? "Creating PR..." 
-                              : "Create pull request"
+                          : creatingPR 
+                            ? "Creating PR..." 
+                            : "Create pull request"
                       }
                     >
                       {creatingPR ? (
