@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Save, Eye, Edit, AlertCircle, SplitSquareHorizontal, MousePointer } from 'lucide-react';
+import { Save, Eye, Edit, AlertCircle, SplitSquareHorizontal, MousePointer, GitPullRequest } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import HashnodeMarkdownRenderer from '@/components/markdown/HashnodeMarkdownRenderer';
 import { WYSIWYGEditor } from './WYSIWYGEditor';
@@ -41,6 +41,11 @@ export function EnhancedEditor({
 
   const handleSave = () => {
     onSave();
+  };
+
+  const handleCreatePR = () => {
+    // TODO: Implement create PR functionality
+    console.log('Create PR clicked');
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -114,6 +119,16 @@ export function EnhancedEditor({
                 Preview
               </Button>
             </div>
+            
+            <Button
+              onClick={handleCreatePR}
+              variant="outline"
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              <GitPullRequest className="w-4 h-4" />
+              Create PR
+            </Button>
             
             <Button
               onClick={handleSave}
