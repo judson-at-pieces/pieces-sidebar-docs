@@ -52,14 +52,50 @@ const parseSections = (text: string): ParsedSection[] => {
       console.log('🖼️ Found image section');
       return { type: 'image', content: section, index };
     }
-    // Check if section contains CardGroup AND other content
-    if (section.includes(CARDGROUP_PATTERN) && section.split('\n').filter(line => line.trim()).length > 10) {
-      console.log('🔀 Found mixed content section with CardGroup!');
+    
+    // Check for mixed content - sections that contain multiple types of elements
+    const hasCardGroup = section.includes(CARDGROUP_PATTERN);
+    const hasSteps = section.includes(STEPS_PATTERN);
+    const hasCallout = section.includes(CALLOUT_PATTERN);
+    const hasImage = section.includes(IMAGE_PATTERN);
+    const hasCard = section.includes(CARD_PATTERN) && !hasCardGroup;
+    
+    // Count markdown lines (non-empty lines that aren't special elements)
+    const lines = section.split('\n').filter(line => line.trim());
+    const specialElementLines = lines.filter(line => 
+      line.includes('<CardGroup') || 
+      line.includes('<Steps') || 
+      line.includes('<Callout') || 
+      line.includes('<Image') ||
+      line.includes('<Card') ||
+      line.includes('</CardGroup>') ||
+      line.includes('</Steps>') ||
+      line.includes('</Callout>') ||
+      line.includes('</Card>')
+    );
+    const markdownLines = lines.length - specialElementLines.length;
+    
+    console.log(`🔍 Section ${index} analysis:`, {
+      hasCardGroup, hasSteps, hasCallout, hasImage, hasCard,
+      totalLines: lines.length,
+      specialElementLines: specialElementLines.length,
+      markdownLines
+    });
+    
+    // If we have significant markdown content along with special elements, treat as mixed
+    if (markdownLines > 5 && (hasCardGroup || hasSteps || hasCallout || hasImage || hasCard)) {
+      console.log('🔀 Found mixed content section!');
       return { type: 'mixed', content: section, index };
     }
-    if (section.includes(CARDGROUP_PATTERN)) {
-      console.log('🃏 Found CardGroup section!');
+    
+    // Pure special element sections
+    if (hasCardGroup && !hasSteps && !hasCallout && markdownLines <= 5) {
+      console.log('🃏 Found pure CardGroup section!');
       return { type: 'cardgroup', content: section, index };
+    }
+    if (hasSteps && !hasCardGroup && !hasCallout && markdownLines <= 5) {
+      console.log('👣 Found pure Steps section!');
+      return { type: 'steps', content: section, index };
     }
     if (section.startsWith(ACCORDIONGROUP_PATTERN)) {
       console.log('📁 Found AccordionGroup section');
@@ -77,16 +113,12 @@ const parseSections = (text: string): ParsedSection[] => {
       console.log('🔘 Found Button section');
       return { type: 'button', content: section, index };
     }
-    if (section.includes(STEPS_PATTERN)) {
-      console.log('👣 Found Steps section');
-      return { type: 'steps', content: section, index };
-    }
     if (section.startsWith(CARD_PATTERN) && !section.includes(CARDGROUP_PATTERN)) {
       console.log('🎯 Found standalone Card section');
       return { type: 'card', content: section, index };
     }
-    if (section.startsWith(CALLOUT_PATTERN)) {
-      console.log('💬 Found Callout section');
+    if (section.startsWith(CALLOUT_PATTERN) && !hasSteps && !hasCardGroup) {
+      console.log('💬 Found pure Callout section');
       return { type: 'callout', content: section, index };
     }
     
