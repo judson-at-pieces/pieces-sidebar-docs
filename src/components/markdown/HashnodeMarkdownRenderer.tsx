@@ -1,8 +1,8 @@
-
 import React, { useState } from 'react';
 import { Callout } from './Callout';
 import { MarkdownCard } from './MarkdownCard';
 import { CardGroup } from './CardGroup';
+import { Steps, Step } from './Steps';
 
 // Constants
 const SECTION_DELIMITER = '***';
@@ -77,7 +77,7 @@ const parseSections = (text: string): ParsedSection[] => {
       console.log('🔘 Found Button section');
       return { type: 'button', content: section, index };
     }
-    if (section.startsWith(STEPS_PATTERN)) {
+    if (section.includes(STEPS_PATTERN)) {
       console.log('👣 Found Steps section');
       return { type: 'steps', content: section, index };
     }
@@ -274,23 +274,35 @@ const parseButton = (content: string): ButtonData => {
   };
 };
 
-// Parse Steps
+// Parse Steps - Updated to handle the markdown format properly
 interface StepData {
   title: string;
   content: string;
 }
 
 const parseSteps = (content: string): StepData[] => {
-  const stepRegex = /<Step\s+([^>]*)>([\s\S]*?)<\/Step>/g;
+  console.log('👣 Parsing Steps content:', content);
+  
+  // First, try to find the <Steps> block
+  const stepsMatch = content.match(/<Steps>([\s\S]*?)<\/Steps>/);
+  if (!stepsMatch) {
+    console.log('👣 No <Steps> block found');
+    return [];
+  }
+  
+  const stepsContent = stepsMatch[1];
+  console.log('👣 Steps inner content:', stepsContent);
+  
+  // Parse individual <Step> elements
+  const stepRegex = /<Step\s+title="([^"]*)"[^>]*>([\s\S]*?)<\/Step>/g;
   const steps: StepData[] = [];
   
   let match: RegExpExecArray | null;
-  while ((match = stepRegex.exec(content)) !== null) {
-    const attributes = match[1];
+  while ((match = stepRegex.exec(stepsContent)) !== null) {
+    const title = match[1];
     const innerContent = match[2].trim();
     
-    const titleMatch = attributes.match(/title="([^"]*)"/);
-    const title = titleMatch ? titleMatch[1] : '';
+    console.log('👣 Parsed step:', { title, contentLength: innerContent.length });
     
     steps.push({
       title,
@@ -298,6 +310,7 @@ const parseSteps = (content: string): StepData[] => {
     });
   }
   
+  console.log('👣 Total steps parsed:', steps.length);
   return steps;
 };
 
@@ -446,23 +459,18 @@ const ButtonSection: React.FC<{ button: ButtonData }> = ({ button }) => {
   );
 };
 
-// Parse Steps
+// Updated Steps Section to use the proper Steps component
 const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => {
   console.log('👣 StepsSection rendering:', { stepCount: steps.length });
+  
   return (
-    <div className="hn-steps">
+    <Steps>
       {steps.map((step, index) => (
-        <div key={index} className="hn-step">
-          <div className="hn-step-number">{index + 1}</div>
-          <div className="hn-step-content">
-            <h4 className="hn-step-title">{step.title}</h4>
-            <div className="hn-step-description">
-              {processInlineMarkdown(step.content)}
-            </div>
-          </div>
-        </div>
+        <Step key={index} title={step.title}>
+          <div dangerouslySetInnerHTML={{ __html: step.content }} />
+        </Step>
       ))}
-    </div>
+    </Steps>
   );
 };
 
@@ -477,6 +485,7 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
   const imageRegex = /<Image[^>]*\/>/g;
   const calloutRegex = /<Callout[^>]*>[\s\S]*?<\/Callout>/g;
   const standaloneCardRegex = /<Card[^>]*>[\s\S]*?<\/Card>/g;
+  const stepsRegex = /<Steps[^>]*>[\s\S]*?<\/Steps>/g;
   
   const allMatches: Array<{ match: RegExpMatchArray; type: string }> = [];
   
@@ -498,8 +507,14 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
     allMatches.push({ match, type: 'callout' });
   }
   
-  // Find standalone Cards (not inside CardGroups)
+  // Find Steps
   calloutRegex.lastIndex = 0;
+  while ((match = stepsRegex.exec(content)) !== null) {
+    allMatches.push({ match, type: 'steps' });
+  }
+  
+  // Find standalone Cards (not inside CardGroups)
+  stepsRegex.lastIndex = 0;
   const cardGroupMatches = allMatches.filter(m => m.type === 'cardgroup');
   while ((match = standaloneCardRegex.exec(content)) !== null) {
     // Check if this card is inside a CardGroup
@@ -561,6 +576,13 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
         const calloutData = extractCalloutData(match[0]);
         elements.push(
           <CalloutSection key={`callout-${elementIndex}`} type={calloutData.type} content={calloutData.content} />
+        );
+        break;
+      }
+      case 'steps': {
+        const stepsData = parseSteps(match[0]);
+        elements.push(
+          <StepsSection key={`steps-${elementIndex}`} steps={stepsData} />
         );
         break;
       }
