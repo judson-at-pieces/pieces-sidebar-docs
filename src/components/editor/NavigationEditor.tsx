@@ -236,7 +236,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
       
       <div className="flex-1 overflow-hidden">
         <div className="grid grid-cols-2 gap-4 h-full p-4">
-          <div className="h-full">
+          <div className="h-full overflow-auto">
             <AvailableFilesPanel 
               fileStructure={fileStructure}
               isFileUsed={isFileUsed}
@@ -245,7 +245,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
               onShowPreview={setShowConfirmDialog}
             />
           </div>
-          <div className="h-full">
+          <div className="h-full overflow-auto">
             <NavigationStructurePanel
               sections={sections}
               pendingDeletions={pendingDeletions}
