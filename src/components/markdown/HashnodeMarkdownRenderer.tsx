@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Callout } from './Callout';
 import { MarkdownCard } from './MarkdownCard';
@@ -371,7 +370,7 @@ const ImageSection: React.FC<{ src: string; alt: string; align: string; fullwidt
   console.log('🖼️ ImageSection rendering:', { src, alt, align, fullwidth });
   return (
     <div className={`hn-image-container ${align} ${fullwidth ? 'fullwidth' : ''}`}>
-      <img src={src} alt={alt} className="hn-image" />
+      <img src={src} alt={alt} className="hn-image rounded-lg" />
     </div>
   );
 };
@@ -500,7 +499,10 @@ const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => {
     <Steps>
       {steps.map((step, index) => (
         <Step key={index} title={step.title}>
-          <div dangerouslySetInnerHTML={{ __html: step.content }} />
+          <div 
+            className="[&_img]:rounded-lg [&_img]:my-4" 
+            dangerouslySetInnerHTML={{ __html: step.content }} 
+          />
         </Step>
       ))}
     </Steps>
