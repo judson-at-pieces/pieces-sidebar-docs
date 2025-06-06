@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Callout } from './Callout';
 import { MarkdownCard } from './MarkdownCard';
@@ -521,32 +522,42 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
   
   const allMatches: Array<{ match: RegExpMatchArray; type: string }> = [];
   
-  // Find CardGroups
+  // Find Steps first (so we can exclude images inside them)
   let match;
-  while ((match = cardGroupRegex.exec(content)) !== null) {
-    allMatches.push({ match, type: 'cardgroup' });
-  }
-  
-  // Find Images
-  cardGroupRegex.lastIndex = 0;
-  while ((match = imageRegex.exec(content)) !== null) {
-    allMatches.push({ match, type: 'image' });
-  }
-  
-  // Find Callouts
-  imageRegex.lastIndex = 0;
-  while ((match = calloutRegex.exec(content)) !== null) {
-    allMatches.push({ match, type: 'callout' });
-  }
-  
-  // Find Steps
-  calloutRegex.lastIndex = 0;
   while ((match = stepsRegex.exec(content)) !== null) {
     allMatches.push({ match, type: 'steps' });
   }
   
-  // Find standalone Cards (not inside CardGroups)
+  // Find CardGroups
   stepsRegex.lastIndex = 0;
+  while ((match = cardGroupRegex.exec(content)) !== null) {
+    allMatches.push({ match, type: 'cardgroup' });
+  }
+  
+  // Find Callouts
+  cardGroupRegex.lastIndex = 0;
+  while ((match = calloutRegex.exec(content)) !== null) {
+    allMatches.push({ match, type: 'callout' });
+  }
+  
+  // Find Images (but exclude ones inside Steps)
+  calloutRegex.lastIndex = 0;
+  const stepsMatches = allMatches.filter(m => m.type === 'steps');
+  while ((match = imageRegex.exec(content)) !== null) {
+    // Check if this image is inside a Steps block
+    const isInSteps = stepsMatches.some(stepsMatch => {
+      const stepsStart = stepsMatch.match.index!;
+      const stepsEnd = stepsStart + stepsMatch.match[0].length;
+      return match.index! >= stepsStart && match.index! < stepsEnd;
+    });
+    
+    if (!isInSteps) {
+      allMatches.push({ match, type: 'image' });
+    }
+  }
+  
+  // Find standalone Cards (not inside CardGroups)
+  imageRegex.lastIndex = 0;
   const cardGroupMatches = allMatches.filter(m => m.type === 'cardgroup');
   while ((match = standaloneCardRegex.exec(content)) !== null) {
     // Check if this card is inside a CardGroup
@@ -597,6 +608,13 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
         );
         break;
       }
+      case 'steps': {
+        const steps = parseSteps(match[0]);
+        elements.push(
+          <StepsSection key={`steps-${elementIndex}`} steps={steps} />
+        );
+        break;
+      }
       case 'image': {
         const imageData = extractImageData(match[0]);
         elements.push(
@@ -608,13 +626,6 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
         const calloutData = extractCalloutData(match[0]);
         elements.push(
           <CalloutSection key={`callout-${elementIndex}`} type={calloutData.type} content={calloutData.content} />
-        );
-        break;
-      }
-      case 'steps': {
-        const stepsData = parseSteps(match[0]);
-        elements.push(
-          <StepsSection key={`steps-${elementIndex}`} steps={stepsData} />
         );
         break;
       }
