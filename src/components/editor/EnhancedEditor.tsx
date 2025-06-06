@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Save, Eye, Edit, AlertCircle } from 'lucide-react';
+import { Save, Eye, Edit, AlertCircle, SplitSquareHorizontal } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import HashnodeMarkdownRenderer from '@/components/markdown/HashnodeMarkdownRenderer';
 
@@ -15,6 +15,8 @@ interface EnhancedEditorProps {
   saving: boolean;
 }
 
+type ViewMode = 'edit' | 'preview' | 'split';
+
 export function EnhancedEditor({ 
   selectedFile, 
   content, 
@@ -23,7 +25,7 @@ export function EnhancedEditor({
   hasChanges, 
   saving 
 }: EnhancedEditorProps) {
-  const [isPreviewMode, setIsPreviewMode] = useState(false);
+  const [viewMode, setViewMode] = useState<ViewMode>('split');
   const [textareaContent, setTextareaContent] = useState(content);
 
   // Update textarea when content prop changes
@@ -69,15 +71,38 @@ export function EnhancedEditor({
           </div>
           
           <div className="flex items-center gap-2">
-            <Button
-              variant={isPreviewMode ? "default" : "outline"}
-              size="sm"
-              onClick={() => setIsPreviewMode(!isPreviewMode)}
-              className="flex items-center gap-2"
-            >
-              {isPreviewMode ? <Edit className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-              {isPreviewMode ? 'Edit' : 'Preview'}
-            </Button>
+            {/* View Mode Buttons */}
+            <div className="flex items-center border rounded-md p-1">
+              <Button
+                variant={viewMode === 'edit' ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode('edit')}
+                className="flex items-center gap-2 px-3 py-1"
+              >
+                <Edit className="w-4 h-4" />
+                Edit
+              </Button>
+              
+              <Button
+                variant={viewMode === 'split' ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode('split')}
+                className="flex items-center gap-2 px-3 py-1"
+              >
+                <SplitSquareHorizontal className="w-4 h-4" />
+                Split
+              </Button>
+              
+              <Button
+                variant={viewMode === 'preview' ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode('preview')}
+                className="flex items-center gap-2 px-3 py-1"
+              >
+                <Eye className="w-4 h-4" />
+                Preview
+              </Button>
+            </div>
             
             <Button
               onClick={handleSave}
@@ -105,15 +130,7 @@ export function EnhancedEditor({
 
       {/* Content */}
       <div className="flex-1 overflow-hidden">
-        {isPreviewMode ? (
-          <div className="h-full overflow-y-auto">
-            <div className="max-w-4xl mx-auto p-6">
-              <div className="prose prose-slate dark:prose-invert max-w-none">
-                <HashnodeMarkdownRenderer content={textareaContent} />
-              </div>
-            </div>
-          </div>
-        ) : (
+        {viewMode === 'edit' && (
           <div className="h-full p-4">
             <Textarea
               value={textareaContent}
@@ -126,6 +143,46 @@ export function EnhancedEditor({
                 lineHeight: '1.6'
               }}
             />
+          </div>
+        )}
+
+        {viewMode === 'preview' && (
+          <div className="h-full overflow-y-auto">
+            <div className="max-w-4xl mx-auto p-6">
+              <div className="prose prose-slate dark:prose-invert max-w-none">
+                <HashnodeMarkdownRenderer content={textareaContent} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {viewMode === 'split' && (
+          <div className="h-full flex">
+            {/* Editor Pane */}
+            <div className="flex-1 border-r">
+              <div className="h-full p-4">
+                <Textarea
+                  value={textareaContent}
+                  onChange={(e) => handleContentChange(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Start writing your content..."
+                  className="h-full min-h-full resize-none border-0 bg-transparent p-0 focus-visible:ring-0 focus-visible:ring-offset-0 font-mono text-sm leading-relaxed"
+                  style={{ 
+                    fontFamily: '"JetBrains Mono", "Fira Code", Consolas, "Liberation Mono", Menlo, monospace',
+                    lineHeight: '1.6'
+                  }}
+                />
+              </div>
+            </div>
+            
+            {/* Preview Pane */}
+            <div className="flex-1 overflow-y-auto">
+              <div className="max-w-none mx-auto p-6">
+                <div className="prose prose-slate dark:prose-invert max-w-none">
+                  <HashnodeMarkdownRenderer content={textareaContent} />
+                </div>
+              </div>
+            </div>
           </div>
         )}
       </div>
