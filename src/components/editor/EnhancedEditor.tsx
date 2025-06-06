@@ -40,6 +40,16 @@ export function EnhancedEditor({
     setTextareaContent(content);
   }, [content]);
 
+  // Debug logging for button state
+  useEffect(() => {
+    console.log('Create PR Button State:', {
+      hasChanges,
+      creatingPR,
+      hasProviderToken: !!session?.provider_token,
+      isDisabled: !hasChanges || creatingPR || !session?.provider_token
+    });
+  }, [hasChanges, creatingPR, session?.provider_token]);
+
   const handleContentChange = (newContent: string) => {
     setTextareaContent(newContent);
     onContentChange(newContent);
@@ -50,6 +60,8 @@ export function EnhancedEditor({
   };
 
   const handleCreatePR = async () => {
+    console.log('Create PR button clicked');
+    
     if (!selectedFile || !hasChanges) {
       toast.error('No changes to create a pull request for');
       return;
@@ -121,6 +133,8 @@ export function EnhancedEditor({
     );
   }
 
+  const isCreatePRDisabled = !hasChanges || creatingPR || !session?.provider_token;
+
   return (
     <div className="flex-1 flex flex-col h-full">
       {/* Header */}
@@ -179,8 +193,13 @@ export function EnhancedEditor({
               onClick={handleCreatePR}
               variant="outline"
               size="sm"
-              disabled={!hasChanges || creatingPR || !session?.provider_token}
+              disabled={isCreatePRDisabled}
               className="flex items-center gap-2"
+              title={
+                !hasChanges ? 'No changes to create PR' :
+                !session?.provider_token ? 'GitHub authentication required' :
+                creatingPR ? 'Creating PR...' : 'Create Pull Request'
+              }
             >
               {creatingPR ? (
                 <div className="w-4 h-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
