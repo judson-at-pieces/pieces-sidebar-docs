@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { NavigationEditor } from "./NavigationEditor";
@@ -140,15 +139,13 @@ Start editing to see the live preview!
   };
 
   const handleCreatePR = async () => {
-    // Check if user is authenticated with GitHub
-    if (!session?.provider_token) {
-      toast.error('GitHub authentication required. Please sign in with GitHub to create pull requests.');
+    if (!selectedFile || !hasChanges) {
+      toast.error('No changes to create a pull request for');
       return;
     }
 
-    // Check if there are changes to create PR for
-    if (!hasChanges || !selectedFile) {
-      toast.error('No changes to create a pull request for');
+    if (!session?.provider_token) {
+      toast.error('GitHub authentication required. Please sign in with GitHub.');
       return;
     }
 
@@ -192,9 +189,6 @@ This pull request contains updates to the documentation content. The changes wer
 ---
 *This pull request was automatically created from the Pieces Docs editor.*`;
 
-      // Use session token for GitHub authentication
-      const token = session.provider_token;
-
       // Create PR with the enhanced description
       const result = await githubService.createPullRequest(
         {
@@ -207,7 +201,7 @@ This pull request contains updates to the documentation content. The changes wer
             }
           ]
         },
-        token,
+        session.provider_token,
         repoConfig
       );
 
@@ -218,7 +212,7 @@ This pull request contains updates to the documentation content. The changes wer
             onClick: () => window.open(result.prUrl, '_blank')
           }
         });
-        // Clear changes after successful PR creation
+        // Auto-save after successful PR creation
         setHasChanges(false);
         if (selectedFile) {
           setModifiedFiles(prev => {
@@ -290,8 +284,8 @@ This pull request contains updates to the documentation content. The changes wer
   // Convert modifiedFiles Set to array for consistent interface
   const modifiedFilesArray = Array.from(modifiedFiles);
 
-  // Check if user has GitHub token AND there are changes
-  const canCreatePR = session?.provider_token && hasChanges && selectedFile && !creatingPR;
+  // Calculate if PR button should be disabled
+  const isPRButtonDisabled = !hasChanges || creatingPR || !session?.provider_token;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
@@ -384,13 +378,13 @@ This pull request contains updates to the documentation content. The changes wer
                       onClick={handleCreatePR}
                       variant="outline"
                       size="sm"
-                      disabled={!canCreatePR}
+                      disabled={isPRButtonDisabled}
                       className="flex items-center gap-2"
                       title={
-                        !session?.provider_token 
-                          ? "Sign in with GitHub to create pull requests" 
-                          : !hasChanges 
-                            ? "No changes to create PR for" 
+                        !hasChanges 
+                          ? "No changes to create PR for" 
+                          : !session?.provider_token
+                            ? "Sign in with GitHub to create PR"
                             : creatingPR 
                               ? "Creating PR..." 
                               : "Create pull request"
