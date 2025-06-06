@@ -1,6 +1,6 @@
-
 import React, { useEffect, useState } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { ChevronDown } from 'lucide-react';
 import { TOCItem } from './types';
 
 interface TableOfContentsProps {
@@ -117,9 +117,7 @@ export function TableOfContents({ content }: TableOfContentsProps) {
             <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">
               On this page
             </h3>
-            <span className="text-muted-foreground group-open:rotate-90 transition-transform">
-              ▶
-            </span>
+            <ChevronDown className="h-4 w-4 text-black group-open:rotate-180 transition-transform" />
           </summary>
           <nav className="mt-4 space-y-1 max-h-64 overflow-y-auto">
             {tocItems.map((item) => (
