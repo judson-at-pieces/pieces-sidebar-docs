@@ -6,6 +6,9 @@ import { Save, Eye, Edit, AlertCircle, SplitSquareHorizontal, MousePointer, GitP
 import { Textarea } from '@/components/ui/textarea';
 import HashnodeMarkdownRenderer from '@/components/markdown/HashnodeMarkdownRenderer';
 import { WYSIWYGEditor } from './WYSIWYGEditor';
+import { githubService } from '@/services/githubService';
+import { supabase } from '@/integrations/supabase/client';
+import { toast } from 'sonner';
 
 interface EnhancedEditorProps {
   selectedFile?: string;
@@ -28,6 +31,7 @@ export function EnhancedEditor({
 }: EnhancedEditorProps) {
   const [viewMode, setViewMode] = useState<ViewMode>('split');
   const [textareaContent, setTextareaContent] = useState(content);
+  const [creatingPR, setCreatingPR] = useState(false);
 
   // Update textarea when content prop changes
   useEffect(() => {
@@ -43,9 +47,60 @@ export function EnhancedEditor({
     onSave();
   };
 
-  const handleCreatePR = () => {
-    // TODO: Implement create PR functionality
-    console.log('Create PR clicked');
+  const handleCreatePR = async () => {
+    if (!selectedFile || !hasChanges) {
+      toast.error('No changes to create a pull request for');
+      return;
+    }
+
+    setCreatingPR(true);
+    
+    try {
+      // Get GitHub token from auth
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.provider_token) {
+        toast.error('GitHub authentication required. Please sign in with GitHub.');
+        return;
+      }
+
+      // Get repository configuration
+      const repoConfig = await githubService.getRepoConfig();
+      if (!repoConfig) {
+        toast.error('No GitHub repository configured. Please configure a repository first.');
+        return;
+      }
+
+      // Create PR with the current file changes
+      const fileName = selectedFile.split('/').pop() || selectedFile;
+      const result = await githubService.createPullRequest(
+        {
+          title: `Update ${fileName}`,
+          body: `Updated content for ${selectedFile}\n\nThis pull request was created from the editor.`,
+          files: [
+            {
+              path: `public/content/${selectedFile}`,
+              content: textareaContent
+            }
+          ]
+        },
+        session.provider_token,
+        repoConfig
+      );
+
+      if (result.success) {
+        toast.success('Pull request created successfully!', {
+          action: {
+            label: 'View PR',
+            onClick: () => window.open(result.prUrl, '_blank')
+          }
+        });
+      }
+    } catch (error) {
+      console.error('Error creating PR:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to create pull request');
+    } finally {
+      setCreatingPR(false);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
@@ -124,9 +179,14 @@ export function EnhancedEditor({
               onClick={handleCreatePR}
               variant="outline"
               size="sm"
+              disabled={!hasChanges || creatingPR}
               className="flex items-center gap-2"
             >
-              <GitPullRequest className="w-4 h-4" />
+              {creatingPR ? (
+                <div className="w-4 h-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+              ) : (
+                <GitPullRequest className="w-4 h-4" />
+              )}
               Create PR
             </Button>
             
