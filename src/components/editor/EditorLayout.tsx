@@ -1,344 +1,269 @@
-import { useState } from "react";
-import { useFileStructure } from "@/hooks/useFileStructure";
-import { NavigationEditor } from "./NavigationEditor";
-import { EditorMain } from "./EditorMain";
-import { SeoEditor } from "./SeoEditor";
-import { FileTreeSidebar } from "./FileTreeSidebar";
-import { Button } from "@/components/ui/button";
-import { UserMenu } from "@/components/auth/UserMenu";
-import { Settings, FileText, Navigation, Home, Search, GitBranch } from "lucide-react";
-import { Link } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
-import { useSeoData } from "@/hooks/useSeoData";
+
+import React, { useState, useEffect, useCallback } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { EditorSidebar } from './EditorSidebar';
+import { EditorMain } from './EditorMain';
+import { NavigationStructurePanel } from './NavigationStructurePanel';
+import { ContentSyncPanel } from '@/components/admin/ContentSyncPanel';
+import { Button } from '@/components/ui/button';
+import { GitPullRequest, Save, Eye, Loader2 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from '@/components/ui/resizable';
+import { toast } from 'sonner';
+import { useFileStructure } from '@/hooks/useFileStructure';
+import { githubService } from '@/services/githubService';
 
 export function EditorLayout() {
-  const { fileStructure, isLoading, error, refetch } = useFileStructure();
-  const { hasRole } = useAuth();
-  const [selectedFile, setSelectedFile] = useState<string>();
-  const [content, setContent] = useState("");
+  const { user, hasRole, session } = useAuth();
+  const { fileStructure } = useFileStructure();
+  
+  const [selectedFile, setSelectedFile] = useState<string>('');
+  const [fileContent, setFileContent] = useState<string>('');
   const [hasChanges, setHasChanges] = useState(false);
-  const [modifiedFiles, setModifiedFiles] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<'navigation' | 'content' | 'seo'>('content');
-  const [loadingContent, setLoadingContent] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [creatingPR, setCreatingPR] = useState(false);
+  const [isPreviewMode, setIsPreviewMode] = useState(false);
 
-  // SEO data for the current file
-  const { pendingChanges, hasUnsavedChanges } = useSeoData(selectedFile);
+  // Debug GitHub auth state
+  useEffect(() => {
+    console.log('EditorLayout Debug:', {
+      hasSession: !!session,
+      hasProviderToken: !!session?.provider_token,
+      sessionKeys: session ? Object.keys(session) : [],
+      userEmail: user?.email
+    });
+  }, [session, user]);
 
-  const handleFileSelect = async (filePath: string) => {
+  const handleFileSelect = useCallback(async (filePath: string) => {
+    if (hasChanges) {
+      const shouldProceed = window.confirm('You have unsaved changes. Do you want to discard them?');
+      if (!shouldProceed) return;
+    }
+
     console.log('=== FILE SELECTION DEBUG ===');
     console.log('Selected file path:', filePath);
     
     setSelectedFile(filePath);
-    setHasChanges(false);
-    setLoadingContent(true);
     
     try {
-      // Use the exact file path as provided - don't modify it
-      let fetchPath = filePath;
+      // Try to fetch from public/content first
+      const contentUrl = `/content/${filePath}`;
+      console.log('Fetching from URL:', contentUrl);
       
-      // Only add .md extension if the path doesn't already have it
-      if (!fetchPath.endsWith('.md')) {
-        fetchPath = `${fetchPath}.md`;
-      }
+      const response = await fetch(contentUrl);
       
-      // Remove leading slashes for fetch URL
-      const cleanFetchPath = fetchPath.replace(/^\/+/, '');
-      const fetchUrl = `/content/${cleanFetchPath}`;
-      
-      console.log('Fetching from URL:', fetchUrl);
-      
-      const response = await fetch(fetchUrl, {
-        method: 'GET',
-        headers: {
-          'Accept': 'text/plain, text/markdown, */*',
-          'Cache-Control': 'no-cache'
-        }
-      });
-      
-      console.log('Response status:', response.status);
-      
-      const responseText = await response.text();
-      console.log('Response text length:', responseText.length);
-      console.log('Response preview:', responseText.substring(0, 200));
-      
-      // Check if response looks like HTML (indicating wrong file was served)
-      if (responseText.trim().startsWith('<!DOCTYPE html>') || responseText.trim().startsWith('<html')) {
-        console.error('ERROR: Received HTML instead of markdown for:', fetchUrl);
-        throw new Error('Server returned HTML instead of markdown file');
-      }
-      
-      if (response.ok && responseText.length > 0) {
-        console.log('Successfully loaded content for:', filePath);
-        setContent(responseText);
+      if (response.ok) {
+        const content = await response.text();
+        setFileContent(content || '');
+        setHasChanges(false);
+        console.log('✅ File loaded successfully, content length:', content.length);
       } else {
-        console.log('File not found, creating default content for:', filePath);
-        // Create default markdown content for new files
-        const fileName = filePath.split('/').pop()?.replace(/\.md$/, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
-        const pathForFrontmatter = filePath.replace(/\.md$/, '').replace(/^\//, '');
-        
-        const defaultContent = `---
-title: "${fileName}"
-path: "/${pathForFrontmatter}"
-visibility: "PUBLIC"
-description: "Add a description for this page"
----
-
-# ${fileName}
-
-Add your content here. You can use markdown and custom components:
-
-:::info
-This is an information callout. Type "/" to see more available components.
-:::
-
-Start editing to see the live preview!
-`;
-        setContent(defaultContent);
+        console.log('❌ Failed to fetch from public/content, status:', response.status);
+        setFileContent('');
+        setHasChanges(false);
       }
     } catch (error) {
-      console.error('=== ERROR LOADING FILE ===');
-      console.error('File path:', filePath);
-      console.error('Error:', error);
-      
-      // Create default content on error
-      const fileName = filePath.split('/').pop()?.replace(/\.md$/, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
-      const pathForFrontmatter = filePath.replace(/\.md$/, '').replace(/^\//, '');
-      
-      const defaultContent = `---
-title: "${fileName}"
-path: "/${pathForFrontmatter}"
-visibility: "PUBLIC"
-description: "Add a description for this page"
----
-
-# ${fileName}
-
-Add your content here. You can use markdown and custom components:
-
-:::info
-This is an information callout. Type "/" to see more available components.
-:::
-
-Start editing to see the live preview!
-`;
-      setContent(defaultContent);
-    } finally {
-      setLoadingContent(false);
+      console.error('Error loading file:', error);
+      toast.error('Failed to load file content');
+      setFileContent('');
+      setHasChanges(false);
     }
-  };
+  }, [hasChanges]);
 
-  const handleContentChange = (newContent: string) => {
-    setContent(newContent);
+  const handleContentChange = (content: string) => {
+    setFileContent(content);
     setHasChanges(true);
-    if (selectedFile) {
-      setModifiedFiles(prev => new Set(prev).add(selectedFile));
+  };
+
+  const handleSave = async () => {
+    if (!selectedFile || !hasChanges) return;
+    
+    setSaving(true);
+    try {
+      // Simulate save - in a real app this would save to your backend
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      setHasChanges(false);
+      toast.success('File saved successfully');
+    } catch (error) {
+      toast.error('Failed to save file');
+    } finally {
+      setSaving(false);
     }
   };
 
-  const handleSave = () => {
-    setHasChanges(false);
-    if (selectedFile) {
-      setModifiedFiles(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(selectedFile);
-        return newSet;
-      });
+  const handleCreatePR = async () => {
+    if (!selectedFile || !hasChanges) {
+      toast.error('No changes to create a pull request for');
+      return;
     }
+
+    // Check if user is authenticated with GitHub
+    if (!session?.provider_token) {
+      toast.error('Please sign in with GitHub to create pull requests');
+      return;
+    }
+
+    setCreatingPR(true);
     
-    console.log('Markdown content saved, will be compiled on PR merge');
+    try {
+      // Get repository configuration
+      const repoConfig = await githubService.getRepoConfig();
+      if (!repoConfig) {
+        toast.error('No GitHub repository configured. Please configure a repository first.');
+        return;
+      }
+
+      // Create PR with the current file changes
+      const fileName = selectedFile.split('/').pop() || selectedFile;
+      const result = await githubService.createPullRequest(
+        {
+          title: `Update ${fileName}`,
+          body: `Updated content for ${selectedFile}\n\nThis pull request was created from the editor.`,
+          files: [
+            {
+              path: selectedFile.endsWith('.md') ? selectedFile : `${selectedFile}.md`,
+              content: fileContent
+            }
+          ]
+        },
+        session.provider_token,
+        repoConfig
+      );
+
+      if (result.success) {
+        toast.success('Pull request created successfully!', {
+          action: {
+            label: 'View PR',
+            onClick: () => window.open(result.prUrl, '_blank')
+          }
+        });
+        setHasChanges(false); // Mark as saved since it's now in a PR
+      }
+    } catch (error) {
+      console.error('Error creating PR:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to create pull request');
+    } finally {
+      setCreatingPR(false);
+    }
   };
 
-  const handleCreateFile = (fileName: string, parentPath?: string) => {
-    console.log('Creating markdown file:', fileName, 'in:', parentPath);
-    const fullPath = parentPath ? `${parentPath}/${fileName}` : fileName;
-    const filePath = fullPath.endsWith('.md') ? fullPath : `${fullPath}.md`;
-    
-    // Automatically select the new file and set up initial content
-    handleFileSelect(filePath);
-  };
-
-  const handleSeoDataChange = (seoData: any) => {
-    console.log('SEO data updated for:', selectedFile, seoData);
-    // Here you would typically save the SEO data to your backend or local storage
-    // For now, we'll just log it
-  };
-
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted/20">
-        <div className="text-center space-y-4">
-          <div className="relative">
-            <div className="w-12 h-12 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto"></div>
-            <div className="absolute inset-0 w-12 h-12 border-4 border-transparent border-r-primary/40 rounded-full animate-spin mx-auto" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }}></div>
-          </div>
-          <div className="space-y-2">
-            <p className="text-lg font-medium">Loading Editor</p>
-            <p className="text-sm text-muted-foreground">Preparing your workspace...</p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted/20">
-        <div className="text-center space-y-4 max-w-md">
-          <div className="w-16 h-16 bg-destructive/10 rounded-full flex items-center justify-center mx-auto">
-            <span className="text-2xl">⚠️</span>
-          </div>
-          <div className="space-y-2">
-            <p className="text-lg font-semibold text-destructive">Failed to Load Editor</p>
-            <p className="text-sm text-muted-foreground">{error.message}</p>
-          </div>
-          <Button onClick={() => refetch()} variant="outline" className="gap-2">
-            🔄 Try Again
-          </Button>
-        </div>
-      </div>
-    );
-  }
-
-  // Convert modifiedFiles Set to array for consistent interface
-  const modifiedFilesArray = Array.from(modifiedFiles);
+  // Calculate if PR button should be disabled
+  const isPRButtonDisabled = !hasChanges || creatingPR || !session?.provider_token;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
-      {/* Enhanced Header */}
-      <div className="border-b border-border/50 bg-background/95 backdrop-blur-md shadow-sm">
-        <div className="flex h-16 items-center justify-between px-6">
-          <div className="flex items-center space-x-6">
-            <Link to="/" className="flex items-center space-x-3 hover:opacity-80 transition-all duration-200 group">
-              <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
-                <span className="text-white font-bold text-sm">P</span>
+    <div className="h-screen flex flex-col">
+      {/* Header */}
+      <div className="border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 p-4">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <h1 className="text-xl font-semibold">Content Editor</h1>
+            {selectedFile && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-muted-foreground">{selectedFile}</span>
+                {hasChanges && <Badge variant="secondary" className="text-xs">Unsaved</Badge>}
               </div>
-              <span className="font-semibold text-lg bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">Pieces Docs</span>
-            </Link>
-            <div className="h-6 w-px bg-gradient-to-b from-transparent via-border to-transparent"></div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-              <h1 className="text-lg font-medium text-muted-foreground">
-                {activeTab === 'content' ? 'Content Editor' : activeTab === 'seo' ? 'SEO Editor' : 'Navigation Editor'}
-              </h1>
-            </div>
+            )}
           </div>
           
-          <div className="flex items-center space-x-3">
-            <Link to="/">
-              <Button variant="ghost" size="sm" className="gap-2 hover:bg-muted/50 transition-colors">
-                <Home className="h-4 w-4" />
-                Home
-              </Button>
-            </Link>
-            {hasRole('admin') && (
-              <Link to="/admin">
-                <Button variant="outline" size="sm" className="gap-2 hover:bg-muted/50 transition-colors">
-                  <Settings className="h-4 w-4" />
-                  Admin
-                </Button>
-              </Link>
-            )}
-            <UserMenu />
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setIsPreviewMode(!isPreviewMode)}
+              className="flex items-center gap-2"
+            >
+              <Eye className="w-4 h-4" />
+              {isPreviewMode ? 'Edit' : 'Preview'}
+            </Button>
+            
+            <Button
+              onClick={handleCreatePR}
+              variant="outline"
+              size="sm"
+              disabled={isPRButtonDisabled}
+              className="flex items-center gap-2"
+              title={
+                !hasChanges 
+                  ? "No changes to create PR for" 
+                  : !session?.provider_token 
+                    ? "Sign in with GitHub to create PR" 
+                    : creatingPR 
+                      ? "Creating PR..." 
+                      : "Create pull request"
+              }
+            >
+              {creatingPR ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <GitPullRequest className="w-4 h-4" />
+              )}
+              Create PR
+            </Button>
+            
+            <Button
+              onClick={handleSave}
+              disabled={!hasChanges || saving}
+              size="sm"
+              className="flex items-center gap-2"
+            >
+              {saving ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Save className="w-4 h-4" />
+              )}
+              Save
+            </Button>
           </div>
         </div>
       </div>
-      
-      <div className="flex h-[calc(100vh-4rem)]">
-        {/* Main Content */}
-        <div className="flex-1 flex flex-col">
-          {/* Enhanced Tab Navigation */}
-          <div className="border-b border-border/50 px-6 py-4 bg-background/95 backdrop-blur-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex space-x-1 bg-muted/30 p-1 rounded-lg">
-                <Button
-                  onClick={() => setActiveTab('navigation')}
-                  variant={activeTab === 'navigation' ? 'default' : 'ghost'}
-                  size="sm"
-                  className="gap-2 transition-all duration-200"
-                >
-                  <Navigation className="h-4 w-4" />
-                  Navigation
-                </Button>
-                <Button
-                  onClick={() => setActiveTab('content')}
-                  variant={activeTab === 'content' ? 'default' : 'ghost'}
-                  size="sm"
-                  className="gap-2 transition-all duration-200"
-                >
-                  <FileText className="h-4 w-4" />
-                  Content
-                </Button>
-                <Button
-                  onClick={() => setActiveTab('seo')}
-                  variant={activeTab === 'seo' ? 'default' : 'ghost'}
-                  size="sm"
-                  className="gap-2 transition-all duration-200"
-                >
-                  <Search className="h-4 w-4" />
-                  SEO
-                </Button>
-              </div>
+
+      {/* Main Content */}
+      <div className="flex-1 overflow-hidden">
+        <ResizablePanelGroup direction="horizontal" className="h-full">
+          {/* Sidebar */}
+          <ResizablePanel defaultSize={25} minSize={20} maxSize={40}>
+            <Tabs defaultValue="files" className="h-full flex flex-col">
+              <TabsList className="grid w-full grid-cols-3 shrink-0 m-2">
+                <TabsTrigger value="files">Files</TabsTrigger>
+                <TabsTrigger value="navigation">Navigation</TabsTrigger>
+                {hasRole('admin') && <TabsTrigger value="sync">Sync</TabsTrigger>}
+              </TabsList>
               
-              {activeTab === 'content' && modifiedFiles.size > 0 && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
-                  {modifiedFiles.size} file{modifiedFiles.size !== 1 ? 's' : ''} modified
-                </div>
+              <TabsContent value="files" className="flex-1 overflow-hidden mt-0">
+                <EditorSidebar 
+                  selectedFile={selectedFile}
+                  onFileSelect={handleFileSelect}
+                  fileStructure={fileStructure}
+                />
+              </TabsContent>
+              
+              <TabsContent value="navigation" className="flex-1 overflow-hidden mt-0">
+                <NavigationStructurePanel />
+              </TabsContent>
+              
+              {hasRole('admin') && (
+                <TabsContent value="sync" className="flex-1 overflow-hidden mt-0">
+                  <ContentSyncPanel />
+                </TabsContent>
               )}
-            </div>
-          </div>
-          
-          {/* Enhanced Tab Content */}
-          <div className="flex-1 overflow-hidden flex">
-            {activeTab === 'navigation' ? (
-              <>
-                <FileTreeSidebar
-                  title="Navigation Structure"
-                  description="Manage the navigation hierarchy"
-                  selectedFile={selectedFile}
-                  onFileSelect={handleFileSelect}
-                  fileStructure={fileStructure}
-                />
-                <div className="flex-1 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <NavigationEditor 
-                    fileStructure={fileStructure} 
-                    onNavigationChange={refetch}
-                  />
-                </div>
-              </>
-            ) : activeTab === 'seo' ? (
-              <div className="flex-1">
-                <SeoEditor
-                  selectedFile={selectedFile}
-                  onSeoDataChange={handleSeoDataChange}
-                  fileStructure={fileStructure}
-                  onFileSelect={handleFileSelect}
-                />
-              </div>
-            ) : (
-              <>
-                <FileTreeSidebar
-                  title="Content Files"
-                  description="Select a file to edit its content"
-                  selectedFile={selectedFile}
-                  onFileSelect={handleFileSelect}
-                  fileStructure={fileStructure}
-                  pendingChanges={modifiedFilesArray}
-                />
-                <div className="flex-1 animate-in fade-in slide-in-from-bottom-2 duration-300">
-                  <EditorMain 
-                    selectedFile={selectedFile}
-                    content={loadingContent ? "Loading content..." : content}
-                    onContentChange={handleContentChange}
-                    onSave={handleSave}
-                    hasChanges={hasChanges}
-                    saving={false}
-                  />
-                </div>
-              </>
-            )}
-          </div>
-        </div>
+            </Tabs>
+          </ResizablePanel>
+
+          <ResizableHandle />
+
+          {/* Main Editor */}
+          <ResizablePanel defaultSize={75} minSize={60}>
+            <EditorMain
+              selectedFile={selectedFile}
+              content={fileContent}
+              onContentChange={handleContentChange}
+              onSave={handleSave}
+              hasChanges={hasChanges}
+              saving={saving}
+            />
+          </ResizablePanel>
+        </ResizablePanelGroup>
       </div>
     </div>
   );
