@@ -6,20 +6,23 @@ import { SeoEditor } from "./SeoEditor";
 import { FileTreeSidebar } from "./FileTreeSidebar";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/auth/UserMenu";
-import { Settings, FileText, Navigation, Home, Search, GitBranch } from "lucide-react";
+import { Settings, FileText, Navigation, Home, Search, GitBranch, GitPullRequest } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSeoData } from "@/hooks/useSeoData";
+import { githubService } from "@/services/githubService";
+import { toast } from "sonner";
 
 export function EditorLayout() {
   const { fileStructure, isLoading, error, refetch } = useFileStructure();
-  const { hasRole } = useAuth();
+  const { hasRole, session } = useAuth();
   const [selectedFile, setSelectedFile] = useState<string>();
   const [content, setContent] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
   const [modifiedFiles, setModifiedFiles] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<'navigation' | 'content' | 'seo'>('content');
   const [loadingContent, setLoadingContent] = useState(false);
+  const [creatingPR, setCreatingPR] = useState(false);
 
   // SEO data for the current file
   const { pendingChanges, hasUnsavedChanges } = useSeoData(selectedFile);
@@ -135,17 +138,67 @@ Start editing to see the live preview!
     }
   };
 
-  const handleSave = () => {
-    setHasChanges(false);
-    if (selectedFile) {
-      setModifiedFiles(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(selectedFile);
-        return newSet;
-      });
+  const handleCreatePR = async () => {
+    if (!selectedFile || !hasChanges) {
+      toast.error('No changes to create a pull request for');
+      return;
     }
+
+    if (!session?.provider_token) {
+      toast.error('GitHub authentication required. Please sign in with GitHub.');
+      return;
+    }
+
+    setCreatingPR(true);
     
-    console.log('Markdown content saved, will be compiled on PR merge');
+    try {
+      // Get repository configuration
+      const repoConfig = await githubService.getRepoConfig();
+      if (!repoConfig) {
+        toast.error('No GitHub repository configured. Please configure a repository first.');
+        return;
+      }
+
+      // Create PR with the current file changes
+      const fileName = selectedFile.split('/').pop() || selectedFile;
+      const result = await githubService.createPullRequest(
+        {
+          title: `Update ${fileName}`,
+          body: `Updated content for ${selectedFile}\n\nThis pull request was created from the editor.`,
+          files: [
+            {
+              path: selectedFile.endsWith('.md') ? selectedFile : `${selectedFile}.md`,
+              content: content
+            }
+          ]
+        },
+        session.provider_token,
+        repoConfig
+      );
+
+      if (result.success) {
+        toast.success('Pull request created successfully!', {
+          action: {
+            label: 'View PR',
+            onClick: () => window.open(result.prUrl, '_blank')
+          }
+        });
+        // Auto-save after successful PR creation
+        setHasChanges(false);
+        if (selectedFile) {
+          setModifiedFiles(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(selectedFile);
+            return newSet;
+          });
+        }
+      }
+    } catch (error) {
+      console.error('Error creating PR:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to create pull request');
+    } finally {
+      setCreatingPR(false);
+    }
   };
 
   const handleCreateFile = (fileName: string, parentPath?: string) => {
@@ -202,6 +255,9 @@ Start editing to see the live preview!
   // Convert modifiedFiles Set to array for consistent interface
   const modifiedFilesArray = Array.from(modifiedFiles);
 
+  // Calculate if PR button should be disabled
+  const isPRButtonDisabled = !hasChanges || creatingPR || !session?.provider_token;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
       {/* Enhanced Header */}
@@ -246,7 +302,7 @@ Start editing to see the live preview!
       <div className="flex h-[calc(100vh-4rem)]">
         {/* Main Content */}
         <div className="flex-1 flex flex-col">
-          {/* Enhanced Tab Navigation */}
+          {/* Enhanced Tab Navigation with Create PR Button */}
           <div className="border-b border-border/50 px-6 py-4 bg-background/95 backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <div className="flex space-x-1 bg-muted/30 p-1 rounded-lg">
@@ -279,12 +335,42 @@ Start editing to see the live preview!
                 </Button>
               </div>
               
-              {activeTab === 'content' && modifiedFiles.size > 0 && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
-                  {modifiedFiles.size} file{modifiedFiles.size !== 1 ? 's' : ''} modified
-                </div>
-              )}
+              <div className="flex items-center gap-3">
+                {activeTab === 'content' && (
+                  <>
+                    {modifiedFiles.size > 0 && (
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                        <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
+                        {modifiedFiles.size} file{modifiedFiles.size !== 1 ? 's' : ''} modified
+                      </div>
+                    )}
+                    
+                    <Button
+                      onClick={handleCreatePR}
+                      variant="outline"
+                      size="sm"
+                      disabled={isPRButtonDisabled}
+                      className="flex items-center gap-2"
+                      title={
+                        !hasChanges 
+                          ? "No changes to create PR for" 
+                          : !session?.provider_token 
+                            ? "Sign in with GitHub to create PR" 
+                            : creatingPR 
+                              ? "Creating PR..." 
+                              : "Create pull request"
+                      }
+                    >
+                      {creatingPR ? (
+                        <div className="w-4 h-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                      ) : (
+                        <GitPullRequest className="w-4 h-4" />
+                      )}
+                      Create PR
+                    </Button>
+                  </>
+                )}
+              </div>
             </div>
           </div>
           
@@ -330,7 +416,7 @@ Start editing to see the live preview!
                     selectedFile={selectedFile}
                     content={loadingContent ? "Loading content..." : content}
                     onContentChange={handleContentChange}
-                    onSave={handleSave}
+                    onSave={() => {}} // No longer needed since we only use Create PR
                     hasChanges={hasChanges}
                     saving={false}
                   />
