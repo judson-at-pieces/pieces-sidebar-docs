@@ -2,9 +2,10 @@
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Save, Eye, Edit, AlertCircle, SplitSquareHorizontal } from 'lucide-react';
+import { Save, Eye, Edit, AlertCircle, SplitSquareHorizontal, MousePointer } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import HashnodeMarkdownRenderer from '@/components/markdown/HashnodeMarkdownRenderer';
+import { WYSIWYGEditor } from './WYSIWYGEditor';
 
 interface EnhancedEditorProps {
   selectedFile?: string;
@@ -15,7 +16,7 @@ interface EnhancedEditorProps {
   saving: boolean;
 }
 
-type ViewMode = 'edit' | 'preview' | 'split';
+type ViewMode = 'edit' | 'preview' | 'split' | 'wysiwyg';
 
 export function EnhancedEditor({ 
   selectedFile, 
@@ -84,6 +85,16 @@ export function EnhancedEditor({
               </Button>
               
               <Button
+                variant={viewMode === 'wysiwyg' ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setViewMode('wysiwyg')}
+                className="flex items-center gap-2 px-3 py-1"
+              >
+                <MousePointer className="w-4 h-4" />
+                WYSIWYG
+              </Button>
+              
+              <Button
                 variant={viewMode === 'split' ? "default" : "ghost"}
                 size="sm"
                 onClick={() => setViewMode('split')}
@@ -144,6 +155,13 @@ export function EnhancedEditor({
               }}
             />
           </div>
+        )}
+
+        {viewMode === 'wysiwyg' && (
+          <WYSIWYGEditor
+            content={textareaContent}
+            onContentChange={handleContentChange}
+          />
         )}
 
         {viewMode === 'preview' && (
