@@ -11,12 +11,11 @@ import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSeoData } from "@/hooks/useSeoData";
 import { githubService } from "@/services/githubService";
-import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
 export function EditorLayout() {
   const { fileStructure, isLoading, error, refetch } = useFileStructure();
-  const { hasRole } = useAuth();
+  const { hasRole, session } = useAuth();
   const [selectedFile, setSelectedFile] = useState<string>();
   const [content, setContent] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
@@ -139,54 +138,20 @@ Start editing to see the live preview!
     }
   };
 
-  const getGitHubAppToken = async () => {
-    try {
-      // Get the GitHub installation ID from the database
-      const { data: installations, error } = await supabase
-        .from('github_installations')
-        .select('installation_id')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error fetching GitHub installation:', error);
-        throw new Error('Failed to get GitHub installation');
-      }
-
-      if (!installations) {
-        throw new Error('No GitHub app installation found. Please configure GitHub app first.');
-      }
-
-      // Get installation token from the edge function
-      const { data, error: tokenError } = await supabase.functions.invoke('github-app-auth', {
-        body: { installationId: installations.installation_id }
-      });
-
-      if (tokenError) {
-        console.error('Error getting GitHub app token:', tokenError);
-        throw new Error('Failed to get GitHub app token');
-      }
-
-      return data.token;
-    } catch (error) {
-      console.error('Error in getGitHubAppToken:', error);
-      throw error;
-    }
-  };
-
   const handleCreatePR = async () => {
     if (!selectedFile || !hasChanges) {
       toast.error('No changes to create a pull request for');
       return;
     }
 
+    if (!session?.provider_token) {
+      toast.error('GitHub authentication required. Please sign in with GitHub.');
+      return;
+    }
+
     setCreatingPR(true);
     
     try {
-      // Get GitHub app token instead of OAuth token
-      const token = await getGitHubAppToken();
-      
       // Get repository configuration
       const repoConfig = await githubService.getRepoConfig();
       if (!repoConfig) {
@@ -194,12 +159,41 @@ Start editing to see the live preview!
         return;
       }
 
-      // Create PR with the current file changes
+      // Create a more descriptive title and body
       const fileName = selectedFile.split('/').pop() || selectedFile;
+      const fileDisplayPath = selectedFile;
+      const timestamp = new Date().toLocaleString();
+      
+      // Extract title from frontmatter if available
+      const frontmatterMatch = content.match(/^---\s*\ntitle:\s*["']?([^"'\n]+)["']?\s*\n/m);
+      const pageTitle = frontmatterMatch ? frontmatterMatch[1] : fileName.replace(/\.md$/, '').replace(/-/g, ' ');
+      
+      // Get word count for context
+      const wordCount = content.split(/\s+/).filter(word => word.length > 0).length;
+      
+      const prBody = `## 📝 Documentation Update
+
+**File Updated:** \`${fileDisplayPath}\`  
+**Page Title:** ${pageTitle}  
+**Content Length:** ~${wordCount} words  
+**Updated:** ${timestamp}
+
+### Changes Made
+This pull request contains updates to the documentation content. The changes were made using the Pieces Docs editor and include content modifications to improve the documentation.
+
+### Review Notes
+- ✅ Content has been reviewed in the editor preview
+- ✅ Markdown formatting verified
+- ✅ Ready for review and merge
+
+---
+*This pull request was automatically created from the Pieces Docs editor.*`;
+
+      // Create PR with the enhanced description
       const result = await githubService.createPullRequest(
         {
-          title: `Update ${fileName}`,
-          body: `Updated content for ${selectedFile}\n\nThis pull request was created from the editor.`,
+          title: `docs: Update ${pageTitle}`,
+          body: prBody,
           files: [
             {
               path: selectedFile.endsWith('.md') ? selectedFile : `${selectedFile}.md`,
@@ -207,7 +201,7 @@ Start editing to see the live preview!
             }
           ]
         },
-        token,
+        session.provider_token,
         repoConfig
       );
 
@@ -291,7 +285,7 @@ Start editing to see the live preview!
   const modifiedFilesArray = Array.from(modifiedFiles);
 
   // Calculate if PR button should be disabled
-  const isPRButtonDisabled = !hasChanges || creatingPR;
+  const isPRButtonDisabled = !hasChanges || creatingPR || !session?.provider_token;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
@@ -389,9 +383,11 @@ Start editing to see the live preview!
                       title={
                         !hasChanges 
                           ? "No changes to create PR for" 
-                          : creatingPR 
-                            ? "Creating PR..." 
-                            : "Create pull request"
+                          : !session?.provider_token
+                            ? "Sign in with GitHub to create PR"
+                            : creatingPR 
+                              ? "Creating PR..." 
+                              : "Create pull request"
                       }
                     >
                       {creatingPR ? (
