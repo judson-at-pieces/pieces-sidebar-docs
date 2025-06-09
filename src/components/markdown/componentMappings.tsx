@@ -89,10 +89,6 @@ export const createComponentMappings = () => ({
     return <TabItem title={title} {...props}>{children}</TabItem>;
   },
   
-  table: ({ headers, rows, className, ...props }: any) => {
-    return <Table headers={headers} rows={rows} className={className} {...props} />;
-  },
-  
   steps: ({ children, ...props }: any) => {
     return <Steps {...props}>{children}</Steps>;
   },
@@ -149,7 +145,7 @@ export const createComponentMappings = () => ({
       return Object.keys(props || {}).reduce((acc, key) => {
         if (key.startsWith('data-')) {
           const cleanKey = key.replace('data-', '').replace(/-([a-z])/g, (g) => g[1].toUpperCase());
-          acc[cleanKey] = (props as any)[key];
+          acc[cleanKey] = (props as Record<string, any>)[key];
         }
         return acc;
       }, {} as Record<string, any>);

@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { githubService } from '@/services/githubService';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { FileTree } from './FileTreeSidebar';
+import { FileTreeSidebar } from './FileTreeSidebar';
 import { FileNode } from '@/hooks/useFileStructure';
 
 interface SeoEditorProps {
@@ -255,7 +255,7 @@ Please review the changes and merge when ready.
       } else {
         throw new Error(result.error || 'Failed to create PR');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('PR creation failed:', error);
 
       // Provide more specific error messages
@@ -379,7 +379,7 @@ Please review the changes and merge when ready.
       } else {
         throw new Error(result.error || 'Failed to create PR');
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error('PR creation failed:', error);
 
       // Provide more specific error messages
@@ -406,7 +406,7 @@ Please review the changes and merge when ready.
       {/* File Tree Sidebar */}
       <div className="w-64 border-r border-border p-4">
         <h3 className="text-sm font-semibold mb-2">Content Structure</h3>
-        <FileTree fileStructure={fileStructure} onFileSelect={onFileSelect} selectedFile={selectedFile} />
+        <FileTreeSidebar fileStructure={fileStructure} onFileSelect={onFileSelect} selectedFile={selectedFile} />
       </div>
 
       {/* SEO Editor Content */}

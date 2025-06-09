@@ -1,5 +1,6 @@
+
 import React from 'react';
-import { Card } from './Card';
+import { MarkdownCard } from './MarkdownCard';
 import { CardGroup } from './CardGroup';
 
 const cloudModels = [
@@ -23,16 +24,16 @@ const cloudModels = [
 export function PiecesCloudModels() {
   return (
     <div className="my-8">
-      <CardGroup cols={parseInt('3') as 2 | 3 | 4}>
+      <CardGroup cols={3}>
         {cloudModels.map((model, index) => (
-          <Card
+          <MarkdownCard
             key={index}
             title={model.name}
             href={model.url}
             external
           >
             {model.description}
-          </Card>
+          </MarkdownCard>
         ))}
       </CardGroup>
     </div>

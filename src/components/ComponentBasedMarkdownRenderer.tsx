@@ -1,3 +1,4 @@
+
 import React from 'react';
 import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
@@ -33,7 +34,7 @@ export function ComponentBasedMarkdownRenderer({ content }: ComponentBasedMarkdo
     CARD_PATTERN: '<Card',
 
     // Types
-    SectionType: 'frontmatter' | 'image' | 'cardgroup' | 'callout' | 'accordion' | 'accordiongroup' | 'tabs' | 'button' | 'steps' | 'card' | 'markdown',
+    SectionType: 'frontmatter' as const,
 
     // Utility functions
     parseSections: (text: string) => {
@@ -41,36 +42,36 @@ export function ComponentBasedMarkdownRenderer({ content }: ComponentBasedMarkdo
       
       return sections.map((section, index) => {
         if (section.startsWith('---') && section.includes('title:')) {
-          return { type: 'frontmatter', content: section, index };
+          return { type: 'frontmatter' as const, content: section, index };
         }
         if (section.startsWith('<Image')) {
-          return { type: 'image', content: section, index };
+          return { type: 'image' as const, content: section, index };
         }
         if (section.startsWith('<CardGroup')) {
-          return { type: 'cardgroup', content: section, index };
+          return { type: 'cardgroup' as const, content: section, index };
         }
         if (section.startsWith('<AccordionGroup')) {
-          return { type: 'accordiongroup', content: section, index };
+          return { type: 'accordiongroup' as const, content: section, index };
         }
         if (section.startsWith('<Accordion')) {
-          return { type: 'accordion', content: section, index };
+          return { type: 'accordion' as const, content: section, index };
         }
         if (section.startsWith('<Tabs')) {
-          return { type: 'tabs', content: section, index };
+          return { type: 'tabs' as const, content: section, index };
         }
         if (section.startsWith('<Button')) {
-          return { type: 'button', content: section, index };
+          return { type: 'button' as const, content: section, index };
         }
         if (section.startsWith('<Steps')) {
-          return { type: 'steps', content: section, index };
+          return { type: 'steps' as const, content: section, index };
         }
         if (section.startsWith('<Card')) {
-          return { type: 'card', content: section, index };
+          return { type: 'card' as const, content: section, index };
         }
         if (section.startsWith('<Callout')) {
-          return { type: 'callout', content: section, index };
+          return { type: 'callout' as const, content: section, index };
         }
-        return { type: 'markdown', content: section, index };
+        return { type: 'markdown' as const, content: section, index };
       });
     },
 
@@ -232,18 +233,18 @@ export function ComponentBasedMarkdownRenderer({ content }: ComponentBasedMarkdo
 
     processInlineMarkdown: (text: string): React.ReactNode => {
       // Handle inline code
-      text = text.replace(/`([^`]+)`/g, '<code class="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-1 py-0.5 rounded text-sm font-mono">$1</code>');
+      let processedText = text.replace(/`([^`]+)`/g, '<code class="bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-slate-200 px-1 py-0.5 rounded text-sm font-mono">$1</code>');
       
       // Handle bold with **
-      text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+      processedText = processedText.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
       
       // Handle italic with *
-      text = text.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
+      processedText = processedText.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
       
       // Handle links
-      text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-blue-600 hover:underline dark:text-blue-400" target="_blank" rel="noopener noreferrer">$1</a>');
+      processedText = processedText.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-blue-600 hover:underline dark:text-blue-400" target="_blank" rel="noopener noreferrer">$1</a>');
       
-      return <span dangerouslySetInnerHTML={{ __html: text }} />;
+      return <span dangerouslySetInnerHTML={{ __html: processedText }} />;
     },
     
     // Fix the pre/code components

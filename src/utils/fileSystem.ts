@@ -1,3 +1,4 @@
+
 import fs from 'fs/promises';
 import path from 'path';
 
@@ -63,7 +64,7 @@ export const generateContentIndex = async (directoryPath: string): Promise<Conte
   }
 };
 
-export const generateFileStructure = (contentIndex: ContentIndex): FileStructure => {
+export const generateFileStructure = (contentIndex: ContentIndex): FileNode[] => {
   const grouped: { [key: string]: ContentIndexItem[] } = {};
 
   contentIndex.forEach(item => {
@@ -87,4 +88,46 @@ export const generateFileStructure = (contentIndex: ContentIndex): FileStructure
       type: 'file' as const
     }))
   }));
+};
+
+export const loadContentStructure = async (): Promise<FileNode[]> => {
+  try {
+    // Try to load from content-index.json first
+    const response = await fetch('/content-index.json');
+    if (response.ok) {
+      const data = await response.json();
+      const contentIndex: ContentIndex = Object.entries(data).map(([path, info]: [string, any]) => ({
+        name: info.title || path.split('/').pop() || 'Unknown',
+        path: path
+      }));
+      return generateFileStructure(contentIndex);
+    }
+  } catch (error) {
+    console.warn('Failed to load content-index.json:', error);
+  }
+
+  // Fallback to compiled content
+  const contentIndex: ContentIndex = Object.keys(contentComponents).map(path => ({
+    name: path.split('/').pop() || 'Unknown',
+    path: path
+  }));
+
+  return generateFileStructure(contentIndex);
+};
+
+export const getAllFilePaths = (structure: FileNode[]): string[] => {
+  const paths: string[] = [];
+  
+  const traverse = (nodes: FileNode[]) => {
+    nodes.forEach(node => {
+      if (node.type === 'file') {
+        paths.push(node.path);
+      } else if (node.children) {
+        traverse(node.children);
+      }
+    });
+  };
+  
+  traverse(structure);
+  return paths;
 };

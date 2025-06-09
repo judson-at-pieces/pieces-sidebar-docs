@@ -1,3 +1,4 @@
+
 import React, { useState, ReactNode } from 'react';
 
 interface AccordionGroupProps {
@@ -30,14 +31,16 @@ export default function AccordionGroup({ children, allowMultiple = false }: Acco
   return (
     <div className="space-y-2 border border-border rounded-lg overflow-hidden">
       {React.Children.map(children, (child, index) => {
-        if (React.isValidElement(child) && child.type === AccordionItem) {
-          const childProps = child.props as AccordionItemProps;
-          return React.cloneElement(child, {
-            isOpen: openItems.includes(index),
-            onToggle: () => handleToggle(index),
-            title: childProps.title,
-            children: childProps.children
-          });
+        if (React.isValidElement(child)) {
+          const childProps = child.props as any;
+          if (child.type === AccordionItem || (childProps && 'title' in childProps)) {
+            return React.cloneElement(child as React.ReactElement<AccordionItemProps>, {
+              isOpen: openItems.includes(index),
+              onToggle: () => handleToggle(index),
+              title: childProps.title,
+              children: childProps.children
+            });
+          }
         }
         return child;
       })}
