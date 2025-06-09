@@ -20,6 +20,7 @@ import { useBranches } from "@/hooks/useBranches";
 export function EditorLayout() {
   const { fileStructure, isLoading, error, refetch } = useFileStructure();
   const { hasRole } = useAuth();
+  const { currentBranch } = useBranches(); // Get currentBranch from useBranches
   const [selectedFile, setSelectedFile] = useState<string>();
   const [content, setContent] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
@@ -30,7 +31,7 @@ export function EditorLayout() {
   const [selectedForBulkDelete, setSelectedForBulkDelete] = useState<Set<string>>(new Set());
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
 
-  // Live editing hook
+  // Live editing hook - now includes currentBranch for branch-specific sessions
   const {
     isLocked,
     lockedBy,
@@ -41,7 +42,7 @@ export function EditorLayout() {
     releaseLock,
     saveLiveContent,
     loadLiveContent
-  } = useLiveEditing(selectedFile);
+  } = useLiveEditing(selectedFile, currentBranch);
 
   // SEO data for the current file
   const { pendingChanges, hasUnsavedChanges } = useSeoData(selectedFile);
@@ -54,7 +55,8 @@ export function EditorLayout() {
           .from('live_editing_sessions')
           .select('file_path, content')
           .not('content', 'is', null)
-          .neq('content', '');
+          .neq('content', '')
+          .eq('branch_name', currentBranch || 'main'); // Filter by current branch
 
         if (error) {
           console.error('Error loading existing live sessions:', error);
@@ -66,15 +68,17 @@ export function EditorLayout() {
           const filesWithChanges = new Set(existingSessions.map(session => session.file_path));
           setModifiedFiles(filesWithChanges);
           
-          console.log('Loaded existing live sessions:', existingSessions.length, 'files with uncommitted changes');
+          console.log('Loaded existing live sessions for branch', currentBranch, ':', existingSessions.length, 'files with uncommitted changes');
         }
       } catch (error) {
         console.error('Error loading existing live sessions:', error);
       }
     };
 
-    loadExistingLiveSessions();
-  }, []);
+    if (currentBranch) {
+      loadExistingLiveSessions();
+    }
+  }, [currentBranch]);
 
   // Update modified files when sessions change
   useEffect(() => {
@@ -88,15 +92,15 @@ export function EditorLayout() {
 
   // Auto-save live content - only when user is editing (has the lock)
   useEffect(() => {
-    if (selectedFile && isLocked && lockedBy === 'You' && hasChanges && content) {
+    if (selectedFile && isLocked && lockedBy === 'You' && hasChanges && content && currentBranch) {
       const timeoutId = setTimeout(() => {
-        console.log('Auto-saving live content for real-time updates');
+        console.log('Auto-saving live content for real-time updates on branch:', currentBranch);
         saveLiveContent(selectedFile, content);
       }, 500);
 
       return () => clearTimeout(timeoutId);
     }
-  }, [selectedFile, isLocked, lockedBy, hasChanges, content, saveLiveContent]);
+  }, [selectedFile, isLocked, lockedBy, hasChanges, content, currentBranch, saveLiveContent]);
 
   const handleFileSelect = async (filePath: string) => {
     console.log('=== FILE SELECTION DEBUG ===');
@@ -290,7 +294,7 @@ Start editing to see the live preview!
   const collectAllLiveContent = async () => {
     const allContent: { path: string; content: string }[] = [];
     
-    // Get all live editing sessions
+    // Get all live editing sessions for current branch
     for (const session of sessions) {
       if (session.content && session.content.trim()) {
         allContent.push({
@@ -318,6 +322,11 @@ Start editing to see the live preview!
   };
 
   const handleCreatePR = async () => {
+    if (!currentBranch) {
+      toast.error('No current branch selected');
+      return;
+    }
+
     setCreatingPR(true);
     
     try {
@@ -362,11 +371,12 @@ Start editing to see the live preview!
           }
         });
         
-        // Clear all live editing sessions after successful PR
+        // Clear all live editing sessions for current branch after successful PR
         try {
           const { error } = await supabase
             .from('live_editing_sessions')
             .delete()
+            .eq('branch_name', currentBranch)
             .in('file_path', sessions.map(s => s.file_path));
           
           if (!error) {
@@ -542,7 +552,7 @@ Start editing to see the live preview!
                     {totalLiveFiles > 0 && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
-                        {totalLiveFiles} file{totalLiveFiles !== 1 ? 's' : ''} with live changes
+                        {totalLiveFiles} file{totalLiveFiles !== 1 ? 's' : ''} with live changes on {currentBranch}
                       </div>
                     )}
                     
@@ -557,7 +567,7 @@ Start editing to see the live preview!
                           ? "No changes to create PR for" 
                           : creatingPR 
                             ? "Creating PR..." 
-                            : "Create pull request with all live changes"
+                            : `Create pull request with all live changes targeting ${currentBranch}`
                       }
                     >
                       {creatingPR ? (

@@ -1,213 +1,259 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 
 interface LiveEditingSession {
   file_path: string;
   content: string;
-  locked_by_email?: string;
-  locked_by_name?: string;
-  locked_at?: string;
+  locked_by_email: string | null;
+  locked_by_name: string | null;
+  locked_at: string | null;
   updated_at: string;
+  branch_name?: string;
 }
 
-export function useLiveEditing(filePath?: string) {
-  const { user } = useAuth();
+export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
   const [isLocked, setIsLocked] = useState(false);
   const [lockedBy, setLockedBy] = useState<string | null>(null);
   const [liveContent, setLiveContent] = useState<string>('');
   const [sessions, setSessions] = useState<LiveEditingSession[]>([]);
   const [isAcquiringLock, setIsAcquiringLock] = useState(false);
 
-  // Fetch all live editing sessions
+  // Fetch all live editing sessions for current branch
   const fetchSessions = useCallback(async () => {
+    if (!currentBranch) return;
+
     try {
-      const { data, error } = await supabase.rpc('get_live_editing_sessions');
-      if (error) throw error;
+      const { data, error } = await supabase
+        .rpc('get_live_editing_sessions_by_branch', { 
+          branch_name: currentBranch 
+        });
+
+      if (error) {
+        console.error('Error fetching live editing sessions:', error);
+        return;
+      }
+
       setSessions(data || []);
     } catch (error) {
       console.error('Error fetching live editing sessions:', error);
     }
-  }, []);
+  }, [currentBranch]);
 
-  // Acquire lock on a file - automatically when file is available
-  const acquireLock = useCallback(async (filePathToLock: string) => {
-    if (!user?.id) return false;
-    
-    setIsAcquiringLock(true);
+  // Check lock status for the selected file
+  const checkLockStatus = useCallback(async () => {
+    if (!selectedFile || !currentBranch) return;
+
     try {
-      const { data, error } = await supabase.rpc('acquire_file_lock', {
-        p_file_path: filePathToLock,
-        p_user_id: user.id
-      });
-      
-      if (error) throw error;
-      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      const { data, error } = await supabase
+        .from('live_editing_sessions')
+        .select('locked_by, locked_at, content, profiles!live_editing_sessions_locked_by_fkey(email, full_name)')
+        .eq('file_path', selectedFile)
+        .eq('branch_name', currentBranch)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error checking lock status:', error);
+        return;
+      }
+
+      if (data) {
+        const isFileLockedByMe = data.locked_by === user.id;
+        const isFileLocked = !!data.locked_by && !!data.locked_at;
+        
+        // Check if lock is still valid (within 30 minutes)
+        const lockTime = data.locked_at ? new Date(data.locked_at) : null;
+        const isLockValid = lockTime && (Date.now() - lockTime.getTime()) < 30 * 60 * 1000;
+
+        setIsLocked(isFileLocked && isLockValid);
+        
+        if (isFileLocked && isLockValid) {
+          if (isFileLockedByMe) {
+            setLockedBy('You');
+          } else {
+            const profile = Array.isArray(data.profiles) ? data.profiles[0] : data.profiles;
+            setLockedBy(profile?.full_name || profile?.email || 'Unknown User');
+          }
+        } else {
+          setLockedBy(null);
+        }
+
+        // Set live content if available
+        if (data.content) {
+          setLiveContent(data.content);
+        }
+      } else {
+        setIsLocked(false);
+        setLockedBy(null);
+        setLiveContent('');
+      }
+    } catch (error) {
+      console.error('Error checking lock status:', error);
+    }
+  }, [selectedFile, currentBranch]);
+
+  // Acquire lock for a file
+  const acquireLock = useCallback(async (filePath: string): Promise<boolean> => {
+    if (!currentBranch) {
+      toast.error('No branch selected');
+      return false;
+    }
+
+    setIsAcquiringLock(true);
+    
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        toast.error('You must be logged in to edit files');
+        return false;
+      }
+
+      const { data, error } = await supabase
+        .rpc('acquire_file_lock_by_branch', { 
+          p_file_path: filePath, 
+          p_user_id: user.id,
+          p_branch_name: currentBranch
+        });
+
+      if (error) {
+        console.error('Error acquiring lock:', error);
+        toast.error('Failed to acquire editing lock');
+        return false;
+      }
+
       if (data) {
         setIsLocked(true);
         setLockedBy('You');
-        console.log('Successfully acquired lock for:', filePathToLock);
+        toast.success('You can now edit this file');
+        await fetchSessions();
         return true;
       } else {
-        setIsLocked(false);
-        console.log('File is locked by another user:', filePathToLock);
+        toast.error('File is currently being edited by someone else');
         return false;
       }
     } catch (error) {
       console.error('Error acquiring lock:', error);
+      toast.error('Failed to acquire editing lock');
       return false;
     } finally {
       setIsAcquiringLock(false);
     }
-  }, [user]);
+  }, [currentBranch, fetchSessions]);
 
-  // Release lock on a file
-  const releaseLock = useCallback(async (filePathToRelease: string) => {
-    if (!user?.id) return;
-    
-    try {
-      const { error } = await supabase.rpc('release_file_lock', {
-        p_file_path: filePathToRelease,
-        p_user_id: user.id
-      });
-      
-      if (error) throw error;
-      
-      setIsLocked(false);
-      setLockedBy(null);
-      console.log('Released lock for:', filePathToRelease);
-    } catch (error) {
-      console.error('Error releasing lock:', error);
-    }
-  }, [user]);
+  // Release lock for a file
+  const releaseLock = useCallback(async (filePath: string): Promise<boolean> => {
+    if (!currentBranch) return false;
 
-  // Save live content with real-time updates
-  const saveLiveContent = useCallback(async (filePathToSave: string, content: string) => {
-    if (!user?.id) return false;
-    
     try {
-      const { data, error } = await supabase.rpc('save_live_content', {
-        p_file_path: filePathToSave,
-        p_content: content,
-        p_user_id: user.id
-      });
-      
-      if (error) throw error;
-      
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return false;
+
+      const { data, error } = await supabase
+        .rpc('release_file_lock_by_branch', { 
+          p_file_path: filePath, 
+          p_user_id: user.id,
+          p_branch_name: currentBranch
+        });
+
+      if (error) {
+        console.error('Error releasing lock:', error);
+        return false;
+      }
+
       if (data) {
-        setLiveContent(content);
+        setIsLocked(false);
+        setLockedBy(null);
+        await fetchSessions();
         return true;
       }
+
+      return false;
+    } catch (error) {
+      console.error('Error releasing lock:', error);
+      return false;
+    }
+  }, [currentBranch, fetchSessions]);
+
+  // Save live content for a file
+  const saveLiveContent = useCallback(async (filePath: string, content: string): Promise<boolean> => {
+    if (!currentBranch) return false;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return false;
+
+      const { data, error } = await supabase
+        .rpc('save_live_content_by_branch', { 
+          p_file_path: filePath, 
+          p_content: content, 
+          p_user_id: user.id,
+          p_branch_name: currentBranch
+        });
+
+      if (error) {
+        console.error('Error saving live content:', error);
+        return false;
+      }
+
+      if (data) {
+        setLiveContent(content);
+        await fetchSessions();
+        return true;
+      }
+
       return false;
     } catch (error) {
       console.error('Error saving live content:', error);
       return false;
     }
-  }, [user]);
+  }, [currentBranch, fetchSessions]);
 
   // Load live content for a file
-  const loadLiveContent = useCallback(async (filePathToLoad: string) => {
+  const loadLiveContent = useCallback(async (filePath: string): Promise<string | null> => {
+    if (!currentBranch) return null;
+
     try {
       const { data, error } = await supabase
         .from('live_editing_sessions')
-        .select('content, locked_by')
-        .eq('file_path', filePathToLoad)
+        .select('content')
+        .eq('file_path', filePath)
+        .eq('branch_name', currentBranch)
         .maybeSingle();
-      
-      if (error && error.code !== 'PGRST116') throw error;
-      
-      if (data) {
-        setLiveContent(data.content);
-        return data.content;
+
+      if (error) {
+        console.error('Error loading live content:', error);
+        return null;
       }
-      return null;
+
+      return data?.content || null;
     } catch (error) {
       console.error('Error loading live content:', error);
       return null;
     }
-  }, []);
-
-  // Check lock status and auto-acquire if available
-  const checkLockStatusAndAutoAcquire = useCallback(async (filePathToCheck: string) => {
-    if (!user?.id) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('live_editing_sessions')
-        .select('locked_by, locked_at, content')
-        .eq('file_path', filePathToCheck)
-        .maybeSingle();
-      
-      if (error && error.code !== 'PGRST116') throw error;
-      
-      if (data && data.locked_by) {
-        const isLockedByCurrentUser = data.locked_by === user.id;
-        setIsLocked(isLockedByCurrentUser);
-        setLockedBy(isLockedByCurrentUser ? 'You' : 'Another user');
-        
-        // If locked by another user and has content, update live content
-        if (!isLockedByCurrentUser && data.content) {
-          setLiveContent(data.content);
-        }
-      } else {
-        // File is not locked by anyone - auto-acquire lock
-        console.log('File is available, auto-acquiring lock...');
-        await acquireLock(filePathToCheck);
-        
-        // Still load content if it exists
-        if (data && data.content) {
-          setLiveContent(data.content);
-        }
-      }
-    } catch (error) {
-      console.error('Error checking lock status:', error);
-    }
-  }, [user, acquireLock]);
+  }, [currentBranch]);
 
   // Set up real-time subscription for live editing sessions
   useEffect(() => {
-    fetchSessions();
-    
+    if (!currentBranch) return;
+
     const channel = supabase
-      .channel('live-editing-changes')
+      .channel('live_editing_sessions')
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
-          table: 'live_editing_sessions'
+          table: 'live_editing_sessions',
+          filter: `branch_name=eq.${currentBranch}`
         },
-        (payload) => {
-          console.log('Live editing session changed:', payload);
+        () => {
           fetchSessions();
-          
-          // Handle real-time content updates for the current file
-          if (filePath && payload.new && payload.new.file_path === filePath) {
-            const newData = payload.new as any;
-            
-            // If someone else acquired a lock on the current file, update status
-            if (newData.locked_by && newData.locked_by !== user?.id) {
-              setIsLocked(false);
-              setLockedBy('Another user');
-              console.log('Another user acquired lock on current file');
-            }
-            
-            // If someone else released a lock on the current file
-            if (payload.eventType === 'UPDATE' && !newData.locked_by) {
-              console.log('Lock released on current file, auto-acquiring...');
-              // Auto-acquire the lock since it's now available
-              if (filePath) {
-                acquireLock(filePath);
-              }
-            }
-            
-            // If content was updated and we don't have the lock, update our view
-            if (newData.content && newData.locked_by !== user?.id) {
-              console.log('Received live content update from another user');
-              setLiveContent(newData.content);
-            }
+          if (selectedFile) {
+            checkLockStatus();
           }
         }
       )
@@ -216,38 +262,17 @@ export function useLiveEditing(filePath?: string) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchSessions, filePath, user?.id, acquireLock]);
+  }, [currentBranch, selectedFile, fetchSessions, checkLockStatus]);
 
-  // Check lock status and auto-acquire when file path changes
+  // Fetch sessions and check lock status when file or branch changes
   useEffect(() => {
-    if (filePath) {
-      checkLockStatusAndAutoAcquire(filePath);
-      loadLiveContent(filePath);
-    } else {
-      // Reset state when no file is selected
-      setIsLocked(false);
-      setLockedBy(null);
-      setLiveContent('');
+    if (currentBranch) {
+      fetchSessions();
     }
-  }, [filePath, checkLockStatusAndAutoAcquire, loadLiveContent]);
-
-  // Auto-release lock when component unmounts or user leaves
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (filePath && isLocked && lockedBy === 'You') {
-        releaseLock(filePath);
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      if (filePath && isLocked && lockedBy === 'You') {
-        releaseLock(filePath);
-      }
-    };
-  }, [filePath, isLocked, lockedBy, releaseLock]);
+    if (selectedFile && currentBranch) {
+      checkLockStatus();
+    }
+  }, [selectedFile, currentBranch, fetchSessions, checkLockStatus]);
 
   return {
     isLocked,
@@ -259,6 +284,5 @@ export function useLiveEditing(filePath?: string) {
     releaseLock,
     saveLiveContent,
     loadLiveContent,
-    checkLockStatus: checkLockStatusAndAutoAcquire
   };
 }
