@@ -1,6 +1,6 @@
 
 import React, { useEffect, useRef } from 'react';
-import { FileText, MoreHorizontal, Copy, Trash2, Eye, Edit3 } from 'lucide-react';
+import { FileText, MoreHorizontal, Copy, Trash2, Eye, Edit3, Lock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
@@ -85,6 +85,25 @@ export function EditorMain({
             <h3 className="text-xl font-semibold">Select a File to Edit</h3>
             <p className="text-muted-foreground">
               Choose a file from the sidebar to start editing, or create a new one.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // Show when file needs to be locked for editing
+  if (!isLocked && !isAcquiringLock) {
+    return (
+      <div className="h-full flex items-center justify-center bg-gradient-to-br from-background to-muted/10">
+        <div className="text-center space-y-4 max-w-md">
+          <div className="w-20 h-20 mx-auto bg-muted/20 rounded-2xl flex items-center justify-center">
+            <Lock className="w-10 h-10 text-muted-foreground" />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-xl font-semibold">File Ready to Edit</h3>
+            <p className="text-muted-foreground">
+              Click "Start Editing" to acquire a lock and begin editing this file.
             </p>
           </div>
         </div>

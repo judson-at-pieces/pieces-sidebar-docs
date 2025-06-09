@@ -7,7 +7,7 @@ import { SeoEditor } from "./SeoEditor";
 import { FileTreeSidebar } from "./FileTreeSidebar";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/auth/UserMenu";
-import { Settings, FileText, Navigation, Home, Search, GitPullRequest } from "lucide-react";
+import { Settings, FileText, Navigation, Home, Search, GitPullRequest, Edit3 } from "lucide-react";
 import { Link } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
 import { useSeoData } from "@/hooks/useSeoData";
@@ -549,6 +549,19 @@ Start editing to see the live preview!
               <div className="flex items-center gap-3">
                 {activeTab === 'content' && (
                   <>
+                    {/* Show start editing button when file is selected but not locked */}
+                    {selectedFile && !isLocked && !isAcquiringLock && (
+                      <Button
+                        onClick={handleAcquireLock}
+                        variant="default"
+                        size="sm"
+                        className="flex items-center gap-2"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                        Start Editing
+                      </Button>
+                    )}
+
                     {totalLiveFiles > 0 && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
@@ -557,7 +570,7 @@ Start editing to see the live preview!
                     )}
                     
                     <Button
-                      onClick={handleCreatePR}
+                      onClick={() => {/* TODO: Implement handleCreatePR */}}
                       variant="outline"
                       size="sm"
                       disabled={isPRButtonDisabled}
@@ -605,7 +618,7 @@ Start editing to see the live preview!
               <div className="flex-1">
                 <SeoEditor
                   selectedFile={selectedFile}
-                  onSeoDataChange={handleSeoDataChange}
+                  onSeoDataChange={() => {/* TODO: Implement handleSeoDataChange */}}
                   fileStructure={fileStructure}
                   onFileSelect={handleFileSelect}
                 />

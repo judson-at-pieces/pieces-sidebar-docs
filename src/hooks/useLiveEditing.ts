@@ -49,14 +49,20 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
+      // Query the live editing sessions table directly and then join with profiles
       const { data, error } = await supabase
         .from('live_editing_sessions')
-        .select('locked_by, locked_at, content, profiles!live_editing_sessions_locked_by_fkey(email, full_name)')
+        .select(`
+          locked_by, 
+          locked_at, 
+          content,
+          profiles!inner(email, full_name)
+        `)
         .eq('file_path', selectedFile)
-        .eq('branch_name', currentBranch)
+        .eq('branch_name', currentBranch || 'main')
         .maybeSingle();
 
-      if (error) {
+      if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
         console.error('Error checking lock status:', error);
         return;
       }
@@ -75,7 +81,7 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
           if (isFileLockedByMe) {
             setLockedBy('You');
           } else {
-            const profile = Array.isArray(data.profiles) ? data.profiles[0] : data.profiles;
+            const profile = data.profiles;
             setLockedBy(profile?.full_name || profile?.email || 'Unknown User');
           }
         } else {
