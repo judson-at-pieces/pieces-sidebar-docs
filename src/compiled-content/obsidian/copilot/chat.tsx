@@ -36,7 +36,7 @@ function _createMdxContent(props: MDX_obsidian_copilot_chatProps) {
 }
 
 function MDXContent(props: MDX_obsidian_copilot_chatProps = {}) {
-  const {wrapper: MDXLayout} = props.components || ({});
+  const {wrapper: MDXLayout} = props.components || ({} as any);
   return MDXLayout ? _jsx(MDXLayout, {
     ...props,
     children: _jsx(_createMdxContent, {

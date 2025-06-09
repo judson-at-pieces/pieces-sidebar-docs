@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useLiveEditing } from "@/hooks/useLiveEditing";
@@ -21,9 +22,8 @@ export function EditorLayout() {
   const { fileStructure, isLoading, error, refetch } = useFileStructure();
   const { hasRole } = useAuth();
   
-  // Branch management with proper initialization
-  const branchesHook = useBranches();
-  const { currentBranch, branches, initialized } = branchesHook;
+  // Branch management
+  const { currentBranch, branches, initialized } = useBranches();
 
   const [selectedFile, setSelectedFile] = useState<string>();
   const [content, setContent] = useState("");
@@ -32,15 +32,9 @@ export function EditorLayout() {
   const [loadingContent, setLoadingContent] = useState(false);
   const [creatingPR, setCreatingPR] = useState(false);
 
-  // Debug logs
-  console.log('EditorLayout render:', {
-    currentBranch,
-    initialized,
-    branchesCount: branches.length
-  });
+  console.log('EditorLayout: currentBranch =', currentBranch, 'initialized =', initialized);
 
-  // Live editing hook - only use when branch is properly initialized
-  const liveEditingHook = useLiveEditing(selectedFile, initialized ? currentBranch : undefined);
+  // Live editing hook - properly pass the current branch
   const {
     isLocked,
     lockedBy,
@@ -50,25 +44,30 @@ export function EditorLayout() {
     acquireLock,
     releaseLock,
     saveLiveContent,
-    loadLiveContent
-  } = liveEditingHook;
+    loadLiveContent,
+  } = useLiveEditing(selectedFile, currentBranch);
 
   // SEO data for the current file
   const { pendingChanges, hasUnsavedChanges } = useSeoData(selectedFile);
 
-  // Calculate PR button state - use currentBranch directly
-  const activeBranch = currentBranch || 'main';
+  // Calculate PR button state - use the actual currentBranch value
+  const sourceBranch = currentBranch || 'main'; // The branch we're working on
+  const targetBranch = 'main'; // The branch we merge to
   const sessionsWithContent = sessions.filter(s => s.content && s.content.trim());
   const totalLiveFiles = sessionsWithContent.length;
   const hasAnyChanges = hasChanges || totalLiveFiles > 0;
-  const isPRButtonDisabled = !hasAnyChanges || creatingPR || !currentBranch || currentBranch === 'main';
+  
+  // PR is disabled if: no changes, creating PR, no current branch, or trying to PR main to main
+  const isPRButtonDisabled = !hasAnyChanges || creatingPR || !currentBranch || currentBranch === targetBranch;
 
   console.log('PR Button State:', {
-    activeBranch,
+    sourceBranch,
+    targetBranch,
+    currentBranch,
     totalLiveFiles,
     hasAnyChanges,
     isPRButtonDisabled,
-    currentBranch
+    sessions: sessions.length
   });
 
   // Clear local state when branch changes
@@ -276,7 +275,7 @@ Start editing to see the live preview!
   const collectAllLiveContent = async () => {
     const allContent: { path: string; content: string }[] = [];
     
-    console.log('Collecting live content from', sessions.length, 'sessions for branch:', activeBranch);
+    console.log('Collecting live content from', sessions.length, 'sessions for branch:', sourceBranch);
     
     for (const session of sessions) {
       if (session.content && session.content.trim()) {
@@ -304,14 +303,11 @@ Start editing to see the live preview!
       }
     }
     
-    console.log('Total live content collected:', allContent.length, 'files from branch:', activeBranch);
+    console.log('Total live content collected:', allContent.length, 'files from branch:', sourceBranch);
     return allContent;
   };
 
   const handleCreatePR = async () => {
-    const sourceBranch = currentBranch; // The branch we're creating PR FROM
-    const targetBranch = 'main'; // The branch we're merging TO
-    
     console.log('Creating PR FROM branch:', sourceBranch, 'TO branch:', targetBranch);
     
     if (!sourceBranch) {
@@ -536,7 +532,7 @@ Start editing to see the live preview!
                     {totalLiveFiles > 0 && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
-                        {totalLiveFiles} file{totalLiveFiles !== 1 ? 's' : ''} with live changes on {activeBranch}
+                        {totalLiveFiles} file{totalLiveFiles !== 1 ? 's' : ''} with live changes on {sourceBranch}
                       </div>
                     )}
                     
@@ -549,13 +545,13 @@ Start editing to see the live preview!
                       title={
                         !currentBranch
                           ? "No branch selected"
-                          : currentBranch === 'main'
-                            ? "Cannot create PR from main branch to main branch"
+                          : currentBranch === targetBranch
+                            ? `Cannot create PR from ${sourceBranch} branch to ${targetBranch} branch`
                             : !hasAnyChanges 
                               ? "No changes to create PR for" 
                               : creatingPR 
                                 ? "Creating PR..." 
-                                : `Create pull request from ${currentBranch} to main with all live changes`
+                                : `Create pull request from ${sourceBranch} to ${targetBranch} with all live changes`
                       }
                     >
                       {creatingPR ? (
@@ -563,7 +559,7 @@ Start editing to see the live preview!
                       ) : (
                         <GitPullRequest className="w-4 h-4" />
                       )}
-                      PR: {activeBranch} → main {totalLiveFiles > 0 && `(${totalLiveFiles})`}
+                      PR: {sourceBranch} → {targetBranch} {totalLiveFiles > 0 && `(${totalLiveFiles})`}
                     </Button>
                   </>
                 )}
