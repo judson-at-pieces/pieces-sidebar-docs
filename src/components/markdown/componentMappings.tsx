@@ -71,7 +71,7 @@ export const createComponentMappings = () => ({
   },
   
   accordionitem: ({ title, children, ...props }: any) => {
-    return <AccordionItem title={title} isOpen={false} onToggle={() => {}} {...props}>{children}</AccordionItem>;
+    return <AccordionItem title={title} isOpen={false} onToggle={() => {}} {...(props as Record<string, any>)}>{children}</AccordionItem>;
   },
   
   button: ({ label, linkHref, openLinkInNewTab, align, lightColor, darkColor, onClick, ...props }: any) => {
