@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { GitPullRequest } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -286,7 +285,7 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
       variant="outline"
       size="sm"
       disabled={!buttonState.enabled}
-      className="flex items-center gap-2"
+      className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-pink-500 text-white border-0 hover:from-blue-600 hover:to-pink-600"
       title={buttonState.tooltip}
     >
       {creating ? (
