@@ -355,24 +355,24 @@ Start editing to see the live preview!
         return;
       }
 
-      console.log('Creating PR with base branch:', currentBranch);
+      console.log('Creating PR with target branch:', currentBranch);
       console.log('Files to include:', allLiveContent.map(item => item.path));
 
       // Create a temporary branch name for the PR
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
       const prBranchName = `editor-changes-${timestamp}`;
 
-      // Create PR with all live content, using current branch as the base
+      // Create PR with all live content, using current branch as the TARGET (base)
       const result = await githubService.createPullRequest(
         {
           title: `Update documentation - ${allLiveContent.length} file${allLiveContent.length !== 1 ? 's' : ''} modified`,
-          body: `Updated documentation files from branch "${currentBranch}":\n${allLiveContent.map(item => `- ${item.path}`).join('\n')}\n\nThis pull request was created from the collaborative editor.`,
+          body: `Updated documentation files targeting branch "${currentBranch}":\n${allLiveContent.map(item => `- ${item.path}`).join('\n')}\n\nThis pull request was created from the collaborative editor.`,
           files: allLiveContent.map(item => ({
             path: item.path,
             content: item.content
           })),
-          baseBranch: currentBranch, // Use current branch as base
-          headBranch: prBranchName // Create a new branch for the PR
+          baseBranch: currentBranch, // TARGET branch (where changes should be merged TO)
+          headBranch: prBranchName // SOURCE branch (where changes come FROM)
         },
         token,
         repoConfig
@@ -595,7 +595,7 @@ Start editing to see the live preview!
                           ? "No changes to create PR for" 
                           : creatingPR 
                             ? "Creating PR..." 
-                            : `Create pull request targeting ${currentBranch} with all live changes`
+                            : `Create pull request targeting ${currentBranch || 'main'} with all live changes`
                       }
                     >
                       {creatingPR ? (
@@ -603,7 +603,7 @@ Start editing to see the live preview!
                       ) : (
                         <GitPullRequest className="w-4 h-4" />
                       )}
-                      Create PR → {currentBranch} {totalLiveFiles > 0 && `(${totalLiveFiles})`}
+                      Create PR → {currentBranch || 'main'} {totalLiveFiles > 0 && `(${totalLiveFiles})`}
                     </Button>
                   </>
                 )}
