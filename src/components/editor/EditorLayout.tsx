@@ -38,7 +38,7 @@ export function EditorLayout() {
   const [selectedForBulkDelete, setSelectedForBulkDelete] = useState<Set<string>>(new Set());
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
 
-  // Live editing hook - use activeBranch directly
+  // Pass the correct activeBranch to the live editing hook
   const {
     isLocked,
     lockedBy,
@@ -98,11 +98,11 @@ export function EditorLayout() {
     setModifiedFiles(filesWithLiveContent);
   }, [sessions]);
 
-  // Auto-save live content when user is editing (has the lock)
+  // Auto-save live content when user is editing (has the lock) - CRITICAL FIX
   useEffect(() => {
     if (selectedFile && isLocked && lockedBy === 'You' && hasChanges && content && activeBranch) {
       const timeoutId = setTimeout(() => {
-        console.log('Auto-saving live content for real-time updates on branch:', activeBranch);
+        console.log('Auto-saving live content for file:', selectedFile, 'on branch:', activeBranch, 'content length:', content.length);
         saveLiveContent(selectedFile, content);
       }, 500);
 
@@ -115,6 +115,8 @@ export function EditorLayout() {
     console.log('Branch changed to:', activeBranch, 'clearing modified files state');
     setModifiedFiles(new Set());
     setHasChanges(false);
+    setSelectedFile(undefined); // Also clear selected file to avoid confusion
+    setContent(''); // Clear content
   }, [activeBranch]);
 
   const handleFileSelect = async (filePath: string) => {
@@ -247,6 +249,7 @@ Start editing to see the live preview!
   const handleContentChange = (newContent: string) => {
     // Allow content changes if user has the lock
     if (isLocked && lockedBy === 'You') {
+      console.log('Content changed for file:', selectedFile, 'on branch:', activeBranch, 'new length:', newContent.length);
       setContent(newContent);
       setHasChanges(true);
       if (selectedFile) {
@@ -259,44 +262,8 @@ Start editing to see the live preview!
     if (selectedFile) {
       const success = await acquireLock(selectedFile);
       if (success) {
-        console.log('Lock acquired for editing:', selectedFile);
+        console.log('Lock acquired for editing:', selectedFile, 'on branch:', activeBranch);
       }
-    }
-  };
-
-  const getGitHubAppToken = async () => {
-    try {
-      // Get the GitHub installation ID from the database
-      const { data: installations, error } = await supabase
-        .from('github_installations')
-        .select('installation_id')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error fetching GitHub installation:', error);
-        throw new Error('Failed to get GitHub installation');
-      }
-
-      if (!installations) {
-        throw new Error('No GitHub app installation found. Please configure GitHub app first.');
-      }
-
-      // Get installation token from the edge function
-      const { data, error: tokenError } = await supabase.functions.invoke('github-app-auth', {
-        body: { installationId: installations.installation_id }
-      });
-
-      if (tokenError) {
-        console.error('Error getting GitHub app token:', tokenError);
-        throw new Error('Failed to get GitHub app token');
-      }
-
-      return data.token;
-    } catch (error) {
-      console.error('Error in getGitHubAppToken:', error);
-      throw error;
     }
   };
 
@@ -346,7 +313,7 @@ Start editing to see the live preview!
   };
 
   const handleCreatePR = async () => {
-    // Get the current branch - this is the SOURCE branch (where changes come from)
+    // Use the activeBranch as the source branch 
     const sourceBranch = activeBranch;
     console.log('Creating PR from source branch:', sourceBranch);
     
