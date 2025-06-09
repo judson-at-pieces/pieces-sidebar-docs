@@ -82,16 +82,9 @@ export function EditorLayout() {
     setModifiedFiles(filesWithLiveContent);
   }, [sessions]);
 
-  // Auto-acquire lock and start editing when file is selected
+  // Auto-save live content with shorter interval for real-time feel - only when editing
   useEffect(() => {
-    if (selectedFile && !isLocked) {
-      acquireLock(selectedFile);
-    }
-  }, [selectedFile, isLocked, acquireLock]);
-
-  // Auto-save live content with shorter interval for real-time feel
-  useEffect(() => {
-    if (selectedFile && isLocked && hasChanges && content) {
+    if (selectedFile && isLocked && lockedBy === 'You' && hasChanges && content) {
       const timeoutId = setTimeout(() => {
         console.log('Auto-saving live content for real-time updates');
         saveLiveContent(selectedFile, content);
@@ -99,14 +92,14 @@ export function EditorLayout() {
 
       return () => clearTimeout(timeoutId);
     }
-  }, [selectedFile, isLocked, hasChanges, content, saveLiveContent]);
+  }, [selectedFile, isLocked, lockedBy, hasChanges, content, saveLiveContent]);
 
   const handleFileSelect = async (filePath: string) => {
     console.log('=== FILE SELECTION DEBUG ===');
     console.log('Selected file path:', filePath);
     
     // Release lock on previous file if any
-    if (selectedFile && isLocked) {
+    if (selectedFile && isLocked && lockedBy === 'You') {
       await releaseLock(selectedFile);
     }
     
@@ -223,6 +216,16 @@ Start editing to see the live preview!
     setHasChanges(true);
     if (selectedFile) {
       setModifiedFiles(prev => new Set(prev).add(selectedFile));
+    }
+  };
+
+  const handleAcquireLock = async () => {
+    if (selectedFile) {
+      const success = await acquireLock(selectedFile);
+      if (success) {
+        // Successfully acquired lock, user can now edit
+        console.log('Lock acquired for editing:', selectedFile);
+      }
     }
   };
 
@@ -601,6 +604,8 @@ Start editing to see the live preview!
                     isLocked={isLocked}
                     lockedBy={lockedBy}
                     liveContent={liveContent}
+                    onAcquireLock={handleAcquireLock}
+                    isAcquiringLock={isAcquiringLock}
                   />
                 </div>
               </>

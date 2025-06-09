@@ -19,6 +19,8 @@ interface EditorMainProps {
   isLocked?: boolean;
   lockedBy?: string | null;
   liveContent?: string;
+  onAcquireLock?: () => void;
+  isAcquiringLock?: boolean;
 }
 
 export function EditorMain({
@@ -30,11 +32,14 @@ export function EditorMain({
   saving,
   isLocked = false,
   lockedBy = null,
-  liveContent
+  liveContent,
+  onAcquireLock,
+  isAcquiringLock = false
 }: EditorMainProps) {
   // Determine if current user can edit
   const canEdit = isLocked && lockedBy === 'You';
   const isLockedByOther = isLocked && lockedBy !== 'You';
+  const isViewOnly = !isLocked;
 
   // Use live content if we're not the editor and live content is available
   const displayContent = isLockedByOther && liveContent ? liveContent : content;
@@ -104,6 +109,17 @@ export function EditorMain({
               Editing
             </Badge>
           )}
+
+          {isViewOnly && (
+            <Button 
+              onClick={onAcquireLock}
+              disabled={isAcquiringLock}
+              size="sm"
+              className="text-xs"
+            >
+              {isAcquiringLock ? 'Acquiring...' : 'Start Editing'}
+            </Button>
+          )}
         </div>
 
         <div className="flex items-center gap-2">
@@ -143,17 +159,23 @@ export function EditorMain({
               <Textarea
                 value={displayContent}
                 onChange={(e) => canEdit ? onContentChange(e.target.value) : undefined}
-                placeholder={isLockedByOther ? `This file is being edited by ${lockedBy}...` : "Start typing your content here..."}
-                disabled={isLockedByOther}
+                placeholder={
+                  isLockedByOther 
+                    ? `This file is being edited by ${lockedBy}...` 
+                    : isViewOnly 
+                      ? "Click 'Start Editing' to begin editing this file..."
+                      : "Start typing your content here..."
+                }
+                disabled={!canEdit}
                 className={`h-full resize-none border-0 rounded-none focus:ring-0 font-mono text-sm leading-relaxed ${
-                  isLockedByOther ? 'bg-muted/50 cursor-not-allowed opacity-60' : ''
+                  !canEdit ? 'bg-muted/50 cursor-not-allowed opacity-60' : ''
                 }`}
                 style={{ 
                   minHeight: '100%',
                   fontFamily: '"JetBrains Mono", "Fira Code", monospace'
                 }}
               />
-              {isLockedByOther && (
+              {!canEdit && (
                 <div className="absolute inset-0 bg-transparent cursor-not-allowed" />
               )}
             </div>

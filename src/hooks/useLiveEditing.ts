@@ -32,7 +32,7 @@ export function useLiveEditing(filePath?: string) {
     }
   }, []);
 
-  // Acquire lock on a file
+  // Acquire lock on a file - only when user explicitly starts editing
   const acquireLock = useCallback(async (filePathToLock: string) => {
     if (!user?.id) return false;
     
@@ -48,14 +48,16 @@ export function useLiveEditing(filePath?: string) {
       if (data) {
         setIsLocked(true);
         setLockedBy('You');
+        toast.success('Editing mode activated');
         return true;
       } else {
         setIsLocked(false);
-        setLockedBy('Another user');
+        toast.error('File is being edited by another user');
         return false;
       }
     } catch (error) {
       console.error('Error acquiring lock:', error);
+      toast.error('Failed to acquire edit lock');
       return false;
     } finally {
       setIsAcquiringLock(false);
@@ -76,6 +78,7 @@ export function useLiveEditing(filePath?: string) {
       
       setIsLocked(false);
       setLockedBy(null);
+      toast.success('Edit lock released');
     } catch (error) {
       console.error('Error releasing lock:', error);
     }
@@ -127,14 +130,14 @@ export function useLiveEditing(filePath?: string) {
     }
   }, []);
 
-  // Check if current user has lock on file
+  // Check if current user has lock on file and get current status
   const checkLockStatus = useCallback(async (filePathToCheck: string) => {
     if (!user?.id) return;
     
     try {
       const { data, error } = await supabase
         .from('live_editing_sessions')
-        .select('locked_by, locked_at')
+        .select('locked_by, locked_at, content')
         .eq('file_path', filePathToCheck)
         .maybeSingle();
       
@@ -144,9 +147,18 @@ export function useLiveEditing(filePath?: string) {
         const isLockedByCurrentUser = data.locked_by === user.id;
         setIsLocked(isLockedByCurrentUser);
         setLockedBy(isLockedByCurrentUser ? 'You' : 'Another user');
+        
+        // If locked by another user and has content, update live content
+        if (!isLockedByCurrentUser && data.content) {
+          setLiveContent(data.content);
+        }
       } else {
         setIsLocked(false);
         setLockedBy(null);
+        // Still load content if it exists
+        if (data && data.content) {
+          setLiveContent(data.content);
+        }
       }
     } catch (error) {
       console.error('Error checking lock status:', error);
@@ -172,16 +184,26 @@ export function useLiveEditing(filePath?: string) {
           
           // Handle real-time content updates for the current file
           if (filePath && payload.new && payload.new.file_path === filePath) {
+            const newData = payload.new as any;
+            
             // If someone else acquired a lock on the current file, update status
-            if (payload.new.locked_by && payload.new.locked_by !== user?.id) {
+            if (newData.locked_by && newData.locked_by !== user?.id) {
               setIsLocked(false);
               setLockedBy('Another user');
+              console.log('Another user acquired lock on current file');
+            }
+            
+            // If someone else released a lock on the current file
+            if (payload.eventType === 'UPDATE' && !newData.locked_by) {
+              setIsLocked(false);
+              setLockedBy(null);
+              console.log('Lock released on current file');
             }
             
             // If content was updated and we don't have the lock, update our view
-            if (payload.new.content && payload.new.locked_by !== user?.id) {
+            if (newData.content && newData.locked_by !== user?.id) {
               console.log('Received live content update from another user');
-              setLiveContent(payload.new.content);
+              setLiveContent(newData.content);
             }
           }
         }
@@ -198,6 +220,11 @@ export function useLiveEditing(filePath?: string) {
     if (filePath) {
       checkLockStatus(filePath);
       loadLiveContent(filePath);
+    } else {
+      // Reset state when no file is selected
+      setIsLocked(false);
+      setLockedBy(null);
+      setLiveContent('');
     }
   }, [filePath, checkLockStatus, loadLiveContent]);
 
