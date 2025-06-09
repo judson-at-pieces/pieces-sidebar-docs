@@ -1,6 +1,6 @@
 
 import React, { useEffect } from 'react';
-import { FileText, MoreHorizontal, Copy, Trash2, Eye, Lock } from 'lucide-react';
+import { FileText, MoreHorizontal, Copy, Trash2, Eye, Lock, Edit3 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
@@ -66,6 +66,28 @@ export function EditorMain({
 
   return (
     <div className="h-full flex flex-col bg-background">
+      {/* Prominent Live Editing Banner */}
+      {isLockedByOther && (
+        <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 border-b shadow-lg">
+          <div className="flex items-center justify-center gap-3">
+            <div className="flex items-center gap-2">
+              <Edit3 className="h-5 w-5 animate-pulse" />
+              <span className="font-semibold text-lg">
+                {lockedBy} is currently editing this page
+              </span>
+            </div>
+            {liveContent && (
+              <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
+                Live Updates
+              </Badge>
+            )}
+          </div>
+          <p className="text-center text-blue-100 mt-1 text-sm">
+            {liveContent ? 'You can see their changes in real-time' : 'You can view the content but cannot make changes'}
+          </p>
+        </div>
+      )}
+
       {/* File Header with Live Editing Status */}
       <div className="flex items-center justify-between p-4 border-b border-border/50 bg-muted/20">
         <div className="flex items-center gap-3">
@@ -76,22 +98,9 @@ export function EditorMain({
             </h2>
           </div>
           
-          {isLockedByOther && (
-            <div className="flex items-center gap-2">
-              <Lock className="h-4 w-4 text-red-500" />
-              <Badge variant="destructive" className="text-xs">
-                Locked by {lockedBy}
-              </Badge>
-              {liveContent && (
-                <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
-                  Live View
-                </Badge>
-              )}
-            </div>
-          )}
-          
           {canEdit && (
             <Badge variant="default" className="text-xs">
+              <Edit3 className="h-3 w-3 mr-1" />
               Editing
             </Badge>
           )}
@@ -124,19 +133,6 @@ export function EditorMain({
           </DropdownMenu>
         </div>
       </div>
-
-      {/* Locked by Another User Warning */}
-      {isLockedByOther && (
-        <div className="p-4 bg-blue-50 border-b border-blue-200 dark:bg-blue-950/20 dark:border-blue-800">
-          <div className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
-            <Lock className="h-4 w-4" />
-            <p className="text-sm font-medium">
-              This file is currently being edited by {lockedBy}. 
-              {liveContent ? ' You can see their changes in real-time.' : ' You can view the content but cannot make changes until they finish editing.'}
-            </p>
-          </div>
-        </div>
-      )}
 
       {/* Split View */}
       <ResizablePanelGroup direction="horizontal" className="flex-1">
