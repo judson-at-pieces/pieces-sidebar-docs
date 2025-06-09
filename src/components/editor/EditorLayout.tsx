@@ -175,6 +175,21 @@ Start editing to see the live preview!
     }
   };
 
+  // Helper function to convert editor file path to original content path
+  const getOriginalFilePath = (editorFilePath: string): string => {
+    // Remove leading slashes
+    let cleanPath = editorFilePath.replace(/^\/+/, '');
+    
+    // Ensure it has .md extension
+    if (!cleanPath.endsWith('.md')) {
+      cleanPath = `${cleanPath}.md`;
+    }
+    
+    // The original file structure should be preserved as public/content/{path}
+    // But for GitHub, we want just the content/{path} structure
+    return `public/content/${cleanPath}`;
+  };
+
   const handleCreatePR = async () => {
     if (!selectedFile || !hasChanges) {
       toast.error('No changes to create a pull request for');
@@ -194,7 +209,11 @@ Start editing to see the live preview!
         return;
       }
 
-      // Create PR with the current file changes
+      // Convert the editor file path to the original file path structure
+      const originalFilePath = getOriginalFilePath(selectedFile);
+      console.log('Converting file path:', selectedFile, '->', originalFilePath);
+
+      // Create PR with the current file changes using the original path structure
       const fileName = selectedFile.split('/').pop() || selectedFile;
       const result = await githubService.createPullRequest(
         {
@@ -202,7 +221,7 @@ Start editing to see the live preview!
           body: `Updated content for ${selectedFile}\n\nThis pull request was created from the editor.`,
           files: [
             {
-              path: selectedFile.endsWith('.md') ? selectedFile : `${selectedFile}.md`,
+              path: originalFilePath,
               content: content
             }
           ]
