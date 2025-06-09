@@ -1,15 +1,23 @@
 
 import React from 'react';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { FileText, Navigation, Search, Lock, Unlock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Navigation, FileText, Search, Edit3 } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { PullRequestButton } from './PullRequestButton';
+
+interface Branch {
+  name: string;
+  sha: string;
+  isDefault: boolean;
+}
 
 interface EditorTabNavigationProps {
   activeTab: 'navigation' | 'content' | 'seo';
   setActiveTab: (tab: 'navigation' | 'content' | 'seo') => void;
   selectedFile?: string;
   isLocked: boolean;
-  lockedBy: string | null;
+  lockedBy: string;
   isAcquiringLock: boolean;
   onAcquireLock: () => void;
   totalLiveFiles: number;
@@ -17,6 +25,7 @@ interface EditorTabNavigationProps {
   sessions: Array<{ file_path: string; content: string }>;
   hasChanges: boolean;
   initialized: boolean;
+  branches: Branch[];
 }
 
 const DEBUG_TAB_NAV = true;
@@ -33,8 +42,10 @@ export function EditorTabNavigation({
   currentBranch,
   sessions,
   hasChanges,
-  initialized
+  initialized,
+  branches
 }: EditorTabNavigationProps) {
+  
   if (DEBUG_TAB_NAV) {
     console.log('🟡 EDITOR TAB NAV RENDER');
     console.log('🟡 TAB NAV RECEIVED PROPS:');
@@ -42,82 +53,87 @@ export function EditorTabNavigation({
     console.log('  🟡 initialized:', initialized);
     console.log('  🟡 hasChanges:', hasChanges);
     console.log('  🟡 sessions count:', sessions.length);
+    console.log('  🟡 branches count:', branches.length);
+  }
+
+  const canEdit = isLocked && lockedBy === 'You';
+  const isOtherUserEditing = isLocked && lockedBy !== 'You';
+
+  if (DEBUG_TAB_NAV) {
     console.log('🟡 TAB NAV PASSING TO PR BUTTON:');
-    console.log('  🟡 currentBranch:', JSON.stringify(currentBranch));
+    console.log('  🟡 currentBranch:', currentBranch);
     console.log('  🟡 sessions:', sessions);
     console.log('  🟡 hasChanges:', hasChanges);
     console.log('  🟡 initialized:', initialized);
+    console.log('  🟡 branches:', branches);
   }
 
   return (
-    <div className="border-b border-border/50 px-6 py-4 bg-background/95 backdrop-blur-sm">
-      <div className="flex items-center justify-between">
-        <div className="flex space-x-1 bg-muted/30 p-1 rounded-lg">
-          <Button
-            onClick={() => setActiveTab('navigation')}
-            variant={activeTab === 'navigation' ? 'default' : 'ghost'}
-            size="sm"
-            className="gap-2 transition-all duration-200"
-          >
-            <Navigation className="h-4 w-4" />
-            Navigation
-          </Button>
-          <Button
-            onClick={() => setActiveTab('content')}
-            variant={activeTab === 'content' ? 'default' : 'ghost'}
-            size="sm"
-            className="gap-2 transition-all duration-200"
-          >
-            <FileText className="h-4 w-4" />
-            Content
-          </Button>
-          <Button
-            onClick={() => setActiveTab('seo')}
-            variant={activeTab === 'seo' ? 'default' : 'ghost'}
-            size="sm"
-            className="gap-2 transition-all duration-200"
-          >
-            <Search className="h-4 w-4" />
-            SEO
-          </Button>
-        </div>
-        
+    <div className="border-b border-border/50 bg-background/80 backdrop-blur-sm">
+      <div className="flex items-center justify-between px-6 py-3">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
+          <TabsList className="grid w-fit grid-cols-3 bg-muted/50">
+            <TabsTrigger value="content" className="flex items-center gap-2 px-4">
+              <FileText className="h-4 w-4" />
+              Content
+              {totalLiveFiles > 0 && (
+                <Badge variant="secondary" className="ml-1 h-5 text-xs">
+                  {totalLiveFiles}
+                </Badge>
+              )}
+            </TabsTrigger>
+            <TabsTrigger value="navigation" className="flex items-center gap-2 px-4">
+              <Navigation className="h-4 w-4" />
+              Navigation
+            </TabsTrigger>
+            <TabsTrigger value="seo" className="flex items-center gap-2 px-4">
+              <Search className="h-4 w-4" />
+              SEO
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
+
         <div className="flex items-center gap-3">
-          {activeTab === 'content' && (
-            <>
-              {selectedFile && isLocked && lockedBy !== 'You' && !isAcquiringLock && (
+          {/* Lock Status for Content Tab */}
+          {activeTab === 'content' && selectedFile && (
+            <div className="flex items-center gap-2">
+              {isOtherUserEditing ? (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-red-50 border border-red-200 rounded-lg">
+                  <Lock className="h-4 w-4 text-red-600" />
+                  <span className="text-sm text-red-700">Locked by {lockedBy}</span>
+                </div>
+              ) : canEdit ? (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-green-50 border border-green-200 rounded-lg">
+                  <Unlock className="h-4 w-4 text-green-600" />
+                  <span className="text-sm text-green-700">You have edit access</span>
+                </div>
+              ) : (
                 <Button
                   onClick={onAcquireLock}
+                  disabled={isAcquiringLock}
                   variant="outline"
                   size="sm"
-                  className="flex items-center gap-2"
+                  className="gap-2"
                 >
-                  <Edit3 className="w-4 h-4" />
-                  Take Control
+                  {isAcquiringLock ? (
+                    <div className="w-4 h-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                  ) : (
+                    <Lock className="h-4 w-4" />
+                  )}
+                  {isAcquiringLock ? 'Acquiring...' : 'Start Editing'}
                 </Button>
               )}
-
-              {totalLiveFiles > 0 && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
-                  {totalLiveFiles} file{totalLiveFiles !== 1 ? 's' : ''} with live changes on {currentBranch || 'main'}
-                </div>
-              )}
-              
-              {DEBUG_TAB_NAV && (
-                <div className="text-xs text-red-500 bg-red-50 px-2 py-1 rounded">
-                  DEBUG: Passing currentBranch="{currentBranch}" to PR Button
-                </div>
-              )}
-              
-              <PullRequestButton
-                currentBranch={currentBranch}
-                sessions={sessions}
-                hasChanges={hasChanges}
-                initialized={initialized}
-              />
-            </>
+            </div>
           )}
+
+          {/* Pull Request Button */}
+          <PullRequestButton
+            currentBranch={currentBranch}
+            sessions={sessions}
+            hasChanges={hasChanges}
+            initialized={initialized}
+            branches={branches}
+          />
         </div>
       </div>
     </div>

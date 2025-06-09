@@ -1,24 +1,28 @@
-
 import React, { useState, useEffect } from 'react';
 import { GitPullRequest } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { githubService } from '@/services/githubService';
 import { supabase } from '@/integrations/supabase/client';
-import { useBranches } from '@/hooks/useBranches';
+
+interface Branch {
+  name: string;
+  sha: string;
+  isDefault: boolean;
+}
 
 interface PullRequestButtonProps {
   currentBranch: string;
   sessions: Array<{ file_path: string; content: string }>;
   hasChanges: boolean;
   initialized: boolean;
+  branches: Branch[];
 }
 
 const DEBUG_PR_BUTTON = true;
 
-export function PullRequestButton({ currentBranch, sessions, hasChanges, initialized }: PullRequestButtonProps) {
+export function PullRequestButton({ currentBranch, sessions, hasChanges, initialized, branches }: PullRequestButtonProps) {
   const [creating, setCreating] = useState(false);
-  const { branches } = useBranches();
   const [buttonState, setButtonState] = useState({
     text: 'Loading...',
     enabled: false,

@@ -16,7 +16,7 @@ const DEBUG_EDITOR_LAYOUT = true;
 
 export function EditorLayout() {
   const { fileStructure, isLoading, error, refetch } = useFileStructure();
-  const { currentBranch, initialized } = useBranches();
+  const { currentBranch, initialized, branches } = useBranches();
 
   const [selectedFile, setSelectedFile] = useState<string>();
   const [content, setContent] = useState("");
@@ -29,6 +29,7 @@ export function EditorLayout() {
     console.log('🟠 EDITOR LAYOUT RECEIVED FROM USEBRANCHES:');
     console.log('  🟠 currentBranch:', JSON.stringify(currentBranch), 'type:', typeof currentBranch);
     console.log('  🟠 initialized:', initialized);
+    console.log('  🟠 branches count:', branches.length);
   }
 
   // Live editing hook
@@ -267,6 +268,7 @@ Start editing to see the live preview!
     console.log('  🟠 initialized:', initialized);
     console.log('  🟠 sessionsWithContent.length:', sessionsWithContent.length);
     console.log('  🟠 hasChanges:', hasChanges);
+    console.log('  🟠 branches count:', branches.length);
   }
 
   return (
@@ -292,6 +294,7 @@ Start editing to see the live preview!
             sessions={sessionsWithContent}
             hasChanges={hasChanges}
             initialized={initialized}
+            branches={branches}
           />
           
           {/* Tab Content */}
