@@ -14,7 +14,7 @@ import {
   CustomTableHead, 
   CustomTableCell 
 } from '@/components/markdown/CustomTable';
-import {jsx as _jsx} from "react/jsx-runtime";
+import {jsx as _jsx, jsxs as _jsxs} from "react/jsx-runtime";
 
 export interface MDX_cli_copilot_chatProps {
   components?: Record<string, React.ComponentType<any>>;
@@ -29,14 +29,24 @@ export const frontmatter = {
 // MDX compiled content
 function _createMdxContent(props: MDX_cli_copilot_chatProps) {
   const _components = {
-    div: "div",
+    h2: "h2",
+    p: "p",
     ...props.components
   };
-  return _jsx(_components.div, {});
+  return _jsxs(_components.div, {
+    children: [
+      _jsx(_components.h2, {
+        children: "Accessing Copilot Chat in your Terminal"
+      }),
+      _jsx(_components.p, {
+        children: "Content for CLI copilot chat documentation."
+      })
+    ]
+  });
 }
 
 function MDXContent(props: MDX_cli_copilot_chatProps = {}) {
-  const {wrapper: MDXLayout} = props.components || ({});
+  const {wrapper: MDXLayout} = props.components || ({} as any);
   return MDXLayout ? _jsx(MDXLayout, {
     ...props,
     children: _jsx(_createMdxContent, {
@@ -72,6 +82,7 @@ export default function MDX_cli_copilot_chat({ components = {} }: MDX_cli_copilo
     blockquote: ({ children, ...props }: any) => <blockquote className="mt-6 border-l-2 pl-6 italic" {...props}>{children}</blockquote>,
     p: ({ children, ...props }: any) => <p className="leading-7 [&:not(:first-child)]:mt-6" {...props}>{children}</p>,
     hr: ({ ...props }: any) => <hr className="my-4 md:my-8" {...props} />,
+    div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
     ExpandableImage,
     Callout,
     Steps,

@@ -18,7 +18,7 @@ import { toast } from "sonner";
 import { BranchSelector } from "./BranchSelector";
 import { useBranches } from "@/hooks/useBranches";
 
-// Debug toggle - set to false to reduce console noise
+// Debug toggles - set to false to reduce console noise
 const DEBUG_MARKDOWN = false;
 const DEBUG_PR_BUTTON = true;
 
@@ -52,49 +52,93 @@ export function EditorLayout() {
   // SEO data for the current file
   const { pendingChanges, hasUnsavedChanges } = useSeoData(selectedFile);
 
-  // PR Button State Calculations with extensive debugging
-  const targetBranch = 'main';
-  const sourceBranch = currentBranch;
-  const sessionsWithContent = sessions.filter(s => s.content && s.content.trim());
-  const totalLiveFiles = sessionsWithContent.length;
-  const hasAnyChanges = hasChanges || totalLiveFiles > 0;
-  
-  // PR button logic with detailed debugging
-  const canCreatePR = initialized && 
-                      sourceBranch && 
-                      sourceBranch !== 'main' && 
-                      hasAnyChanges && 
-                      !creatingPR;
+  // COMPLETELY REDONE PR BUTTON LOGIC
+  const [prButtonState, setPrButtonState] = useState({
+    text: 'Loading...',
+    enabled: false,
+    tooltip: 'Loading...'
+  });
 
-  if (DEBUG_PR_BUTTON) {
-    console.log('=================== PR BUTTON DEBUG ===================');
-    console.log('🌿 Branch Info:');
-    console.log('  currentBranch:', currentBranch);
-    console.log('  sourceBranch:', sourceBranch);
-    console.log('  targetBranch:', targetBranch);
-    console.log('  initialized:', initialized);
-    console.log('  branches:', branches);
-    
-    console.log('📁 Content Info:');
-    console.log('  sessions.length:', sessions.length);
-    console.log('  sessionsWithContent.length:', sessionsWithContent.length);
-    console.log('  totalLiveFiles:', totalLiveFiles);
-    console.log('  hasChanges:', hasChanges);
-    console.log('  hasAnyChanges:', hasAnyChanges);
-    
-    console.log('🎯 PR Button State:');
-    console.log('  canCreatePR:', canCreatePR);
-    console.log('  creatingPR:', creatingPR);
-    console.log('  PR Button Text Should Be:', `${sourceBranch || 'main'} → ${targetBranch} ${totalLiveFiles > 0 ? `(${totalLiveFiles})` : ''}`);
-    
-    console.log('🔍 Detailed Conditions:');
-    console.log('  initialized?', initialized);
-    console.log('  sourceBranch exists?', !!sourceBranch);
-    console.log('  sourceBranch !== main?', sourceBranch !== 'main');
-    console.log('  hasAnyChanges?', hasAnyChanges);
-    console.log('  !creatingPR?', !creatingPR);
-    console.log('====================================================');
-  }
+  // Calculate PR button state whenever dependencies change
+  useEffect(() => {
+    if (DEBUG_PR_BUTTON) {
+      console.log('🔄 RECALCULATING PR BUTTON STATE');
+      console.log('  initialized:', initialized);
+      console.log('  currentBranch:', currentBranch);
+      console.log('  sessions:', sessions);
+      console.log('  hasChanges:', hasChanges);
+      console.log('  creatingPR:', creatingPR);
+    }
+
+    if (!initialized) {
+      setPrButtonState({
+        text: 'Loading branches...',
+        enabled: false,
+        tooltip: 'Loading branches...'
+      });
+      return;
+    }
+
+    if (!currentBranch) {
+      setPrButtonState({
+        text: 'No branch selected',
+        enabled: false,
+        tooltip: 'No branch selected'
+      });
+      return;
+    }
+
+    if (currentBranch === 'main') {
+      setPrButtonState({
+        text: `${currentBranch} → main`,
+        enabled: false,
+        tooltip: 'Cannot create PR from main branch to main branch'
+      });
+      return;
+    }
+
+    // Count sessions with actual content
+    const sessionsWithContent = sessions.filter(s => s.content && s.content.trim());
+    const totalLiveFiles = sessionsWithContent.length;
+    const hasAnyChanges = hasChanges || totalLiveFiles > 0;
+
+    const targetBranch = 'main';
+    const buttonText = `${currentBranch} → ${targetBranch}${totalLiveFiles > 0 ? ` (${totalLiveFiles})` : ''}`;
+
+    if (creatingPR) {
+      setPrButtonState({
+        text: 'Creating PR...',
+        enabled: false,
+        tooltip: 'Creating pull request...'
+      });
+      return;
+    }
+
+    if (!hasAnyChanges) {
+      setPrButtonState({
+        text: buttonText,
+        enabled: false,
+        tooltip: `No changes to create PR for. Current: ${currentBranch} → ${targetBranch}`
+      });
+      return;
+    }
+
+    // All conditions met - enable the button
+    setPrButtonState({
+      text: buttonText,
+      enabled: true,
+      tooltip: `Create pull request from ${currentBranch} to ${targetBranch} with ${totalLiveFiles} file${totalLiveFiles !== 1 ? 's' : ''}`
+    });
+
+    if (DEBUG_PR_BUTTON) {
+      console.log('✅ PR BUTTON STATE CALCULATED:');
+      console.log('  text:', buttonText);
+      console.log('  enabled:', true);
+      console.log('  totalLiveFiles:', totalLiveFiles);
+      console.log('  hasAnyChanges:', hasAnyChanges);
+    }
+
+  }, [initialized, currentBranch, sessions, hasChanges, creatingPR]);
 
   // Clear local state when branch changes
   useEffect(() => {
@@ -320,7 +364,7 @@ Start editing to see the live preview!
     const allContent: { path: string; content: string }[] = [];
     
     if (DEBUG_PR_BUTTON) {
-      console.log('🗂️ Collecting live content from', sessions.length, 'sessions for branch:', sourceBranch);
+      console.log('🗂️ Collecting live content from', sessions.length, 'sessions for branch:', currentBranch);
     }
     
     for (const session of sessions) {
@@ -356,29 +400,31 @@ Start editing to see the live preview!
     }
     
     if (DEBUG_PR_BUTTON) {
-      console.log('📊 Total live content collected:', allContent.length, 'files from branch:', sourceBranch);
+      console.log('📊 Total live content collected:', allContent.length, 'files from branch:', currentBranch);
     }
     return allContent;
   };
 
   const handleCreatePR = async () => {
     if (DEBUG_PR_BUTTON) {
-      console.log('🚀 handleCreatePR called');
-      console.log('  sourceBranch:', sourceBranch);
-      console.log('  canCreatePR:', canCreatePR);
+      console.log('🚀 PR BUTTON CLICKED');
+      console.log('  currentBranch:', currentBranch);
+      console.log('  prButtonState.enabled:', prButtonState.enabled);
     }
 
-    if (!sourceBranch || !canCreatePR) {
+    if (!currentBranch || !prButtonState.enabled) {
       if (DEBUG_PR_BUTTON) {
         console.log('❌ Cannot create PR - conditions not met');
-        console.log('  sourceBranch:', sourceBranch);
-        console.log('  canCreatePR:', canCreatePR);
+        console.log('  currentBranch:', currentBranch);
+        console.log('  prButtonState.enabled:', prButtonState.enabled);
       }
       return;
     }
 
+    const targetBranch = 'main';
+    
     if (DEBUG_PR_BUTTON) {
-      console.log('✅ Creating PR FROM branch:', sourceBranch, 'TO branch:', targetBranch);
+      console.log('✅ Creating PR FROM branch:', currentBranch, 'TO branch:', targetBranch);
     }
     
     setCreatingPR(true);
@@ -407,14 +453,14 @@ Start editing to see the live preview!
       // Create PR using existing branch
       const result = await githubService.createPullRequest(
         {
-          title: `Update documentation from ${sourceBranch} - ${allLiveContent.length} file${allLiveContent.length !== 1 ? 's' : ''} modified`,
-          body: `Updated documentation files from branch "${sourceBranch}" to ${targetBranch}:\n${allLiveContent.map(item => `- ${item.path}`).join('\n')}\n\nThis pull request was created from the collaborative editor.`,
+          title: `Update documentation from ${currentBranch} - ${allLiveContent.length} file${allLiveContent.length !== 1 ? 's' : ''} modified`,
+          body: `Updated documentation files from branch "${currentBranch}" to ${targetBranch}:\n${allLiveContent.map(item => `- ${item.path}`).join('\n')}\n\nThis pull request was created from the collaborative editor.`,
           files: allLiveContent.map(item => ({
             path: item.path,
             content: item.content
           })),
           baseBranch: targetBranch, // TARGET branch (main)
-          headBranch: sourceBranch, // SOURCE branch (current working branch)
+          headBranch: currentBranch, // SOURCE branch (current working branch)
           useExistingBranch: true // Use existing branch instead of creating temporary one
         },
         token,
@@ -422,7 +468,7 @@ Start editing to see the live preview!
       );
 
       if (result.success) {
-        toast.success(`Pull request created successfully from "${sourceBranch}" to ${targetBranch}!`, {
+        toast.success(`Pull request created successfully from "${currentBranch}" to ${targetBranch}!`, {
           action: {
             label: 'View PR',
             onClick: () => window.open(result.prUrl, '_blank')
@@ -432,12 +478,12 @@ Start editing to see the live preview!
         // Clear all live editing sessions for current branch after successful PR
         try {
           if (DEBUG_PR_BUTTON) {
-            console.log('🧹 Clearing live editing sessions for branch:', sourceBranch);
+            console.log('🧹 Clearing live editing sessions for branch:', currentBranch);
           }
           const { error } = await supabase
             .from('live_editing_sessions')
             .delete()
-            .eq('branch_name', sourceBranch)
+            .eq('branch_name', currentBranch)
             .in('file_path', sessions.map(s => s.file_path));
           
           if (!error) {
@@ -496,6 +542,9 @@ Start editing to see the live preview!
     );
   }
 
+  const sessionsWithContent = sessions.filter(s => s.content && s.content.trim());
+  const totalLiveFiles = sessionsWithContent.length;
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
       {/* Enhanced Header */}
@@ -525,7 +574,7 @@ Start editing to see the live preview!
               <Button variant="ghost" size="sm" className="gap-2 hover:bg-muted/50 transition-colors relative">
                 <Home className="h-4 w-4" />
                 Home
-                {hasAnyChanges && (
+                {(hasChanges || totalLiveFiles > 0) && (
                   <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full border-2 border-background"></div>
                 )}
               </Button>
@@ -596,36 +645,25 @@ Start editing to see the live preview!
                     {totalLiveFiles > 0 && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
-                        {totalLiveFiles} file{totalLiveFiles !== 1 ? 's' : ''} with live changes on {sourceBranch || 'main'}
+                        {totalLiveFiles} file{totalLiveFiles !== 1 ? 's' : ''} with live changes on {currentBranch || 'main'}
                       </div>
                     )}
                     
+                    {/* COMPLETELY REDONE PR BUTTON */}
                     <Button
                       onClick={handleCreatePR}
                       variant="outline"
                       size="sm"
-                      disabled={!canCreatePR}
+                      disabled={!prButtonState.enabled}
                       className="flex items-center gap-2"
-                      title={
-                        !initialized
-                          ? "Loading branches..."
-                          : !sourceBranch
-                            ? "No branch selected"
-                            : sourceBranch === 'main'
-                              ? "Cannot create PR from main branch"
-                              : !hasAnyChanges 
-                                ? "No changes to create PR for" 
-                                : creatingPR 
-                                  ? "Creating PR..." 
-                                  : `Create pull request from ${sourceBranch} to ${targetBranch} with ${totalLiveFiles} file${totalLiveFiles !== 1 ? 's' : ''}`
-                      }
+                      title={prButtonState.tooltip}
                     >
                       {creatingPR ? (
                         <div className="w-4 h-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
                       ) : (
                         <GitPullRequest className="w-4 h-4" />
                       )}
-                      PR: {sourceBranch || 'main'} → {targetBranch} {totalLiveFiles > 0 && `(${totalLiveFiles})`}
+                      PR: {prButtonState.text}
                     </Button>
                   </>
                 )}
