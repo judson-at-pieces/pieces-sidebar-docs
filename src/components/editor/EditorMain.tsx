@@ -1,14 +1,13 @@
 
 import React from 'react';
-import { EnhancedEditor } from './EnhancedEditor';
-import { FileText, MoreHorizontal, Copy, Trash2, Lock, Edit, Eye } from 'lucide-react';
+import { FileText, MoreHorizontal, Copy, Trash2, Eye } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { MarkdownRenderer } from '@/components/MarkdownRenderer';
+import HashnodeMarkdownRenderer from '@/components/HashnodeMarkdownRenderer';
 
 interface EditorMainProps {
   selectedFile?: string;
@@ -31,8 +30,6 @@ export function EditorMain({
   isLocked = false,
   lockedBy = null
 }: EditorMainProps) {
-  const isReadOnly = !isLocked;
-
   if (!selectedFile) {
     return (
       <div className="h-full flex items-center justify-center bg-gradient-to-br from-background to-muted/10">
@@ -63,16 +60,8 @@ export function EditorMain({
             </h2>
           </div>
           
-          {isReadOnly && (
-            <Badge variant="outline" className="text-xs">
-              <Lock className="h-3 w-3 mr-1" />
-              Read Only
-            </Badge>
-          )}
-          
-          {isLocked && lockedBy === 'You' && (
+          {isLocked && lockedBy && (
             <Badge variant="default" className="text-xs">
-              <Edit className="h-3 w-3 mr-1" />
               Editing
             </Badge>
           )}
@@ -106,17 +95,6 @@ export function EditorMain({
         </div>
       </div>
 
-      {isReadOnly && (
-        <div className="px-4 py-2 bg-muted/30 border-b border-border/50">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Lock className="h-4 w-4" />
-            <span>
-              This file is read-only. {lockedBy && lockedBy !== 'You' ? `${lockedBy} is currently editing this file.` : 'Click "Start Editing" to begin collaborative editing.'}
-            </span>
-          </div>
-        </div>
-      )}
-
       {/* Split View */}
       <ResizablePanelGroup direction="horizontal" className="flex-1">
         {/* Editor Panel */}
@@ -126,13 +104,12 @@ export function EditorMain({
               <Textarea
                 value={content}
                 onChange={(e) => onContentChange(e.target.value)}
-                placeholder={isReadOnly ? "Content is read-only..." : "Start typing your content here..."}
+                placeholder="Start typing your content here..."
                 className="h-full resize-none border-0 rounded-none focus:ring-0 font-mono text-sm leading-relaxed"
                 style={{ 
                   minHeight: '100%',
                   fontFamily: '"JetBrains Mono", "Fira Code", monospace'
                 }}
-                readOnly={isReadOnly}
               />
             </div>
           </div>
@@ -152,7 +129,14 @@ export function EditorMain({
             
             <ScrollArea className="h-[calc(100%-57px)]">
               <div className="p-6">
-                <MarkdownRenderer content={content} />
+                {/* Use the same renderer as the actual docs */}
+                {content.includes('***') ? (
+                  <HashnodeMarkdownRenderer content={content} />
+                ) : (
+                  <div className="hn-markdown-renderer">
+                    <HashnodeMarkdownRenderer content={content} />
+                  </div>
+                )}
               </div>
             </ScrollArea>
           </div>

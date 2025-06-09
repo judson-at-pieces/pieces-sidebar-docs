@@ -47,16 +47,15 @@ export function useLiveEditing(filePath?: string) {
       
       if (data) {
         setIsLocked(true);
-        setLockedBy(user.email || 'You');
-        toast.success('File locked for editing');
+        setLockedBy('You');
         return true;
       } else {
-        toast.error('File is currently being edited by another user');
+        setIsLocked(false);
+        setLockedBy('Another user');
         return false;
       }
     } catch (error) {
       console.error('Error acquiring lock:', error);
-      toast.error('Failed to acquire file lock');
       return false;
     } finally {
       setIsAcquiringLock(false);
@@ -77,10 +76,8 @@ export function useLiveEditing(filePath?: string) {
       
       setIsLocked(false);
       setLockedBy(null);
-      toast.success('File unlocked');
     } catch (error) {
       console.error('Error releasing lock:', error);
-      toast.error('Failed to release file lock');
     }
   }, [user]);
 
@@ -178,7 +175,6 @@ export function useLiveEditing(filePath?: string) {
             if (payload.new.locked_by && payload.new.locked_by !== user?.id) {
               setIsLocked(false);
               setLockedBy('Another user');
-              toast.info('File is now being edited by another user');
             }
           }
         }

@@ -1,7 +1,7 @@
 
 import React, { useState } from 'react';
 import { FileNode } from '@/hooks/useFileStructure';
-import { FileText, Folder, ChevronDown, ChevronRight } from 'lucide-react';
+import { FileText, Folder, FolderOpen, ChevronDown, ChevronRight } from 'lucide-react';
 
 interface LiveSession {
   file_path: string;
@@ -29,7 +29,7 @@ export function FileTreeSidebar({
   pendingChanges = [],
   liveSessions = []
 }: FileTreeSidebarProps) {
-  const [expandedDirs, setExpandedDirs] = useState(new Set<string>());
+  const [expandedDirs, setExpandedDirs] = useState(new Set<string>(['', '/'])); // Start with root expanded
   const [searchTerm, setSearchTerm] = useState('');
 
   const toggleDirectory = (dirPath: string) => {
@@ -59,7 +59,15 @@ export function FileTreeSidebar({
     
     // Filter out nodes that don't match the search term
     if (searchTerm && !node.name.toLowerCase().includes(searchTerm.toLowerCase())) {
-      return null;
+      // Check if any children match
+      if (node.type === 'directory' && node.children) {
+        const hasMatchingChildren = node.children.some(child => 
+          child.name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        if (!hasMatchingChildren) return null;
+      } else {
+        return null;
+      }
     }
 
     if (node.type === 'directory') {
@@ -69,7 +77,7 @@ export function FileTreeSidebar({
         <div key={node.path}>
           <div
             className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all duration-200 group ${
-              level > 0 ? 'ml-4' : ''
+              level > 0 ? `ml-${level * 4}` : ''
             } hover:bg-muted/50`}
             onClick={() => toggleDirectory(node.path)}
           >
@@ -78,7 +86,11 @@ export function FileTreeSidebar({
             ) : (
               <ChevronRight className="h-4 w-4 text-muted-foreground" />
             )}
-            <Folder className="h-4 w-4 text-blue-500" />
+            {isExpanded ? (
+              <FolderOpen className="h-4 w-4 text-blue-500" />
+            ) : (
+              <Folder className="h-4 w-4 text-blue-500" />
+            )}
             <span className="text-sm font-medium">{node.name}</span>
             {node.children && (
               <span className="text-xs text-muted-foreground ml-auto">
@@ -88,7 +100,7 @@ export function FileTreeSidebar({
           </div>
           
           {isExpanded && node.children && (
-            <div className="ml-2 border-l border-border/30 pl-2">
+            <div className="ml-2">
               {node.children.map((child) => renderFileNode(child, level + 1))}
             </div>
           )}
@@ -100,7 +112,7 @@ export function FileTreeSidebar({
       <div
         key={node.path}
         className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all duration-200 group ${
-          level > 0 ? 'ml-4' : ''
+          level > 0 ? `ml-${level * 4}` : ''
         } ${
           isSelected
             ? 'bg-primary/10 border border-primary/20 shadow-sm'
@@ -108,7 +120,9 @@ export function FileTreeSidebar({
         }`}
         onClick={() => onFileSelect(node.path)}
       >
-        <FileText className={`h-4 w-4 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
+        <div className="w-4 h-4 flex items-center justify-center">
+          <FileText className={`h-4 w-4 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
+        </div>
         <span className={`text-sm flex-1 truncate ${isSelected ? 'font-medium' : ''}`}>
           {node.name}
         </span>

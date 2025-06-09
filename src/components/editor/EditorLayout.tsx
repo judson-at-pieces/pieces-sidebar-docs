@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useLiveEditing } from "@/hooks/useLiveEditing";
@@ -6,7 +5,6 @@ import { NavigationEditor } from "./NavigationEditor";
 import { EditorMain } from "./EditorMain";
 import { SeoEditor } from "./SeoEditor";
 import { FileTreeSidebar } from "./FileTreeSidebar";
-import { LiveEditingIndicator } from "./LiveEditingIndicator";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/auth/UserMenu";
 import { Settings, FileText, Navigation, Home, Search, GitPullRequest } from "lucide-react";
@@ -43,6 +41,13 @@ export function EditorLayout() {
 
   // SEO data for the current file
   const { pendingChanges, hasUnsavedChanges } = useSeoData(selectedFile);
+
+  // Auto-acquire lock and start editing when file is selected
+  useEffect(() => {
+    if (selectedFile && !isLocked) {
+      acquireLock(selectedFile);
+    }
+  }, [selectedFile, isLocked, acquireLock]);
 
   // Auto-save live content
   useEffect(() => {
@@ -173,32 +178,10 @@ Start editing to see the live preview!
   };
 
   const handleContentChange = (newContent: string) => {
-    if (!isLocked) {
-      toast.error('You must acquire a lock to edit this file');
-      return;
-    }
-    
     setContent(newContent);
     setHasChanges(true);
     if (selectedFile) {
       setModifiedFiles(prev => new Set(prev).add(selectedFile));
-    }
-  };
-
-  const handleAcquireLock = async () => {
-    if (selectedFile) {
-      const success = await acquireLock(selectedFile);
-      if (success && liveContent && liveContent !== content) {
-        // Update content with latest live content
-        setContent(liveContent);
-        toast.info('Content updated with latest changes');
-      }
-    }
-  };
-
-  const handleReleaseLock = async () => {
-    if (selectedFile) {
-      await releaseLock(selectedFile);
     }
   };
 
@@ -433,9 +416,13 @@ Start editing to see the live preview!
           
           <div className="flex items-center space-x-3">
             <Link to="/">
-              <Button variant="ghost" size="sm" className="gap-2 hover:bg-muted/50 transition-colors">
+              <Button variant="ghost" size="sm" className="gap-2 hover:bg-muted/50 transition-colors relative">
                 <Home className="h-4 w-4" />
                 Home
+                {/* Orange dot for uncommitted changes */}
+                {hasAnyChanges && (
+                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full border-2 border-background"></div>
+                )}
               </Button>
             </Link>
             {hasRole('admin') && (
@@ -490,16 +477,6 @@ Start editing to see the live preview!
               <div className="flex items-center gap-3">
                 {activeTab === 'content' && (
                   <>
-                    {selectedFile && (
-                      <LiveEditingIndicator
-                        isLocked={isLocked}
-                        lockedBy={lockedBy}
-                        isAcquiringLock={isAcquiringLock}
-                        onAcquireLock={handleAcquireLock}
-                        onReleaseLock={handleReleaseLock}
-                      />
-                    )}
-                    
                     {totalLiveFiles > 0 && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>

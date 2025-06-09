@@ -7,16 +7,17 @@ import { createComponentMappings } from './markdown/componentMappings';
 
 interface MarkdownRendererProps {
   content: string;
+  components?: any;
 }
 
-const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
+const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, components }) => {
   const processedContent = processCustomSyntax(content);
-  const components = createComponentMappings();
+  const componentMappings = components || createComponentMappings();
   
   return (
     <ReactMarkdown 
       remarkPlugins={[remarkGfm]} 
-      components={components}
+      components={componentMappings}
     >
       {processedContent}
     </ReactMarkdown>
