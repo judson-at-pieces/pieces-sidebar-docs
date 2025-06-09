@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { GitPullRequest } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -30,13 +31,6 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
     targetBranch: 'main'
   });
 
-  // Force re-render when currentBranch changes by using it as a key
-  const [renderKey, setRenderKey] = useState(0);
-
-  useEffect(() => {
-    setRenderKey(prev => prev + 1);
-  }, [currentBranch]);
-
   useEffect(() => {
     if (DEBUG_PR_BUTTON) {
       console.log('🔵 PR BUTTON USEEFFECT TRIGGERED');
@@ -46,7 +40,6 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
       console.log('  🔵 sessions.length:', sessions.length);
       console.log('  🔵 hasChanges:', hasChanges);
       console.log('  🔵 creating:', creating);
-      console.log('  🔵 renderKey:', renderKey);
       console.log('  🔵 branches.length:', branches.length);
     }
 
@@ -126,14 +119,15 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
       return;
     }
 
-    const sessionsWithContent = sessions.filter(s => s.content && s.content.trim());
-    const totalLiveFiles = sessionsWithContent.length;
+    // Filter sessions to only include those from the current branch
+    const currentBranchSessions = sessions.filter(s => s.content && s.content.trim());
+    const totalLiveFiles = currentBranchSessions.length;
     const hasAnyChanges = hasChanges || totalLiveFiles > 0;
 
     if (DEBUG_PR_BUTTON) {
       console.log('🔵 PR BUTTON SESSIONS ANALYSIS:');
       console.log('  🔵 total sessions:', sessions.length);
-      console.log('  🔵 sessions with content:', sessionsWithContent.length);
+      console.log('  🔵 current branch sessions with content:', currentBranchSessions.length);
       console.log('  🔵 hasChanges:', hasChanges);
       console.log('  🔵 hasAnyChanges:', hasAnyChanges);
     }
@@ -183,7 +177,7 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
       targetBranch
     });
 
-  }, [initialized, currentBranch, sessions, hasChanges, creating, renderKey, branches]);
+  }, [initialized, currentBranch, sessions, hasChanges, creating, branches]);
 
   const getGitHubAppToken = async () => {
     try {
@@ -221,13 +215,15 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
     return `public/content/${cleanPath}`;
   };
 
-  const collectAllLiveContent = async () => {
+  const collectCurrentBranchContent = async () => {
     const allContent: { path: string; content: string }[] = [];
     
     if (DEBUG_PR_BUTTON) {
-      console.log('🗂️ Collecting live content from', sessions.length, 'sessions for branch:', currentBranch);
+      console.log('🗂️ Collecting content from current branch only:', currentBranch);
+      console.log('🗂️ Sessions provided:', sessions.length);
     }
     
+    // Only use the sessions that were passed in (these are already filtered by branch)
     for (const session of sessions) {
       if (session.content && session.content.trim()) {
         allContent.push({
@@ -241,7 +237,7 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
     }
     
     if (DEBUG_PR_BUTTON) {
-      console.log('📊 Total live content collected:', allContent.length, 'files from branch:', currentBranch);
+      console.log('📊 Total content collected from current branch:', allContent.length, 'files');
     }
     return allContent;
   };
@@ -278,7 +274,7 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
         return;
       }
 
-      const allLiveContent = await collectAllLiveContent();
+      const allLiveContent = await collectCurrentBranchContent();
       
       if (allLiveContent.length === 0) {
         toast.error('No changes to create a pull request for');
@@ -289,6 +285,10 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
         console.log('📋 Files to include in PR:', allLiveContent.map(item => item.path));
       }
 
+      // Create a temporary branch name for the PR
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const tempBranchName = `editor-changes-${currentBranch}-${timestamp}`;
+
       const result = await githubService.createPullRequest(
         {
           title: `Update documentation from ${currentBranch} - ${allLiveContent.length} file${allLiveContent.length !== 1 ? 's' : ''} modified`,
@@ -298,8 +298,8 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
             content: item.content
           })),
           baseBranch: targetBranch,
-          headBranch: currentBranch,
-          useExistingBranch: true
+          headBranch: tempBranchName,
+          useExistingBranch: false // Create a new temporary branch
         },
         token,
         repoConfig
@@ -344,12 +344,11 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
   };
 
   if (DEBUG_PR_BUTTON) {
-    console.log('🔵 PR BUTTON RENDER - KEY:', renderKey, 'CURRENT:', currentBranch, 'TARGET:', buttonState.targetBranch, 'TEXT:', buttonState.text, 'ENABLED:', buttonState.enabled);
+    console.log('🔵 PR BUTTON RENDER - CURRENT:', currentBranch, 'TARGET:', buttonState.targetBranch, 'TEXT:', buttonState.text, 'ENABLED:', buttonState.enabled);
   }
 
   return (
     <Button
-      key={renderKey}
       onClick={handleCreatePR}
       variant="outline"
       size="sm"
