@@ -54,47 +54,69 @@ export function EditorLayout() {
   // SEO data for the current file
   const { pendingChanges, hasUnsavedChanges } = useSeoData(selectedFile);
 
-  // CRITICAL: Force database session creation when branch changes
-  const ensureBranchHasLiveSession = async (branchName: string, filePath?: string) => {
-    if (!filePath || !branchName) return;
+  // Force database update when current branch changes
+  const forceUpdateDatabaseForBranch = async (branchName: string) => {
+    if (!branchName) return;
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      console.log('FORCE CREATING session for branch:', branchName, 'file:', filePath);
+      console.log('=== FORCE UPDATING DATABASE FOR BRANCH ===', branchName);
 
-      // First check if session exists
-      const { data: existingSession } = await supabase
+      // Get all sessions for this user
+      const { data: userSessions } = await supabase
         .from('live_editing_sessions')
-        .select('id')
-        .eq('file_path', filePath)
-        .eq('branch_name', branchName)
-        .maybeSingle();
+        .select('*')
+        .eq('user_id', user.id);
 
-      if (!existingSession) {
-        // Create new session for this branch
-        const { error } = await supabase
-          .from('live_editing_sessions')
-          .insert({
-            file_path: filePath,
-            content: '',
-            user_id: user.id,
-            branch_name: branchName,
-            locked_by: null,
-            locked_at: null
-          });
+      if (userSessions && userSessions.length > 0) {
+        console.log('Found', userSessions.length, 'user sessions to process');
 
-        if (error) {
-          console.error('Error force creating session:', error);
-        } else {
-          console.log('Successfully force created session for branch:', branchName);
+        // Group sessions by file_path to avoid duplicates
+        const fileSessionMap = new Map();
+        userSessions.forEach(session => {
+          const key = session.file_path;
+          if (!fileSessionMap.has(key) || session.updated_at > fileSessionMap.get(key).updated_at) {
+            fileSessionMap.set(key, session);
+          }
+        });
+
+        // For each unique file, ensure there's a session on the current branch
+        for (const [filePath, latestSession] of fileSessionMap) {
+          const { data: branchSession } = await supabase
+            .from('live_editing_sessions')
+            .select('id')
+            .eq('file_path', filePath)
+            .eq('branch_name', branchName)
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          if (!branchSession) {
+            console.log('Creating missing session for', filePath, 'on branch', branchName);
+            const { error } = await supabase
+              .from('live_editing_sessions')
+              .insert({
+                file_path: filePath,
+                content: latestSession.content || '',
+                user_id: user.id,
+                branch_name: branchName,
+                locked_by: null,
+                locked_at: null
+              });
+
+            if (error) {
+              console.error('Error creating session for branch:', error);
+            } else {
+              console.log('✅ Created session for', filePath, 'on branch', branchName);
+            }
+          } else {
+            console.log('✅ Session already exists for', filePath, 'on branch', branchName);
+          }
         }
-      } else {
-        console.log('Session already exists for branch:', branchName);
       }
     } catch (error) {
-      console.error('Error in ensureBranchHasLiveSession:', error);
+      console.error('Error in forceUpdateDatabaseForBranch:', error);
     }
   };
 
@@ -158,18 +180,16 @@ export function EditorLayout() {
     }
   }, [selectedFile, isLocked, lockedBy, hasChanges, content, activeBranch, saveLiveContent]);
 
-  // CRITICAL: Clear state when branch changes and force session creation
+  // CRITICAL: Clear state and force DB update when branch changes
   useEffect(() => {
-    console.log('Branch changed to:', activeBranch, '- clearing editor state and ensuring sessions exist');
+    console.log('=== BRANCH CHANGE EFFECT ===', activeBranch);
     setSelectedFile(undefined);
     setContent("");
     setHasChanges(false);
     setModifiedFiles(new Set());
 
-    // If we have a currently selected file, ensure it has a session on the new branch
-    if (selectedFile) {
-      ensureBranchHasLiveSession(activeBranch, selectedFile);
-    }
+    // Force database update for the new branch
+    forceUpdateDatabaseForBranch(activeBranch);
   }, [activeBranch]);
 
   const handleFileSelect = async (filePath: string) => {
@@ -187,9 +207,6 @@ export function EditorLayout() {
     setHasChanges(false);
     setLoadingContent(true);
 
-    // CRITICAL: Ensure this file has a live editing session on the current branch
-    await ensureBranchHasLiveSession(activeBranch, filePath);
-    
     try {
       // Check if there's live content for this file on the current branch first
       const liveFileContent = await loadLiveContent(filePath);

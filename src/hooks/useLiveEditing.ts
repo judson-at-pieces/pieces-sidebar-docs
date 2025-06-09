@@ -119,51 +119,67 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
     }
   }, [selectedFile, activeBranch]);
 
-  // CRITICAL: Create a live editing session entry when branch changes
-  const ensureBranchSession = useCallback(async () => {
-    if (!selectedFile || !activeBranch) return;
+  // CRITICAL: Create/Update live editing session entries when branch changes
+  const updateSessionsForBranch = useCallback(async (branchName: string) => {
+    if (!branchName) return;
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      console.log('Ensuring branch session exists for:', selectedFile, 'on branch:', activeBranch);
+      console.log('=== UPDATING SESSIONS FOR BRANCH ===', branchName);
 
-      // Check if session exists for this file on this branch
-      const { data: existingSession } = await supabase
+      // Get all existing sessions that might need branch updates
+      const { data: existingSessions } = await supabase
         .from('live_editing_sessions')
-        .select('id, content')
-        .eq('file_path', selectedFile)
-        .eq('branch_name', activeBranch)
-        .maybeSingle();
+        .select('id, file_path, content, branch_name')
+        .eq('user_id', user.id);
 
-      if (!existingSession) {
-        // Create a new session entry for this branch with empty content initially
-        console.log('Creating new live editing session for branch:', activeBranch);
-        const { error } = await supabase
-          .from('live_editing_sessions')
-          .insert({
-            file_path: selectedFile,
-            content: '',
-            user_id: user.id,
-            branch_name: activeBranch,
-            locked_by: null,
-            locked_at: null
-          });
+      if (existingSessions) {
+        console.log('Found existing sessions:', existingSessions.length);
+        
+        // Update or create sessions for the new branch
+        for (const session of existingSessions) {
+          // Check if we already have a session for this file on this branch
+          const { data: branchSession } = await supabase
+            .from('live_editing_sessions')
+            .select('id')
+            .eq('file_path', session.file_path)
+            .eq('branch_name', branchName)
+            .maybeSingle();
 
-        if (error) {
-          console.error('Error creating branch session:', error);
-        } else {
-          console.log('Successfully created new session for branch:', activeBranch);
-          await fetchSessions();
+          if (!branchSession) {
+            // Create new session for this branch
+            console.log('Creating session for', session.file_path, 'on branch', branchName);
+            const { error } = await supabase
+              .from('live_editing_sessions')
+              .insert({
+                file_path: session.file_path,
+                content: session.content || '',
+                user_id: user.id,
+                branch_name: branchName,
+                locked_by: null,
+                locked_at: null
+              });
+
+            if (error) {
+              console.error('Error creating session for branch:', error);
+            } else {
+              console.log('Successfully created session for branch:', branchName);
+            }
+          } else {
+            console.log('Session already exists for', session.file_path, 'on branch', branchName);
+          }
         }
-      } else {
-        console.log('Session already exists for file on branch:', activeBranch);
       }
+
+      // Force refresh sessions
+      await fetchSessions();
+      
     } catch (error) {
-      console.error('Error ensuring branch session:', error);
+      console.error('Error updating sessions for branch:', error);
     }
-  }, [selectedFile, activeBranch, fetchSessions]);
+  }, [fetchSessions]);
 
   // Acquire lock for a file on the current branch
   const acquireLock = useCallback(async (filePath: string): Promise<boolean> => {
@@ -348,28 +364,23 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
     };
   }, [activeBranch, selectedFile, fetchSessions, checkLockStatus]);
 
-  // CRITICAL: When branch changes, ensure we have a session entry and fetch new data
+  // CRITICAL: When branch changes, update sessions and fetch new data
   useEffect(() => {
     if (activeBranch) {
-      console.log('Branch changed to:', activeBranch, '- fetching sessions and ensuring session exists');
+      console.log('=== BRANCH EFFECT TRIGGERED ===', activeBranch);
+      
+      // First, update any existing sessions to the new branch
+      updateSessionsForBranch(activeBranch);
+      
+      // Then fetch sessions for this branch
       fetchSessions();
       
-      // If we have a selected file, ensure a session exists for this branch
+      // If we have a selected file, check its lock status
       if (selectedFile) {
-        ensureBranchSession();
         checkLockStatus();
       }
     }
-  }, [activeBranch, fetchSessions, ensureBranchSession, checkLockStatus, selectedFile]);
-
-  // When file is selected, ensure session exists and check lock status
-  useEffect(() => {
-    if (selectedFile && activeBranch) {
-      console.log('File selected, ensuring session and checking lock for:', selectedFile, 'on branch:', activeBranch);
-      ensureBranchSession();
-      checkLockStatus();
-    }
-  }, [selectedFile, activeBranch, ensureBranchSession, checkLockStatus]);
+  }, [activeBranch, updateSessionsForBranch, fetchSessions, checkLockStatus, selectedFile]);
 
   // Clear state when branch changes - IMPORTANT: This ensures clean state
   useEffect(() => {
@@ -377,7 +388,7 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
     setIsLocked(false);
     setLockedBy(null);
     setLiveContent('');
-    setSessions([]);
+    // Don't clear sessions here - let updateSessionsForBranch handle it
   }, [activeBranch]);
 
   return {
