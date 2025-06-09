@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { githubService } from '@/services/githubService';
 import { supabase } from '@/integrations/supabase/client';
@@ -70,6 +71,7 @@ export function useBranches() {
         }
         // No repo configured - set to main and mark as initialized
         setCurrentBranch('main');
+        setBranches([{ name: 'main', sha: '', isDefault: true }]);
         setInitialized(true);
         setLoading(false);
         return;
@@ -110,9 +112,8 @@ export function useBranches() {
 
       setBranches(formattedBranches);
       
-      // Initialize current branch logic
+      // Initialize current branch logic - ALWAYS start with default branch on first load
       if (!initialized) {
-        // First time initialization - always use default branch
         if (DEBUG_BRANCHES) {
           console.log('🌿 FIRST INITIALIZATION - setting to default branch:', defaultBranch);
         }
@@ -131,12 +132,6 @@ export function useBranches() {
             console.log('🌿 PRESERVING CURRENT BRANCH:', currentBranch);
           }
         }
-      } else if (!preserveCurrentBranch) {
-        // Explicit refresh - reset to default
-        if (DEBUG_BRANCHES) {
-          console.log('🌿 EXPLICIT REFRESH - resetting to default branch:', defaultBranch);
-        }
-        setCurrentBranch(defaultBranch);
       }
 
     } catch (error) {
@@ -150,6 +145,7 @@ export function useBranches() {
           console.log('🌿 ERROR FALLBACK - setting to main');
         }
         setCurrentBranch('main');
+        setBranches([{ name: 'main', sha: '', isDefault: true }]);
         setInitialized(true);
       }
     } finally {
