@@ -7,34 +7,22 @@ import { EditorMain } from "./EditorMain";
 import { SeoEditor } from "./SeoEditor";
 import { FileTreeSidebar } from "./FileTreeSidebar";
 import { Button } from "@/components/ui/button";
-import { UserMenu } from "@/components/auth/UserMenu";
-import { Settings, FileText, Navigation, Home, Search, GitPullRequest, Edit3 } from "lucide-react";
-import { Link } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
-import { useSeoData } from "@/hooks/useSeoData";
-import { githubService } from "@/services/githubService";
-import { supabase } from "@/integrations/supabase/client";
-import { toast } from "sonner";
-import { BranchSelector } from "./BranchSelector";
 import { useBranches } from "@/hooks/useBranches";
+import { EditorHeader } from "./EditorHeader";
+import { EditorTabNavigation } from "./EditorTabNavigation";
 
-// Debug toggles - set to false to reduce console noise
+// Debug toggles
 const DEBUG_MARKDOWN = false;
-const DEBUG_PR_BUTTON = true;
 
 export function EditorLayout() {
   const { fileStructure, isLoading, error, refetch } = useFileStructure();
-  const { hasRole } = useAuth();
-  
-  // Branch management
-  const { currentBranch, branches, initialized } = useBranches();
+  const { currentBranch, initialized } = useBranches();
 
   const [selectedFile, setSelectedFile] = useState<string>();
   const [content, setContent] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
   const [activeTab, setActiveTab] = useState<'navigation' | 'content' | 'seo'>('content');
   const [loadingContent, setLoadingContent] = useState(false);
-  const [creatingPR, setCreatingPR] = useState(false);
 
   // Live editing hook
   const {
@@ -49,101 +37,10 @@ export function EditorLayout() {
     loadLiveContent,
   } = useLiveEditing(selectedFile, currentBranch);
 
-  // SEO data for the current file
-  const { pendingChanges, hasUnsavedChanges } = useSeoData(selectedFile);
-
-  // COMPLETELY REDONE PR BUTTON LOGIC
-  const [prButtonState, setPrButtonState] = useState({
-    text: 'Loading...',
-    enabled: false,
-    tooltip: 'Loading...'
-  });
-
-  // Calculate PR button state whenever dependencies change
-  useEffect(() => {
-    if (DEBUG_PR_BUTTON) {
-      console.log('🔄 RECALCULATING PR BUTTON STATE');
-      console.log('  initialized:', initialized);
-      console.log('  currentBranch:', currentBranch);
-      console.log('  sessions:', sessions);
-      console.log('  hasChanges:', hasChanges);
-      console.log('  creatingPR:', creatingPR);
-    }
-
-    if (!initialized) {
-      setPrButtonState({
-        text: 'Loading branches...',
-        enabled: false,
-        tooltip: 'Loading branches...'
-      });
-      return;
-    }
-
-    if (!currentBranch) {
-      setPrButtonState({
-        text: 'No branch selected',
-        enabled: false,
-        tooltip: 'No branch selected'
-      });
-      return;
-    }
-
-    if (currentBranch === 'main') {
-      setPrButtonState({
-        text: `${currentBranch} → main`,
-        enabled: false,
-        tooltip: 'Cannot create PR from main branch to main branch'
-      });
-      return;
-    }
-
-    // Count sessions with actual content
-    const sessionsWithContent = sessions.filter(s => s.content && s.content.trim());
-    const totalLiveFiles = sessionsWithContent.length;
-    const hasAnyChanges = hasChanges || totalLiveFiles > 0;
-
-    const targetBranch = 'main';
-    const buttonText = `${currentBranch} → ${targetBranch}${totalLiveFiles > 0 ? ` (${totalLiveFiles})` : ''}`;
-
-    if (creatingPR) {
-      setPrButtonState({
-        text: 'Creating PR...',
-        enabled: false,
-        tooltip: 'Creating pull request...'
-      });
-      return;
-    }
-
-    if (!hasAnyChanges) {
-      setPrButtonState({
-        text: buttonText,
-        enabled: false,
-        tooltip: `No changes to create PR for. Current: ${currentBranch} → ${targetBranch}`
-      });
-      return;
-    }
-
-    // All conditions met - enable the button
-    setPrButtonState({
-      text: buttonText,
-      enabled: true,
-      tooltip: `Create pull request from ${currentBranch} to ${targetBranch} with ${totalLiveFiles} file${totalLiveFiles !== 1 ? 's' : ''}`
-    });
-
-    if (DEBUG_PR_BUTTON) {
-      console.log('✅ PR BUTTON STATE CALCULATED:');
-      console.log('  text:', buttonText);
-      console.log('  enabled:', true);
-      console.log('  totalLiveFiles:', totalLiveFiles);
-      console.log('  hasAnyChanges:', hasAnyChanges);
-    }
-
-  }, [initialized, currentBranch, sessions, hasChanges, creatingPR]);
-
   // Clear local state when branch changes
   useEffect(() => {
     if (currentBranch) {
-      if (DEBUG_PR_BUTTON) {
+      if (DEBUG_MARKDOWN) {
         console.log('🔄 Branch changed, clearing local state for:', currentBranch);
       }
       setSelectedFile(undefined);
@@ -318,194 +215,6 @@ Start editing to see the live preview!
     }
   };
 
-  const getGitHubAppToken = async () => {
-    try {
-      const { data: installations, error } = await supabase
-        .from('github_installations')
-        .select('installation_id')
-        .order('created_at', { ascending: false })
-        .limit(1)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error fetching GitHub installation:', error);
-        throw new Error('Failed to get GitHub installation');
-      }
-
-      if (!installations) {
-        throw new Error('No GitHub app installation found. Please configure GitHub app first.');
-      }
-
-      const { data, error: tokenError } = await supabase.functions.invoke('github-app-auth', {
-        body: { installationId: installations.installation_id }
-      });
-
-      if (tokenError) {
-        console.error('Error getting GitHub app token:', tokenError);
-        throw new Error('Failed to get GitHub app token');
-      }
-
-      return data.token;
-    } catch (error) {
-      console.error('Error in getGitHubAppToken:', error);
-      throw error;
-    }
-  };
-
-  const getOriginalFilePath = (editorFilePath: string): string => {
-    let cleanPath = editorFilePath.replace(/^\/+/, '');
-    if (!cleanPath.endsWith('.md')) {
-      cleanPath = `${cleanPath}.md`;
-    }
-    return `public/content/${cleanPath}`;
-  };
-
-  const collectAllLiveContent = async () => {
-    const allContent: { path: string; content: string }[] = [];
-    
-    if (DEBUG_PR_BUTTON) {
-      console.log('🗂️ Collecting live content from', sessions.length, 'sessions for branch:', currentBranch);
-    }
-    
-    for (const session of sessions) {
-      if (session.content && session.content.trim()) {
-        allContent.push({
-          path: getOriginalFilePath(session.file_path),
-          content: session.content
-        });
-        if (DEBUG_PR_BUTTON) {
-          console.log('✅ Added session content for:', session.file_path);
-        }
-      }
-    }
-    
-    // Add current file if it has changes
-    if (selectedFile && hasChanges && content) {
-      const originalPath = getOriginalFilePath(selectedFile);
-      const existingIndex = allContent.findIndex(item => item.path === originalPath);
-      if (existingIndex >= 0) {
-        allContent[existingIndex].content = content;
-        if (DEBUG_PR_BUTTON) {
-          console.log('🔄 Updated current file content for:', selectedFile);
-        }
-      } else {
-        allContent.push({
-          path: originalPath,
-          content: content
-        });
-        if (DEBUG_PR_BUTTON) {
-          console.log('➕ Added current file content for:', selectedFile);
-        }
-      }
-    }
-    
-    if (DEBUG_PR_BUTTON) {
-      console.log('📊 Total live content collected:', allContent.length, 'files from branch:', currentBranch);
-    }
-    return allContent;
-  };
-
-  const handleCreatePR = async () => {
-    if (DEBUG_PR_BUTTON) {
-      console.log('🚀 PR BUTTON CLICKED');
-      console.log('  currentBranch:', currentBranch);
-      console.log('  prButtonState.enabled:', prButtonState.enabled);
-    }
-
-    if (!currentBranch || !prButtonState.enabled) {
-      if (DEBUG_PR_BUTTON) {
-        console.log('❌ Cannot create PR - conditions not met');
-        console.log('  currentBranch:', currentBranch);
-        console.log('  prButtonState.enabled:', prButtonState.enabled);
-      }
-      return;
-    }
-
-    const targetBranch = 'main';
-    
-    if (DEBUG_PR_BUTTON) {
-      console.log('✅ Creating PR FROM branch:', currentBranch, 'TO branch:', targetBranch);
-    }
-    
-    setCreatingPR(true);
-    
-    try {
-      const token = await getGitHubAppToken();
-      const repoConfig = await githubService.getRepoConfig();
-      
-      if (!repoConfig) {
-        toast.error('No GitHub repository configured. Please configure a repository first.');
-        return;
-      }
-
-      // Collect all live content for the PR
-      const allLiveContent = await collectAllLiveContent();
-      
-      if (allLiveContent.length === 0) {
-        toast.error('No changes to create a pull request for');
-        return;
-      }
-
-      if (DEBUG_PR_BUTTON) {
-        console.log('📋 Files to include in PR:', allLiveContent.map(item => item.path));
-      }
-
-      // Create PR using existing branch
-      const result = await githubService.createPullRequest(
-        {
-          title: `Update documentation from ${currentBranch} - ${allLiveContent.length} file${allLiveContent.length !== 1 ? 's' : ''} modified`,
-          body: `Updated documentation files from branch "${currentBranch}" to ${targetBranch}:\n${allLiveContent.map(item => `- ${item.path}`).join('\n')}\n\nThis pull request was created from the collaborative editor.`,
-          files: allLiveContent.map(item => ({
-            path: item.path,
-            content: item.content
-          })),
-          baseBranch: targetBranch, // TARGET branch (main)
-          headBranch: currentBranch, // SOURCE branch (current working branch)
-          useExistingBranch: true // Use existing branch instead of creating temporary one
-        },
-        token,
-        repoConfig
-      );
-
-      if (result.success) {
-        toast.success(`Pull request created successfully from "${currentBranch}" to ${targetBranch}!`, {
-          action: {
-            label: 'View PR',
-            onClick: () => window.open(result.prUrl, '_blank')
-          }
-        });
-        
-        // Clear all live editing sessions for current branch after successful PR
-        try {
-          if (DEBUG_PR_BUTTON) {
-            console.log('🧹 Clearing live editing sessions for branch:', currentBranch);
-          }
-          const { error } = await supabase
-            .from('live_editing_sessions')
-            .delete()
-            .eq('branch_name', currentBranch)
-            .in('file_path', sessions.map(s => s.file_path));
-          
-          if (!error) {
-            setHasChanges(false);
-            toast.success('Live editing sessions cleared');
-          } else {
-            console.error('Error clearing live sessions:', error);
-          }
-        } catch (error) {
-          console.error('Error clearing live sessions:', error);
-        }
-      } else {
-        toast.error(result.error || 'Failed to create pull request');
-      }
-    } catch (error) {
-      console.error('Error creating PR:', error);
-      toast.error(error instanceof Error ? error.message : 'Failed to create pull request');
-    } finally {
-      setCreatingPR(false);
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted/20">
@@ -547,129 +256,28 @@ Start editing to see the live preview!
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
-      {/* Enhanced Header */}
-      <div className="border-b border-border/50 bg-background/95 backdrop-blur-md shadow-sm">
-        <div className="flex h-16 items-center justify-between px-6">
-          <div className="flex items-center space-x-6">
-            <Link to="/" className="flex items-center space-x-3 hover:opacity-80 transition-all duration-200 group">
-              <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
-                <span className="text-white font-bold text-sm">P</span>
-              </div>
-              <span className="font-semibold text-lg bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">Pieces Docs</span>
-            </Link>
-            <div className="h-6 w-px bg-gradient-to-b from-transparent via-border to-transparent"></div>
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                <h1 className="text-lg font-medium text-muted-foreground">
-                  {activeTab === 'content' ? 'Content Editor' : activeTab === 'seo' ? 'SEO Editor' : 'Navigation Editor'}
-                </h1>
-              </div>
-              <BranchSelector />
-            </div>
-          </div>
-          
-          <div className="flex items-center space-x-3">
-            <Link to="/">
-              <Button variant="ghost" size="sm" className="gap-2 hover:bg-muted/50 transition-colors relative">
-                <Home className="h-4 w-4" />
-                Home
-                {(hasChanges || totalLiveFiles > 0) && (
-                  <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full border-2 border-background"></div>
-                )}
-              </Button>
-            </Link>
-            {hasRole('admin') && (
-              <Link to="/admin">
-                <Button variant="outline" size="sm" className="gap-2 hover:bg-muted/50 transition-colors">
-                  <Settings className="h-4 w-4" />
-                  Admin
-                </Button>
-              </Link>
-            )}
-            <UserMenu />
-          </div>
-        </div>
-      </div>
+      <EditorHeader 
+        activeTab={activeTab}
+        hasChanges={hasChanges}
+        totalLiveFiles={totalLiveFiles}
+      />
       
       <div className="flex h-[calc(100vh-4rem)]">
         <div className="flex-1 flex flex-col">
-          {/* Enhanced Tab Navigation */}
-          <div className="border-b border-border/50 px-6 py-4 bg-background/95 backdrop-blur-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex space-x-1 bg-muted/30 p-1 rounded-lg">
-                <Button
-                  onClick={() => setActiveTab('navigation')}
-                  variant={activeTab === 'navigation' ? 'default' : 'ghost'}
-                  size="sm"
-                  className="gap-2 transition-all duration-200"
-                >
-                  <Navigation className="h-4 w-4" />
-                  Navigation
-                </Button>
-                <Button
-                  onClick={() => setActiveTab('content')}
-                  variant={activeTab === 'content' ? 'default' : 'ghost'}
-                  size="sm"
-                  className="gap-2 transition-all duration-200"
-                >
-                  <FileText className="h-4 w-4" />
-                  Content
-                </Button>
-                <Button
-                  onClick={() => setActiveTab('seo')}
-                  variant={activeTab === 'seo' ? 'default' : 'ghost'}
-                  size="sm"
-                  className="gap-2 transition-all duration-200"
-                >
-                  <Search className="h-4 w-4" />
-                  SEO
-                </Button>
-              </div>
-              
-              <div className="flex items-center gap-3">
-                {activeTab === 'content' && (
-                  <>
-                    {selectedFile && isLocked && lockedBy !== 'You' && !isAcquiringLock && (
-                      <Button
-                        onClick={handleAcquireLock}
-                        variant="outline"
-                        size="sm"
-                        className="flex items-center gap-2"
-                      >
-                        <Edit3 className="w-4 h-4" />
-                        Take Control
-                      </Button>
-                    )}
-
-                    {totalLiveFiles > 0 && (
-                      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
-                        {totalLiveFiles} file{totalLiveFiles !== 1 ? 's' : ''} with live changes on {currentBranch || 'main'}
-                      </div>
-                    )}
-                    
-                    {/* COMPLETELY REDONE PR BUTTON */}
-                    <Button
-                      onClick={handleCreatePR}
-                      variant="outline"
-                      size="sm"
-                      disabled={!prButtonState.enabled}
-                      className="flex items-center gap-2"
-                      title={prButtonState.tooltip}
-                    >
-                      {creatingPR ? (
-                        <div className="w-4 h-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-                      ) : (
-                        <GitPullRequest className="w-4 h-4" />
-                      )}
-                      PR: {prButtonState.text}
-                    </Button>
-                  </>
-                )}
-              </div>
-            </div>
-          </div>
+          <EditorTabNavigation
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            selectedFile={selectedFile}
+            isLocked={isLocked}
+            lockedBy={lockedBy}
+            isAcquiringLock={isAcquiringLock}
+            onAcquireLock={handleAcquireLock}
+            totalLiveFiles={totalLiveFiles}
+            currentBranch={currentBranch}
+            sessions={sessionsWithContent}
+            hasChanges={hasChanges}
+            initialized={initialized}
+          />
           
           {/* Tab Content */}
           <div className="flex-1 overflow-hidden flex">

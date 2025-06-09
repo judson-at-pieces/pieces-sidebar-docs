@@ -31,6 +31,7 @@ function _createMdxContent(props: MDX_cli_copilot_chatProps) {
   const _components = {
     h2: "h2",
     p: "p",
+    div: "div",
     ...props.components
   };
   return _jsxs(_components.div, {
