@@ -44,6 +44,7 @@ export function EditorMain({
   // Determine if current user can edit
   const canEdit = isLocked && lockedBy === 'You';
   const isLockedByOther = isLocked && lockedBy !== 'You';
+  const showReadOnlyContent = !isLocked || isLockedByOther;
 
   // Get the most recent content - prioritize live typing content over live editing content
   const latestTypingContent = getLatestTypingContent();
@@ -92,25 +93,6 @@ export function EditorMain({
     );
   }
 
-  // Show when file needs to be locked for editing
-  if (!isLocked && !isAcquiringLock) {
-    return (
-      <div className="h-full flex items-center justify-center bg-gradient-to-br from-background to-muted/10">
-        <div className="text-center space-y-4 max-w-md">
-          <div className="w-20 h-20 mx-auto bg-muted/20 rounded-2xl flex items-center justify-center">
-            <Lock className="w-10 h-10 text-muted-foreground" />
-          </div>
-          <div className="space-y-2">
-            <h3 className="text-xl font-semibold">File Ready to Edit</h3>
-            <p className="text-muted-foreground">
-              Click "Start Editing" to acquire a lock and begin editing this file.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="h-full flex flex-col bg-background">
       {/* Live Editing Banner - only show when someone else is editing */}
@@ -120,7 +102,7 @@ export function EditorMain({
             <div className="flex items-center gap-2">
               <Edit3 className="h-5 w-5 animate-pulse" />
               <span className="font-semibold text-lg">
-                Another user is currently editing this page
+                {lockedBy} is currently editing this page
               </span>
             </div>
             {(liveContent || latestTypingContent) && (
@@ -154,7 +136,15 @@ export function EditorMain({
 
           {isLockedByOther && (
             <Badge variant="outline" className="text-xs">
+              <Eye className="h-3 w-3 mr-1" />
               Read-only
+            </Badge>
+          )}
+
+          {showReadOnlyContent && !isLockedByOther && (
+            <Badge variant="secondary" className="text-xs">
+              <Eye className="h-3 w-3 mr-1" />
+              Viewing
             </Badge>
           )}
 
@@ -202,14 +192,14 @@ export function EditorMain({
                 onChange={(e) => handleContentChangeWithTyping(e.target.value)}
                 placeholder={
                   isLockedByOther 
-                    ? "Another user is editing this file..." 
+                    ? `${lockedBy} is editing this file...` 
                     : canEdit
                       ? "Start typing your content here..."
-                      : "Loading..."
+                      : "Click 'Start Editing' to make changes..."
                 }
                 disabled={!canEdit}
                 className={`h-full resize-none border-0 rounded-none focus:ring-0 font-mono text-sm leading-relaxed ${
-                  !canEdit ? 'bg-muted/50 cursor-not-allowed opacity-60' : ''
+                  !canEdit ? 'bg-muted/30 cursor-default' : ''
                 }`}
                 style={{ 
                   minHeight: '100%',
@@ -217,7 +207,7 @@ export function EditorMain({
                 }}
               />
               {!canEdit && (
-                <div className="absolute inset-0 bg-transparent cursor-not-allowed" />
+                <div className="absolute inset-0 bg-transparent pointer-events-none" />
               )}
             </div>
           </div>

@@ -116,7 +116,7 @@ export function EditorLayout() {
     setLoadingContent(true);
     
     try {
-      // Check if there's live content for this file
+      // Check if there's live content for this file first
       const liveFileContent = await loadLiveContent(filePath);
       
       if (liveFileContent) {
@@ -549,7 +549,7 @@ Start editing to see the live preview!
               <div className="flex items-center gap-3">
                 {activeTab === 'content' && (
                   <>
-                    {/* Show start editing button when file is selected but not locked */}
+                    {/* Show start editing button when file is selected but not locked for editing */}
                     {selectedFile && !isLocked && !isAcquiringLock && (
                       <Button
                         onClick={handleAcquireLock}
@@ -570,7 +570,7 @@ Start editing to see the live preview!
                     )}
                     
                     <Button
-                      onClick={() => {/* TODO: Implement handleCreatePR */}}
+                      onClick={handleCreatePR}
                       variant="outline"
                       size="sm"
                       disabled={isPRButtonDisabled}
@@ -618,7 +618,7 @@ Start editing to see the live preview!
               <div className="flex-1">
                 <SeoEditor
                   selectedFile={selectedFile}
-                  onSeoDataChange={() => {/* TODO: Implement handleSeoDataChange */}}
+                  onSeoDataChange={handleSeoDataChange}
                   fileStructure={fileStructure}
                   onFileSelect={handleFileSelect}
                 />
