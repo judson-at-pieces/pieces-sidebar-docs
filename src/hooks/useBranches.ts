@@ -89,8 +89,9 @@ export function useBranches() {
 
       setBranches(formattedBranches);
       
-      // Set current branch to default if not already set
-      if (!currentBranch || currentBranch === 'main') {
+      // Set current branch to default if not already set or if current branch doesn't exist
+      if (!currentBranch || currentBranch === 'main' || !formattedBranches.find(b => b.name === currentBranch)) {
+        console.log('Setting current branch to default:', defaultBranch);
         setCurrentBranch(defaultBranch);
       }
 
@@ -162,6 +163,7 @@ export function useBranches() {
   };
 
   const switchBranch = (branchName: string) => {
+    console.log('Switching to branch:', branchName);
     setCurrentBranch(branchName);
     toast.success(`Switched to branch "${branchName}"`);
   };
@@ -215,6 +217,11 @@ export function useBranches() {
   useEffect(() => {
     fetchBranches();
   }, []);
+
+  // Debug log to track current branch changes
+  useEffect(() => {
+    console.log('Current branch changed to:', currentBranch);
+  }, [currentBranch]);
 
   return {
     branches,

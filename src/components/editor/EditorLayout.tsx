@@ -21,6 +21,12 @@ export function EditorLayout() {
   const { fileStructure, isLoading, error, refetch } = useFileStructure();
   const { hasRole } = useAuth();
   const { currentBranch } = useBranches();
+  
+  // Debug log to track current branch in EditorLayout
+  useEffect(() => {
+    console.log('EditorLayout received currentBranch:', currentBranch);
+  }, [currentBranch]);
+
   const [selectedFile, setSelectedFile] = useState<string>();
   const [content, setContent] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
@@ -329,6 +335,8 @@ Start editing to see the live preview!
   };
 
   const handleCreatePR = async () => {
+    console.log('Creating PR with currentBranch:', currentBranch);
+    
     if (!currentBranch) {
       toast.error('No current branch selected');
       return;
