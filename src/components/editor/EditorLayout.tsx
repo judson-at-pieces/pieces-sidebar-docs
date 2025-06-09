@@ -89,12 +89,13 @@ export function EditorLayout() {
     }
   }, [selectedFile, isLocked, acquireLock]);
 
-  // Auto-save live content
+  // Auto-save live content with shorter interval for real-time feel
   useEffect(() => {
     if (selectedFile && isLocked && hasChanges && content) {
       const timeoutId = setTimeout(() => {
+        console.log('Auto-saving live content for real-time updates');
         saveLiveContent(selectedFile, content);
-      }, 2000); // Auto-save after 2 seconds of inactivity
+      }, 500); // Reduced to 500ms for more responsive live updates
 
       return () => clearTimeout(timeoutId);
     }
@@ -599,6 +600,7 @@ Start editing to see the live preview!
                     saving={false}
                     isLocked={isLocked}
                     lockedBy={lockedBy}
+                    liveContent={liveContent}
                   />
                 </div>
               </>

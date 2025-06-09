@@ -81,7 +81,7 @@ export function useLiveEditing(filePath?: string) {
     }
   }, [user]);
 
-  // Save live content
+  // Save live content with real-time updates
   const saveLiveContent = useCallback(async (filePathToSave: string, content: string) => {
     if (!user?.id) return false;
     
@@ -170,11 +170,18 @@ export function useLiveEditing(filePath?: string) {
           console.log('Live editing session changed:', payload);
           fetchSessions();
           
-          // If someone else acquired a lock on the current file, update status
+          // Handle real-time content updates for the current file
           if (filePath && payload.new && payload.new.file_path === filePath) {
+            // If someone else acquired a lock on the current file, update status
             if (payload.new.locked_by && payload.new.locked_by !== user?.id) {
               setIsLocked(false);
               setLockedBy('Another user');
+            }
+            
+            // If content was updated and we don't have the lock, update our view
+            if (payload.new.content && payload.new.locked_by !== user?.id) {
+              console.log('Received live content update from another user');
+              setLiveContent(payload.new.content);
             }
           }
         }

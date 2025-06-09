@@ -1,5 +1,5 @@
 
-import React from 'react';
+import React, { useEffect } from 'react';
 import { FileText, MoreHorizontal, Copy, Trash2, Eye, Lock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ interface EditorMainProps {
   saving: boolean;
   isLocked?: boolean;
   lockedBy?: string | null;
+  liveContent?: string;
 }
 
 export function EditorMain({
@@ -28,11 +29,22 @@ export function EditorMain({
   hasChanges,
   saving,
   isLocked = false,
-  lockedBy = null
+  lockedBy = null,
+  liveContent
 }: EditorMainProps) {
   // Determine if current user can edit
   const canEdit = isLocked && lockedBy === 'You';
   const isLockedByOther = isLocked && lockedBy !== 'You';
+
+  // Use live content if we're not the editor and live content is available
+  const displayContent = isLockedByOther && liveContent ? liveContent : content;
+
+  // Update content when live content changes (for viewers)
+  useEffect(() => {
+    if (isLockedByOther && liveContent && liveContent !== content) {
+      console.log('Updating display content with live changes');
+    }
+  }, [liveContent, content, isLockedByOther]);
 
   if (!selectedFile) {
     return (
@@ -70,6 +82,11 @@ export function EditorMain({
               <Badge variant="destructive" className="text-xs">
                 Locked by {lockedBy}
               </Badge>
+              {liveContent && (
+                <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700 border-blue-200">
+                  Live View
+                </Badge>
+              )}
             </div>
           )}
           
@@ -110,11 +127,12 @@ export function EditorMain({
 
       {/* Locked by Another User Warning */}
       {isLockedByOther && (
-        <div className="p-4 bg-red-50 border-b border-red-200 dark:bg-red-950/20 dark:border-red-800">
-          <div className="flex items-center gap-2 text-red-800 dark:text-red-200">
+        <div className="p-4 bg-blue-50 border-b border-blue-200 dark:bg-blue-950/20 dark:border-blue-800">
+          <div className="flex items-center gap-2 text-blue-800 dark:text-blue-200">
             <Lock className="h-4 w-4" />
             <p className="text-sm font-medium">
-              This file is currently being edited by {lockedBy}. You can view the content but cannot make changes until they finish editing.
+              This file is currently being edited by {lockedBy}. 
+              {liveContent ? ' You can see their changes in real-time.' : ' You can view the content but cannot make changes until they finish editing.'}
             </p>
           </div>
         </div>
@@ -127,7 +145,7 @@ export function EditorMain({
           <div className="h-full flex flex-col">
             <div className="flex-1 relative">
               <Textarea
-                value={content}
+                value={displayContent}
                 onChange={(e) => canEdit ? onContentChange(e.target.value) : undefined}
                 placeholder={isLockedByOther ? `This file is being edited by ${lockedBy}...` : "Start typing your content here..."}
                 disabled={isLockedByOther}
@@ -157,7 +175,7 @@ export function EditorMain({
                 <span className="text-sm font-medium">Live Preview</span>
                 {isLockedByOther && (
                   <Badge variant="outline" className="text-xs">
-                    Read-only
+                    {liveContent ? 'Live Updates' : 'Read-only'}
                   </Badge>
                 )}
               </div>
@@ -165,7 +183,7 @@ export function EditorMain({
             
             <ScrollArea className="h-[calc(100%-57px)]">
               <div className="p-6">
-                <HashnodeMarkdownRenderer content={content} />
+                <HashnodeMarkdownRenderer content={displayContent} />
               </div>
             </ScrollArea>
           </div>
