@@ -20,10 +20,20 @@ export function useLiveTyping(filePath?: string) {
 
   // Send typing event to webhook
   const sendTypingEvent = useCallback(async (content: string, cursorPosition: number) => {
-    if (!user?.id || !filePath || content === lastSentContentRef.current) return;
+    if (!user?.id || !filePath) {
+      console.log('No user or filePath, skipping typing event');
+      return;
+    }
+
+    // Avoid sending the same content repeatedly
+    if (content === lastSentContentRef.current) {
+      return;
+    }
 
     try {
-      await supabase.functions.invoke('live-typing', {
+      console.log('Sending typing event:', { filePath, contentLength: content.length, cursorPosition });
+      
+      const { data, error } = await supabase.functions.invoke('live-typing', {
         body: {
           file_path: filePath,
           user_id: user.id,
@@ -32,7 +42,13 @@ export function useLiveTyping(filePath?: string) {
         }
       });
       
+      if (error) {
+        console.error('Error invoking live-typing function:', error);
+        return;
+      }
+      
       lastSentContentRef.current = content;
+      console.log('Typing event sent successfully:', data);
     } catch (error) {
       console.error('Error sending typing event:', error);
     }
@@ -43,13 +59,21 @@ export function useLiveTyping(filePath?: string) {
     if (!user?.id || !filePath) return;
 
     try {
-      await supabase.functions.invoke('live-typing', {
-        method: 'DELETE',
+      console.log('Cleaning up typing session for:', filePath);
+      
+      const { data, error } = await supabase.functions.invoke('live-typing', {
         body: {
+          method: 'DELETE',
           file_path: filePath,
           user_id: user.id
         }
       });
+      
+      if (error) {
+        console.error('Error cleaning up typing session:', error);
+      } else {
+        console.log('Typing session cleaned up successfully:', data);
+      }
     } catch (error) {
       console.error('Error cleaning up typing session:', error);
     }
@@ -57,6 +81,7 @@ export function useLiveTyping(filePath?: string) {
 
   // Debounced typing handler
   const handleTyping = useCallback((content: string, cursorPosition: number = 0) => {
+    console.log('handleTyping called with content length:', content.length);
     setIsTyping(true);
     
     // Clear existing timeout
@@ -75,7 +100,12 @@ export function useLiveTyping(filePath?: string) {
 
   // Set up real-time subscription for typing events
   useEffect(() => {
-    if (!filePath) return;
+    if (!filePath) {
+      console.log('No filePath, skipping realtime subscription');
+      return;
+    }
+
+    console.log('Setting up realtime subscription for live typing:', filePath);
 
     const channel = supabase
       .channel(`live-typing-${filePath}`)
@@ -88,13 +118,18 @@ export function useLiveTyping(filePath?: string) {
           filter: `file_path=eq.${filePath}`
         },
         (payload) => {
-          console.log('Live typing event:', payload);
+          console.log('Live typing event received:', payload);
           
           if (payload.eventType === 'INSERT' || payload.eventType === 'UPDATE') {
             const newSession = payload.new as TypingSession;
             
             // Don't show our own typing
-            if (newSession.user_id === user?.id) return;
+            if (newSession.user_id === user?.id) {
+              console.log('Ignoring own typing session');
+              return;
+            }
+            
+            console.log('Processing typing session from another user:', newSession.user_id);
             
             setTypingSessions(prev => {
               const filtered = prev.filter(s => 
@@ -104,6 +139,8 @@ export function useLiveTyping(filePath?: string) {
             });
           } else if (payload.eventType === 'DELETE') {
             const deletedSession = payload.old as TypingSession;
+            console.log('Removing typing session:', deletedSession.user_id);
+            
             setTypingSessions(prev => 
               prev.filter(s => 
                 !(s.file_path === deletedSession.file_path && s.user_id === deletedSession.user_id)
@@ -112,9 +149,12 @@ export function useLiveTyping(filePath?: string) {
           }
         }
       )
-      .subscribe();
+      .subscribe((status) => {
+        console.log('Live typing subscription status:', status);
+      });
 
     return () => {
+      console.log('Cleaning up live typing subscription');
       supabase.removeChannel(channel);
     };
   }, [filePath, user?.id]);

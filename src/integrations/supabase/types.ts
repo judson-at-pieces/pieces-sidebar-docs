@@ -188,6 +188,33 @@ export type Database = {
         }
         Relationships: []
       }
+      live_typing_sessions: {
+        Row: {
+          content: string | null
+          cursor_position: number | null
+          file_path: string
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content?: string | null
+          cursor_position?: number | null
+          file_path: string
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string | null
+          cursor_position?: number | null
+          file_path?: string
+          id?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       navigation_items: {
         Row: {
           created_at: string

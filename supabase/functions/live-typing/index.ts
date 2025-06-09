@@ -12,7 +12,8 @@ interface TypingEvent {
   user_id: string
   content: string
   cursor_position: number
-  timestamp: string
+  timestamp?: string
+  method?: string
 }
 
 serve(async (req) => {
@@ -28,15 +29,40 @@ serve(async (req) => {
     )
 
     if (req.method === 'POST') {
-      const { file_path, user_id, content, cursor_position }: TypingEvent = await req.json()
+      const body: TypingEvent = await req.json()
+      const { file_path, user_id, content, cursor_position, method } = body
 
-      console.log('Received typing event:', { file_path, user_id, content_length: content.length, cursor_position })
+      console.log('Received request:', { method: method || 'POST', file_path, user_id, content_length: content?.length, cursor_position })
 
-      // Broadcast typing event to all subscribers of this file
-      const channel = `live-typing:${file_path}`
-      
-      // We'll use Supabase's realtime to broadcast the typing event
-      // First, update or create a temporary typing session
+      // Handle DELETE method sent in POST body
+      if (method === 'DELETE') {
+        console.log('Processing DELETE request for typing session')
+        
+        const { error } = await supabase
+          .from('live_typing_sessions')
+          .delete()
+          .eq('file_path', file_path)
+          .eq('user_id', user_id)
+
+        if (error) {
+          console.error('Error deleting typing session:', error)
+          throw error
+        }
+
+        console.log('Typing session deleted successfully')
+        return new Response(
+          JSON.stringify({ success: true, message: 'Typing session cleaned up' }),
+          { 
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+            status: 200 
+          }
+        )
+      }
+
+      // Regular POST - update typing session
+      console.log('Processing typing event for real-time broadcast')
+
+      // Upsert typing session - create or update
       const { error: upsertError } = await supabase
         .from('live_typing_sessions')
         .upsert({
@@ -54,32 +80,9 @@ serve(async (req) => {
         throw upsertError
       }
 
+      console.log('Typing session updated successfully')
       return new Response(
         JSON.stringify({ success: true, message: 'Typing event processed' }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          status: 200 
-        }
-      )
-    }
-
-    if (req.method === 'DELETE') {
-      const { file_path, user_id } = await req.json()
-
-      // Clean up typing session when user stops typing or leaves
-      const { error } = await supabase
-        .from('live_typing_sessions')
-        .delete()
-        .eq('file_path', file_path)
-        .eq('user_id', user_id)
-
-      if (error) {
-        console.error('Error deleting typing session:', error)
-        throw error
-      }
-
-      return new Response(
-        JSON.stringify({ success: true, message: 'Typing session cleaned up' }),
         { 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' },
           status: 200 
@@ -98,7 +101,10 @@ serve(async (req) => {
   } catch (error) {
     console.error('Error in live-typing function:', error)
     return new Response(
-      JSON.stringify({ error: error.message }),
+      JSON.stringify({ 
+        error: error.message,
+        details: 'Check function logs for more information'
+      }),
       { 
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
         status: 500 

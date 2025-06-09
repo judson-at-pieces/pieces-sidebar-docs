@@ -54,12 +54,13 @@ export function EditorMain({
   // Handle content changes with live typing
   const handleContentChangeWithTyping = (newContent: string) => {
     if (canEdit) {
+      // Update local content immediately for responsiveness
       onContentChange(newContent);
       
       // Get cursor position
       const cursorPosition = textareaRef.current?.selectionStart || 0;
       
-      // Send typing event
+      // Send typing event for real-time updates
       handleTyping(newContent, cursorPosition);
     }
   };
@@ -68,6 +69,8 @@ export function EditorMain({
   useEffect(() => {
     if (isLockedByOther && latestTypingContent && latestTypingContent !== content) {
       console.log('Updating display content with live typing changes');
+      // For viewers, we don't call onContentChange as they shouldn't modify the local state
+      // The display content will be updated through the displayContent calculation above
     }
   }, [latestTypingContent, content, isLockedByOther]);
 
@@ -177,7 +180,7 @@ export function EditorMain({
               <Textarea
                 ref={textareaRef}
                 value={displayContent}
-                onChange={(e) => canEdit ? handleContentChangeWithTyping(e.target.value) : undefined}
+                onChange={(e) => handleContentChangeWithTyping(e.target.value)}
                 placeholder={
                   isLockedByOther 
                     ? "Another user is editing this file..." 
