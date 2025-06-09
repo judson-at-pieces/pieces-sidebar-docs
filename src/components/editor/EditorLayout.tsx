@@ -22,7 +22,7 @@ export function EditorLayout() {
   const { fileStructure, isLoading, error, refetch } = useFileStructure();
   const { hasRole } = useAuth();
   
-  // Branch management
+  // Branch management - wait for initialization
   const { currentBranch, branches, initialized } = useBranches();
 
   const [selectedFile, setSelectedFile] = useState<string>();
@@ -31,8 +31,6 @@ export function EditorLayout() {
   const [activeTab, setActiveTab] = useState<'navigation' | 'content' | 'seo'>('content');
   const [loadingContent, setLoadingContent] = useState(false);
   const [creatingPR, setCreatingPR] = useState(false);
-
-  console.log('EditorLayout: currentBranch =', currentBranch, 'initialized =', initialized);
 
   // Live editing hook - properly pass the current branch
   const {
@@ -50,25 +48,28 @@ export function EditorLayout() {
   // SEO data for the current file
   const { pendingChanges, hasUnsavedChanges } = useSeoData(selectedFile);
 
-  // Calculate PR button state - use the actual currentBranch value
-  const sourceBranch = currentBranch || 'main'; // The branch we're working on
-  const targetBranch = 'main'; // The branch we merge to
+  // Calculate PR button state using ONLY the current branch
+  const sourceBranch = currentBranch; // The branch we're working on
+  const targetBranch = 'main'; // Always target main
   const sessionsWithContent = sessions.filter(s => s.content && s.content.trim());
   const totalLiveFiles = sessionsWithContent.length;
   const hasAnyChanges = hasChanges || totalLiveFiles > 0;
   
-  // PR is disabled if: no changes, creating PR, no current branch, or trying to PR main to main
-  const isPRButtonDisabled = !hasAnyChanges || creatingPR || !currentBranch || currentBranch === targetBranch;
+  // PR button logic - simple and clear
+  const canCreatePR = initialized && 
+                      currentBranch && 
+                      currentBranch !== 'main' && 
+                      hasAnyChanges && 
+                      !creatingPR;
 
-  console.log('PR Button State:', {
-    sourceBranch,
-    targetBranch,
-    currentBranch,
-    totalLiveFiles,
-    hasAnyChanges,
-    isPRButtonDisabled,
-    sessions: sessions.length
-  });
+  console.log('=== PR BUTTON DEBUG ===');
+  console.log('currentBranch:', currentBranch);
+  console.log('initialized:', initialized);
+  console.log('totalLiveFiles:', totalLiveFiles);
+  console.log('hasChanges:', hasChanges);
+  console.log('hasAnyChanges:', hasAnyChanges);
+  console.log('canCreatePR:', canCreatePR);
+  console.log('sourceBranch → targetBranch:', `${sourceBranch} → ${targetBranch}`);
 
   // Clear local state when branch changes
   useEffect(() => {
@@ -308,19 +309,13 @@ Start editing to see the live preview!
   };
 
   const handleCreatePR = async () => {
+    if (!sourceBranch || !canCreatePR) {
+      console.log('Cannot create PR:', { sourceBranch, canCreatePR });
+      return;
+    }
+
     console.log('Creating PR FROM branch:', sourceBranch, 'TO branch:', targetBranch);
     
-    if (!sourceBranch) {
-      toast.error('No current branch selected');
-      return;
-    }
-
-    // Don't allow PR from main to main
-    if (sourceBranch === targetBranch) {
-      toast.error(`Cannot create PR from ${sourceBranch} branch to ${targetBranch} branch`);
-      return;
-    }
-
     setCreatingPR(true);
     
     try {
@@ -532,7 +527,7 @@ Start editing to see the live preview!
                     {totalLiveFiles > 0 && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
-                        {totalLiveFiles} file{totalLiveFiles !== 1 ? 's' : ''} with live changes on {sourceBranch}
+                        {totalLiveFiles} file{totalLiveFiles !== 1 ? 's' : ''} with live changes on {sourceBranch || 'main'}
                       </div>
                     )}
                     
@@ -540,18 +535,20 @@ Start editing to see the live preview!
                       onClick={handleCreatePR}
                       variant="outline"
                       size="sm"
-                      disabled={isPRButtonDisabled}
+                      disabled={!canCreatePR}
                       className="flex items-center gap-2"
                       title={
-                        !currentBranch
-                          ? "No branch selected"
-                          : currentBranch === targetBranch
-                            ? `Cannot create PR from ${sourceBranch} branch to ${targetBranch} branch`
-                            : !hasAnyChanges 
-                              ? "No changes to create PR for" 
-                              : creatingPR 
-                                ? "Creating PR..." 
-                                : `Create pull request from ${sourceBranch} to ${targetBranch} with all live changes`
+                        !initialized
+                          ? "Loading branches..."
+                          : !currentBranch
+                            ? "No branch selected"
+                            : currentBranch === 'main'
+                              ? "Cannot create PR from main branch"
+                              : !hasAnyChanges 
+                                ? "No changes to create PR for" 
+                                : creatingPR 
+                                  ? "Creating PR..." 
+                                  : `Create pull request from ${sourceBranch} to ${targetBranch} with ${totalLiveFiles} file${totalLiveFiles !== 1 ? 's' : ''}`
                       }
                     >
                       {creatingPR ? (
@@ -559,7 +556,7 @@ Start editing to see the live preview!
                       ) : (
                         <GitPullRequest className="w-4 h-4" />
                       )}
-                      PR: {sourceBranch} → {targetBranch} {totalLiveFiles > 0 && `(${totalLiveFiles})`}
+                      PR: {sourceBranch || 'main'} → {targetBranch} {totalLiveFiles > 0 && `(${totalLiveFiles})`}
                     </Button>
                   </>
                 )}
