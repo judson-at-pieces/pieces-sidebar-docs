@@ -1,9 +1,12 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
+import { useLiveEditing } from "@/hooks/useLiveEditing";
 import { NavigationEditor } from "./NavigationEditor";
 import { EditorMain } from "./EditorMain";
 import { SeoEditor } from "./SeoEditor";
 import { FileTreeSidebar } from "./FileTreeSidebar";
+import { LiveEditingIndicator } from "./LiveEditingIndicator";
 import { Button } from "@/components/ui/button";
 import { UserMenu } from "@/components/auth/UserMenu";
 import { Settings, FileText, Navigation, Home, Search, GitPullRequest } from "lucide-react";
@@ -25,18 +28,57 @@ export function EditorLayout() {
   const [loadingContent, setLoadingContent] = useState(false);
   const [creatingPR, setCreatingPR] = useState(false);
 
+  // Live editing hook
+  const {
+    isLocked,
+    lockedBy,
+    liveContent,
+    sessions,
+    isAcquiringLock,
+    acquireLock,
+    releaseLock,
+    saveLiveContent,
+    loadLiveContent
+  } = useLiveEditing(selectedFile);
+
   // SEO data for the current file
   const { pendingChanges, hasUnsavedChanges } = useSeoData(selectedFile);
+
+  // Auto-save live content
+  useEffect(() => {
+    if (selectedFile && isLocked && hasChanges && content) {
+      const timeoutId = setTimeout(() => {
+        saveLiveContent(selectedFile, content);
+      }, 2000); // Auto-save after 2 seconds of inactivity
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [selectedFile, isLocked, hasChanges, content, saveLiveContent]);
 
   const handleFileSelect = async (filePath: string) => {
     console.log('=== FILE SELECTION DEBUG ===');
     console.log('Selected file path:', filePath);
+    
+    // Release lock on previous file if any
+    if (selectedFile && isLocked) {
+      await releaseLock(selectedFile);
+    }
     
     setSelectedFile(filePath);
     setHasChanges(false);
     setLoadingContent(true);
     
     try {
+      // Check if there's live content for this file
+      const liveFileContent = await loadLiveContent(filePath);
+      
+      if (liveFileContent) {
+        console.log('Found live content for:', filePath);
+        setContent(liveFileContent);
+        setLoadingContent(false);
+        return;
+      }
+
       // Use the exact file path as provided - don't modify it
       let fetchPath = filePath;
       
@@ -63,7 +105,6 @@ export function EditorLayout() {
       
       const responseText = await response.text();
       console.log('Response text length:', responseText.length);
-      console.log('Response preview:', responseText.substring(0, 200));
       
       // Check if response looks like HTML (indicating wrong file was served)
       if (responseText.trim().startsWith('<!DOCTYPE html>') || responseText.trim().startsWith('<html')) {
@@ -132,10 +173,32 @@ Start editing to see the live preview!
   };
 
   const handleContentChange = (newContent: string) => {
+    if (!isLocked) {
+      toast.error('You must acquire a lock to edit this file');
+      return;
+    }
+    
     setContent(newContent);
     setHasChanges(true);
     if (selectedFile) {
       setModifiedFiles(prev => new Set(prev).add(selectedFile));
+    }
+  };
+
+  const handleAcquireLock = async () => {
+    if (selectedFile) {
+      const success = await acquireLock(selectedFile);
+      if (success && liveContent && liveContent !== content) {
+        // Update content with latest live content
+        setContent(liveContent);
+        toast.info('Content updated with latest changes');
+      }
+    }
+  };
+
+  const handleReleaseLock = async () => {
+    if (selectedFile) {
+      await releaseLock(selectedFile);
     }
   };
 
@@ -190,12 +253,37 @@ Start editing to see the live preview!
     return `public/content/${cleanPath}`;
   };
 
-  const handleCreatePR = async () => {
-    if (!selectedFile || !hasChanges) {
-      toast.error('No changes to create a pull request for');
-      return;
+  const collectAllLiveContent = async () => {
+    const allContent: { path: string; content: string }[] = [];
+    
+    // Get all live editing sessions
+    for (const session of sessions) {
+      if (session.content && session.content.trim()) {
+        allContent.push({
+          path: getOriginalFilePath(session.file_path),
+          content: session.content
+        });
+      }
     }
+    
+    // Add current file if it has changes
+    if (selectedFile && hasChanges && content) {
+      const originalPath = getOriginalFilePath(selectedFile);
+      const existingIndex = allContent.findIndex(item => item.path === originalPath);
+      if (existingIndex >= 0) {
+        allContent[existingIndex].content = content;
+      } else {
+        allContent.push({
+          path: originalPath,
+          content: content
+        });
+      }
+    }
+    
+    return allContent;
+  };
 
+  const handleCreatePR = async () => {
     setCreatingPR(true);
     
     try {
@@ -209,22 +297,23 @@ Start editing to see the live preview!
         return;
       }
 
-      // Convert the editor file path to the original file path structure
-      const originalFilePath = getOriginalFilePath(selectedFile);
-      console.log('Converting file path:', selectedFile, '->', originalFilePath);
+      // Collect all live content for the PR
+      const allLiveContent = await collectAllLiveContent();
+      
+      if (allLiveContent.length === 0) {
+        toast.error('No changes to create a pull request for');
+        return;
+      }
 
-      // Create PR with the current file changes using the original path structure
-      const fileName = selectedFile.split('/').pop() || selectedFile;
+      // Create PR with all live content
       const result = await githubService.createPullRequest(
         {
-          title: `Update ${fileName}`,
-          body: `Updated content for ${selectedFile}\n\nThis pull request was created from the editor.`,
-          files: [
-            {
-              path: originalFilePath,
-              content: content
-            }
-          ]
+          title: `Update documentation - ${allLiveContent.length} file${allLiveContent.length !== 1 ? 's' : ''} modified`,
+          body: `Updated documentation files:\n${allLiveContent.map(item => `- ${item.path}`).join('\n')}\n\nThis pull request was created from the collaborative editor.`,
+          files: allLiveContent.map(item => ({
+            path: item.path,
+            content: item.content
+          }))
         },
         token,
         repoConfig
@@ -237,14 +326,21 @@ Start editing to see the live preview!
             onClick: () => window.open(result.prUrl, '_blank')
           }
         });
-        // Auto-save after successful PR creation
-        setHasChanges(false);
-        if (selectedFile) {
-          setModifiedFiles(prev => {
-            const newSet = new Set(prev);
-            newSet.delete(selectedFile);
-            return newSet;
-          });
+        
+        // Clear all live editing sessions after successful PR
+        try {
+          const { error } = await supabase
+            .from('live_editing_sessions')
+            .delete()
+            .in('file_path', sessions.map(s => s.file_path));
+          
+          if (!error) {
+            setHasChanges(false);
+            setModifiedFiles(new Set());
+            toast.success('Live editing sessions cleared');
+          }
+        } catch (error) {
+          console.error('Error clearing live sessions:', error);
         }
       }
     } catch (error) {
@@ -310,7 +406,9 @@ Start editing to see the live preview!
   const modifiedFilesArray = Array.from(modifiedFiles);
 
   // Calculate if PR button should be disabled
-  const isPRButtonDisabled = !hasChanges || creatingPR;
+  const totalLiveFiles = sessions.filter(s => s.content && s.content.trim()).length;
+  const hasAnyChanges = hasChanges || totalLiveFiles > 0;
+  const isPRButtonDisabled = !hasAnyChanges || creatingPR;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
@@ -356,7 +454,7 @@ Start editing to see the live preview!
       <div className="flex h-[calc(100vh-4rem)]">
         {/* Main Content */}
         <div className="flex-1 flex flex-col">
-          {/* Enhanced Tab Navigation with Create PR Button */}
+          {/* Enhanced Tab Navigation with Live Editing Info and Create PR Button */}
           <div className="border-b border-border/50 px-6 py-4 bg-background/95 backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <div className="flex space-x-1 bg-muted/30 p-1 rounded-lg">
@@ -392,10 +490,20 @@ Start editing to see the live preview!
               <div className="flex items-center gap-3">
                 {activeTab === 'content' && (
                   <>
-                    {modifiedFiles.size > 0 && (
+                    {selectedFile && (
+                      <LiveEditingIndicator
+                        isLocked={isLocked}
+                        lockedBy={lockedBy}
+                        isAcquiringLock={isAcquiringLock}
+                        onAcquireLock={handleAcquireLock}
+                        onReleaseLock={handleReleaseLock}
+                      />
+                    )}
+                    
+                    {totalLiveFiles > 0 && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                        <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
-                        {modifiedFiles.size} file{modifiedFiles.size !== 1 ? 's' : ''} modified
+                        <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
+                        {totalLiveFiles} file{totalLiveFiles !== 1 ? 's' : ''} with live changes
                       </div>
                     )}
                     
@@ -406,11 +514,11 @@ Start editing to see the live preview!
                       disabled={isPRButtonDisabled}
                       className="flex items-center gap-2"
                       title={
-                        !hasChanges 
+                        !hasAnyChanges 
                           ? "No changes to create PR for" 
                           : creatingPR 
                             ? "Creating PR..." 
-                            : "Create pull request"
+                            : "Create pull request with all live changes"
                       }
                     >
                       {creatingPR ? (
@@ -418,7 +526,7 @@ Start editing to see the live preview!
                       ) : (
                         <GitPullRequest className="w-4 h-4" />
                       )}
-                      Create PR
+                      Create PR {totalLiveFiles > 0 && `(${totalLiveFiles})`}
                     </Button>
                   </>
                 )}
@@ -462,15 +570,18 @@ Start editing to see the live preview!
                   onFileSelect={handleFileSelect}
                   fileStructure={fileStructure}
                   pendingChanges={modifiedFilesArray}
+                  liveSessions={sessions}
                 />
                 <div className="flex-1 animate-in fade-in slide-in-from-bottom-2 duration-300">
                   <EditorMain 
                     selectedFile={selectedFile}
                     content={loadingContent ? "Loading content..." : content}
                     onContentChange={handleContentChange}
-                    onSave={() => {}} // No longer needed since we only use Create PR
+                    onSave={() => {}} // No longer needed since we auto-save to live sessions
                     hasChanges={hasChanges}
                     saving={false}
+                    isLocked={isLocked}
+                    lockedBy={lockedBy}
                   />
                 </div>
               </>

@@ -1,139 +1,22 @@
+import React, { useState } from 'react';
+import { FileNode } from '@/hooks/useFileStructure';
+import { FileText, Folder, ChevronDown, ChevronRight } from 'lucide-react';
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { FileText, Folder, FolderOpen, ChevronDown, ChevronRight, Search } from "lucide-react";
-import { FileNode } from "@/utils/fileSystem";
-
-interface FileTreeItemProps {
-  node: FileNode;
-  selectedFile?: string;
-  onFileSelect?: (filePath: string) => void;
-  depth?: number;
-  pendingChanges: string[];
-  searchTerm?: string;
-}
-
-function FileTreeItem({ 
-  node, 
-  selectedFile, 
-  onFileSelect, 
-  depth = 0,
-  pendingChanges,
-  searchTerm = ""
-}: FileTreeItemProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
-  const hasChildren = node.children && node.children.length > 0;
-  const isFile = node.type === 'file';
-  const isSelected = selectedFile === node.path;
-  const hasChanges = pendingChanges.includes(node.path);
-
-  // Check if this node or any of its children match the search term
-  const matchesSearch = (node: FileNode, term: string): boolean => {
-    if (!term) return true;
-    
-    const lowerTerm = term.toLowerCase();
-    const nameMatch = node.name.toLowerCase().includes(lowerTerm);
-    const pathMatch = node.path.toLowerCase().includes(lowerTerm);
-    
-    if (nameMatch || pathMatch) return true;
-    
-    // Check children
-    if (node.children) {
-      return node.children.some(child => matchesSearch(child, term));
-    }
-    
-    return false;
-  };
-
-  const shouldShow = matchesSearch(node, searchTerm);
-  
-  if (!shouldShow) return null;
-
-  const handleClick = () => {
-    if (isFile && onFileSelect) {
-      onFileSelect(node.path);
-    } else if (hasChildren) {
-      setIsExpanded(!isExpanded);
-    }
-  };
-
-  // Highlight search term in the name
-  const highlightedName = searchTerm ? 
-    node.name.replace(
-      new RegExp(`(${searchTerm})`, 'gi'),
-      '<mark class="bg-yellow-200 dark:bg-yellow-800">$1</mark>'
-    ) : node.name;
-
-  return (
-    <div>
-      <div 
-        className={`flex items-center gap-2 px-2 py-1 cursor-pointer hover:bg-accent/50 rounded-sm ${
-          isSelected ? 'bg-accent' : ''
-        }`}
-        style={{ paddingLeft: `${depth * 12 + 8}px` }}
-        onClick={handleClick}
-      >
-        {hasChildren && (
-          <Button variant="ghost" size="sm" className="h-4 w-4 p-0">
-            {isExpanded ? (
-              <ChevronDown className="h-3 w-3" />
-            ) : (
-              <ChevronRight className="h-3 w-3" />
-            )}
-          </Button>
-        )}
-        
-        {!hasChildren && <div className="w-4" />}
-        
-        {isFile ? (
-          <FileText className="h-4 w-4 text-blue-600 flex-shrink-0" />
-        ) : hasChildren ? (
-          isExpanded ? (
-            <FolderOpen className="h-4 w-4 text-blue-600 flex-shrink-0" />
-          ) : (
-            <Folder className="h-4 w-4 text-blue-600 flex-shrink-0" />
-          )
-        ) : null}
-        
-        <span 
-          className="text-sm truncate flex-1"
-          dangerouslySetInnerHTML={{ __html: highlightedName }}
-        />
-        
-        {hasChanges && (
-          <div className="w-2 h-2 rounded-full bg-amber-500" title="Unsaved changes" />
-        )}
-      </div>
-      
-      {hasChildren && isExpanded && (
-        <div>
-          {node.children?.map((child) => (
-            <FileTreeItem
-              key={child.path}
-              node={child}
-              selectedFile={selectedFile}
-              onFileSelect={onFileSelect}
-              depth={depth + 1}
-              pendingChanges={pendingChanges}
-              searchTerm={searchTerm}
-            />
-          ))}
-        </div>
-      )}
-    </div>
-  );
+interface LiveSession {
+  file_path: string;
+  locked_by_email?: string;
+  locked_by_name?: string;
+  locked_at?: string;
 }
 
 interface FileTreeSidebarProps {
   title: string;
   description: string;
   selectedFile?: string;
-  onFileSelect?: (filePath: string) => void;
-  fileStructure?: FileNode[];
+  onFileSelect: (filePath: string) => void;
+  fileStructure: FileNode[];
   pendingChanges?: string[];
-  actionButton?: React.ReactNode;
+  liveSessions?: LiveSession[];
 }
 
 export function FileTreeSidebar({ 
@@ -141,57 +24,133 @@ export function FileTreeSidebar({
   description, 
   selectedFile, 
   onFileSelect, 
-  fileStructure, 
+  fileStructure,
   pendingChanges = [],
-  actionButton 
+  liveSessions = []
 }: FileTreeSidebarProps) {
-  const [searchTerm, setSearchTerm] = useState("");
+  const [expandedDirs, setExpandedDirs] = useState(new Set<string>());
+  const [searchTerm, setSearchTerm] = useState('');
+
+  const toggleDirectory = (dirPath: string) => {
+    const newExpandedDirs = new Set(expandedDirs);
+    if (newExpandedDirs.has(dirPath)) {
+      newExpandedDirs.delete(dirPath);
+    } else {
+      newExpandedDirs.add(dirPath);
+    }
+    setExpandedDirs(newExpandedDirs);
+  };
+
+  const isLiveEditing = (filePath: string) => {
+    return liveSessions.some(session => session.file_path === filePath);
+  };
+
+  const getLiveEditingUser = (filePath: string) => {
+    const session = liveSessions.find(session => session.file_path === filePath);
+    return session?.locked_by_name || session?.locked_by_email || 'Someone';
+  };
+
+  const renderFileNode = (node: FileNode, level: number = 0) => {
+    const isSelected = selectedFile === node.path;
+    const hasPendingChanges = pendingChanges.includes(node.path);
+    const isBeingEdited = isLiveEditing(node.path);
+    const editingUser = isBeingEdited ? getLiveEditingUser(node.path) : null;
+    
+    // Filter out nodes that don't match the search term
+    if (searchTerm && !node.name.toLowerCase().includes(searchTerm.toLowerCase())) {
+      return null;
+    }
+
+    if (node.type === 'directory') {
+      const isExpanded = expandedDirs.has(node.path);
+      
+      return (
+        <div key={node.path}>
+          <div
+            className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all duration-200 group ${
+              level > 0 ? 'ml-4' : ''
+            } hover:bg-muted/50`}
+            onClick={() => toggleDirectory(node.path)}
+          >
+            {isExpanded ? (
+              <ChevronDown className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
+            )}
+            <Folder className="h-4 w-4 text-blue-500" />
+            <span className="text-sm font-medium">{node.name}</span>
+            {node.children && (
+              <span className="text-xs text-muted-foreground ml-auto">
+                {node.children.length}
+              </span>
+            )}
+          </div>
+          
+          {isExpanded && node.children && (
+            <div className="ml-2 border-l border-border/30 pl-2">
+              {node.children.map((child) => renderFileNode(child, level + 1))}
+            </div>
+          )}
+        </div>
+      );
+    }
+
+    return (
+      <div
+        key={node.path}
+        className={`flex items-center gap-2 p-2 rounded-lg cursor-pointer transition-all duration-200 group ${
+          level > 0 ? 'ml-4' : ''
+        } ${
+          isSelected
+            ? 'bg-primary/10 border border-primary/20 shadow-sm'
+            : 'hover:bg-muted/50'
+        }`}
+        onClick={() => onFileSelect(node.path)}
+      >
+        <FileText className={`h-4 w-4 ${isSelected ? 'text-primary' : 'text-muted-foreground'}`} />
+        <span className={`text-sm flex-1 truncate ${isSelected ? 'font-medium' : ''}`}>
+          {node.name}
+        </span>
+        
+        <div className="flex items-center gap-1">
+          {hasPendingChanges && (
+            <div className="w-2 h-2 rounded-full bg-amber-500" title="Has pending changes" />
+          )}
+          {isBeingEdited && (
+            <div className="flex items-center gap-1">
+              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" title={`Being edited by ${editingUser}`} />
+              <span className="text-xs text-muted-foreground hidden group-hover:inline">
+                {editingUser}
+              </span>
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
 
   return (
-    <div className="w-80 border-r border-border/50 bg-muted/20 backdrop-blur-sm flex flex-col">
-      <div className="p-4 border-b flex-shrink-0">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="font-medium text-sm">{title}</h3>
-            <p className="text-xs text-muted-foreground mt-1">
-              {description}
-            </p>
-          </div>
-          {actionButton}
-        </div>
-        
-        {/* Search Input */}
-        <div className="mt-3 relative">
-          <Search className="absolute left-2 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Search files..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-8 h-8 text-sm"
-          />
-        </div>
-        
-        {pendingChanges.length > 0 && (
-          <div className="mt-2 text-xs text-amber-600 bg-amber-50 px-2 py-1 rounded">
-            {pendingChanges.length} file(s) with unsaved changes
-          </div>
-        )}
+    <div className="w-64 border-r border-border/50 flex flex-col bg-background">
+      {/* Sidebar Header */}
+      <div className="px-4 py-3 border-b border-border/50">
+        <h3 className="text-sm font-semibold">{title}</h3>
+        <p className="text-xs text-muted-foreground">{description}</p>
       </div>
-      <div className="flex-1 min-h-0">
-        <ScrollArea className="h-full">
-          <div className="p-2">
-            {fileStructure?.map((node) => (
-              <FileTreeItem
-                key={node.path}
-                node={node}
-                selectedFile={selectedFile}
-                onFileSelect={onFileSelect}
-                pendingChanges={pendingChanges}
-                searchTerm={searchTerm}
-              />
-            ))}
-          </div>
-        </ScrollArea>
+      
+      {/* Search Bar */}
+      <div className="p-3">
+        <input
+          type="search"
+          placeholder="Search files..."
+          className="w-full px-3 py-2 text-sm rounded-md border border-input bg-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+          value={searchTerm}
+          onChange={(e) => setSearchTerm(e.target.value)}
+        />
+      </div>
+
+      {/* File Structure */}
+      <div className="flex-1 overflow-y-auto p-2">
+        {fileStructure.map((node) => renderFileNode(node))}
       </div>
     </div>
   );

@@ -155,6 +155,39 @@ export type Database = {
         }
         Relationships: []
       }
+      live_editing_sessions: {
+        Row: {
+          content: string
+          created_at: string
+          file_path: string
+          id: string
+          locked_at: string | null
+          locked_by: string | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          file_path: string
+          id?: string
+          locked_at?: string | null
+          locked_by?: string | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          file_path?: string
+          id?: string
+          locked_at?: string | null
+          locked_by?: string | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       navigation_items: {
         Row: {
           created_at: string
@@ -304,6 +337,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      acquire_file_lock: {
+        Args: { p_file_path: string; p_user_id: string }
+        Returns: boolean
+      }
       generate_admin_access_code: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -316,6 +353,17 @@ export type Database = {
           installation_id: number
         }[]
       }
+      get_live_editing_sessions: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          file_path: string
+          content: string
+          locked_by_email: string
+          locked_by_name: string
+          locked_at: string
+          updated_at: string
+        }[]
+      }
       get_navigation_structure: {
         Args: Record<PropertyKey, never>
         Returns: Json
@@ -325,6 +373,14 @@ export type Database = {
           _user_id: string
           _role: Database["public"]["Enums"]["app_role"]
         }
+        Returns: boolean
+      }
+      release_file_lock: {
+        Args: { p_file_path: string; p_user_id: string }
+        Returns: boolean
+      }
+      save_live_content: {
+        Args: { p_file_path: string; p_content: string; p_user_id: string }
         Returns: boolean
       }
       sync_navigation_from_content: {
