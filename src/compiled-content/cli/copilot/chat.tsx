@@ -27,7 +27,7 @@ export const frontmatter = {
 };
 
 // MDX compiled content
-function _createMdxContent(props: any) {
+function _createMdxContent(props: MDX_cli_copilot_chatProps) {
   const _components = {
     div: "div",
     ...props.components
@@ -35,7 +35,7 @@ function _createMdxContent(props: any) {
   return _jsx(_components.div, {});
 }
 
-function MDXContent(props: any = {}) {
+function MDXContent(props: MDX_cli_copilot_chatProps = {}) {
   const {wrapper: MDXLayout} = props.components || ({});
   return MDXLayout ? _jsx(MDXLayout, {
     ...props,
