@@ -609,7 +609,7 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
   
   const allMatches: Array<{ match: RegExpMatchArray; type: string }> = [];
   
-  // Find CardGroups
+  // Find CardGroups first
   let match;
   while ((match = cardGroupRegex.exec(content)) !== null) {
     allMatches.push({ match, type: 'cardgroup' });
@@ -621,14 +621,8 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
     allMatches.push({ match, type: 'steps' });
   }
   
-  // Find Images
-  stepsRegex.lastIndex = 0;
-  while ((match = imageRegex.exec(content)) !== null) {
-    allMatches.push({ match, type: 'image' });
-  }
-  
   // Find Callouts
-  imageRegex.lastIndex = 0;
+  stepsRegex.lastIndex = 0;
   while ((match = calloutRegex.exec(content)) !== null) {
     allMatches.push({ match, type: 'callout' });
   }
@@ -649,10 +643,29 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
     }
   }
   
+  // Find Images (but exclude those inside Steps, CardGroups, or other components)
+  standaloneCardRegex.lastIndex = 0;
+  const stepsMatches = allMatches.filter(m => m.type === 'steps');
+  while ((match = imageRegex.exec(content)) !== null) {
+    // Check if this image is inside any special component
+    const isInsideComponent = allMatches.some(componentMatch => {
+      const componentStart = componentMatch.match.index!;
+      const componentEnd = componentStart + componentMatch.match[0].length;
+      return match.index! >= componentStart && match.index! < componentEnd;
+    });
+    
+    if (!isInsideComponent) {
+      console.log('🖼️ Found standalone image at position:', match.index);
+      allMatches.push({ match, type: 'image' });
+    } else {
+      console.log('🖼️ Skipping image inside component at position:', match.index);
+    }
+  }
+  
   // Sort by position
   allMatches.sort((a, b) => (a.match.index || 0) - (b.match.index || 0));
   
-  console.log('🔀 Found special elements:', allMatches.length);
+  console.log('🔀 Found special elements:', allMatches.length, allMatches.map(m => ({ type: m.type, position: m.match.index })));
   
   let lastIndex = 0;
   let elementIndex = 0;
