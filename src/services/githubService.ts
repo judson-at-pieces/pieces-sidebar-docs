@@ -5,7 +5,6 @@ interface PullRequestOptions {
   files: Array<{ path: string; content: string }>;
   baseBranch: string;
   headBranch?: string; // Optional - will be auto-generated if not provided
-  sourceBranch?: string; // The actual source branch to create PR from
 }
 
 interface GitHubRepoConfig {
@@ -47,20 +46,17 @@ class GitHubService {
     repoConfig: GitHubRepoConfig
   ): Promise<{ success: boolean; prUrl?: string; error?: string }> {
     try {
-      const { title, body, files, baseBranch, headBranch, sourceBranch } = options;
-      
-      // Use sourceBranch if provided, otherwise fall back to generating a temporary branch
-      const actualSourceBranch = sourceBranch || baseBranch;
+      const { title, body, files, baseBranch, headBranch } = options;
       
       // Generate head branch name if not provided
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
       const finalHeadBranch = headBranch || `editor-changes-${timestamp}`;
       
-      console.log('Creating PR with base branch (target):', baseBranch, 'source branch:', actualSourceBranch, 'head branch (for changes):', finalHeadBranch);
+      console.log('Creating PR with base branch (target):', baseBranch, 'head branch (source):', finalHeadBranch);
 
-      // Step 1: Get the latest commit SHA from the actual source branch
-      const sourceBranchResponse = await fetch(
-        `https://api.github.com/repos/${repoConfig.owner}/${repoConfig.repo}/git/ref/heads/${actualSourceBranch}`,
+      // Step 1: Get the latest commit SHA from the base branch (the branch we want to target)
+      const baseBranchResponse = await fetch(
+        `https://api.github.com/repos/${repoConfig.owner}/${repoConfig.repo}/git/ref/heads/${baseBranch}`,
         {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -69,15 +65,15 @@ class GitHubService {
         }
       );
 
-      if (!sourceBranchResponse.ok) {
-        const errorText = await sourceBranchResponse.text();
-        throw new Error(`Failed to get source branch ${actualSourceBranch}: ${errorText}`);
+      if (!baseBranchResponse.ok) {
+        const errorText = await baseBranchResponse.text();
+        throw new Error(`Failed to get base branch ${baseBranch}: ${errorText}`);
       }
 
-      const sourceBranchData = await sourceBranchResponse.json();
-      const sourceCommitSha = sourceBranchData.object.sha;
+      const baseBranchData = await baseBranchResponse.json();
+      const baseCommitSha = baseBranchData.object.sha;
 
-      // Step 2: Create a new branch from the source branch for our changes
+      // Step 2: Create a new branch from the base branch for our changes
       const createBranchResponse = await fetch(
         `https://api.github.com/repos/${repoConfig.owner}/${repoConfig.repo}/git/refs`,
         {
@@ -89,7 +85,7 @@ class GitHubService {
           },
           body: JSON.stringify({
             ref: `refs/heads/${finalHeadBranch}`,
-            sha: sourceCommitSha,
+            sha: baseCommitSha,
           }),
         }
       );
@@ -99,9 +95,9 @@ class GitHubService {
         throw new Error(`Failed to create branch ${finalHeadBranch}: ${errorText}`);
       }
 
-      // Step 3: Get the tree from the source commit
-      const sourceCommitResponse = await fetch(
-        `https://api.github.com/repos/${repoConfig.owner}/${repoConfig.repo}/git/commits/${sourceCommitSha}`,
+      // Step 3: Get the tree from the base commit
+      const baseCommitResponse = await fetch(
+        `https://api.github.com/repos/${repoConfig.owner}/${repoConfig.repo}/git/commits/${baseCommitSha}`,
         {
           headers: {
             'Authorization': `Bearer ${accessToken}`,
@@ -110,8 +106,8 @@ class GitHubService {
         }
       );
 
-      const sourceCommitData = await sourceCommitResponse.json();
-      const sourceTreeSha = sourceCommitData.tree.sha;
+      const baseCommitData = await baseCommitResponse.json();
+      const baseTreeSha = baseCommitData.tree.sha;
 
       // Step 4: Create blobs for each file
       const blobs = [];
@@ -157,7 +153,7 @@ class GitHubService {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify({
-            base_tree: sourceTreeSha,
+            base_tree: baseTreeSha,
             tree: blobs,
           }),
         }
@@ -183,7 +179,7 @@ class GitHubService {
           body: JSON.stringify({
             message: title,
             tree: treeData.sha,
-            parents: [sourceCommitSha],
+            parents: [baseCommitSha],
           }),
         }
       );
@@ -230,7 +226,7 @@ class GitHubService {
             title,
             body,
             head: finalHeadBranch, // The branch with changes
-            base: baseBranch,      // The target branch
+            base: baseBranch,      // The target branch (what's selected in the dropdown)
           }),
         }
       );
