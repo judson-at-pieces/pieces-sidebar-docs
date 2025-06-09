@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { MarkdownCard } from './MarkdownCard';
 import { CardGroup } from './CardGroup';
@@ -66,7 +67,7 @@ export function PiecesCloudModels() {
         {['OpenAI', 'Anthropic', 'Google'].map(provider => (
           <div key={provider}>
             <h3 className="text-xl font-semibold mb-4">{provider} Models</h3>
-            <CardGroup cols="2">
+            <CardGroup cols={2}>
               {cloudModels
                 .filter(model => model.provider === provider)
                 .map(model => (

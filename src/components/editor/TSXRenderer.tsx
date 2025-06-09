@@ -152,6 +152,7 @@ Please review the changes and merge when ready.
 
 ---
 *This PR was created automatically by the Pieces Documentation Editor*`,
+          baseBranch: 'main',
           files: [
             {
               path: repoFilePath,
@@ -163,8 +164,8 @@ Please review the changes and merge when ready.
         config
       );
 
-      if (result.success && result.prNumber && result.prUrl) {
-        toast.success(`Pull request created successfully! #${result.prNumber}`, { 
+      if (result.success && result.prUrl) {
+        toast.success(`Pull request created successfully!`, { 
           duration: 5000,
           action: {
             label: 'View PR',

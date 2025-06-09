@@ -110,14 +110,14 @@ function buildFileTree(paths: string[]): FileNode[] {
         if (isLast && part.endsWith('.md')) {
           // This is a file
           current[part] = {
-            type: 'file',
+            type: 'file' as const,
             name: part,
             path: cleanPath
           };
         } else {
           // This is a directory
           current[part] = {
-            type: 'folder',
+            type: 'folder' as const,
             name: part,
             path: parts.slice(0, i + 1).join('/'),
             children: {}
@@ -138,13 +138,13 @@ function buildFileTree(paths: string[]): FileNode[] {
         return {
           name: item.name,
           path: item.path,
-          type: 'file'
+          type: 'file' as const
         };
       } else {
         return {
           name: item.name,
           path: item.path,
-          type: 'folder',
+          type: 'folder' as const,
           children: item.children ? convertToFileNodes(item.children) : []
         };
       }
