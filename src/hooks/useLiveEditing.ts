@@ -20,14 +20,21 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
   const [sessions, setSessions] = useState<LiveEditingSession[]>([]);
   const [isAcquiringLock, setIsAcquiringLock] = useState(false);
 
+  // Use 'main' as fallback if no branch is provided
+  const activeBranch = currentBranch || 'main';
+
+  console.log('useLiveEditing hook - currentBranch:', currentBranch, 'activeBranch:', activeBranch);
+
   // Fetch all live editing sessions for current branch
   const fetchSessions = useCallback(async () => {
-    if (!currentBranch) return;
+    if (!activeBranch) return;
 
     try {
+      console.log('Fetching sessions for branch:', activeBranch);
+      
       const { data, error } = await supabase
         .rpc('get_live_editing_sessions_by_branch', { 
-          branch_name: currentBranch 
+          branch_name: activeBranch 
         });
 
       if (error) {
@@ -35,19 +42,22 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
         return;
       }
 
+      console.log('Fetched sessions:', data?.length || 0, 'for branch:', activeBranch);
       setSessions(data || []);
     } catch (error) {
       console.error('Error fetching live editing sessions:', error);
     }
-  }, [currentBranch]);
+  }, [activeBranch]);
 
   // Check lock status for the selected file
   const checkLockStatus = useCallback(async () => {
-    if (!selectedFile || !currentBranch) return;
+    if (!selectedFile || !activeBranch) return;
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
+
+      console.log('Checking lock status for file:', selectedFile, 'on branch:', activeBranch);
 
       // Query the live editing sessions table directly and then join with profiles
       const { data, error } = await supabase
@@ -59,7 +69,7 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
           profiles!inner(email, full_name)
         `)
         .eq('file_path', selectedFile)
-        .eq('branch_name', currentBranch || 'main')
+        .eq('branch_name', activeBranch)
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
@@ -100,11 +110,11 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
     } catch (error) {
       console.error('Error checking lock status:', error);
     }
-  }, [selectedFile, currentBranch]);
+  }, [selectedFile, activeBranch]);
 
   // Acquire lock for a file
   const acquireLock = useCallback(async (filePath: string): Promise<boolean> => {
-    if (!currentBranch) {
+    if (!activeBranch) {
       toast.error('No branch selected');
       return false;
     }
@@ -118,13 +128,13 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
         return false;
       }
 
-      console.log('Acquiring lock for file:', filePath, 'on branch:', currentBranch);
+      console.log('Acquiring lock for file:', filePath, 'on branch:', activeBranch);
 
       const { data, error } = await supabase
         .rpc('acquire_file_lock_by_branch', { 
           p_file_path: filePath, 
           p_user_id: user.id,
-          p_branch_name: currentBranch
+          p_branch_name: activeBranch
         });
 
       if (error) {
@@ -150,21 +160,23 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
     } finally {
       setIsAcquiringLock(false);
     }
-  }, [currentBranch, fetchSessions]);
+  }, [activeBranch, fetchSessions]);
 
   // Release lock for a file
   const releaseLock = useCallback(async (filePath: string): Promise<boolean> => {
-    if (!currentBranch) return false;
+    if (!activeBranch) return false;
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return false;
 
+      console.log('Releasing lock for file:', filePath, 'on branch:', activeBranch);
+
       const { data, error } = await supabase
         .rpc('release_file_lock_by_branch', { 
           p_file_path: filePath, 
           p_user_id: user.id,
-          p_branch_name: currentBranch
+          p_branch_name: activeBranch
         });
 
       if (error) {
@@ -184,24 +196,24 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
       console.error('Error releasing lock:', error);
       return false;
     }
-  }, [currentBranch, fetchSessions]);
+  }, [activeBranch, fetchSessions]);
 
   // Save live content for a file
   const saveLiveContent = useCallback(async (filePath: string, content: string): Promise<boolean> => {
-    if (!currentBranch) return false;
+    if (!activeBranch) return false;
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return false;
 
-      console.log('Saving live content for file:', filePath, 'on branch:', currentBranch);
+      console.log('Saving live content for file:', filePath, 'on branch:', activeBranch);
 
       const { data, error } = await supabase
         .rpc('save_live_content_by_branch', { 
           p_file_path: filePath, 
           p_content: content, 
           p_user_id: user.id,
-          p_branch_name: currentBranch
+          p_branch_name: activeBranch
         });
 
       if (error) {
@@ -220,20 +232,20 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
       console.error('Error saving live content:', error);
       return false;
     }
-  }, [currentBranch, fetchSessions]);
+  }, [activeBranch, fetchSessions]);
 
   // Load live content for a file
   const loadLiveContent = useCallback(async (filePath: string): Promise<string | null> => {
-    if (!currentBranch) return null;
+    if (!activeBranch) return null;
 
     try {
-      console.log('Loading live content for file:', filePath, 'on branch:', currentBranch);
+      console.log('Loading live content for file:', filePath, 'on branch:', activeBranch);
 
       const { data, error } = await supabase
         .from('live_editing_sessions')
         .select('content')
         .eq('file_path', filePath)
-        .eq('branch_name', currentBranch)
+        .eq('branch_name', activeBranch)
         .maybeSingle();
 
       if (error) {
@@ -241,37 +253,41 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
         return null;
       }
 
+      console.log('Loaded live content length:', data?.content?.length || 0, 'for file:', filePath, 'on branch:', activeBranch);
       return data?.content || null;
     } catch (error) {
       console.error('Error loading live content:', error);
       return null;
     }
-  }, [currentBranch]);
+  }, [activeBranch]);
 
   // Clear state when branch changes
   useEffect(() => {
-    console.log('Branch changed to:', currentBranch);
+    console.log('Branch changed to:', activeBranch);
     setIsLocked(false);
     setLockedBy(null);
     setLiveContent('');
     setSessions([]);
-  }, [currentBranch]);
+  }, [activeBranch]);
 
   // Set up real-time subscription for live editing sessions
   useEffect(() => {
-    if (!currentBranch) return;
+    if (!activeBranch) return;
+
+    console.log('Setting up realtime subscription for branch:', activeBranch);
 
     const channel = supabase
-      .channel('live_editing_sessions')
+      .channel(`live_editing_sessions_${activeBranch}`)
       .on(
         'postgres_changes',
         {
           event: '*',
           schema: 'public',
           table: 'live_editing_sessions',
-          filter: `branch_name=eq.${currentBranch}`
+          filter: `branch_name=eq.${activeBranch}`
         },
-        () => {
+        (payload) => {
+          console.log('Live editing session update for branch:', activeBranch, payload);
           fetchSessions();
           if (selectedFile) {
             checkLockStatus();
@@ -281,19 +297,20 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
       .subscribe();
 
     return () => {
+      console.log('Cleaning up realtime subscription for branch:', activeBranch);
       supabase.removeChannel(channel);
     };
-  }, [currentBranch, selectedFile, fetchSessions, checkLockStatus]);
+  }, [activeBranch, selectedFile, fetchSessions, checkLockStatus]);
 
   // Fetch sessions and check lock status when file or branch changes
   useEffect(() => {
-    if (currentBranch) {
+    if (activeBranch) {
       fetchSessions();
     }
-    if (selectedFile && currentBranch) {
+    if (selectedFile && activeBranch) {
       checkLockStatus();
     }
-  }, [selectedFile, currentBranch, fetchSessions, checkLockStatus]);
+  }, [selectedFile, activeBranch, fetchSessions, checkLockStatus]);
 
   return {
     isLocked,
