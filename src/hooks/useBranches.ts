@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { githubService } from '@/services/githubService';
 import { supabase } from '@/integrations/supabase/client';
@@ -55,13 +54,25 @@ export function useBranches() {
   };
 
   const fetchBranches = useCallback(async (preserveCurrentBranch = false) => {
+    if (DEBUG_BRANCHES) {
+      console.log('🌿 FETCHBRANCHES CALLED - preserveCurrentBranch:', preserveCurrentBranch);
+      console.log('🌿 Current state before fetch - currentBranch:', currentBranch, 'initialized:', initialized);
+    }
+    
     setLoading(true);
     setError(null);
     
     try {
       const repoConfig = await githubService.getRepoConfig();
       if (!repoConfig) {
-        throw new Error('No repository configured');
+        if (DEBUG_BRANCHES) {
+          console.log('🌿 No repo config found, setting to main');
+        }
+        // No repo configured - set to main and mark as initialized
+        setCurrentBranch('main');
+        setInitialized(true);
+        setLoading(false);
+        return;
       }
 
       const token = await getGitHubAppToken();
@@ -99,32 +110,52 @@ export function useBranches() {
 
       setBranches(formattedBranches);
       
-      // Only initialize current branch if not preserving current branch AND not already initialized
-      if (!preserveCurrentBranch && (!initialized || !formattedBranches.find(b => b.name === currentBranch))) {
+      // Initialize current branch logic
+      if (!initialized) {
+        // First time initialization - always use default branch
         if (DEBUG_BRANCHES) {
-          console.log('🌿 USEBRANCHES: Initializing current branch to:', defaultBranch);
+          console.log('🌿 FIRST INITIALIZATION - setting to default branch:', defaultBranch);
         }
         setCurrentBranch(defaultBranch);
         setInitialized(true);
-      } else if (!initialized) {
-        // First time initialization
+      } else if (preserveCurrentBranch && currentBranch) {
+        // Check if current branch still exists
+        const branchExists = formattedBranches.find(b => b.name === currentBranch);
+        if (!branchExists) {
+          if (DEBUG_BRANCHES) {
+            console.log('🌿 CURRENT BRANCH NO LONGER EXISTS - switching to default:', defaultBranch);
+          }
+          setCurrentBranch(defaultBranch);
+        } else {
+          if (DEBUG_BRANCHES) {
+            console.log('🌿 PRESERVING CURRENT BRANCH:', currentBranch);
+          }
+        }
+      } else if (!preserveCurrentBranch) {
+        // Explicit refresh - reset to default
         if (DEBUG_BRANCHES) {
-          console.log('🌿 USEBRANCHES: First initialization, setting to:', defaultBranch);
+          console.log('🌿 EXPLICIT REFRESH - resetting to default branch:', defaultBranch);
         }
         setCurrentBranch(defaultBranch);
-        setInitialized(true);
-      } else if (DEBUG_BRANCHES) {
-        console.log('🌿 USEBRANCHES: Preserving current branch:', currentBranch);
       }
 
     } catch (error) {
       console.error('Error fetching branches:', error);
       setError(error instanceof Error ? error.message : 'Failed to fetch branches');
       toast.error('Failed to fetch branches');
+      
+      // On error, fall back to main if not initialized
+      if (!initialized) {
+        if (DEBUG_BRANCHES) {
+          console.log('🌿 ERROR FALLBACK - setting to main');
+        }
+        setCurrentBranch('main');
+        setInitialized(true);
+      }
     } finally {
       setLoading(false);
     }
-  }, [initialized, currentBranch]);
+  }, [currentBranch, initialized]);
 
   const ensureSessionsForBranch = async (branchName: string) => {
     try {
@@ -326,8 +357,11 @@ export function useBranches() {
   };
 
   useEffect(() => {
-    // Only fetch branches if not initialized, or preserve current branch if already initialized
-    fetchBranches(initialized);
+    if (DEBUG_BRANCHES) {
+      console.log('🌿 USEBRANCHES: Initial useEffect triggered');
+    }
+    // Only fetch branches on initial mount
+    fetchBranches(false);
   }, []);
 
   // Add effect to log currentBranch changes
