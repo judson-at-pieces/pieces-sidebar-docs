@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ExpandableImage as ExpandableImageComponent } from './ExpandableImage';
@@ -191,11 +190,11 @@ export const createComponentMappings = () => ({
         cardContent = extractTextFromChildren(children);
       }
       
-      return <MarkdownCard title={dataProps.title} image={dataProps.image} icon={dataProps.icon} href={dataProps.href} external={dataProps.external}>{cardContent}</MarkdownCard>;
+      return <MarkdownCard title={dataProps.title} image={dataProps.image} href={dataProps.href} external={dataProps.external}>{cardContent}</MarkdownCard>;
     }
     
     if (dataProps.image && dataProps.src) {
-      return <Image src={dataProps.src} alt={dataProps.alt} caption={dataProps.caption} align={dataProps.align as any} fullwidth={dataProps.fullwidth} />;
+      return <Image src={dataProps.src} alt={dataProps.alt} align={dataProps.align as any} fullwidth={dataProps.fullwidth} />;
     }
     
     if (dataProps.piecesCloudModels) {
@@ -231,7 +230,7 @@ export const createComponentMappings = () => ({
     }
     
     if (dataProps.tabs === 'true') {
-      return <Tabs defaultActiveTab={parseInt(dataProps.defaultActiveTab) || 0} {...props}>{children}</Tabs>;
+      return <Tabs defaultActiveTab={parseInt(dataProps.defaultActiveTab) || 0} {...props}>{React.Children.toArray(children) as React.ReactElement[]}</Tabs>;
     }
     
     if (dataProps.tabitem === 'true') {
