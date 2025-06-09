@@ -128,6 +128,7 @@ export function EditorTabNavigation({
 
           {/* Pull Request Button */}
           <PullRequestButton
+            key={`pr-button-${currentBranch}-${initialized}`}
             currentBranch={currentBranch}
             sessions={sessions}
             hasChanges={hasChanges}
