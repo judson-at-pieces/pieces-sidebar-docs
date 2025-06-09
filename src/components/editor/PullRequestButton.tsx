@@ -1,9 +1,11 @@
+
 import React, { useState, useEffect } from 'react';
 import { GitPullRequest } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { githubService } from '@/services/githubService';
 import { supabase } from '@/integrations/supabase/client';
+import { useBranches } from '@/hooks/useBranches';
 
 interface PullRequestButtonProps {
   currentBranch: string;
@@ -16,6 +18,7 @@ const DEBUG_PR_BUTTON = true;
 
 export function PullRequestButton({ currentBranch, sessions, hasChanges, initialized }: PullRequestButtonProps) {
   const [creating, setCreating] = useState(false);
+  const { branches } = useBranches();
   const [buttonState, setButtonState] = useState({
     text: 'Loading...',
     enabled: false,
@@ -40,6 +43,7 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
       console.log('  🔵 hasChanges:', hasChanges);
       console.log('  🔵 creating:', creating);
       console.log('  🔵 renderKey:', renderKey);
+      console.log('  🔵 branches.length:', branches.length);
     }
 
     if (!initialized) {
@@ -68,24 +72,51 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
       return;
     }
 
-    const targetBranch = 'main';
+    // Determine target branch intelligently
+    let targetBranch = 'main';
+    
+    // Find the default branch from the branches list
+    const defaultBranch = branches.find(b => b.isDefault);
+    if (defaultBranch) {
+      targetBranch = defaultBranch.name;
+    }
+
+    // If current branch is the default branch, find an alternative target
+    if (currentBranch === targetBranch) {
+      // Look for common development branches
+      const alternativeTargets = ['develop', 'dev', 'development', 'staging'];
+      const availableAlternative = branches.find(b => 
+        alternativeTargets.includes(b.name.toLowerCase()) && b.name !== currentBranch
+      );
+      
+      if (availableAlternative) {
+        targetBranch = availableAlternative.name;
+      } else {
+        // If no alternative found, look for any other branch
+        const otherBranch = branches.find(b => b.name !== currentBranch);
+        if (otherBranch) {
+          targetBranch = otherBranch.name;
+        }
+      }
+    }
 
     if (DEBUG_PR_BUTTON) {
       console.log('🔵 PR BUTTON BRANCH COMPARISON:');
       console.log('  🔵 currentBranch:', JSON.stringify(currentBranch));
       console.log('  🔵 targetBranch:', JSON.stringify(targetBranch));
+      console.log('  🔵 defaultBranch:', defaultBranch?.name);
+      console.log('  🔵 branches available:', branches.map(b => b.name));
       console.log('  🔵 currentBranch === targetBranch:', currentBranch === targetBranch);
-      console.log('  🔵 currentBranch.trim() === targetBranch.trim():', currentBranch.trim() === targetBranch.trim());
     }
 
     if (currentBranch === targetBranch) {
       if (DEBUG_PR_BUTTON) {
-        console.log('❌ PR BUTTON DISABLED: currentBranch === targetBranch');
+        console.log('❌ PR BUTTON DISABLED: currentBranch === targetBranch, no suitable target found');
       }
       setButtonState({
-        text: `${currentBranch} → ${targetBranch}`,
+        text: `${currentBranch} (no target)`,
         enabled: false,
-        tooltip: `Cannot create PR from ${currentBranch} branch to ${targetBranch} branch`,
+        tooltip: `Cannot create PR: no suitable target branch found. Create a new branch first.`,
         targetBranch
       });
       return;
@@ -148,7 +179,7 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
       targetBranch
     });
 
-  }, [initialized, currentBranch, sessions, hasChanges, creating, renderKey]);
+  }, [initialized, currentBranch, sessions, hasChanges, creating, renderKey, branches]);
 
   const getGitHubAppToken = async () => {
     try {
