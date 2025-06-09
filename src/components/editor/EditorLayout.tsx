@@ -438,6 +438,12 @@ Start editing to see the live preview!
       return;
     }
 
+    // Don't allow PR from main to main
+    if (sourceBranch === 'main') {
+      toast.error('Cannot create PR from main branch to main branch');
+      return;
+    }
+
     setCreatingPR(true);
     
     try {
@@ -461,11 +467,7 @@ Start editing to see the live preview!
 
       console.log('Files to include in PR:', allLiveContent.map(item => item.path));
 
-      // Create a temporary branch name for the PR
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      const prBranchName = `editor-changes-${timestamp}`;
-
-      // Create PR FROM sourceBranch TO main
+      // Create PR FROM sourceBranch TO main - NO temporary branch needed
       const result = await githubService.createPullRequest(
         {
           title: `Update documentation from ${sourceBranch} - ${allLiveContent.length} file${allLiveContent.length !== 1 ? 's' : ''} modified`,
@@ -475,7 +477,8 @@ Start editing to see the live preview!
             content: item.content
           })),
           baseBranch: 'main', // TARGET branch (where changes should be merged TO)
-          headBranch: prBranchName // SOURCE branch (where changes come FROM)
+          headBranch: sourceBranch, // SOURCE branch (where changes come FROM) - use existing branch
+          useExistingBranch: true // New flag to tell service to use existing branch
         },
         token,
         repoConfig
