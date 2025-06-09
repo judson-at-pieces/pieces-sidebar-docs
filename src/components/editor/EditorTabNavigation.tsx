@@ -36,11 +36,17 @@ export function EditorTabNavigation({
   initialized
 }: EditorTabNavigationProps) {
   if (DEBUG_TAB_NAV) {
-    console.log('🔄 EDITOR TAB NAV RENDER');
-    console.log('  currentBranch:', currentBranch, 'type:', typeof currentBranch);
-    console.log('  initialized:', initialized);
-    console.log('  hasChanges:', hasChanges);
-    console.log('  sessions count:', sessions.length);
+    console.log('🟡 EDITOR TAB NAV RENDER');
+    console.log('🟡 TAB NAV RECEIVED PROPS:');
+    console.log('  🟡 currentBranch:', JSON.stringify(currentBranch), 'type:', typeof currentBranch);
+    console.log('  🟡 initialized:', initialized);
+    console.log('  🟡 hasChanges:', hasChanges);
+    console.log('  🟡 sessions count:', sessions.length);
+    console.log('🟡 TAB NAV PASSING TO PR BUTTON:');
+    console.log('  🟡 currentBranch:', JSON.stringify(currentBranch));
+    console.log('  🟡 sessions:', sessions);
+    console.log('  🟡 hasChanges:', hasChanges);
+    console.log('  🟡 initialized:', initialized);
   }
 
   return (

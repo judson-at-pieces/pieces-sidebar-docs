@@ -32,19 +32,19 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
 
   useEffect(() => {
     if (DEBUG_PR_BUTTON) {
-      console.log('🔄 PR BUTTON STATE UPDATE - KEY:', renderKey);
-      console.log('  ===== INPUT PROPS =====');
-      console.log('  initialized:', initialized);
-      console.log('  currentBranch:', currentBranch, 'type:', typeof currentBranch);
-      console.log('  sessions count:', sessions.length);
-      console.log('  sessions:', sessions);
-      console.log('  hasChanges:', hasChanges, 'type:', typeof hasChanges);
-      console.log('  creating:', creating, 'type:', typeof creating);
+      console.log('🔵 PR BUTTON USEEFFECT TRIGGERED');
+      console.log('🔵 RECEIVED PROPS IN PR BUTTON:');
+      console.log('  🔵 currentBranch:', JSON.stringify(currentBranch), 'type:', typeof currentBranch);
+      console.log('  🔵 initialized:', initialized);
+      console.log('  🔵 sessions.length:', sessions.length);
+      console.log('  🔵 hasChanges:', hasChanges);
+      console.log('  🔵 creating:', creating);
+      console.log('  🔵 renderKey:', renderKey);
     }
 
     if (!initialized) {
       if (DEBUG_PR_BUTTON) {
-        console.log('❌ DISABLED REASON: Not initialized');
+        console.log('❌ PR BUTTON DISABLED: Not initialized');
       }
       setButtonState({
         text: 'Loading branches...',
@@ -57,7 +57,7 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
 
     if (!currentBranch) {
       if (DEBUG_PR_BUTTON) {
-        console.log('❌ DISABLED REASON: No currentBranch provided');
+        console.log('❌ PR BUTTON DISABLED: No currentBranch provided');
       }
       setButtonState({
         text: 'No branch selected',
@@ -71,17 +71,16 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
     const targetBranch = 'main';
 
     if (DEBUG_PR_BUTTON) {
-      console.log('  ===== BRANCH COMPARISON =====');
-      console.log('  currentBranch:', currentBranch);
-      console.log('  targetBranch:', targetBranch);
-      console.log('  currentBranch === targetBranch:', currentBranch === targetBranch);
-      console.log('  currentBranch length:', currentBranch.length);
-      console.log('  targetBranch length:', targetBranch.length);
+      console.log('🔵 PR BUTTON BRANCH COMPARISON:');
+      console.log('  🔵 currentBranch:', JSON.stringify(currentBranch));
+      console.log('  🔵 targetBranch:', JSON.stringify(targetBranch));
+      console.log('  🔵 currentBranch === targetBranch:', currentBranch === targetBranch);
+      console.log('  🔵 currentBranch.trim() === targetBranch.trim():', currentBranch.trim() === targetBranch.trim());
     }
 
     if (currentBranch === targetBranch) {
       if (DEBUG_PR_BUTTON) {
-        console.log('❌ DISABLED REASON: currentBranch === targetBranch');
+        console.log('❌ PR BUTTON DISABLED: currentBranch === targetBranch');
       }
       setButtonState({
         text: `${currentBranch} → ${targetBranch}`,
@@ -97,19 +96,18 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
     const hasAnyChanges = hasChanges || totalLiveFiles > 0;
 
     if (DEBUG_PR_BUTTON) {
-      console.log('  ===== SESSIONS ANALYSIS =====');
-      console.log('  total sessions:', sessions.length);
-      console.log('  sessions with content:', sessionsWithContent.length);
-      console.log('  sessionsWithContent:', sessionsWithContent);
-      console.log('  hasChanges:', hasChanges);
-      console.log('  hasAnyChanges:', hasAnyChanges);
+      console.log('🔵 PR BUTTON SESSIONS ANALYSIS:');
+      console.log('  🔵 total sessions:', sessions.length);
+      console.log('  🔵 sessions with content:', sessionsWithContent.length);
+      console.log('  🔵 hasChanges:', hasChanges);
+      console.log('  🔵 hasAnyChanges:', hasAnyChanges);
     }
 
     const buttonText = `${currentBranch} → ${targetBranch}${totalLiveFiles > 0 ? ` (${totalLiveFiles})` : ''}`;
 
     if (creating) {
       if (DEBUG_PR_BUTTON) {
-        console.log('❌ DISABLED REASON: Currently creating PR');
+        console.log('❌ PR BUTTON DISABLED: Currently creating PR');
       }
       setButtonState({
         text: 'Creating PR...',
@@ -122,10 +120,7 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
 
     if (!hasAnyChanges) {
       if (DEBUG_PR_BUTTON) {
-        console.log('❌ DISABLED REASON: No changes to create PR for');
-        console.log('  hasChanges:', hasChanges);
-        console.log('  totalLiveFiles:', totalLiveFiles);
-        console.log('  hasAnyChanges:', hasAnyChanges);
+        console.log('❌ PR BUTTON DISABLED: No changes to create PR for');
       }
       setButtonState({
         text: buttonText,
@@ -137,13 +132,13 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
     }
 
     if (DEBUG_PR_BUTTON) {
-      console.log('✅ BUTTON SHOULD BE ENABLED');
-      console.log('  ===== FINAL STATE =====');
-      console.log('  text:', buttonText);
-      console.log('  enabled: true');
-      console.log('  totalLiveFiles:', totalLiveFiles);
-      console.log('  currentBranch:', currentBranch);
-      console.log('  targetBranch:', targetBranch);
+      console.log('✅ PR BUTTON SHOULD BE ENABLED');
+      console.log('🔵 FINAL BUTTON STATE:');
+      console.log('  🔵 text:', buttonText);
+      console.log('  🔵 enabled: true');
+      console.log('  🔵 totalLiveFiles:', totalLiveFiles);
+      console.log('  🔵 currentBranch:', currentBranch);
+      console.log('  🔵 targetBranch:', targetBranch);
     }
 
     setButtonState({
@@ -314,7 +309,7 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
   };
 
   if (DEBUG_PR_BUTTON) {
-    console.log('🔍 PR BUTTON RENDER - KEY:', renderKey, 'CURRENT:', currentBranch, 'TARGET:', buttonState.targetBranch, 'TEXT:', buttonState.text, 'ENABLED:', buttonState.enabled);
+    console.log('🔵 PR BUTTON RENDER - KEY:', renderKey, 'CURRENT:', currentBranch, 'TARGET:', buttonState.targetBranch, 'TEXT:', buttonState.text, 'ENABLED:', buttonState.enabled);
   }
 
   return (

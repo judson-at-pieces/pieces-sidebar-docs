@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ExpandableImage } from '@/components/markdown/ExpandableImage';
@@ -13,28 +14,40 @@ import {
   CustomTableHead, 
   CustomTableCell 
 } from '@/components/markdown/CustomTable';
-import {jsx as _jsx} from "react/jsx-runtime";
+import {jsx as _jsx, jsxs as _jsxs} from "react/jsx-runtime";
 
 export interface MDX_cli_drive_search_and_reuseProps {
   components?: Record<string, React.ComponentType<any>>;
 }
 
 export const frontmatter = {
-  "title": "Search & Reuse",
+  "title": "Search and Reuse Materials",
   "path": "/cli/drive/search-and-reuse",
   "visibility": "PUBLIC"
 };
 
 // MDX compiled content
-function _createMdxContent(props) {
+function _createMdxContent(props: MDX_cli_drive_search_and_reuseProps) {
   const _components = {
+    h2: "h2",
+    p: "p",
     div: "div",
     ...props.components
   };
-  return _jsx(_components.div, {});
+  return _jsxs("div", {
+    children: [
+      _jsx("h2", {
+        children: "Search and Reuse Materials"
+      }),
+      _jsx("p", {
+        children: "Content for CLI drive search and reuse documentation."
+      })
+    ]
+  });
 }
-function MDXContent(props = {}) {
-  const {wrapper: MDXLayout} = props.components || ({});
+
+function MDXContent(props: MDX_cli_drive_search_and_reuseProps = {}) {
+  const {wrapper: MDXLayout} = props.components || ({} as any);
   return MDXLayout ? _jsx(MDXLayout, {
     ...props,
     children: _jsx(_createMdxContent, {
@@ -70,6 +83,7 @@ export default function MDX_cli_drive_search_and_reuse({ components = {} }: MDX_
     blockquote: ({ children, ...props }: any) => <blockquote className="mt-6 border-l-2 pl-6 italic" {...props}>{children}</blockquote>,
     p: ({ children, ...props }: any) => <p className="leading-7 [&:not(:first-child)]:mt-6" {...props}>{children}</p>,
     hr: ({ ...props }: any) => <hr className="my-4 md:my-8" {...props} />,
+    div: ({ children, ...props }: any) => <div {...props}>{children}</div>,
     ExpandableImage,
     Callout,
     Steps,

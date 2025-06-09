@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useLiveEditing } from "@/hooks/useLiveEditing";
@@ -26,9 +25,10 @@ export function EditorLayout() {
   const [loadingContent, setLoadingContent] = useState(false);
 
   if (DEBUG_EDITOR_LAYOUT) {
-    console.log('🏗️ EDITOR LAYOUT RENDER');
-    console.log('  currentBranch from useBranches:', currentBranch);
-    console.log('  initialized from useBranches:', initialized);
+    console.log('🟠 EDITOR LAYOUT RENDER');
+    console.log('🟠 EDITOR LAYOUT RECEIVED FROM USEBRANCHES:');
+    console.log('  🟠 currentBranch:', JSON.stringify(currentBranch), 'type:', typeof currentBranch);
+    console.log('  🟠 initialized:', initialized);
   }
 
   // Live editing hook
@@ -262,7 +262,11 @@ Start editing to see the live preview!
   const totalLiveFiles = sessionsWithContent.length;
 
   if (DEBUG_EDITOR_LAYOUT) {
-    console.log('🔗 EDITOR LAYOUT: Passing currentBranch to children:', currentBranch);
+    console.log('🟠 EDITOR LAYOUT: PASSING TO TAB NAVIGATION:');
+    console.log('  🟠 currentBranch:', JSON.stringify(currentBranch));
+    console.log('  🟠 initialized:', initialized);
+    console.log('  🟠 sessionsWithContent.length:', sessionsWithContent.length);
+    console.log('  🟠 hasChanges:', hasChanges);
   }
 
   return (
