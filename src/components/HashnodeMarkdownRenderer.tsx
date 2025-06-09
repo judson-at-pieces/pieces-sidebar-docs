@@ -545,7 +545,7 @@ const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => {
             </div>
             <div className="flex-1 w-60">
               <div className="flex flex-col gap-3">
-                <h3 className="font-medium text-base text-slate-700 dark:text-slate-200 m-0">
+                <h3 className="font-bold text-base text-slate-700 dark:text-slate-200 m-0">
                   {step.title}
                 </h3>
                 <div className="text-base text-slate-600 dark:text-slate-300 prose prose-sm dark:prose-invert max-w-none">
