@@ -1,5 +1,5 @@
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useRef } from 'react';
 import { FileText, MoreHorizontal, Copy, Trash2, Eye, Edit3 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -8,6 +8,8 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/componen
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import HashnodeMarkdownRenderer from '@/components/HashnodeMarkdownRenderer';
+import { useLiveTyping } from '@/hooks/useLiveTyping';
+import { TypingIndicator } from './TypingIndicator';
 
 interface EditorMainProps {
   selectedFile?: string;
@@ -19,7 +21,6 @@ interface EditorMainProps {
   isLocked?: boolean;
   lockedBy?: string | null;
   liveContent?: string;
-  onAcquireLock?: () => void;
   isAcquiringLock?: boolean;
 }
 
@@ -33,22 +34,42 @@ export function EditorMain({
   isLocked = false,
   lockedBy = null,
   liveContent,
-  onAcquireLock,
   isAcquiringLock = false
 }: EditorMainProps) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  
+  // Live typing functionality
+  const { typingSessions, handleTyping, getLatestTypingContent } = useLiveTyping(selectedFile);
+  
   // Determine if current user can edit
   const canEdit = isLocked && lockedBy === 'You';
   const isLockedByOther = isLocked && lockedBy !== 'You';
 
-  // Use live content if we're not the editor and live content is available
-  const displayContent = isLockedByOther && liveContent ? liveContent : content;
+  // Get the most recent content - prioritize live typing content over live editing content
+  const latestTypingContent = getLatestTypingContent();
+  const displayContent = isLockedByOther && (latestTypingContent || liveContent) 
+    ? (latestTypingContent || liveContent) 
+    : content;
 
-  // Update content when live content changes (for viewers)
-  useEffect(() => {
-    if (isLockedByOther && liveContent && liveContent !== content) {
-      console.log('Updating display content with live changes');
+  // Handle content changes with live typing
+  const handleContentChangeWithTyping = (newContent: string) => {
+    if (canEdit) {
+      onContentChange(newContent);
+      
+      // Get cursor position
+      const cursorPosition = textareaRef.current?.selectionStart || 0;
+      
+      // Send typing event
+      handleTyping(newContent, cursorPosition);
     }
-  }, [liveContent, content, isLockedByOther]);
+  };
+
+  // Update content when live typing content changes (for viewers)
+  useEffect(() => {
+    if (isLockedByOther && latestTypingContent && latestTypingContent !== content) {
+      console.log('Updating display content with live typing changes');
+    }
+  }, [latestTypingContent, content, isLockedByOther]);
 
   if (!selectedFile) {
     return (
@@ -80,14 +101,14 @@ export function EditorMain({
                 Another user is currently editing this page
               </span>
             </div>
-            {liveContent && (
+            {(liveContent || latestTypingContent) && (
               <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
                 Live Updates
               </Badge>
             )}
           </div>
           <p className="text-center text-blue-100 mt-1 text-sm">
-            {liveContent ? 'You can see their changes in real-time' : 'You can view the content but cannot make changes'}
+            {(liveContent || latestTypingContent) ? 'You can see their changes in real-time' : 'You can view the content but cannot make changes'}
           </p>
         </div>
       )}
@@ -114,6 +135,9 @@ export function EditorMain({
               Read-only
             </Badge>
           )}
+
+          {/* Live typing indicator */}
+          <TypingIndicator typingSessions={typingSessions} />
         </div>
 
         <div className="flex items-center gap-2">
@@ -151,8 +175,9 @@ export function EditorMain({
           <div className="h-full flex flex-col">
             <div className="flex-1 relative">
               <Textarea
+                ref={textareaRef}
                 value={displayContent}
-                onChange={(e) => canEdit ? onContentChange(e.target.value) : undefined}
+                onChange={(e) => canEdit ? handleContentChangeWithTyping(e.target.value) : undefined}
                 placeholder={
                   isLockedByOther 
                     ? "Another user is editing this file..." 
@@ -187,7 +212,7 @@ export function EditorMain({
                 <span className="text-sm font-medium">Live Preview</span>
                 {isLockedByOther && (
                   <Badge variant="outline" className="text-xs">
-                    {liveContent ? 'Live Updates' : 'Read-only'}
+                    {(liveContent || latestTypingContent) ? 'Live Updates' : 'Read-only'}
                   </Badge>
                 )}
               </div>
