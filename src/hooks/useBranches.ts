@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { githubService } from '@/services/githubService';
 import { supabase } from '@/integrations/supabase/client';
@@ -111,56 +110,19 @@ export function useBranches() {
 
       console.log('=== UPDATING DATABASE FOR BRANCH SWITCH ===', newBranchName);
 
-      // Get all existing sessions for this user
-      const { data: userSessions } = await supabase
+      // CRITICAL FIX: Update existing sessions to use the new branch name
+      const { error: updateError } = await supabase
         .from('live_editing_sessions')
-        .select('*')
+        .update({ 
+          branch_name: newBranchName,
+          updated_at: new Date().toISOString()
+        })
         .eq('user_id', user.id);
 
-      if (userSessions && userSessions.length > 0) {
-        console.log('Found', userSessions.length, 'user sessions to process for branch switch');
-        
-        // Group sessions by file_path to avoid duplicates
-        const fileSessionMap = new Map();
-        userSessions.forEach(session => {
-          const key = session.file_path;
-          if (!fileSessionMap.has(key) || session.updated_at > fileSessionMap.get(key).updated_at) {
-            fileSessionMap.set(key, session);
-          }
-        });
-
-        // For each unique file, ensure there's a session on the new branch
-        for (const [filePath, latestSession] of fileSessionMap) {
-          const { data: branchSession } = await supabase
-            .from('live_editing_sessions')
-            .select('id')
-            .eq('file_path', filePath)
-            .eq('branch_name', newBranchName)
-            .eq('user_id', user.id)
-            .maybeSingle();
-
-          if (!branchSession) {
-            console.log('Creating session for', filePath, 'on new branch', newBranchName);
-            const { error } = await supabase
-              .from('live_editing_sessions')
-              .insert({
-                file_path: filePath,
-                content: latestSession.content || '',
-                user_id: user.id,
-                branch_name: newBranchName,
-                locked_by: null,
-                locked_at: null
-              });
-
-            if (error) {
-              console.error('Error creating session for new branch:', error);
-            } else {
-              console.log('✅ Created session for', filePath, 'on branch', newBranchName);
-            }
-          } else {
-            console.log('✅ Session already exists for', filePath, 'on branch', newBranchName);
-          }
-        }
+      if (updateError) {
+        console.error('Error updating existing sessions for branch switch:', updateError);
+      } else {
+        console.log('✅ Updated all existing sessions to branch:', newBranchName);
       }
 
       console.log('✅ Database updated for branch switch to:', newBranchName);
@@ -233,7 +195,7 @@ export function useBranches() {
   const switchBranch = async (branchName: string) => {
     console.log('=== SWITCHING TO BRANCH ===', branchName);
     
-    // Update database first
+    // Update database first - this is the critical fix
     await updateDatabaseForBranchSwitch(branchName);
     
     // Then update the UI state
