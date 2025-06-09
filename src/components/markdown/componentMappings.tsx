@@ -35,7 +35,7 @@ function extractTextFromChildren(node: any): string {
   if (typeof node === 'string') return node;
   if (typeof node === 'number') return String(node);
   if (Array.isArray(node)) return node.map(extractTextFromChildren).join('');
-  if (React.isValidElement(node) && node.props && 'children' in node.props) {
+  if (React.isValidElement(node) && node.props && typeof node.props === 'object' && 'children' in node.props) {
     return extractTextFromChildren(node.props.children);
   }
   return '';
