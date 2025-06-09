@@ -2,7 +2,7 @@
 import React, { useState } from 'react';
 import { Copy, Check } from 'lucide-react';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import oneDark from 'react-syntax-highlighter/dist/esm/styles/prism/one-dark';
 
 interface CodeBlockProps {
   children: string;
