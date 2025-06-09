@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useLiveEditing } from "@/hooks/useLiveEditing";
@@ -367,10 +366,6 @@ Start editing to see the live preview!
 
       console.log('Files to include:', allLiveContent.map(item => item.path));
 
-      // Create a temporary branch name for the PR
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      const prBranchName = `editor-changes-${timestamp}`;
-
       // Create PR: FROM sourceBranch TO targetBranch
       const result = await githubService.createPullRequest(
         {
@@ -381,7 +376,7 @@ Start editing to see the live preview!
             content: item.content
           })),
           baseBranch: targetBranch, // TARGET branch (where changes should be merged TO)
-          headBranch: prBranchName // SOURCE branch (where changes come FROM)
+          sourceBranch: sourceBranch // SOURCE branch (where changes come FROM)
         },
         token,
         repoConfig
