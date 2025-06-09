@@ -33,6 +33,11 @@ export function EditorLayout() {
   const [selectedForBulkDelete, setSelectedForBulkDelete] = useState<Set<string>>(new Set());
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
 
+  // Use the current branch consistently throughout
+  const activeBranch = currentBranch || 'main';
+  
+  console.log('EditorLayout: Using active branch:', activeBranch);
+
   // Live editing hook - ensure currentBranch is passed correctly
   const {
     isLocked,
@@ -44,7 +49,7 @@ export function EditorLayout() {
     releaseLock,
     saveLiveContent,
     loadLiveContent
-  } = useLiveEditing(selectedFile, currentBranch);
+  } = useLiveEditing(selectedFile, activeBranch);
 
   // SEO data for the current file
   const { pendingChanges, hasUnsavedChanges } = useSeoData(selectedFile);
@@ -52,17 +57,17 @@ export function EditorLayout() {
   // Load existing live editing sessions on mount to restore work state
   useEffect(() => {
     const loadExistingLiveSessions = async () => {
-      if (!currentBranch) return;
+      if (!activeBranch) return;
       
       try {
-        console.log('Loading existing live sessions for branch:', currentBranch);
+        console.log('Loading existing live sessions for branch:', activeBranch);
         
         const { data: existingSessions, error } = await supabase
           .from('live_editing_sessions')
           .select('file_path, content, branch_name')
           .not('content', 'is', null)
           .neq('content', '')
-          .eq('branch_name', currentBranch);
+          .eq('branch_name', activeBranch);
 
         if (error) {
           console.error('Error loading existing live sessions:', error);
@@ -73,9 +78,9 @@ export function EditorLayout() {
           const filesWithChanges = new Set(existingSessions.map(session => session.file_path));
           setModifiedFiles(filesWithChanges);
           
-          console.log('Loaded existing live sessions for branch', currentBranch, ':', existingSessions.length, 'files with uncommitted changes');
+          console.log('Loaded existing live sessions for branch', activeBranch, ':', existingSessions.length, 'files with uncommitted changes');
         } else {
-          console.log('No existing live sessions found for branch:', currentBranch);
+          console.log('No existing live sessions found for branch:', activeBranch);
           setModifiedFiles(new Set());
         }
       } catch (error) {
@@ -84,7 +89,7 @@ export function EditorLayout() {
     };
 
     loadExistingLiveSessions();
-  }, [currentBranch]);
+  }, [activeBranch]);
 
   // Update modified files when sessions change
   useEffect(() => {
@@ -94,38 +99,38 @@ export function EditorLayout() {
         .map(session => session.file_path)
     );
     setModifiedFiles(filesWithLiveContent);
-    console.log('Updated modified files for branch', currentBranch, ':', filesWithLiveContent.size, 'files');
-  }, [sessions, currentBranch]);
+    console.log('Updated modified files for branch', activeBranch, ':', filesWithLiveContent.size, 'files');
+  }, [sessions, activeBranch]);
 
   // Auto-save live content when user is editing (has the lock)
   useEffect(() => {
-    if (selectedFile && isLocked && lockedBy === 'You' && hasChanges && content && currentBranch) {
+    if (selectedFile && isLocked && lockedBy === 'You' && hasChanges && content && activeBranch) {
       const timeoutId = setTimeout(() => {
-        console.log('Auto-saving live content for file:', selectedFile, 'on branch:', currentBranch);
+        console.log('Auto-saving live content for file:', selectedFile, 'on branch:', activeBranch);
         saveLiveContent(selectedFile, content);
       }, 500);
 
       return () => clearTimeout(timeoutId);
     }
-  }, [selectedFile, isLocked, lockedBy, hasChanges, content, currentBranch, saveLiveContent]);
+  }, [selectedFile, isLocked, lockedBy, hasChanges, content, activeBranch, saveLiveContent]);
 
-  // Clear state when branch changes
+  // Clear state when branch changes - IMPORTANT: This ensures clean state
   useEffect(() => {
-    console.log('Branch changed to:', currentBranch, '- clearing editor state');
+    console.log('Branch changed to:', activeBranch, '- clearing editor state');
     setSelectedFile(undefined);
     setContent("");
     setHasChanges(false);
     setModifiedFiles(new Set());
-  }, [currentBranch]);
+  }, [activeBranch]);
 
   const handleFileSelect = async (filePath: string) => {
     console.log('=== FILE SELECTION DEBUG ===');
     console.log('Selected file path:', filePath);
-    console.log('Current branch:', currentBranch);
+    console.log('Current active branch:', activeBranch);
     
     // Release lock on previous file if user owns it
     if (selectedFile && isLocked && lockedBy === 'You') {
-      console.log('Releasing lock on previous file:', selectedFile);
+      console.log('Releasing lock on previous file:', selectedFile, 'on branch:', activeBranch);
       await releaseLock(selectedFile);
     }
     
@@ -138,7 +143,7 @@ export function EditorLayout() {
       const liveFileContent = await loadLiveContent(filePath);
       
       if (liveFileContent) {
-        console.log('Found live content for:', filePath, 'on branch:', currentBranch);
+        console.log('Found live content for:', filePath, 'on branch:', activeBranch);
         setContent(liveFileContent);
         setLoadingContent(false);
         // Try to acquire lock automatically for editing
@@ -258,11 +263,11 @@ Start editing to see the live preview!
   };
 
   const handleAcquireLock = async () => {
-    if (selectedFile && currentBranch) {
-      console.log('Manually acquiring lock for:', selectedFile, 'on branch:', currentBranch);
+    if (selectedFile && activeBranch) {
+      console.log('Manually acquiring lock for:', selectedFile, 'on branch:', activeBranch);
       const success = await acquireLock(selectedFile);
       if (success) {
-        console.log('Lock acquired for editing:', selectedFile, 'on branch:', currentBranch);
+        console.log('Lock acquired for editing:', selectedFile, 'on branch:', activeBranch);
       }
     }
   };
@@ -322,7 +327,7 @@ Start editing to see the live preview!
     const allContent: { path: string; content: string }[] = [];
     
     // Get all live editing sessions for current branch
-    console.log('Collecting live content from', sessions.length, 'sessions for branch:', currentBranch);
+    console.log('Collecting live content from', sessions.length, 'sessions for branch:', activeBranch);
     
     for (const session of sessions) {
       if (session.content && session.content.trim()) {
@@ -350,13 +355,13 @@ Start editing to see the live preview!
       }
     }
     
-    console.log('Total live content collected:', allContent.length, 'files from branch:', currentBranch);
+    console.log('Total live content collected:', allContent.length, 'files from branch:', activeBranch);
     return allContent;
   };
 
   const handleCreatePR = async () => {
-    // Use currentBranch as the SOURCE branch (where changes come from)
-    const sourceBranch = currentBranch || 'main';
+    // Use activeBranch as the SOURCE branch (where changes come from)
+    const sourceBranch = activeBranch;
     console.log('Creating PR FROM branch:', sourceBranch, 'TO main');
     
     if (!sourceBranch) {
@@ -614,7 +619,7 @@ Start editing to see the live preview!
                     {totalLiveFiles > 0 && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
-                        {totalLiveFiles} file{totalLiveFiles !== 1 ? 's' : ''} with live changes on {currentBranch || 'main'}
+                        {totalLiveFiles} file{totalLiveFiles !== 1 ? 's' : ''} with live changes on {activeBranch}
                       </div>
                     )}
                     
@@ -629,7 +634,7 @@ Start editing to see the live preview!
                           ? "No changes to create PR for" 
                           : creatingPR 
                             ? "Creating PR..." 
-                            : `Create pull request from ${currentBranch || 'main'} to main with all live changes`
+                            : `Create pull request from ${activeBranch} to main with all live changes`
                       }
                     >
                       {creatingPR ? (
@@ -637,7 +642,7 @@ Start editing to see the live preview!
                       ) : (
                         <GitPullRequest className="w-4 h-4" />
                       )}
-                      PR: {currentBranch || 'main'} → main {totalLiveFiles > 0 && `(${totalLiveFiles})`}
+                      PR: {activeBranch} → main {totalLiveFiles > 0 && `(${totalLiveFiles})`}
                     </Button>
                   </>
                 )}
