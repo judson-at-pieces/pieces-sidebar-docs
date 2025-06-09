@@ -54,7 +54,7 @@ export function useBranches() {
     }
   };
 
-  const fetchBranches = useCallback(async () => {
+  const fetchBranches = useCallback(async (preserveCurrentBranch = false) => {
     setLoading(true);
     setError(null);
     
@@ -99,13 +99,22 @@ export function useBranches() {
 
       setBranches(formattedBranches);
       
-      // Only initialize current branch once, or if current branch doesn't exist
-      if (!initialized || !formattedBranches.find(b => b.name === currentBranch)) {
+      // Only initialize current branch if not preserving current branch AND not already initialized
+      if (!preserveCurrentBranch && (!initialized || !formattedBranches.find(b => b.name === currentBranch))) {
         if (DEBUG_BRANCHES) {
           console.log('🌿 USEBRANCHES: Initializing current branch to:', defaultBranch);
         }
         setCurrentBranch(defaultBranch);
         setInitialized(true);
+      } else if (!initialized) {
+        // First time initialization
+        if (DEBUG_BRANCHES) {
+          console.log('🌿 USEBRANCHES: First initialization, setting to:', defaultBranch);
+        }
+        setCurrentBranch(defaultBranch);
+        setInitialized(true);
+      } else if (DEBUG_BRANCHES) {
+        console.log('🌿 USEBRANCHES: Preserving current branch:', currentBranch);
       }
 
     } catch (error) {
@@ -221,8 +230,8 @@ export function useBranches() {
 
       toast.success(`Branch "${branchName}" created successfully`);
       
-      // Refresh branches first
-      await fetchBranches();
+      // Refresh branches but preserve current branch
+      await fetchBranches(true);
       
       // Then switch to the new branch
       await switchBranch(branchName);
@@ -306,7 +315,7 @@ export function useBranches() {
         await switchBranch(defaultBranch);
       }
       
-      await fetchBranches();
+      await fetchBranches(true);
 
     } catch (error) {
       console.error('Error deleting branch:', error);
@@ -317,8 +326,9 @@ export function useBranches() {
   };
 
   useEffect(() => {
-    fetchBranches();
-  }, [fetchBranches]);
+    // Only fetch branches if not initialized, or preserve current branch if already initialized
+    fetchBranches(initialized);
+  }, []);
 
   // Add effect to log currentBranch changes
   useEffect(() => {
@@ -341,7 +351,7 @@ export function useBranches() {
     loading,
     error,
     initialized,
-    fetchBranches,
+    fetchBranches: () => fetchBranches(true), // Always preserve current branch when called externally
     createBranch,
     switchBranch,
     deleteBranch,
