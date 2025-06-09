@@ -100,27 +100,70 @@ export class MDXCompiler {
     const escapedContent = JSON.stringify(content);
     
     return `import React from 'react';
-import HashnodeMarkdownRenderer from '@/components/HashnodeMarkdownRenderer';
+import { Link } from 'react-router-dom';
+import { ExpandableImage } from '@/components/markdown/ExpandableImage';
+import { Callout } from '@/components/markdown/Callout';
+import { Steps, Step } from '@/components/markdown/Steps';
+import { MarkdownCard as Card } from '@/components/markdown/MarkdownCard';
+import { CardGroup } from '@/components/markdown/CardGroup';
+import Tabs, { TabItem } from '@/components/markdown/Tabs';
+import ComponentBasedMarkdownRenderer from '@/components/ComponentBasedMarkdownRenderer';
 
 export const frontmatter = ${JSON.stringify(frontmatter, null, 2)};
 
-// Export our wrapper component that uses EXACT SAME rendering as editor preview
 export default function ${componentName}() {
-  console.log('🚀 Rendering ${componentName} component');
+  const content = ${JSON.stringify(this.processCustomSyntax(content))};
   
-  // Use EXACT SAME content format as the editor preview - this ensures 1-to-1 matching
-  const combinedContent = \`---
-\${Object.entries(frontmatter).map(([key, value]) => \`\${key}: "\${value}"\`).join('\\n')}
----
-***
-\${${escapedContent}}\`;
-
-  return <HashnodeMarkdownRenderer content={combinedContent} />;
+  return (
+    <ComponentBasedMarkdownRenderer 
+      content={content}
+      components={{
+        Link,
+        ExpandableImage,
+        Callout,
+        Steps,
+        Step,
+        Card,
+        CardGroup,
+        Tabs,
+        TabItem
+      }}
+    />
+  );
 }
 
 ${componentName}.displayName = '${componentName}';
 ${componentName}.frontmatter = frontmatter;
 `;
+  }
+
+  private processCustomSyntax(content: string): string {
+    // Transform callout syntax: :::info[Title] or :::warning{title="Warning"}
+    content = content.replace(
+      /:::(\w+)(?:\[([^\]]*)\]|\{title="([^"]*)"\})?\n([\s\S]*?):::/g,
+      (_, type, title1, title2, innerContent) => {
+        const title = title1 || title2 || '';
+        return `<Callout type="${type}" title="${title}">\n\n${innerContent.trim()}\n\n</Callout>`;
+      }
+    );
+
+    // Transform simple callout syntax: :::info
+    content = content.replace(
+      /:::(\w+)\n([\s\S]*?):::/g,
+      (_, type, innerContent) => {
+        return `<Callout type="${type}">\n\n${innerContent.trim()}\n\n</Callout>`;
+      }
+    );
+
+    // Transform ExpandableImage components
+    content = content.replace(
+      /<ExpandableImage\s+src="([^"]*)"(?:\s+alt="([^"]*)")?(?:\s+caption="([^"]*)")?\/>/gi,
+      (_, src, alt, caption) => {
+        return `<ExpandableImage src="${src}" alt="${alt || ''}" caption="${caption || ''}" />`;
+      }
+    );
+
+    return content;
   }
 
   private getComponentName(filePath: string): string {

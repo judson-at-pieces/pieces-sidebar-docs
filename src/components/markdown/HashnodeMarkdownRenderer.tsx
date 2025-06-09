@@ -89,9 +89,14 @@ const parseSections = (text: string): ParsedSection[] => {
       return { type: 'mixed', content: section, index };
     }
     
-    // Pure special element sections
-    if (hasCardGroup && !hasSteps && !hasCallout && markdownLines <= 5) {
-      console.log('🃏 Found pure CardGroup section!');
+    // Check if section contains Tabs AND other content
+    if (section.includes(TABS_PATTERN) && section.split('\n').filter(line => line.trim()).length > 5) {
+      console.log('🔀 Found mixed content section with Tabs!');
+      return { type: 'mixed', content: section, index };
+    }
+    if (section.includes(CARDGROUP_PATTERN)) {
+      console.log('🃏 Found CardGroup section!');
+
       return { type: 'cardgroup', content: section, index };
     }
     if (hasSteps && !hasCardGroup && !hasCallout && markdownLines <= 5) {
@@ -605,6 +610,7 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
   const cardGroupRegex = /<CardGroup[^>]*>[\s\S]*?<\/CardGroup>/g;
   const imageRegex = /<Image[^>]*\/>/g;
   const calloutRegex = /<Callout[^>]*>[\s\S]*?<\/Callout>/g;
+  const tabsRegex = /<Tabs[^>]*>[\s\S]*?<\/Tabs>/g;
   const standaloneCardRegex = /<Card[^>]*>[\s\S]*?<\/Card>/g;
   const stepsRegex = /<Steps[^>]*>[\s\S]*?<\/Steps>/g;
   
@@ -627,6 +633,14 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
   while ((match = calloutRegex.exec(content)) !== null) {
     allMatches.push({ match, type: 'callout' });
   }
+  
+  // Find Tabs
+  calloutRegex.lastIndex = 0;
+  while ((match = tabsRegex.exec(content)) !== null) {
+    allMatches.push({ match, type: 'tabs' });
+  }
+  
+  // Find standalone Cards (not inside CardGroups)
   
   // Find Images (but exclude ones inside Steps)
   calloutRegex.lastIndex = 0;
@@ -721,6 +735,13 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
         const cardData = parseCard(match[0]);
         elements.push(
           <CardSection key={`card-${elementIndex}`} card={cardData} />
+        );
+        break;
+      }
+      case 'tabs': {
+        const tabsData = parseTabs(match[0]);
+        elements.push(
+          <TabsSection key={`tabs-${elementIndex}`} tabs={tabsData} />
         );
         break;
       }

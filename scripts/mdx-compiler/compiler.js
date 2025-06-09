@@ -67,27 +67,71 @@ class MDXCompiler {
       .replace(/^_|_$/g, '');
   }
 
-  generateTSX(componentName, frontmatter, content) {
-    return `import React from 'react';
-import { MDXProps } from '@/utils/mdxUtils';
-import HashnodeMarkdownRenderer from '@/components/markdown/HashnodeMarkdownRenderer';
+  processCustomSyntax(content) {
+    // Transform callout syntax: :::info[Title] or :::warning{title="Warning"}
+    content = content.replace(
+      /:::(\w+)(?:\[([^\]]*)\]|\{title="([^"]*)"\})?\n([\s\S]*?):::/g,
+      (_, type, title1, title2, innerContent) => {
+        const title = title1 || title2 || '';
+        return `<Callout type="${type}" title="${title}">\n\n${innerContent.trim()}\n\n</Callout>`;
+      }
+    );
 
-export interface ${componentName}Props extends MDXProps {}
+    // Transform simple callout syntax: :::info
+    content = content.replace(
+      /:::(\w+)\n([\s\S]*?):::/g,
+      (_, type, innerContent) => {
+        return `<Callout type="${type}">\n\n${innerContent.trim()}\n\n</Callout>`;
+      }
+    );
+
+    // Transform ExpandableImage components
+    content = content.replace(
+      /<ExpandableImage\s+src="([^"]*)"(?:\s+alt="([^"]*)")?(?:\s+caption="([^"]*)")?\/>/gi,
+      (_, src, alt, caption) => {
+        return `<ExpandableImage src="${src}" alt="${alt || ''}" caption="${caption || ''}" />`;
+      }
+    );
+
+    return content;
+  }
+
+  generateTSX(componentName, frontmatter, content) {
+    console.log('🆕 Using NEW compiler generateTSX method for:', componentName);
+    // Process the markdown content to convert custom syntax to JSX
+    const processedContent = this.processCustomSyntax(content);
+    
+    return `import React from 'react';
+import { Link } from 'react-router-dom';
+import { ExpandableImage } from '@/components/markdown/ExpandableImage';
+import { Callout } from '@/components/markdown/Callout';
+import { Steps, Step } from '@/components/markdown/Steps';
+import { MarkdownCard as Card } from '@/components/markdown/MarkdownCard';
+import { CardGroup } from '@/components/markdown/CardGroup';
+import Tabs, { TabItem } from '@/components/markdown/Tabs';
+import { ComponentBasedMarkdownRenderer } from '@/components/ComponentBasedMarkdownRenderer';
 
 export const frontmatter = ${JSON.stringify(frontmatter, null, 2)};
 
-// Export our wrapper component
-export default function ${componentName}({ components = {} }: ${componentName}Props) {
-  console.log('🚀 Rendering ${componentName} component');
+export default function ${componentName}() {
+  const content = ${JSON.stringify(processedContent)};
   
-  const combinedContent = \`---
-\${Object.entries(frontmatter).map(([key, value]) => \`\${key}: "\${value}"\`).join('\\n')}
----
-***
-\${${JSON.stringify(content)}}
-\`;
-
-  return <HashnodeMarkdownRenderer content={combinedContent} />;
+  return (
+    <ComponentBasedMarkdownRenderer 
+      content={content}
+      components={{
+        Link,
+        ExpandableImage,
+        Callout,
+        Steps,
+        Step,
+        Card,
+        CardGroup,
+        Tabs,
+        TabItem
+      }}
+    />
+  );
 }
 
 ${componentName}.displayName = '${componentName}';
