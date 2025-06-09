@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { FileText, MoreHorizontal, Copy, Trash2, Eye } from 'lucide-react';
+import { FileText, MoreHorizontal, Copy, Trash2, Eye, Lock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
@@ -30,6 +30,10 @@ export function EditorMain({
   isLocked = false,
   lockedBy = null
 }: EditorMainProps) {
+  // Determine if current user can edit
+  const canEdit = isLocked && lockedBy === 'You';
+  const isLockedByOther = isLocked && lockedBy !== 'You';
+
   if (!selectedFile) {
     return (
       <div className="h-full flex items-center justify-center bg-gradient-to-br from-background to-muted/10">
@@ -60,7 +64,16 @@ export function EditorMain({
             </h2>
           </div>
           
-          {isLocked && lockedBy && (
+          {isLockedByOther && (
+            <div className="flex items-center gap-2">
+              <Lock className="h-4 w-4 text-red-500" />
+              <Badge variant="destructive" className="text-xs">
+                Locked by {lockedBy}
+              </Badge>
+            </div>
+          )}
+          
+          {canEdit && (
             <Badge variant="default" className="text-xs">
               Editing
             </Badge>
@@ -68,7 +81,7 @@ export function EditorMain({
         </div>
 
         <div className="flex items-center gap-2">
-          {hasChanges && (
+          {hasChanges && canEdit && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
               <span>Auto-saving...</span>
@@ -77,7 +90,7 @@ export function EditorMain({
           
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" disabled={isLockedByOther}>
                 <MoreHorizontal className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
@@ -95,6 +108,18 @@ export function EditorMain({
         </div>
       </div>
 
+      {/* Locked by Another User Warning */}
+      {isLockedByOther && (
+        <div className="p-4 bg-red-50 border-b border-red-200 dark:bg-red-950/20 dark:border-red-800">
+          <div className="flex items-center gap-2 text-red-800 dark:text-red-200">
+            <Lock className="h-4 w-4" />
+            <p className="text-sm font-medium">
+              This file is currently being edited by {lockedBy}. You can view the content but cannot make changes until they finish editing.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Split View */}
       <ResizablePanelGroup direction="horizontal" className="flex-1">
         {/* Editor Panel */}
@@ -103,14 +128,20 @@ export function EditorMain({
             <div className="flex-1 relative">
               <Textarea
                 value={content}
-                onChange={(e) => onContentChange(e.target.value)}
-                placeholder="Start typing your content here..."
-                className="h-full resize-none border-0 rounded-none focus:ring-0 font-mono text-sm leading-relaxed"
+                onChange={(e) => canEdit ? onContentChange(e.target.value) : undefined}
+                placeholder={isLockedByOther ? `This file is being edited by ${lockedBy}...` : "Start typing your content here..."}
+                disabled={isLockedByOther}
+                className={`h-full resize-none border-0 rounded-none focus:ring-0 font-mono text-sm leading-relaxed ${
+                  isLockedByOther ? 'bg-muted/50 cursor-not-allowed opacity-60' : ''
+                }`}
                 style={{ 
                   minHeight: '100%',
                   fontFamily: '"JetBrains Mono", "Fira Code", monospace'
                 }}
               />
+              {isLockedByOther && (
+                <div className="absolute inset-0 bg-transparent cursor-not-allowed" />
+              )}
             </div>
           </div>
         </ResizablePanel>
@@ -124,6 +155,11 @@ export function EditorMain({
               <div className="flex items-center gap-2">
                 <Eye className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-medium">Live Preview</span>
+                {isLockedByOther && (
+                  <Badge variant="outline" className="text-xs">
+                    Read-only
+                  </Badge>
+                )}
               </div>
             </div>
             
