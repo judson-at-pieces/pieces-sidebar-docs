@@ -20,7 +20,8 @@ import { useBranches } from "@/hooks/useBranches";
 export function EditorLayout() {
   const { fileStructure, isLoading, error, refetch } = useFileStructure();
   const { hasRole } = useAuth();
-  const { currentBranch, branches } = useBranches();
+  const branchesHook = useBranches();
+  const { currentBranch, branches } = branchesHook;
 
   const [selectedFile, setSelectedFile] = useState<string>();
   const [content, setContent] = useState("");
@@ -330,7 +331,8 @@ Start editing to see the live preview!
   };
 
   const handleCreatePR = async () => {
-    const targetBranch = currentBranch || 'main';
+    // Get the CURRENT branch value directly from the hook at execution time
+    const targetBranch = branchesHook.currentBranch || 'main';
     console.log('Creating PR with target branch:', targetBranch);
     
     if (!targetBranch) {
