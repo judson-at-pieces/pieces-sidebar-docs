@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { GitPullRequest } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -31,9 +30,10 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
     targetBranch: 'main'
   });
 
+  // Force re-computation when currentBranch changes
   useEffect(() => {
     if (DEBUG_PR_BUTTON) {
-      console.log('🔵 PR BUTTON USEEFFECT TRIGGERED');
+      console.log('🔵 PR BUTTON USEEFFECT TRIGGERED - currentBranch changed to:', currentBranch);
       console.log('🔵 RECEIVED PROPS IN PR BUTTON:');
       console.log('  🔵 currentBranch:', JSON.stringify(currentBranch), 'type:', typeof currentBranch);
       console.log('  🔵 initialized:', initialized);
@@ -43,27 +43,14 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
       console.log('  🔵 branches.length:', branches.length);
     }
 
-    if (!initialized) {
+    if (!initialized || !currentBranch) {
       if (DEBUG_PR_BUTTON) {
-        console.log('❌ PR BUTTON DISABLED: Not initialized');
+        console.log('❌ PR BUTTON DISABLED: Not initialized or no currentBranch');
       }
       setButtonState({
-        text: 'Loading branches...',
+        text: initialized ? 'No branch selected' : 'Loading branches...',
         enabled: false,
-        tooltip: 'Loading branches...',
-        targetBranch: 'main'
-      });
-      return;
-    }
-
-    if (!currentBranch) {
-      if (DEBUG_PR_BUTTON) {
-        console.log('❌ PR BUTTON DISABLED: No currentBranch provided');
-      }
-      setButtonState({
-        text: 'No branch selected',
-        enabled: false,
-        tooltip: 'No branch selected',
+        tooltip: initialized ? 'No branch selected' : 'Loading branches...',
         targetBranch: 'main'
       });
       return;
@@ -106,7 +93,7 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
       console.log('  🔵 currentBranch === targetBranch:', currentBranch === targetBranch);
     }
 
-    if (currentBranch === targetBranch) {
+    if (currentBranch === targetBranch && branches.length <= 1) {
       if (DEBUG_PR_BUTTON) {
         console.log('❌ PR BUTTON DISABLED: currentBranch === targetBranch, no suitable target found');
       }
@@ -119,7 +106,7 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
       return;
     }
 
-    // Filter sessions to only include those from the current branch
+    // Filter sessions to only include those with content
     const currentBranchSessions = sessions.filter(s => s.content && s.content.trim());
     const totalLiveFiles = currentBranchSessions.length;
     const hasAnyChanges = hasChanges || totalLiveFiles > 0;
@@ -177,7 +164,7 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
       targetBranch
     });
 
-  }, [initialized, currentBranch, sessions, hasChanges, creating, branches]);
+  }, [currentBranch, initialized, sessions, hasChanges, creating, branches]);
 
   const getGitHubAppToken = async () => {
     try {
