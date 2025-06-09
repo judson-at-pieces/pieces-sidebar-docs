@@ -692,7 +692,6 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
   // Find all special elements with their positions
   const cardGroupRegex = /<CardGroup[^>]*>[\s\S]*?<\/CardGroup>/g;
   const stepsRegex = /<Steps[^>]*>[\s\S]*?<\/Steps>/g;
-  const tabsRegex = /<Tabs[^>]*>[\s\S]*?<\/Tabs>/g;
   const imageRegex = /<Image[^>]*\/>/g;
   const calloutRegex = /<Callout[^>]*>[\s\S]*?<\/Callout>/g;
   const standaloneCardRegex = /<Card[^>]*>[\s\S]*?<\/Card>/g;
@@ -711,21 +710,8 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
     allMatches.push({ match, type: 'steps' });
   }
   
-  // Find Images
-  stepsRegex.lastIndex = 0;
-  while ((match = imageRegex.exec(content)) !== null) {
-    allMatches.push({ match, type: 'image' });
-  }
-  
-  // Find Tabs
-  imageRegex.lastIndex = 0;
-  while ((match = tabsRegex.exec(content)) !== null) {
-    allMatches.push({ match, type: 'tabs' });
-  }
-  
   // Find Callouts
-  tabsRegex.lastIndex = 0;
-        
+  stepsRegex.lastIndex = 0;
   while ((match = calloutRegex.exec(content)) !== null) {
     allMatches.push({ match, type: 'callout' });
   }
@@ -812,13 +798,6 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
         const imageData = extractImageData(match[0]);
         elements.push(
           <ImageSection key={`image-${elementIndex}`} {...imageData} />
-        );
-        break;
-      }
-      case 'tabs': {
-        const tabsData = parseTabs(match[0]);
-        elements.push(
-          <TabsSection key={`tabs-${elementIndex}`} tabs={tabsData} />
         );
         break;
       }

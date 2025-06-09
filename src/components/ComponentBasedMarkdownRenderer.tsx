@@ -1,52 +1,17 @@
 
 import React from 'react';
-// Import all the individual components
-import { Callout } from './markdown/Callout';
-import { MarkdownCard as Card } from './markdown/MarkdownCard';
-import { CardGroup } from './markdown/CardGroup';
-import Accordion from './Accordion';
-import AccordionGroup from './AccordionGroup';
-import Tabs, { TabItem } from './markdown/Tabs';
-import Button from './Button';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
+import remarkFrontmatter from 'remark-frontmatter';
+import rehypeRaw from 'rehype-raw';
+import Card from './markdown/SimpleCard';
+import CardGroup from './markdown/CardGroup';
+import Callout from './markdown/Callout';
 import { Steps, Step } from './markdown/Steps';
 import { CodeBlock } from './markdown/CodeBlock';
-import Table from './Table';
-import Typography from './Typography';
 import { Image } from './markdown/Image';
-
-// Constants
-const SECTION_DELIMITER    = '***';
-const FRONTMATTER_PATTERN  = '---';
-const TITLE_PATTERN        = 'title:';
-const IMAGE_PATTERN        = '<Image';
-const CARDGROUP_PATTERN    = '<CardGroup';
-const CALLOUT_PATTERN      = '<Callout';
-const ACCORDION_PATTERN    = '<Accordion';
-const ACCORDIONGROUP_PATTERN = '<AccordionGroup';
-const TABS_PATTERN         = '<Tabs';
-const BUTTON_PATTERN       = '<Button';
-const STEPS_PATTERN        = '<Steps';
-const CARD_PATTERN         = '<Card';
-
-// Types
-type SectionType =
-  | 'frontmatter'
-  | 'image'
-  | 'cardgroup'
-  | 'callout'
-  | 'accordion'
-  | 'accordiongroup'
-  | 'tabs'
-  | 'button'
-  | 'steps'
-  | 'card'
-  | 'markdown';
-
-interface ParsedSection {
-  type: SectionType;
-  content: string;
-  index: number;
-}
+import Tabs, { TabItem } from './markdown/Tabs';
 
 interface ComponentBasedMarkdownRendererProps {
   content: string;

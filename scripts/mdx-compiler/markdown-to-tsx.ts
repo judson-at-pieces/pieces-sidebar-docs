@@ -175,8 +175,6 @@ export class MarkdownToTSXCompiler {
         'cardgroup': 'CardGroup',
         'steps': 'Steps',
         'step': 'Step',
-        'tabs': 'Tabs',
-        'tabitem': 'TabItem',
       };
       
       const component = componentMap[tagName] || tagName;
@@ -241,7 +239,6 @@ import { Callout } from '@/components/markdown/Callout';
 import { Steps, Step } from '@/components/markdown/Steps';
 import { MarkdownCard as Card } from '@/components/markdown/MarkdownCard';
 import { CardGroup } from '@/components/markdown/CardGroup';
-import Tabs, { TabItem } from '@/components/markdown/Tabs';
 
 export const frontmatter = ${JSON.stringify(frontmatter, null, 2)};
 
