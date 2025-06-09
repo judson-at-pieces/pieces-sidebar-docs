@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { GitBranch, Plus, Trash2, Check } from 'lucide-react';
+import { GitBranch, Plus, Trash2, Check, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -9,6 +9,9 @@ import {
   DropdownMenuTrigger,
   DropdownMenuItem,
   DropdownMenuSeparator,
+  DropdownMenuSub,
+  DropdownMenuSubContent,
+  DropdownMenuSubTrigger,
 } from '@/components/ui/dropdown-menu';
 import {
   Dialog,
@@ -75,6 +78,11 @@ export function BranchSelector() {
     return a.name.localeCompare(b.name);
   });
 
+  // Get deletable branches (non-default, not current)
+  const deletableBranches = branches.filter(branch => 
+    !branch.isDefault && branch.name !== currentBranch
+  );
+
   return (
     <>
       <DropdownMenu>
@@ -123,24 +131,27 @@ export function BranchSelector() {
             Create new branch
           </DropdownMenuItem>
           
-          {branches.length > 1 && (
+          {deletableBranches.length > 0 && (
             <>
               <DropdownMenuSeparator />
-              <div className="px-2 py-1.5 text-sm font-medium text-muted-foreground">
-                Manage Branches
-              </div>
-              {branches
-                .filter(branch => !branch.isDefault && branch.name !== currentBranch)
-                .map((branch) => (
-                  <DropdownMenuItem
-                    key={`delete-${branch.name}`}
-                    onClick={() => setBranchToDelete(branch.name)}
-                    className="text-destructive focus:text-destructive"
-                  >
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    Delete {branch.name}
-                  </DropdownMenuItem>
-                ))}
+              <DropdownMenuSub>
+                <DropdownMenuSubTrigger>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete branch
+                </DropdownMenuSubTrigger>
+                <DropdownMenuSubContent>
+                  {deletableBranches.map((branch) => (
+                    <DropdownMenuItem
+                      key={`delete-${branch.name}`}
+                      onClick={() => setBranchToDelete(branch.name)}
+                      className="text-destructive focus:text-destructive"
+                    >
+                      <Trash2 className="h-4 w-4 mr-2" />
+                      {branch.name}
+                    </DropdownMenuItem>
+                  ))}
+                </DropdownMenuSubContent>
+              </DropdownMenuSub>
             </>
           )}
         </DropdownMenuContent>
