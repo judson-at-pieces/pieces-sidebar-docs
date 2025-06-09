@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 
 // Constants
@@ -39,6 +38,12 @@ interface CardData {
 const parseSections = (text: string): ParsedSection[] => {
   console.log('🔍 parseSections: Input text length:', text.length);
   
+  // If no section delimiters found, treat the entire content as one section
+  if (!text.includes(SECTION_DELIMITER)) {
+    console.log('🔍 No section delimiters found, treating as single section');
+    return [{ type: 'mixed', content: text.trim(), index: 0 }];
+  }
+  
   const sections = text.split(SECTION_DELIMITER).map(section => section.trim()).filter(Boolean);
   console.log('🔍 parseSections: Split into', sections.length, 'sections');
   
@@ -49,20 +54,45 @@ const parseSections = (text: string): ParsedSection[] => {
       console.log('📋 Found frontmatter section');
       return { type: 'frontmatter', content: section, index };
     }
+    
+    // Check for special components
+    const hasImage = section.includes(IMAGE_PATTERN);
+    const hasCardGroup = section.includes(CARDGROUP_PATTERN);
+    const hasSteps = section.includes(STEPS_PATTERN);
+    const hasCallout = section.includes(CALLOUT_PATTERN);
+    const hasAccordion = section.includes(ACCORDION_PATTERN);
+    const hasAccordionGroup = section.includes(ACCORDIONGROUP_PATTERN);
+    const hasTabs = section.includes(TABS_PATTERN);
+    const hasButton = section.includes(BUTTON_PATTERN);
+    const hasCard = section.includes(CARD_PATTERN) && !hasCardGroup;
+    
+    // Count special components
+    const specialComponentCount = [hasImage, hasCardGroup, hasSteps, hasCallout, hasAccordion, hasAccordionGroup, hasTabs, hasButton, hasCard].filter(Boolean).length;
+    
+    // If multiple special components or has markdown content with special components, treat as mixed
+    const markdownLines = section.split('\n').filter(line => {
+      const trimmed = line.trim();
+      return trimmed && 
+             !trimmed.startsWith('<') && 
+             !trimmed.startsWith('---') &&
+             trimmed !== '***';
+    });
+    
+    if (specialComponentCount > 1 || (specialComponentCount > 0 && markdownLines.length > 0)) {
+      console.log('🔀 Found mixed content section!');
+      return { type: 'mixed', content: section, index };
+    }
+    
+    // Single special component types
     if (section.startsWith(IMAGE_PATTERN)) {
       console.log('🖼️ Found image section');
       return { type: 'image', content: section, index };
     }
-    // Check if section contains CardGroup AND other content
-    if (section.includes(CARDGROUP_PATTERN) && section.split('\n').filter(line => line.trim()).length > 10) {
-      console.log('🔀 Found mixed content section with CardGroup!');
-      return { type: 'mixed', content: section, index };
-    }
-    if (section.includes(CARDGROUP_PATTERN)) {
+    if (hasCardGroup) {
       console.log('🃏 Found CardGroup section!');
       return { type: 'cardgroup', content: section, index };
     }
-    if (section.includes(STEPS_PATTERN)) {
+    if (hasSteps) {
       console.log('👣 Found Steps section!');
       return { type: 'steps', content: section, index };
     }
@@ -82,7 +112,7 @@ const parseSections = (text: string): ParsedSection[] => {
       console.log('🔘 Found Button section');
       return { type: 'button', content: section, index };
     }
-    if (section.startsWith(CARD_PATTERN) && !section.includes(CARDGROUP_PATTERN)) {
+    if (hasCard) {
       console.log('🎯 Found standalone Card section');
       return { type: 'card', content: section, index };
     }
@@ -132,7 +162,6 @@ const parseCard = (content: string): CardData => {
   };
 };
 
-// Parse CardGroup
 interface CardGroupData {
   cols?: number;
   cards: CardData[];
@@ -141,7 +170,6 @@ interface CardGroupData {
 const parseCardGroup = (content: string): CardGroupData => {
   console.log('🃏 Parsing CardGroup content:', content.substring(0, 200));
   
-  // Updated regex to handle both {2} and 2 formats
   const colsMatch = content.match(/<CardGroup[^>]*cols=\{?(\d+)\}?/);
   const cols = colsMatch ? parseInt(colsMatch[1]) : 2;
   
@@ -175,7 +203,6 @@ const parseCardGroup = (content: string): CardGroupData => {
   return { cols, cards };
 };
 
-// Parse Accordion
 interface AccordionData {
   title: string;
   content: string;
@@ -191,7 +218,6 @@ const parseAccordion = (content: string): AccordionData => {
   };
 };
 
-// Parse AccordionGroup
 const parseAccordionGroup = (content: string): AccordionData[] => {
   const accordionRegex = /<Accordion\s+([^>]*)>([\s\S]*?)<\/Accordion>/g;
   const accordions: AccordionData[] = [];
@@ -213,7 +239,6 @@ const parseAccordionGroup = (content: string): AccordionData[] => {
   return accordions;
 };
 
-// Parse Tabs
 interface TabData {
   title: string;
   content: string;
@@ -240,7 +265,6 @@ const parseTabs = (content: string): TabData[] => {
   return tabs;
 };
 
-// Parse Button
 interface ButtonData {
   label: string;
   linkHref: string;
@@ -268,7 +292,6 @@ const parseButton = (content: string): ButtonData => {
   };
 };
 
-// Parse Steps
 interface StepData {
   title: string;
   content: string;
@@ -563,7 +586,7 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
       elements.push(React.createElement('h1', { key: index, className: 'text-2xl font-bold mt-8 mb-4' }, line.slice(2)));
     } else {
       // Regular paragraph
-      elements.push(React.createElement('p', { key: index, className: 'mb-3 leading-relaxed' }, line));
+      elements.push(React.createElement('p', { key: index, className: 'mb-3 leading-relaxed' }, processInlineMarkdown(line)));
     }
   });
 
