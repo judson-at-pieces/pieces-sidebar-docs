@@ -54,6 +54,50 @@ export function EditorLayout() {
   // SEO data for the current file
   const { pendingChanges, hasUnsavedChanges } = useSeoData(selectedFile);
 
+  // CRITICAL: Force database session creation when branch changes
+  const ensureBranchHasLiveSession = async (branchName: string, filePath?: string) => {
+    if (!filePath || !branchName) return;
+
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      console.log('FORCE CREATING session for branch:', branchName, 'file:', filePath);
+
+      // First check if session exists
+      const { data: existingSession } = await supabase
+        .from('live_editing_sessions')
+        .select('id')
+        .eq('file_path', filePath)
+        .eq('branch_name', branchName)
+        .maybeSingle();
+
+      if (!existingSession) {
+        // Create new session for this branch
+        const { error } = await supabase
+          .from('live_editing_sessions')
+          .insert({
+            file_path: filePath,
+            content: '',
+            user_id: user.id,
+            branch_name: branchName,
+            locked_by: null,
+            locked_at: null
+          });
+
+        if (error) {
+          console.error('Error force creating session:', error);
+        } else {
+          console.log('Successfully force created session for branch:', branchName);
+        }
+      } else {
+        console.log('Session already exists for branch:', branchName);
+      }
+    } catch (error) {
+      console.error('Error in ensureBranchHasLiveSession:', error);
+    }
+  };
+
   // Load existing live editing sessions on mount to restore work state
   useEffect(() => {
     const loadExistingLiveSessions = async () => {
@@ -114,13 +158,18 @@ export function EditorLayout() {
     }
   }, [selectedFile, isLocked, lockedBy, hasChanges, content, activeBranch, saveLiveContent]);
 
-  // Clear state when branch changes - IMPORTANT: This ensures clean state
+  // CRITICAL: Clear state when branch changes and force session creation
   useEffect(() => {
-    console.log('Branch changed to:', activeBranch, '- clearing editor state');
+    console.log('Branch changed to:', activeBranch, '- clearing editor state and ensuring sessions exist');
     setSelectedFile(undefined);
     setContent("");
     setHasChanges(false);
     setModifiedFiles(new Set());
+
+    // If we have a currently selected file, ensure it has a session on the new branch
+    if (selectedFile) {
+      ensureBranchHasLiveSession(activeBranch, selectedFile);
+    }
   }, [activeBranch]);
 
   const handleFileSelect = async (filePath: string) => {
@@ -137,6 +186,9 @@ export function EditorLayout() {
     setSelectedFile(filePath);
     setHasChanges(false);
     setLoadingContent(true);
+
+    // CRITICAL: Ensure this file has a live editing session on the current branch
+    await ensureBranchHasLiveSession(activeBranch, filePath);
     
     try {
       // Check if there's live content for this file on the current branch first
