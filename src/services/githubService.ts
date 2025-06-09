@@ -189,6 +189,7 @@ class GitHubService {
     const { owner, repo } = config;
 
     console.log('Creating branch and PR for repository:', `${owner}/${repo}`);
+    console.log('Base branch:', baseBranch);
     console.log('Files to update:', files.map(f => f.path));
 
     // Validate inputs
@@ -204,19 +205,19 @@ class GitHubService {
       throw new Error('At least one file is required to create a pull request');
     }
 
-    // Create a descriptive branch name
+    // Create a descriptive branch name based on the base branch
     const timestamp = new Date().toISOString().replace(/[:.]/g, '-').split('T')[0];
-    const branchName = `docs-update-${timestamp}-${Date.now().toString().slice(-6)}`;
+    const branchName = `docs-update-from-${baseBranch}-${timestamp}-${Date.now().toString().slice(-6)}`;
     
     try {
       console.log('Step 1: Getting base branch reference');
       // Get the latest commit SHA from the base branch
       const baseRef = await this.makeRequest(`/repos/${owner}/${repo}/git/ref/heads/${baseBranch}`, token);
       const baseSha = baseRef.object.sha;
-      console.log('Base SHA:', baseSha);
+      console.log('Base SHA from branch', baseBranch, ':', baseSha);
 
       console.log('Step 2: Creating new branch');
-      // Create a new branch
+      // Create a new branch from the specified base branch
       await this.makeRequest(`/repos/${owner}/${repo}/git/refs`, token, {
         method: 'POST',
         body: JSON.stringify({
@@ -224,7 +225,7 @@ class GitHubService {
           sha: baseSha,
         }),
       });
-      console.log('Created branch:', branchName);
+      console.log('Created branch:', branchName, 'from base:', baseBranch);
 
       console.log('Step 3: Updating files');
       // Update files in the new branch
@@ -259,24 +260,25 @@ class GitHubService {
       }
 
       console.log('Step 4: Creating pull request');
-      // Create the pull request
+      // Create the pull request targeting the base branch
       const pr = await this.makeRequest(`/repos/${owner}/${repo}/pulls`, token, {
         method: 'POST',
         body: JSON.stringify({
           title,
-          body,
+          body: `${body}\n\n**Base branch:** ${baseBranch}`,
           head: branchName,
-          base: baseBranch,
+          base: baseBranch, // This is the key change - target the specified base branch
         }),
       });
 
-      console.log('Successfully created PR:', pr.html_url);
+      console.log('Successfully created PR:', pr.html_url, 'targeting branch:', baseBranch);
 
       return {
         success: true,
         prUrl: pr.html_url,
         prNumber: pr.number,
         branchName: branchName,
+        baseBranch: baseBranch,
       };
     } catch (error) {
       console.error('Error creating branch and pull request:', error);

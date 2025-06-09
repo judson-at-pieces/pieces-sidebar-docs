@@ -14,6 +14,8 @@ import { useSeoData } from "@/hooks/useSeoData";
 import { githubService } from "@/services/githubService";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import { BranchSelector } from "./BranchSelector";
+import { useBranches } from "@/hooks/useBranches";
 
 export function EditorLayout() {
   const { fileStructure, isLoading, error, refetch } = useFileStructure();
@@ -337,7 +339,7 @@ Start editing to see the live preview!
         return;
       }
 
-      // Create PR with all live content
+      // Create PR with all live content, targeting the current branch
       const result = await githubService.createPullRequest(
         {
           title: `Update documentation - ${allLiveContent.length} file${allLiveContent.length !== 1 ? 's' : ''} modified`,
@@ -345,7 +347,8 @@ Start editing to see the live preview!
           files: allLiveContent.map(item => ({
             path: item.path,
             content: item.content
-          }))
+          })),
+          baseBranch: currentBranch // Use current branch as base
         },
         token,
         repoConfig
@@ -461,11 +464,15 @@ Start editing to see the live preview!
               <span className="font-semibold text-lg bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">Pieces Docs</span>
             </Link>
             <div className="h-6 w-px bg-gradient-to-b from-transparent via-border to-transparent"></div>
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-              <h1 className="text-lg font-medium text-muted-foreground">
-                {activeTab === 'content' ? 'Content Editor' : activeTab === 'seo' ? 'SEO Editor' : 'Navigation Editor'}
-              </h1>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                <h1 className="text-lg font-medium text-muted-foreground">
+                  {activeTab === 'content' ? 'Content Editor' : activeTab === 'seo' ? 'SEO Editor' : 'Navigation Editor'}
+                </h1>
+              </div>
+              {/* Add Branch Selector */}
+              <BranchSelector />
             </div>
           </div>
           
