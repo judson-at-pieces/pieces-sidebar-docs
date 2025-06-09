@@ -157,6 +157,7 @@ export type Database = {
       }
       live_editing_sessions: {
         Row: {
+          branch_name: string | null
           content: string
           created_at: string
           file_path: string
@@ -167,6 +168,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          branch_name?: string | null
           content: string
           created_at?: string
           file_path: string
@@ -177,6 +179,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          branch_name?: string | null
           content?: string
           created_at?: string
           file_path?: string
@@ -368,6 +371,10 @@ export type Database = {
         Args: { p_file_path: string; p_user_id: string }
         Returns: boolean
       }
+      acquire_file_lock_by_branch: {
+        Args: { p_file_path: string; p_user_id: string; p_branch_name: string }
+        Returns: boolean
+      }
       generate_admin_access_code: {
         Args: Record<PropertyKey, never>
         Returns: string
@@ -382,6 +389,17 @@ export type Database = {
       }
       get_live_editing_sessions: {
         Args: Record<PropertyKey, never>
+        Returns: {
+          file_path: string
+          content: string
+          locked_by_email: string
+          locked_by_name: string
+          locked_at: string
+          updated_at: string
+        }[]
+      }
+      get_live_editing_sessions_by_branch: {
+        Args: { branch_name: string }
         Returns: {
           file_path: string
           content: string
@@ -406,8 +424,21 @@ export type Database = {
         Args: { p_file_path: string; p_user_id: string }
         Returns: boolean
       }
+      release_file_lock_by_branch: {
+        Args: { p_file_path: string; p_user_id: string; p_branch_name: string }
+        Returns: boolean
+      }
       save_live_content: {
         Args: { p_file_path: string; p_content: string; p_user_id: string }
+        Returns: boolean
+      }
+      save_live_content_by_branch: {
+        Args: {
+          p_file_path: string
+          p_content: string
+          p_user_id: string
+          p_branch_name: string
+        }
         Returns: boolean
       }
       sync_navigation_from_content: {
