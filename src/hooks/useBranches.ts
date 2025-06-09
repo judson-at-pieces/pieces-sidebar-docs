@@ -110,19 +110,35 @@ export function useBranches() {
 
       console.log('=== UPDATING DATABASE FOR BRANCH SWITCH ===', newBranchName);
 
-      // CRITICAL FIX: Update existing sessions to use the new branch name
-      const { error: updateError } = await supabase
+      // Get all existing sessions for this user
+      const { data: existingSessions } = await supabase
         .from('live_editing_sessions')
-        .update({ 
-          branch_name: newBranchName,
-          updated_at: new Date().toISOString()
-        })
+        .select('file_path, content')
         .eq('user_id', user.id);
 
-      if (updateError) {
-        console.error('Error updating existing sessions for branch switch:', updateError);
-      } else {
-        console.log('✅ Updated all existing sessions to branch:', newBranchName);
+      if (existingSessions && existingSessions.length > 0) {
+        // For each session, create or update a session on the new branch
+        for (const session of existingSessions) {
+          const { error: upsertError } = await supabase
+            .from('live_editing_sessions')
+            .upsert({
+              file_path: session.file_path,
+              content: session.content || '',
+              user_id: user.id,
+              branch_name: newBranchName,
+              locked_by: null,
+              locked_at: null,
+              updated_at: new Date().toISOString()
+            }, {
+              onConflict: 'file_path,branch_name'
+            });
+
+          if (upsertError) {
+            console.error('Error upserting session for branch switch:', upsertError);
+          } else {
+            console.log('✅ Upserted session for', session.file_path, 'on branch:', newBranchName);
+          }
+        }
       }
 
       console.log('✅ Database updated for branch switch to:', newBranchName);
