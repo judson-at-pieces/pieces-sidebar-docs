@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useLiveEditing } from "@/hooks/useLiveEditing";
@@ -431,7 +432,9 @@ Start editing to see the live preview!
   const handleCreatePR = async () => {
     // Use activeBranch as the SOURCE branch (where changes come from)
     const sourceBranch = activeBranch;
-    console.log('Creating PR FROM branch:', sourceBranch, 'TO main');
+    const targetBranch = 'main';
+    
+    console.log('Creating PR FROM branch:', sourceBranch, 'TO branch:', targetBranch);
     
     if (!sourceBranch) {
       toast.error('No current branch selected');
@@ -439,8 +442,8 @@ Start editing to see the live preview!
     }
 
     // Don't allow PR from main to main
-    if (sourceBranch === 'main') {
-      toast.error('Cannot create PR from main branch to main branch');
+    if (sourceBranch === targetBranch) {
+      toast.error(`Cannot create PR from ${sourceBranch} branch to ${targetBranch} branch`);
       return;
     }
 
@@ -467,25 +470,25 @@ Start editing to see the live preview!
 
       console.log('Files to include in PR:', allLiveContent.map(item => item.path));
 
-      // Create PR FROM sourceBranch TO main - NO temporary branch needed
+      // Create PR FROM sourceBranch TO targetBranch - using existing branch
       const result = await githubService.createPullRequest(
         {
           title: `Update documentation from ${sourceBranch} - ${allLiveContent.length} file${allLiveContent.length !== 1 ? 's' : ''} modified`,
-          body: `Updated documentation files from branch "${sourceBranch}" to main:\n${allLiveContent.map(item => `- ${item.path}`).join('\n')}\n\nThis pull request was created from the collaborative editor.`,
+          body: `Updated documentation files from branch "${sourceBranch}" to ${targetBranch}:\n${allLiveContent.map(item => `- ${item.path}`).join('\n')}\n\nThis pull request was created from the collaborative editor.`,
           files: allLiveContent.map(item => ({
             path: item.path,
             content: item.content
           })),
-          baseBranch: 'main', // TARGET branch (where changes should be merged TO)
+          baseBranch: targetBranch, // TARGET branch (where changes should be merged TO)
           headBranch: sourceBranch, // SOURCE branch (where changes come FROM) - use existing branch
-          useExistingBranch: true // New flag to tell service to use existing branch
+          useExistingBranch: true // Use existing branch instead of creating temporary one
         },
         token,
         repoConfig
       );
 
       if (result.success) {
-        toast.success(`Pull request created successfully from "${sourceBranch}" to main!`, {
+        toast.success(`Pull request created successfully from "${sourceBranch}" to ${targetBranch}!`, {
           action: {
             label: 'View PR',
             onClick: () => window.open(result.prUrl, '_blank')
@@ -585,7 +588,7 @@ Start editing to see the live preview!
   // Calculate if PR button should be disabled
   const totalLiveFiles = sessions.filter(s => s.content && s.content.trim()).length;
   const hasAnyChanges = hasChanges || totalLiveFiles > 0;
-  const isPRButtonDisabled = !hasAnyChanges || creatingPR;
+  const isPRButtonDisabled = !hasAnyChanges || creatingPR || activeBranch === 'main';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
@@ -702,11 +705,13 @@ Start editing to see the live preview!
                       disabled={isPRButtonDisabled}
                       className="flex items-center gap-2"
                       title={
-                        !hasAnyChanges 
-                          ? "No changes to create PR for" 
-                          : creatingPR 
-                            ? "Creating PR..." 
-                            : `Create pull request from ${activeBranch} to main with all live changes`
+                        activeBranch === 'main'
+                          ? "Cannot create PR from main branch to main branch"
+                          : !hasAnyChanges 
+                            ? "No changes to create PR for" 
+                            : creatingPR 
+                              ? "Creating PR..." 
+                              : `Create pull request from ${activeBranch} to main with all live changes`
                       }
                     >
                       {creatingPR ? (
