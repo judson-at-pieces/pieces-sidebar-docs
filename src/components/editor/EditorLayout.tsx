@@ -55,6 +55,8 @@ export function EditorLayout() {
       if (!currentBranch) return;
       
       try {
+        console.log('Loading existing live sessions for branch:', currentBranch);
+        
         const { data: existingSessions, error } = await supabase
           .from('live_editing_sessions')
           .select('file_path, content')
@@ -103,9 +105,17 @@ export function EditorLayout() {
     }
   }, [selectedFile, isLocked, lockedBy, hasChanges, content, currentBranch, saveLiveContent]);
 
+  // Clear modified files when branch changes to avoid showing stale data
+  useEffect(() => {
+    console.log('Branch changed, clearing modified files state');
+    setModifiedFiles(new Set());
+    setHasChanges(false);
+  }, [currentBranch]);
+
   const handleFileSelect = async (filePath: string) => {
     console.log('=== FILE SELECTION DEBUG ===');
     console.log('Selected file path:', filePath);
+    console.log('Current branch:', currentBranch);
     
     // Release lock on previous file if user owns it
     if (selectedFile && isLocked && lockedBy === 'You') {
@@ -121,7 +131,7 @@ export function EditorLayout() {
       const liveFileContent = await loadLiveContent(filePath);
       
       if (liveFileContent) {
-        console.log('Found live content for:', filePath);
+        console.log('Found live content for:', filePath, 'on branch:', currentBranch);
         setContent(liveFileContent);
         setLoadingContent(false);
         // Try to acquire lock automatically for editing
@@ -331,8 +341,8 @@ Start editing to see the live preview!
   };
 
   const handleCreatePR = async () => {
-    // Get the current branch - this is the SOURCE branch (where changes come from)
-    const sourceBranch = branchesHook.currentBranch;
+    // Get the current branch from the hook - this is the SOURCE branch (where changes come from)
+    const sourceBranch = currentBranch;
     console.log('Creating PR from source branch:', sourceBranch);
     
     if (!sourceBranch) {

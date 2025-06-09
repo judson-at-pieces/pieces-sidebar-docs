@@ -118,6 +118,8 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
         return false;
       }
 
+      console.log('Acquiring lock for file:', filePath, 'on branch:', currentBranch);
+
       const { data, error } = await supabase
         .rpc('acquire_file_lock_by_branch', { 
           p_file_path: filePath, 
@@ -192,6 +194,8 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return false;
 
+      console.log('Saving live content for file:', filePath, 'on branch:', currentBranch);
+
       const { data, error } = await supabase
         .rpc('save_live_content_by_branch', { 
           p_file_path: filePath, 
@@ -223,6 +227,8 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
     if (!currentBranch) return null;
 
     try {
+      console.log('Loading live content for file:', filePath, 'on branch:', currentBranch);
+
       const { data, error } = await supabase
         .from('live_editing_sessions')
         .select('content')
@@ -240,6 +246,15 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
       console.error('Error loading live content:', error);
       return null;
     }
+  }, [currentBranch]);
+
+  // Clear state when branch changes
+  useEffect(() => {
+    console.log('Branch changed to:', currentBranch);
+    setIsLocked(false);
+    setLockedBy(null);
+    setLiveContent('');
+    setSessions([]);
   }, [currentBranch]);
 
   // Set up real-time subscription for live editing sessions
