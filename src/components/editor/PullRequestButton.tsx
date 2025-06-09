@@ -13,22 +13,30 @@ interface PullRequestButtonProps {
   initialized: boolean;
 }
 
-const DEBUG_PR = true;
+const DEBUG_PR_BUTTON = true;
 
 export function PullRequestButton({ currentBranch, sessions, hasChanges, initialized }: PullRequestButtonProps) {
   const [creating, setCreating] = useState(false);
   const [buttonState, setButtonState] = useState({
     text: 'Loading...',
     enabled: false,
-    tooltip: 'Loading...'
+    tooltip: 'Loading...',
+    targetBranch: 'main'
   });
 
+  // Force re-render when currentBranch changes by using it as a key
+  const [renderKey, setRenderKey] = useState(0);
+
   useEffect(() => {
-    if (DEBUG_PR) {
-      console.log('🔄 PR BUTTON STATE UPDATE');
+    setRenderKey(prev => prev + 1);
+  }, [currentBranch]);
+
+  useEffect(() => {
+    if (DEBUG_PR_BUTTON) {
+      console.log('🔄 PR BUTTON STATE UPDATE - KEY:', renderKey);
       console.log('  initialized:', initialized);
       console.log('  currentBranch:', currentBranch);
-      console.log('  sessions:', sessions);
+      console.log('  sessions count:', sessions.length);
       console.log('  hasChanges:', hasChanges);
       console.log('  creating:', creating);
     }
@@ -37,7 +45,8 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
       setButtonState({
         text: 'Loading branches...',
         enabled: false,
-        tooltip: 'Loading branches...'
+        tooltip: 'Loading branches...',
+        targetBranch: 'main'
       });
       return;
     }
@@ -46,16 +55,20 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
       setButtonState({
         text: 'No branch selected',
         enabled: false,
-        tooltip: 'No branch selected'
+        tooltip: 'No branch selected',
+        targetBranch: 'main'
       });
       return;
     }
 
-    if (currentBranch === 'main') {
+    const targetBranch = 'main';
+
+    if (currentBranch === targetBranch) {
       setButtonState({
-        text: `${currentBranch} → main`,
+        text: `${currentBranch} → ${targetBranch}`,
         enabled: false,
-        tooltip: 'Cannot create PR from main branch to main branch'
+        tooltip: `Cannot create PR from ${currentBranch} branch to ${targetBranch} branch`,
+        targetBranch
       });
       return;
     }
@@ -64,14 +77,14 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
     const totalLiveFiles = sessionsWithContent.length;
     const hasAnyChanges = hasChanges || totalLiveFiles > 0;
 
-    const targetBranch = 'main';
     const buttonText = `${currentBranch} → ${targetBranch}${totalLiveFiles > 0 ? ` (${totalLiveFiles})` : ''}`;
 
     if (creating) {
       setButtonState({
         text: 'Creating PR...',
         enabled: false,
-        tooltip: 'Creating pull request...'
+        tooltip: 'Creating pull request...',
+        targetBranch
       });
       return;
     }
@@ -80,7 +93,8 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
       setButtonState({
         text: buttonText,
         enabled: false,
-        tooltip: `No changes to create PR for. Current: ${currentBranch} → ${targetBranch}`
+        tooltip: `No changes to create PR for. Current: ${currentBranch} → ${targetBranch}`,
+        targetBranch
       });
       return;
     }
@@ -88,17 +102,20 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
     setButtonState({
       text: buttonText,
       enabled: true,
-      tooltip: `Create pull request from ${currentBranch} to ${targetBranch} with ${totalLiveFiles} file${totalLiveFiles !== 1 ? 's' : ''}`
+      tooltip: `Create pull request from ${currentBranch} to ${targetBranch} with ${totalLiveFiles} file${totalLiveFiles !== 1 ? 's' : ''}`,
+      targetBranch
     });
 
-    if (DEBUG_PR) {
+    if (DEBUG_PR_BUTTON) {
       console.log('✅ PR BUTTON FINAL STATE:');
       console.log('  text:', buttonText);
       console.log('  enabled:', true);
       console.log('  totalLiveFiles:', totalLiveFiles);
+      console.log('  currentBranch:', currentBranch);
+      console.log('  targetBranch:', targetBranch);
     }
 
-  }, [initialized, currentBranch, sessions, hasChanges, creating]);
+  }, [initialized, currentBranch, sessions, hasChanges, creating, renderKey]);
 
   const getGitHubAppToken = async () => {
     try {
@@ -139,7 +156,7 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
   const collectAllLiveContent = async () => {
     const allContent: { path: string; content: string }[] = [];
     
-    if (DEBUG_PR) {
+    if (DEBUG_PR_BUTTON) {
       console.log('🗂️ Collecting live content from', sessions.length, 'sessions for branch:', currentBranch);
     }
     
@@ -149,35 +166,36 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
           path: getOriginalFilePath(session.file_path),
           content: session.content
         });
-        if (DEBUG_PR) {
+        if (DEBUG_PR_BUTTON) {
           console.log('✅ Added session content for:', session.file_path);
         }
       }
     }
     
-    if (DEBUG_PR) {
+    if (DEBUG_PR_BUTTON) {
       console.log('📊 Total live content collected:', allContent.length, 'files from branch:', currentBranch);
     }
     return allContent;
   };
 
   const handleCreatePR = async () => {
-    if (DEBUG_PR) {
+    if (DEBUG_PR_BUTTON) {
       console.log('🚀 PR BUTTON CLICKED');
       console.log('  currentBranch:', currentBranch);
+      console.log('  targetBranch:', buttonState.targetBranch);
       console.log('  buttonState.enabled:', buttonState.enabled);
     }
 
     if (!currentBranch || !buttonState.enabled) {
-      if (DEBUG_PR) {
+      if (DEBUG_PR_BUTTON) {
         console.log('❌ Cannot create PR - conditions not met');
       }
       return;
     }
 
-    const targetBranch = 'main';
+    const targetBranch = buttonState.targetBranch;
     
-    if (DEBUG_PR) {
+    if (DEBUG_PR_BUTTON) {
       console.log('✅ Creating PR FROM branch:', currentBranch, 'TO branch:', targetBranch);
     }
     
@@ -199,7 +217,7 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
         return;
       }
 
-      if (DEBUG_PR) {
+      if (DEBUG_PR_BUTTON) {
         console.log('📋 Files to include in PR:', allLiveContent.map(item => item.path));
       }
 
@@ -229,7 +247,7 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
         
         // Clear all live editing sessions for current branch after successful PR
         try {
-          if (DEBUG_PR) {
+          if (DEBUG_PR_BUTTON) {
             console.log('🧹 Clearing live editing sessions for branch:', currentBranch);
           }
           const { error } = await supabase
@@ -257,8 +275,13 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
     }
   };
 
+  if (DEBUG_PR_BUTTON) {
+    console.log('🔍 PR BUTTON RENDER - KEY:', renderKey, 'CURRENT:', currentBranch, 'TARGET:', buttonState.targetBranch, 'TEXT:', buttonState.text);
+  }
+
   return (
     <Button
+      key={renderKey}
       onClick={handleCreatePR}
       variant="outline"
       size="sm"
