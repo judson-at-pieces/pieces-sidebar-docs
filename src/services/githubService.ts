@@ -52,9 +52,9 @@ class GitHubService {
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
       const finalHeadBranch = headBranch || `editor-changes-${timestamp}`;
       
-      console.log('Creating PR with base branch:', baseBranch, 'head branch:', finalHeadBranch);
+      console.log('Creating PR with base branch (target):', baseBranch, 'head branch (source):', finalHeadBranch);
 
-      // Step 1: Get the latest commit SHA from the base branch
+      // Step 1: Get the latest commit SHA from the base branch (the branch we want to target)
       const baseBranchResponse = await fetch(
         `https://api.github.com/repos/${repoConfig.owner}/${repoConfig.repo}/git/ref/heads/${baseBranch}`,
         {
@@ -73,7 +73,7 @@ class GitHubService {
       const baseBranchData = await baseBranchResponse.json();
       const baseCommitSha = baseBranchData.object.sha;
 
-      // Step 2: Create a new branch from the base branch
+      // Step 2: Create a new branch from the base branch for our changes
       const createBranchResponse = await fetch(
         `https://api.github.com/repos/${repoConfig.owner}/${repoConfig.repo}/git/refs`,
         {
@@ -212,7 +212,7 @@ class GitHubService {
         throw new Error(`Failed to update branch reference: ${errorText}`);
       }
 
-      // Step 8: Create the pull request
+      // Step 8: Create the pull request (head -> base)
       const createPrResponse = await fetch(
         `https://api.github.com/repos/${repoConfig.owner}/${repoConfig.repo}/pulls`,
         {
@@ -225,8 +225,8 @@ class GitHubService {
           body: JSON.stringify({
             title,
             body,
-            head: finalHeadBranch,
-            base: baseBranch,
+            head: finalHeadBranch, // The branch with changes
+            base: baseBranch,      // The target branch (what's selected in the dropdown)
           }),
         }
       );
