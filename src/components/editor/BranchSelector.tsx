@@ -68,6 +68,13 @@ export function BranchSelector() {
 
   const currentBranchData = branches.find(b => b.name === currentBranch);
 
+  // Sort branches with default branch first, then alphabetically
+  const sortedBranches = [...branches].sort((a, b) => {
+    if (a.isDefault && !b.isDefault) return -1;
+    if (!a.isDefault && b.isDefault) return 1;
+    return a.name.localeCompare(b.name);
+  });
+
   return (
     <>
       <DropdownMenu>
@@ -88,7 +95,7 @@ export function BranchSelector() {
           </div>
           <DropdownMenuSeparator />
           
-          {branches.map((branch) => (
+          {sortedBranches.map((branch) => (
             <DropdownMenuItem
               key={branch.name}
               onClick={() => switchBranch(branch.name)}
