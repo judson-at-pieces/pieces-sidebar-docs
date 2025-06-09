@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -6,7 +5,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Plus, Type, Image as ImageIcon, AlertCircle, List, Hash, Quote, Code, Save, Edit } from 'lucide-react';
-import HashnodeMarkdownRenderer from '@/components/HashnodeMarkdownRenderer';
+import HashnodeMarkdownRenderer from '@/components/markdown/HashnodeMarkdownRenderer';
 
 interface WYSIWYGEditorProps {
   content: string;
@@ -213,7 +212,10 @@ export function WYSIWYGEditor({ content, onContentChange }: WYSIWYGEditorProps) 
             </div>
             <Button
               size="sm"
-              onClick={() => updateElement(element.id, document.getElementById(`editor-${element.id}`)?.value || element.content)}
+              onClick={() => {
+                const textarea = document.getElementById(`editor-${element.id}`) as HTMLTextAreaElement;
+                updateElement(element.id, textarea?.value || element.content);
+              }}
               className="h-6 px-2 text-xs"
             >
               <Save className="h-3 w-3 mr-1" />

@@ -13,7 +13,7 @@ const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
     children: React.Children.toArray(children).map((child, index) => ({
       index,
       type: React.isValidElement(child) ? child.type : typeof child,
-      props: React.isValidElement(child) ? Object.keys(child.props) : 'not-element'
+      props: React.isValidElement(child) ? Object.keys(child.props || {}) : 'not-element'
     }))
   });
 
@@ -33,16 +33,25 @@ const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
       {React.Children.map(children, (child, index) => {
         console.log(`🃏 CardGroup processing child ${index}:`, {
           type: React.isValidElement(child) ? child.type : typeof child,
-          isValidElement: React.isValidElement(child)
+          isValidElement: React.isValidElement(child),
+          hasProps: React.isValidElement(child) && child.props
         });
         
-        if (React.isValidElement(child)) {
+        // Safety check for valid React elements
+        if (!React.isValidElement(child)) {
+          console.warn(`CardGroup child ${index} is not a valid React element:`, child);
+          return null;
+        }
+        
+        try {
           return React.cloneElement(child, {
             ...child.props,
             className: `${child.props.className || ''} my-2`.trim(),
           });
+        } catch (error) {
+          console.error(`Error cloning child ${index}:`, error);
+          return child; // Fallback to original child
         }
-        return child;
       })}
     </div>
   );

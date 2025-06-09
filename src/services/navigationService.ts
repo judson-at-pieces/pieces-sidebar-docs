@@ -28,51 +28,96 @@ export interface NavigationStructure {
   sections: NavigationSection[];
 }
 
-// Helper function to merge folder and markdown file entries
-function mergeFolderAndMarkdownItems(items: NavigationItem[]): NavigationItem[] {
+// Helper function to build hierarchical structure from flat array
+function buildHierarchy(items: NavigationItem[]): NavigationItem[] {
+  console.log('Building hierarchy from', items.length, 'items');
+  
   const itemMap = new Map<string, NavigationItem>();
-  const mergedItems: NavigationItem[] = [];
-
-  // First pass: collect all items by their base path
-  for (const item of items) {
-    const basePath = item.href.replace(/\.md$/, ''); // Remove .md extension if present
-    
-    if (itemMap.has(basePath)) {
-      const existing = itemMap.get(basePath)!;
-      
-      // If we have both folder and markdown file, merge them
-      if (item.href.endsWith('.md') && !existing.href.endsWith('.md')) {
-        // Current item is markdown, existing is folder - use markdown as base, keep folder's children
-        itemMap.set(basePath, {
-          ...item,
-          items: existing.items || [],
-        });
-      } else if (!item.href.endsWith('.md') && existing.href.endsWith('.md')) {
-        // Current item is folder, existing is markdown - use markdown as base, add folder's children
-        itemMap.set(basePath, {
-          ...existing,
-          items: item.items || [],
-        });
-      } else if (item.href.endsWith('.md') && existing.href.endsWith('.md')) {
-        // Both are markdown files - keep the existing one
-        continue;
-      } else {
-        // Both are folders - merge their children
-        itemMap.set(basePath, {
-          ...existing,
-          items: mergeFolderAndMarkdownItems([...(existing.items || []), ...(item.items || [])]),
-        });
-      }
-    } else {
-      itemMap.set(basePath, {
-        ...item,
-        items: item.items ? mergeFolderAndMarkdownItems(item.items) : undefined,
-      });
+  const rootItems: NavigationItem[] = [];
+  
+  // First pass: create map of all items and identify folder/file pairs to deduplicate
+  const processedItems = new Map<string, NavigationItem>();
+  const folderPaths = new Set<string>();
+  
+  // Identify all folder paths (items that have children or are parents)
+  items.forEach(item => {
+    if (items.some(i => i.parent_id === item.id)) {
+      folderPaths.add(item.href);
     }
-  }
+  });
+  
+  // Process items, deduplicating folder/file pairs
+  items.forEach(item => {
+    const itemPath = item.href;
+    
+    // Check if this is a standalone file that has a corresponding folder
+    const hasCorrespondingFolder = folderPaths.has(itemPath);
+    
+    // If there's both a folder and file with same path, prefer the folder (parent item)
+    if (hasCorrespondingFolder) {
+      const isFolder = items.some(i => i.parent_id === item.id);
+      if (!isFolder) {
+        // This is the standalone file, skip it since we have a folder
+        console.log(`Skipping standalone file ${item.title} because folder exists`);
+        return;
+      }
+    }
+    
+    processedItems.set(item.id, { ...item, items: [] });
+  });
+  
+  // Convert processed items to array
+  const deduplicatedItems = Array.from(processedItems.values());
+  
+  // Create map for hierarchy building
+  deduplicatedItems.forEach(item => {
+    itemMap.set(item.id, item);
+  });
+  
+  // Second pass: build parent-child relationships
+  deduplicatedItems.forEach(item => {
+    const itemWithChildren = itemMap.get(item.id)!;
+    
+    if (item.parent_id && itemMap.has(item.parent_id)) {
+      // This item has a parent, add it to parent's children
+      const parent = itemMap.get(item.parent_id)!;
+      if (!parent.items) parent.items = [];
+      parent.items.push(itemWithChildren);
+      parent.items.sort((a, b) => a.order_index - b.order_index);
+    } else {
+      // This is a root item
+      rootItems.push(itemWithChildren);
+    }
+  });
+  
+  // Sort root items by order_index
+  rootItems.sort((a, b) => a.order_index - b.order_index);
+  
+  console.log('Built hierarchy:', {
+    totalItems: items.length,
+    deduplicatedItems: deduplicatedItems.length,
+    rootItems: rootItems.length,
+    hierarchy: rootItems.map(item => ({
+      title: item.title,
+      href: item.href,
+      childCount: item.items?.length || 0,
+      children: item.items?.map(child => ({ title: child.title, href: child.href })) || []
+    }))
+  });
+  
+  return rootItems;
+}
 
-  // Convert map back to array and sort by order_index
-  return Array.from(itemMap.values()).sort((a, b) => a.order_index - b.order_index);
+// Enhanced merge function that creates proper folder structure
+function mergeFolderAndMarkdownItems(items: NavigationItem[]): NavigationItem[] {
+  console.log('Merging folder and markdown items:', items.length);
+  
+  // Build hierarchical structure with deduplication
+  const hierarchicalItems = buildHierarchy(items);
+  
+  console.log('After building hierarchy, root items:', hierarchicalItems.length);
+  
+  return hierarchicalItems;
 }
 
 export class NavigationService {
@@ -85,7 +130,12 @@ export class NavigationService {
         return this.processStaticNavigation();
       }
       
+      console.log('Raw navigation data from database:', data);
+      
       const processedData = this.processNavigationData(data as NavigationStructure);
+      
+      console.log('Processed navigation data:', processedData);
+      
       return processedData || this.processStaticNavigation();
     } catch (error) {
       console.warn('Error in getNavigationStructure, using static navigation:', error);
@@ -94,11 +144,42 @@ export class NavigationService {
   }
 
   private processNavigationData(data: NavigationStructure): NavigationStructure {
-    return {
-      sections: data.sections.map(section => ({
+    console.log('Processing navigation data:', data);
+    
+    const processedSections = data.sections.map(section => {
+      console.log(`Processing section "${section.title}" with ${section.items?.length || 0} items`);
+      
+      // Check for potential issues with the items
+      if (section.items) {
+        const duplicateTitles = section.items.reduce((acc, item, index) => {
+          const count = section.items.filter(i => i.title === item.title).length;
+          if (count > 1) acc.push(`${item.title} (appears ${count} times)`);
+          return acc;
+        }, [] as string[]);
+        
+        if (duplicateTitles.length > 0) {
+          console.warn(`Section "${section.title}" has duplicate items:`, [...new Set(duplicateTitles)]);
+        }
+        
+        // Check for circular parent references
+        section.items.forEach(item => {
+          if (item.parent_id) {
+            const parent = section.items.find(i => i.id === item.parent_id);
+            if (!parent) {
+              console.warn(`Item "${item.title}" has parent_id "${item.parent_id}" but parent not found in section`);
+            }
+          }
+        });
+      }
+      
+      return {
         ...section,
         items: mergeFolderAndMarkdownItems(section.items || []),
-      })),
+      };
+    });
+    
+    return {
+      sections: processedSections,
     };
   }
 

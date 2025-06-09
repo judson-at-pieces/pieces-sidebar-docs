@@ -1,5 +1,7 @@
-
 import React, { useState } from 'react';
+import CodeBlock from './CodeBlock';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 // Constants
 const SECTION_DELIMITER = '***';
@@ -39,6 +41,12 @@ interface CardData {
 const parseSections = (text: string): ParsedSection[] => {
   console.log('🔍 parseSections: Input text length:', text.length);
   
+  // If no section delimiters found, treat the entire content as one section
+  if (!text.includes(SECTION_DELIMITER)) {
+    console.log('🔍 No section delimiters found, treating as single section');
+    return [{ type: 'mixed', content: text.trim(), index: 0 }];
+  }
+  
   const sections = text.split(SECTION_DELIMITER).map(section => section.trim()).filter(Boolean);
   console.log('🔍 parseSections: Split into', sections.length, 'sections');
   
@@ -49,20 +57,45 @@ const parseSections = (text: string): ParsedSection[] => {
       console.log('📋 Found frontmatter section');
       return { type: 'frontmatter', content: section, index };
     }
+    
+    // Check for special components
+    const hasImage = section.includes(IMAGE_PATTERN);
+    const hasCardGroup = section.includes(CARDGROUP_PATTERN);
+    const hasSteps = section.includes(STEPS_PATTERN);
+    const hasCallout = section.includes(CALLOUT_PATTERN);
+    const hasAccordion = section.includes(ACCORDION_PATTERN);
+    const hasAccordionGroup = section.includes(ACCORDIONGROUP_PATTERN);
+    const hasTabs = section.includes(TABS_PATTERN);
+    const hasButton = section.includes(BUTTON_PATTERN);
+    const hasCard = section.includes(CARD_PATTERN) && !hasCardGroup;
+    
+    // Count special components
+    const specialComponentCount = [hasImage, hasCardGroup, hasSteps, hasCallout, hasAccordion, hasAccordionGroup, hasTabs, hasButton, hasCard].filter(Boolean).length;
+    
+    // If multiple special components or has markdown content with special components, treat as mixed
+    const markdownLines = section.split('\n').filter(line => {
+      const trimmed = line.trim();
+      return trimmed && 
+             !trimmed.startsWith('<') && 
+             !trimmed.startsWith('---') &&
+             trimmed !== '***';
+    });
+    
+    if (specialComponentCount > 1 || (specialComponentCount > 0 && markdownLines.length > 0)) {
+      console.log('🔀 Found mixed content section!');
+      return { type: 'mixed', content: section, index };
+    }
+    
+    // Single special component types
     if (section.startsWith(IMAGE_PATTERN)) {
       console.log('🖼️ Found image section');
       return { type: 'image', content: section, index };
     }
-    // Check if section contains CardGroup AND other content
-    if (section.includes(CARDGROUP_PATTERN) && section.split('\n').filter(line => line.trim()).length > 10) {
-      console.log('🔀 Found mixed content section with CardGroup!');
-      return { type: 'mixed', content: section, index };
-    }
-    if (section.includes(CARDGROUP_PATTERN)) {
+    if (hasCardGroup) {
       console.log('🃏 Found CardGroup section!');
       return { type: 'cardgroup', content: section, index };
     }
-    if (section.includes(STEPS_PATTERN)) {
+    if (hasSteps) {
       console.log('👣 Found Steps section!');
       return { type: 'steps', content: section, index };
     }
@@ -82,7 +115,7 @@ const parseSections = (text: string): ParsedSection[] => {
       console.log('🔘 Found Button section');
       return { type: 'button', content: section, index };
     }
-    if (section.startsWith(CARD_PATTERN) && !section.includes(CARDGROUP_PATTERN)) {
+    if (hasCard) {
       console.log('🎯 Found standalone Card section');
       return { type: 'card', content: section, index };
     }
@@ -132,7 +165,6 @@ const parseCard = (content: string): CardData => {
   };
 };
 
-// Parse CardGroup
 interface CardGroupData {
   cols?: number;
   cards: CardData[];
@@ -141,7 +173,6 @@ interface CardGroupData {
 const parseCardGroup = (content: string): CardGroupData => {
   console.log('🃏 Parsing CardGroup content:', content.substring(0, 200));
   
-  // Updated regex to handle both {2} and 2 formats
   const colsMatch = content.match(/<CardGroup[^>]*cols=\{?(\d+)\}?/);
   const cols = colsMatch ? parseInt(colsMatch[1]) : 2;
   
@@ -175,7 +206,6 @@ const parseCardGroup = (content: string): CardGroupData => {
   return { cols, cards };
 };
 
-// Parse Accordion
 interface AccordionData {
   title: string;
   content: string;
@@ -191,7 +221,6 @@ const parseAccordion = (content: string): AccordionData => {
   };
 };
 
-// Parse AccordionGroup
 const parseAccordionGroup = (content: string): AccordionData[] => {
   const accordionRegex = /<Accordion\s+([^>]*)>([\s\S]*?)<\/Accordion>/g;
   const accordions: AccordionData[] = [];
@@ -213,7 +242,6 @@ const parseAccordionGroup = (content: string): AccordionData[] => {
   return accordions;
 };
 
-// Parse Tabs
 interface TabData {
   title: string;
   content: string;
@@ -240,7 +268,6 @@ const parseTabs = (content: string): TabData[] => {
   return tabs;
 };
 
-// Parse Button
 interface ButtonData {
   label: string;
   linkHref: string;
@@ -268,7 +295,6 @@ const parseButton = (content: string): ButtonData => {
   };
 };
 
-// Parse Steps
 interface StepData {
   title: string;
   content: string;
@@ -304,8 +330,45 @@ const parseSteps = (content: string): StepData[] => {
 const processInlineMarkdown = (text: string): React.ReactNode => {
   console.log('🔄 processInlineMarkdown: Processing text:', text);
   
+  // Handle code blocks with language support
+  const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = codeBlockRegex.exec(text)) !== null) {
+    // Add text before code block
+    if (match.index > lastIndex) {
+      const beforeText = text.slice(lastIndex, match.index);
+      parts.push(processSimpleMarkdown(beforeText));
+    }
+
+    const language = match[1] || 'text';
+    const code = match[2].trim();
+    
+    // Add syntax highlighted code block using CodeBlock component
+    parts.push(
+      <CodeBlock key={match.index} language={language}>
+        {code}
+      </CodeBlock>
+    );
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Add remaining text
+  if (lastIndex < text.length) {
+    parts.push(processSimpleMarkdown(text.slice(lastIndex)));
+  }
+
+  return parts.length > 0 ? <>{parts}</> : processSimpleMarkdown(text);
+};
+
+const processSimpleMarkdown = (text: string): React.ReactNode => {
+  if (!text) return null;
+  
   // Handle inline code
-  text = text.replace(/`([^`]+)`/g, '<code class="hn-inline-code">$1</code>');
+  text = text.replace(/`([^`]+)`/g, '<code class="hn-inline-code bg-muted px-1 py-0.5 rounded text-sm font-mono">$1</code>');
   
   // Handle bold with **
   text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
@@ -314,9 +377,8 @@ const processInlineMarkdown = (text: string): React.ReactNode => {
   text = text.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
   
   // Handle links
-  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="hn-link">$1</a>');
+  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="hn-link text-primary underline hover:no-underline">$1</a>');
   
-  console.log('🔄 processInlineMarkdown: Result:', text);
   return <span dangerouslySetInnerHTML={{ __html: text }} />;
 };
 
@@ -483,7 +545,7 @@ const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => {
             </div>
             <div className="flex-1 w-60">
               <div className="flex flex-col gap-3">
-                <h3 className="font-medium text-base text-slate-700 dark:text-slate-200 m-0">
+                <h3 className="font-bold text-base text-slate-700 dark:text-slate-200 m-0">
                   {step.title}
                 </h3>
                 <div className="text-base text-slate-600 dark:text-slate-300 prose prose-sm dark:prose-invert max-w-none">
@@ -498,11 +560,61 @@ const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => {
   );
 };
 
-// Basic markdown renderer
+// Basic markdown renderer with enhanced code block support
 const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
   if (!content) return null;
 
-  // Simple markdown parsing for basic elements
+  // First check for code blocks and handle them specially
+  const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match;
+  let elementIndex = 0;
+
+  while ((match = codeBlockRegex.exec(content)) !== null) {
+    // Add markdown content before code block
+    if (match.index > lastIndex) {
+      const markdownContent = content.slice(lastIndex, match.index).trim();
+      if (markdownContent) {
+        parts.push(
+          <div key={`markdown-${elementIndex}`}>
+            {renderBasicMarkdown(markdownContent)}
+          </div>
+        );
+        elementIndex++;
+      }
+    }
+
+    const language = match[1] || 'text';
+    const code = match[2].trim();
+    
+    // Add syntax highlighted code block using CodeBlock component
+    parts.push(
+      <CodeBlock key={`code-${elementIndex}`} language={language}>
+        {code}
+      </CodeBlock>
+    );
+    elementIndex++;
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Add remaining markdown content
+  if (lastIndex < content.length) {
+    const remainingContent = content.slice(lastIndex).trim();
+    if (remainingContent) {
+      parts.push(
+        <div key={`markdown-final`}>
+          {renderBasicMarkdown(remainingContent)}
+        </div>
+      );
+    }
+  }
+
+  return parts.length > 0 ? <>{parts}</> : renderBasicMarkdown(content);
+};
+
+const renderBasicMarkdown = (content: string): React.ReactNode => {
   const lines = content.split('\n');
   const elements: React.ReactNode[] = [];
   let currentListItems: string[] = [];
@@ -563,7 +675,7 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
       elements.push(React.createElement('h1', { key: index, className: 'text-2xl font-bold mt-8 mb-4' }, line.slice(2)));
     } else {
       // Regular paragraph
-      elements.push(React.createElement('p', { key: index, className: 'mb-3 leading-relaxed' }, line));
+      elements.push(React.createElement('p', { key: index, className: 'mb-3 leading-relaxed' }, processSimpleMarkdown(line)));
     }
   });
 
@@ -587,7 +699,7 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
   
   const allMatches: Array<{ match: RegExpMatchArray; type: string }> = [];
   
-  // Find CardGroups
+  // Find CardGroups first
   let match;
   while ((match = cardGroupRegex.exec(content)) !== null) {
     allMatches.push({ match, type: 'cardgroup' });
@@ -613,6 +725,7 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
   
   // Find Callouts
   tabsRegex.lastIndex = 0;
+        
   while ((match = calloutRegex.exec(content)) !== null) {
     allMatches.push({ match, type: 'callout' });
   }
@@ -633,10 +746,29 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
     }
   }
   
+  // Find Images (but exclude those inside Steps, CardGroups, or other components)
+  standaloneCardRegex.lastIndex = 0;
+  const stepsMatches = allMatches.filter(m => m.type === 'steps');
+  while ((match = imageRegex.exec(content)) !== null) {
+    // Check if this image is inside any special component
+    const isInsideComponent = allMatches.some(componentMatch => {
+      const componentStart = componentMatch.match.index!;
+      const componentEnd = componentStart + componentMatch.match[0].length;
+      return match.index! >= componentStart && match.index! < componentEnd;
+    });
+    
+    if (!isInsideComponent) {
+      console.log('🖼️ Found standalone image at position:', match.index);
+      allMatches.push({ match, type: 'image' });
+    } else {
+      console.log('🖼️ Skipping image inside component at position:', match.index);
+    }
+  }
+  
   // Sort by position
   allMatches.sort((a, b) => (a.match.index || 0) - (b.match.index || 0));
   
-  console.log('🔀 Found special elements:', allMatches.length);
+  console.log('🔀 Found special elements:', allMatches.length, allMatches.map(m => ({ type: m.type, position: m.match.index })));
   
   let lastIndex = 0;
   let elementIndex = 0;

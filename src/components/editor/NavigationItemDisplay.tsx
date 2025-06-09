@@ -8,10 +8,13 @@ import {
   ChevronRight,
   GripVertical,
   Check,
-  Trash2
+  Trash2,
+  Edit2,
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
 import { NavigationItem } from "@/services/navigationService";
 import { PendingDeletion } from "./hooks/usePendingDeletions";
 import { Draggable } from "@hello-pangea/dnd";
@@ -22,9 +25,9 @@ interface NavigationItemDisplayProps {
   sectionId: string;
   pendingDeletions: PendingDeletion[];
   onTogglePendingDeletion: (sectionId: string, itemIndex: number) => void;
+  onUpdateTitle: (itemId: string, newTitle: string) => void;
   depth?: number;
   globalIndex: number;
-  allItems: NavigationItem[];
 }
 
 export function NavigationItemDisplay({ 
@@ -32,25 +35,58 @@ export function NavigationItemDisplay({
   index, 
   sectionId, 
   pendingDeletions, 
-  onTogglePendingDeletion, 
+  onTogglePendingDeletion,
+  onUpdateTitle,
   depth = 0,
-  globalIndex,
-  allItems
+  globalIndex
 }: NavigationItemDisplayProps) {
-  const [isExpanded, setIsExpanded] = useState(false); // Changed from true to false
+  const [isExpanded, setIsExpanded] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(item.title);
   const paddingLeft = depth * 16;
   
-  // Find children based on parent_id
-  const children = allItems.filter(child => child.parent_id === item.id);
+  // Use the items property from the hierarchical structure
+  const children = item.items || [];
   const hasChildren = children.length > 0;
   
-  // Determine if this item is a folder (has children or ends without .md)
-  const isFolder = hasChildren || (!item.href.endsWith('.md') && !item.file_path?.endsWith('.md'));
+  console.log('NavigationItemDisplay rendering:', {
+    itemId: item.id,
+    title: item.title,
+    href: item.href,
+    depth,
+    globalIndex,
+    parentId: item.parent_id,
+    childrenCount: children.length,
+    children: children.map(c => ({ title: c.title, href: c.href }))
+  });
+  
+  // Determine if this item is a folder (has children OR is a parent page)
+  const isFolder = hasChildren;
   
   // Find if this item is pending deletion using global index
   const isPendingDeletion = pendingDeletions.some(
     deletion => deletion.sectionId === sectionId && deletion.itemIndex === globalIndex
   );
+
+  const handleSaveTitle = () => {
+    if (editTitle.trim() && editTitle !== item.title) {
+      onUpdateTitle(item.id, editTitle.trim());
+    }
+    setIsEditing(false);
+  };
+
+  const handleCancelEdit = () => {
+    setEditTitle(item.title);
+    setIsEditing(false);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveTitle();
+    } else if (e.key === 'Escape') {
+      handleCancelEdit();
+    }
+  };
 
   return (
     <Draggable draggableId={`${sectionId}-${item.id}`} index={globalIndex}>
@@ -106,13 +142,56 @@ export function NavigationItemDisplay({
             )}
             
             <div className="flex-1 min-w-0">
-              <span className="text-sm font-medium truncate block">
-                {item.title}
-              </span>
-              {hasChildren && (
-                <Badge variant="secondary" className="text-xs mt-1">
-                  {children.length} items
-                </Badge>
+              {isEditing ? (
+                <div className="flex items-center gap-2">
+                  <Input
+                    value={editTitle}
+                    onChange={(e) => setEditTitle(e.target.value)}
+                    onKeyDown={handleKeyPress}
+                    className="h-6 text-sm"
+                    autoFocus
+                  />
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleSaveTitle}
+                    className="h-6 w-6 p-0"
+                  >
+                    <Check className="h-3 w-3 text-green-600" />
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={handleCancelEdit}
+                    className="h-6 w-6 p-0"
+                  >
+                    <X className="h-3 w-3 text-red-600" />
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-medium truncate block">
+                      {item.title}
+                    </span>
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      onClick={() => setIsEditing(true)}
+                      className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 hover:bg-primary/10"
+                    >
+                      <Edit2 className="h-3 w-3" />
+                    </Button>
+                  </div>
+                  <div className="text-xs text-muted-foreground truncate">
+                    {item.href}
+                  </div>
+                  {hasChildren && (
+                    <Badge variant="secondary" className="text-xs mt-1">
+                      {children.length} items
+                    </Badge>
+                  )}
+                </>
               )}
             </div>
             
@@ -136,24 +215,22 @@ export function NavigationItemDisplay({
           
           {hasChildren && isExpanded && (
             <div className="mt-1">
-              {children
-                .sort((a, b) => a.order_index - b.order_index)
-                .map((childItem, childIndex) => {
-                  const childGlobalIndex = allItems.findIndex(item => item.id === childItem.id);
-                  return (
-                    <NavigationItemDisplay
-                      key={childItem.id}
-                      item={childItem}
-                      index={childIndex}
-                      sectionId={sectionId}
-                      pendingDeletions={pendingDeletions}
-                      onTogglePendingDeletion={onTogglePendingDeletion}
-                      depth={depth + 1}
-                      globalIndex={childGlobalIndex}
-                      allItems={allItems}
-                    />
-                  );
-                })}
+              {children.map((childItem, childIndex) => {
+                const childGlobalIndex = globalIndex + childIndex + 1;
+                return (
+                  <NavigationItemDisplay
+                    key={childItem.id}
+                    item={childItem}
+                    index={childIndex}
+                    sectionId={sectionId}
+                    pendingDeletions={pendingDeletions}
+                    onTogglePendingDeletion={onTogglePendingDeletion}
+                    onUpdateTitle={onUpdateTitle}
+                    depth={depth + 1}
+                    globalIndex={childGlobalIndex}
+                  />
+                );
+              })}
             </div>
           )}
         </div>

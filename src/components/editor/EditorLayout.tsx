@@ -1,45 +1,121 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
+import { useLiveEditing } from "@/hooks/useLiveEditing";
 import { NavigationEditor } from "./NavigationEditor";
-import { EditorSidebar } from "./EditorSidebar";
 import { EditorMain } from "./EditorMain";
+import { SeoEditor } from "./SeoEditor";
+import { FileTreeSidebar } from "./FileTreeSidebar";
 import { Button } from "@/components/ui/button";
-import { UserMenu } from "@/components/auth/UserMenu";
-import { Settings, FileText, Navigation, Home } from "lucide-react";
-import { Link } from "react-router-dom";
-import { useAuth } from "@/contexts/AuthContext";
+import { useBranches } from "@/hooks/useBranches";
+import { EditorHeader } from "./EditorHeader";
+import { EditorTabNavigation } from "./EditorTabNavigation";
+
+// Debug toggles
+const DEBUG_MARKDOWN = false;
+const DEBUG_EDITOR_LAYOUT = true;
 
 export function EditorLayout() {
   const { fileStructure, isLoading, error, refetch } = useFileStructure();
-  const { hasRole } = useAuth();
+  const { currentBranch, initialized } = useBranches();
+
   const [selectedFile, setSelectedFile] = useState<string>();
   const [content, setContent] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
-  const [modifiedFiles, setModifiedFiles] = useState<Set<string>>(new Set());
-  const [activeTab, setActiveTab] = useState<'navigation' | 'content'>('content');
+  const [activeTab, setActiveTab] = useState<'navigation' | 'content' | 'seo'>('content');
   const [loadingContent, setLoadingContent] = useState(false);
 
+  if (DEBUG_EDITOR_LAYOUT) {
+    console.log('🟠 EDITOR LAYOUT RENDER');
+    console.log('🟠 EDITOR LAYOUT RECEIVED FROM USEBRANCHES:');
+    console.log('  🟠 currentBranch:', JSON.stringify(currentBranch), 'type:', typeof currentBranch);
+    console.log('  🟠 initialized:', initialized);
+  }
+
+  // Live editing hook
+  const {
+    isLocked,
+    lockedBy,
+    liveContent,
+    sessions,
+    isAcquiringLock,
+    acquireLock,
+    releaseLock,
+    saveLiveContent,
+    loadLiveContent,
+  } = useLiveEditing(selectedFile, currentBranch);
+
+  // Clear local state when branch changes
+  useEffect(() => {
+    if (currentBranch) {
+      if (DEBUG_MARKDOWN) {
+        console.log('🔄 Branch changed, clearing local state for:', currentBranch);
+      }
+      setSelectedFile(undefined);
+      setContent("");
+      setHasChanges(false);
+    }
+  }, [currentBranch]);
+
+  // Auto-save live content when user has the lock
+  useEffect(() => {
+    if (selectedFile && isLocked && lockedBy === 'You' && hasChanges && content && currentBranch) {
+      const timeoutId = setTimeout(() => {
+        if (DEBUG_MARKDOWN) {
+          console.log('Auto-saving live content for file:', selectedFile, 'on branch:', currentBranch);
+        }
+        saveLiveContent(selectedFile, content);
+      }, 500);
+
+      return () => clearTimeout(timeoutId);
+    }
+  }, [selectedFile, isLocked, lockedBy, hasChanges, content, currentBranch, saveLiveContent]);
+
   const handleFileSelect = async (filePath: string) => {
+    if (DEBUG_MARKDOWN) {
+      console.log('=== FILE SELECTION ===');
+      console.log('Selected file:', filePath);
+      console.log('Current branch:', currentBranch);
+    }
+    
+    // Release lock on previous file if user owns it
+    if (selectedFile && isLocked && lockedBy === 'You') {
+      if (DEBUG_MARKDOWN) {
+        console.log('Releasing lock on previous file:', selectedFile);
+      }
+      await releaseLock(selectedFile);
+    }
+    
     setSelectedFile(filePath);
     setHasChanges(false);
     setLoadingContent(true);
-    
+
     try {
-      console.log('=== FILE SELECTION DEBUG ===');
-      console.log('Original filePath:', filePath);
+      // Check if there's live content for this file first
+      const liveFileContent = await loadLiveContent(filePath);
       
-      // Ensure the file path has .md extension and is properly formatted
-      let markdownPath = filePath;
-      if (!markdownPath.endsWith('.md')) {
-        markdownPath = `${filePath}.md`;
+      if (liveFileContent) {
+        if (DEBUG_MARKDOWN) {
+          console.log('Found live content for:', filePath);
+        }
+        setContent(liveFileContent);
+        setLoadingContent(false);
+        // Try to acquire lock automatically
+        setTimeout(() => acquireLock(filePath), 100);
+        return;
+      }
+
+      // Load from file system
+      let fetchPath = filePath;
+      if (!fetchPath.endsWith('.md')) {
+        fetchPath = `${fetchPath}.md`;
       }
       
-      // Remove any leading slashes and ensure it's relative to content directory
-      markdownPath = markdownPath.replace(/^\/+/, '');
+      const cleanFetchPath = fetchPath.replace(/^\/+/, '');
+      const fetchUrl = `/content/${cleanFetchPath}`;
       
-      const fetchUrl = `/content/${markdownPath}`;
-      console.log('Constructed fetch URL:', fetchUrl);
-      console.log('Full URL will be:', window.location.origin + fetchUrl);
+      if (DEBUG_MARKDOWN) {
+        console.log('Fetching from URL:', fetchUrl);
+      }
       
       const response = await fetch(fetchUrl, {
         method: 'GET',
@@ -49,33 +125,28 @@ export function EditorLayout() {
         }
       });
       
-      console.log('Response status:', response.status);
-      console.log('Response headers:', Object.fromEntries(response.headers.entries()));
-      console.log('Response content-type:', response.headers.get('content-type'));
-      
       const responseText = await response.text();
-      console.log('Response text length:', responseText.length);
-      console.log('Response text preview (first 500 chars):', responseText.substring(0, 500));
       
-      // Check if response looks like HTML (indicating wrong file was served)
       if (responseText.trim().startsWith('<!DOCTYPE html>') || responseText.trim().startsWith('<html')) {
-        console.error('ERROR: Received HTML instead of markdown!');
-        console.error('This means the server is serving index.html instead of the markdown file');
+        console.error('ERROR: Received HTML instead of markdown for:', fetchUrl);
         throw new Error('Server returned HTML instead of markdown file');
       }
       
       if (response.ok && responseText.length > 0) {
-        console.log('Successfully loaded markdown content for:', markdownPath);
+        if (DEBUG_MARKDOWN) {
+          console.log('Successfully loaded content for:', filePath);
+        }
         setContent(responseText);
       } else {
-        console.log(`Markdown file not found or empty at ${fetchUrl}`);
-        // Create default markdown content for new files
-        const cleanPath = markdownPath.replace(/\.md$/, '');
-        const fileName = cleanPath.split('/').pop()?.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
+        if (DEBUG_MARKDOWN) {
+          console.log('File not found, creating default content for:', filePath);
+        }
+        const fileName = filePath.split('/').pop()?.replace(/\.md$/, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
+        const pathForFrontmatter = filePath.replace(/\.md$/, '').replace(/^\//, '');
         
         const defaultContent = `---
 title: "${fileName}"
-path: "/${cleanPath}"
+path: "/${pathForFrontmatter}"
 visibility: "PUBLIC"
 description: "Add a description for this page"
 ---
@@ -90,20 +161,24 @@ This is an information callout. Type "/" to see more available components.
 
 Start editing to see the live preview!
 `;
-        console.log('Setting default markdown content for new file');
         setContent(defaultContent);
       }
-    } catch (error) {
-      console.error('=== ERROR LOADING MARKDOWN ===');
-      console.error('Error details:', error);
       
-      // Create default markdown content for new files
-      const cleanPath = filePath.replace(/\.md$/, '');
-      const fileName = cleanPath.split('/').pop()?.replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
+      // Try to acquire lock automatically
+      setTimeout(() => acquireLock(filePath), 100);
+      
+    } catch (error) {
+      console.error('=== ERROR LOADING FILE ===');
+      console.error('File path:', filePath);
+      console.error('Error:', error);
+      
+      // Create default content on error
+      const fileName = filePath.split('/').pop()?.replace(/\.md$/, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
+      const pathForFrontmatter = filePath.replace(/\.md$/, '').replace(/^\//, '');
       
       const defaultContent = `---
 title: "${fileName}"
-path: "/${cleanPath}"
+path: "/${pathForFrontmatter}"
 visibility: "PUBLIC"
 description: "Add a description for this page"
 ---
@@ -118,41 +193,33 @@ This is an information callout. Type "/" to see more available components.
 
 Start editing to see the live preview!
 `;
-      console.log('Setting default content due to error');
       setContent(defaultContent);
+      
+      // Try to acquire lock automatically even on error
+      setTimeout(() => acquireLock(filePath), 100);
     } finally {
       setLoadingContent(false);
     }
   };
 
   const handleContentChange = (newContent: string) => {
-    setContent(newContent);
-    setHasChanges(true);
-    if (selectedFile) {
-      setModifiedFiles(prev => new Set(prev).add(selectedFile));
+    // Allow content changes if user has the lock
+    if (isLocked && lockedBy === 'You') {
+      setContent(newContent);
+      setHasChanges(true);
     }
   };
 
-  const handleSave = () => {
-    setHasChanges(false);
-    if (selectedFile) {
-      setModifiedFiles(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(selectedFile);
-        return newSet;
-      });
+  const handleAcquireLock = async () => {
+    if (selectedFile && currentBranch) {
+      if (DEBUG_MARKDOWN) {
+        console.log('Manually acquiring lock for:', selectedFile, 'on branch:', currentBranch);
+      }
+      const success = await acquireLock(selectedFile);
+      if (success && DEBUG_MARKDOWN) {
+        console.log('Lock acquired for editing:', selectedFile);
+      }
     }
-    
-    console.log('Markdown content saved, will be compiled on PR merge');
-  };
-
-  const handleCreateFile = (fileName: string, parentPath?: string) => {
-    console.log('Creating markdown file:', fileName, 'in:', parentPath);
-    const fullPath = parentPath ? `${parentPath}/${fileName}` : fileName;
-    const filePath = fullPath.endsWith('.md') ? fullPath : `${fullPath}.md`;
-    
-    // Automatically select the new file and set up initial content
-    handleFileSelect(filePath);
   };
 
   if (isLoading) {
@@ -191,117 +258,95 @@ Start editing to see the live preview!
     );
   }
 
+  const sessionsWithContent = sessions.filter(s => s.content && s.content.trim());
+  const totalLiveFiles = sessionsWithContent.length;
+
+  if (DEBUG_EDITOR_LAYOUT) {
+    console.log('🟠 EDITOR LAYOUT: PASSING TO TAB NAVIGATION:');
+    console.log('  🟠 currentBranch:', JSON.stringify(currentBranch));
+    console.log('  🟠 initialized:', initialized);
+    console.log('  🟠 sessionsWithContent.length:', sessionsWithContent.length);
+    console.log('  🟠 hasChanges:', hasChanges);
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
-      {/* Enhanced Header - Hide completely when in navigation tab */}
-      {activeTab === 'content' && (
-        <div className="border-b border-border/50 bg-background/95 backdrop-blur-md shadow-sm">
-          <div className="flex h-16 items-center justify-between px-6">
-            <div className="flex items-center space-x-6">
-              <Link to="/" className="flex items-center space-x-3 hover:opacity-80 transition-all duration-200 group">
-                <div className="w-9 h-9 bg-gradient-to-br from-blue-500 to-purple-600 rounded-xl flex items-center justify-center shadow-md group-hover:shadow-lg transition-shadow">
-                  <span className="text-white font-bold text-sm">P</span>
-                </div>
-                <span className="font-semibold text-lg bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">Pieces Docs</span>
-              </Link>
-              <div className="h-6 w-px bg-gradient-to-b from-transparent via-border to-transparent"></div>
-              <div className="flex items-center gap-2">
-                <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                <h1 className="text-lg font-medium text-muted-foreground">Content Editor</h1>
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-3">
-              <Link to="/">
-                <Button variant="ghost" size="sm" className="gap-2 hover:bg-muted/50 transition-colors">
-                  <Home className="h-4 w-4" />
-                  Home
-                </Button>
-              </Link>
-              {hasRole('admin') && (
-                <Link to="/admin">
-                  <Button variant="outline" size="sm" className="gap-2 hover:bg-muted/50 transition-colors">
-                    <Settings className="h-4 w-4" />
-                    Admin
-                  </Button>
-                </Link>
-              )}
-              <UserMenu />
-            </div>
-          </div>
-        </div>
-      )}
+      <EditorHeader 
+        activeTab={activeTab}
+        hasChanges={hasChanges}
+        totalLiveFiles={totalLiveFiles}
+      />
       
-      <div className={`flex ${activeTab === 'content' ? 'h-[calc(100vh-4rem)]' : 'h-screen'}`}>
-        {/* Enhanced Sidebar - Hide when in navigation tab */}
-        {activeTab === 'content' && (
-          <div className="w-80 border-r border-border/50 bg-muted/20 backdrop-blur-sm">
-            <EditorSidebar
-              selectedFile={selectedFile}
-              onFileSelect={handleFileSelect}
-              modifiedFiles={modifiedFiles}
-              onCreateFile={handleCreateFile}
-              fileStructure={fileStructure}
-              isLoading={false}
-            />
-          </div>
-        )}
-        
-        {/* Main Content */}
+      <div className="flex h-[calc(100vh-4rem)]">
         <div className="flex-1 flex flex-col">
-          {/* Enhanced Tab Navigation */}
-          <div className="border-b border-border/50 px-6 py-4 bg-background/95 backdrop-blur-sm">
-            <div className="flex items-center justify-between">
-              <div className="flex space-x-1 bg-muted/30 p-1 rounded-lg">
-                <Button
-                  onClick={() => setActiveTab('navigation')}
-                  variant={activeTab === 'navigation' ? 'default' : 'ghost'}
-                  size="sm"
-                  className="gap-2 transition-all duration-200"
-                >
-                  <Navigation className="h-4 w-4" />
-                  Navigation
-                </Button>
-                <Button
-                  onClick={() => setActiveTab('content')}
-                  variant={activeTab === 'content' ? 'default' : 'ghost'}
-                  size="sm"
-                  className="gap-2 transition-all duration-200"
-                >
-                  <FileText className="h-4 w-4" />
-                  Content
-                </Button>
-              </div>
-              
-              {activeTab === 'content' && modifiedFiles.size > 0 && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
-                  {modifiedFiles.size} file{modifiedFiles.size !== 1 ? 's' : ''} modified
-                </div>
-              )}
-            </div>
-          </div>
+          <EditorTabNavigation
+            activeTab={activeTab}
+            setActiveTab={setActiveTab}
+            selectedFile={selectedFile}
+            isLocked={isLocked}
+            lockedBy={lockedBy}
+            isAcquiringLock={isAcquiringLock}
+            onAcquireLock={handleAcquireLock}
+            totalLiveFiles={totalLiveFiles}
+            currentBranch={currentBranch}
+            sessions={sessionsWithContent}
+            hasChanges={hasChanges}
+            initialized={initialized}
+          />
           
-          {/* Enhanced Tab Content */}
-          <div className="flex-1 overflow-hidden">
+          {/* Tab Content */}
+          <div className="flex-1 overflow-hidden flex">
             {activeTab === 'navigation' ? (
-              <div className="h-full animate-in fade-in slide-in-from-top-2 duration-300">
-                <NavigationEditor 
-                  fileStructure={fileStructure} 
-                  onNavigationChange={refetch}
+              <>
+                <FileTreeSidebar
+                  title="Navigation Structure"
+                  description="Manage the navigation hierarchy"
+                  selectedFile={selectedFile}
+                  onFileSelect={handleFileSelect}
+                  fileStructure={fileStructure}
+                />
+                <div className="flex-1 animate-in fade-in slide-in-from-top-2 duration-300">
+                  <NavigationEditor 
+                    fileStructure={fileStructure} 
+                    onNavigationChange={refetch}
+                  />
+                </div>
+              </>
+            ) : activeTab === 'seo' ? (
+              <div className="flex-1">
+                <SeoEditor
+                  selectedFile={selectedFile}
+                  onSeoDataChange={() => {}}
+                  fileStructure={fileStructure}
+                  onFileSelect={handleFileSelect}
                 />
               </div>
             ) : (
-              <div className="h-full animate-in fade-in slide-in-from-bottom-2 duration-300">
-                <EditorMain 
+              <>
+                <FileTreeSidebar
+                  title="Content Files"
+                  description="Select a file to edit its content"
                   selectedFile={selectedFile}
-                  content={loadingContent ? "Loading content..." : content}
-                  onContentChange={handleContentChange}
-                  onSave={handleSave}
-                  hasChanges={hasChanges}
-                  saving={false}
+                  onFileSelect={handleFileSelect}
+                  fileStructure={fileStructure}
+                  pendingChanges={sessionsWithContent.map(s => s.file_path)}
+                  liveSessions={sessions}
                 />
-              </div>
+                <div className="flex-1 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                  <EditorMain 
+                    selectedFile={selectedFile}
+                    content={loadingContent ? "Loading content..." : content}
+                    onContentChange={handleContentChange}
+                    onSave={() => {}}
+                    hasChanges={hasChanges}
+                    saving={false}
+                    isLocked={isLocked}
+                    lockedBy={lockedBy}
+                    liveContent={liveContent}
+                    isAcquiringLock={isAcquiringLock}
+                  />
+                </div>
+              </>
             )}
           </div>
         </div>

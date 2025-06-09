@@ -1,8 +1,9 @@
-
 import React, { useState } from 'react';
 import { Callout } from './Callout';
 import { MarkdownCard } from './MarkdownCard';
 import { CardGroup } from './CardGroup';
+import { Steps, Step } from './Steps';
+import { X } from 'lucide-react';
 
 // Constants
 const SECTION_DELIMITER = '***';
@@ -52,11 +53,42 @@ const parseSections = (text: string): ParsedSection[] => {
       console.log('🖼️ Found image section');
       return { type: 'image', content: section, index };
     }
-    // Check if section contains CardGroup AND other content
-    if (section.includes(CARDGROUP_PATTERN) && section.split('\n').filter(line => line.trim()).length > 10) {
-      console.log('🔀 Found mixed content section with CardGroup!');
+    
+    // Check for mixed content - sections that contain multiple types of elements
+    const hasCardGroup = section.includes(CARDGROUP_PATTERN);
+    const hasSteps = section.includes(STEPS_PATTERN);
+    const hasCallout = section.includes(CALLOUT_PATTERN);
+    const hasImage = section.includes(IMAGE_PATTERN);
+    const hasCard = section.includes(CARD_PATTERN) && !hasCardGroup;
+    
+    // Count markdown lines (non-empty lines that aren't special elements)
+    const lines = section.split('\n').filter(line => line.trim());
+    const specialElementLines = lines.filter(line => 
+      line.includes('<CardGroup') || 
+      line.includes('<Steps') || 
+      line.includes('<Callout') || 
+      line.includes('<Image') ||
+      line.includes('<Card') ||
+      line.includes('</CardGroup>') ||
+      line.includes('</Steps>') ||
+      line.includes('</Callout>') ||
+      line.includes('</Card>')
+    );
+    const markdownLines = lines.length - specialElementLines.length;
+    
+    console.log(`🔍 Section ${index} analysis:`, {
+      hasCardGroup, hasSteps, hasCallout, hasImage, hasCard,
+      totalLines: lines.length,
+      specialElementLines: specialElementLines.length,
+      markdownLines
+    });
+    
+    // If we have significant markdown content along with special elements, treat as mixed
+    if (markdownLines > 5 && (hasCardGroup || hasSteps || hasCallout || hasImage || hasCard)) {
+      console.log('🔀 Found mixed content section!');
       return { type: 'mixed', content: section, index };
     }
+    
     // Check if section contains Tabs AND other content
     if (section.includes(TABS_PATTERN) && section.split('\n').filter(line => line.trim()).length > 5) {
       console.log('🔀 Found mixed content section with Tabs!');
@@ -64,7 +96,12 @@ const parseSections = (text: string): ParsedSection[] => {
     }
     if (section.includes(CARDGROUP_PATTERN)) {
       console.log('🃏 Found CardGroup section!');
+
       return { type: 'cardgroup', content: section, index };
+    }
+    if (hasSteps && !hasCardGroup && !hasCallout && markdownLines <= 5) {
+      console.log('👣 Found pure Steps section!');
+      return { type: 'steps', content: section, index };
     }
     if (section.startsWith(ACCORDIONGROUP_PATTERN)) {
       console.log('📁 Found AccordionGroup section');
@@ -82,16 +119,12 @@ const parseSections = (text: string): ParsedSection[] => {
       console.log('🔘 Found Button section');
       return { type: 'button', content: section, index };
     }
-    if (section.startsWith(STEPS_PATTERN)) {
-      console.log('👣 Found Steps section');
-      return { type: 'steps', content: section, index };
-    }
     if (section.startsWith(CARD_PATTERN) && !section.includes(CARDGROUP_PATTERN)) {
       console.log('🎯 Found standalone Card section');
       return { type: 'card', content: section, index };
     }
-    if (section.startsWith(CALLOUT_PATTERN)) {
-      console.log('💬 Found Callout section');
+    if (section.startsWith(CALLOUT_PATTERN) && !hasSteps && !hasCardGroup) {
+      console.log('💬 Found pure Callout section');
       return { type: 'callout', content: section, index };
     }
     
@@ -279,23 +312,35 @@ const parseButton = (content: string): ButtonData => {
   };
 };
 
-// Parse Steps
+// Parse Steps - Updated to handle the markdown format properly
 interface StepData {
   title: string;
   content: string;
 }
 
 const parseSteps = (content: string): StepData[] => {
-  const stepRegex = /<Step\s+([^>]*)>([\s\S]*?)<\/Step>/g;
+  console.log('👣 Parsing Steps content:', content);
+  
+  // First, try to find the <Steps> block
+  const stepsMatch = content.match(/<Steps>([\s\S]*?)<\/Steps>/);
+  if (!stepsMatch) {
+    console.log('👣 No <Steps> block found');
+    return [];
+  }
+  
+  const stepsContent = stepsMatch[1];
+  console.log('👣 Steps inner content:', stepsContent);
+  
+  // Parse individual <Step> elements
+  const stepRegex = /<Step\s+title="([^"]*)"[^>]*>([\s\S]*?)<\/Step>/g;
   const steps: StepData[] = [];
   
   let match: RegExpExecArray | null;
-  while ((match = stepRegex.exec(content)) !== null) {
-    const attributes = match[1];
+  while ((match = stepRegex.exec(stepsContent)) !== null) {
+    const title = match[1];
     const innerContent = match[2].trim();
     
-    const titleMatch = attributes.match(/title="([^"]*)"/);
-    const title = titleMatch ? titleMatch[1] : '';
+    console.log('👣 Parsed step:', { title, contentLength: innerContent.length });
     
     steps.push({
       title,
@@ -303,6 +348,7 @@ const parseSteps = (content: string): StepData[] => {
     });
   }
   
+  console.log('👣 Total steps parsed:', steps.length);
   return steps;
 };
 
@@ -326,12 +372,61 @@ const processInlineMarkdown = (text: string): React.ReactNode => {
 };
 
 // Components
-const ImageSection: React.FC<{ src: string; alt: string; align: string; fullwidth: boolean }> = ({ src, alt, align, fullwidth }) => {
-  console.log('🖼️ ImageSection rendering:', { src, alt, align, fullwidth });
+const ImageModal: React.FC<{ src: string; alt: string; isOpen: boolean; onClose: () => void }> = ({ src, alt, isOpen, onClose }) => {
+  if (!isOpen) return null;
+
   return (
-    <div className={`hn-image-container ${align} ${fullwidth ? 'fullwidth' : ''}`}>
-      <img src={src} alt={alt} className="hn-image" />
+    <div 
+      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div className="relative max-w-[90vw] max-h-[90vh]">
+        <button
+          onClick={onClose}
+          className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors bg-black/50 rounded-full p-2"
+          aria-label="Close image"
+        >
+          <X size={24} />
+        </button>
+        <img 
+          src={src} 
+          alt={alt} 
+          className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+        />
+      </div>
     </div>
+  );
+};
+
+const ImageSection: React.FC<{ src: string; alt: string; align: string; fullwidth: boolean }> = ({ src, alt, align, fullwidth }) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  console.log('🖼️ ImageSection rendering:', { src, alt, align, fullwidth });
+  
+  const alignmentClass = {
+    left: 'justify-start',
+    center: 'justify-center',
+    right: 'justify-end'
+  }[align] || 'justify-center';
+  
+  return (
+    <>
+      <div className={`flex my-6 ${alignmentClass}`}>
+        <img 
+          src={src} 
+          alt={alt} 
+          className={`rounded-lg cursor-pointer transition-transform duration-200 hover:-translate-y-1 ${fullwidth ? 'w-full' : 'max-w-full'} h-auto`}
+          onClick={() => setIsModalOpen(true)}
+        />
+      </div>
+      <ImageModal 
+        src={src} 
+        alt={alt} 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+      />
+    </>
   );
 };
 
@@ -451,23 +546,57 @@ const ButtonSection: React.FC<{ button: ButtonData }> = ({ button }) => {
   );
 };
 
-// Parse Steps
+// Updated Steps Section to add click functionality to images
 const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => {
+  const [modalImage, setModalImage] = useState<{ src: string; alt: string } | null>(null);
+  
   console.log('👣 StepsSection rendering:', { stepCount: steps.length });
+  
+  const handleImageClick = (event: React.MouseEvent) => {
+    const target = event.target as HTMLElement;
+    if (target.tagName === 'IMG') {
+      const img = target as HTMLImageElement;
+      setModalImage({ src: img.src, alt: img.alt || '' });
+    }
+  };
+  
   return (
-    <div className="hn-steps">
-      {steps.map((step, index) => (
-        <div key={index} className="hn-step">
-          <div className="hn-step-number">{index + 1}</div>
-          <div className="hn-step-content">
-            <h4 className="hn-step-title">{step.title}</h4>
-            <div className="hn-step-description">
-              {processInlineMarkdown(step.content)}
-            </div>
+    <>
+      <Steps>
+        {steps.map((step, index) => (
+          <Step key={index} title={step.title}>
+            <div 
+              className="[&_img]:rounded-lg [&_img]:my-4 [&_img]:cursor-pointer [&_img]:transition-transform [&_img]:duration-200 [&_img:hover]:-translate-y-1" 
+              dangerouslySetInnerHTML={{ __html: step.content }}
+              onClick={handleImageClick}
+            />
+          </Step>
+        ))}
+      </Steps>
+      
+      {modalImage && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setModalImage(null)}
+        >
+          <div className="relative max-w-[90vw] max-h-[90vh]">
+            <button
+              onClick={() => setModalImage(null)}
+              className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors bg-black/50 rounded-full p-2"
+              aria-label="Close image"
+            >
+              <X size={24} />
+            </button>
+            <img 
+              src={modalImage.src} 
+              alt={modalImage.alt} 
+              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
           </div>
         </div>
-      ))}
-    </div>
+      )}
+    </>
   );
 };
 
@@ -483,23 +612,24 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
   const calloutRegex = /<Callout[^>]*>[\s\S]*?<\/Callout>/g;
   const tabsRegex = /<Tabs[^>]*>[\s\S]*?<\/Tabs>/g;
   const standaloneCardRegex = /<Card[^>]*>[\s\S]*?<\/Card>/g;
+  const stepsRegex = /<Steps[^>]*>[\s\S]*?<\/Steps>/g;
   
   const allMatches: Array<{ match: RegExpMatchArray; type: string }> = [];
   
-  // Find CardGroups
+  // Find Steps first (so we can exclude images inside them)
   let match;
+  while ((match = stepsRegex.exec(content)) !== null) {
+    allMatches.push({ match, type: 'steps' });
+  }
+  
+  // Find CardGroups
+  stepsRegex.lastIndex = 0;
   while ((match = cardGroupRegex.exec(content)) !== null) {
     allMatches.push({ match, type: 'cardgroup' });
   }
   
-  // Find Images
-  cardGroupRegex.lastIndex = 0;
-  while ((match = imageRegex.exec(content)) !== null) {
-    allMatches.push({ match, type: 'image' });
-  }
-  
   // Find Callouts
-  imageRegex.lastIndex = 0;
+  cardGroupRegex.lastIndex = 0;
   while ((match = calloutRegex.exec(content)) !== null) {
     allMatches.push({ match, type: 'callout' });
   }
@@ -511,7 +641,25 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
   }
   
   // Find standalone Cards (not inside CardGroups)
+  
+  // Find Images (but exclude ones inside Steps)
   calloutRegex.lastIndex = 0;
+  const stepsMatches = allMatches.filter(m => m.type === 'steps');
+  while ((match = imageRegex.exec(content)) !== null) {
+    // Check if this image is inside a Steps block
+    const isInSteps = stepsMatches.some(stepsMatch => {
+      const stepsStart = stepsMatch.match.index!;
+      const stepsEnd = stepsStart + stepsMatch.match[0].length;
+      return match.index! >= stepsStart && match.index! < stepsEnd;
+    });
+    
+    if (!isInSteps) {
+      allMatches.push({ match, type: 'image' });
+    }
+  }
+  
+  // Find standalone Cards (not inside CardGroups)
+  imageRegex.lastIndex = 0;
   const cardGroupMatches = allMatches.filter(m => m.type === 'cardgroup');
   while ((match = standaloneCardRegex.exec(content)) !== null) {
     // Check if this card is inside a CardGroup
@@ -559,6 +707,13 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
         const { cols, cards } = parseCardGroup(match[0]);
         elements.push(
           <CardGroupSection key={`cardgroup-${elementIndex}`} cols={cols || 2} cards={cards} />
+        );
+        break;
+      }
+      case 'steps': {
+        const steps = parseSteps(match[0]);
+        elements.push(
+          <StepsSection key={`steps-${elementIndex}`} steps={steps} />
         );
         break;
       }
@@ -862,16 +1017,20 @@ const HashnodeMarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) 
         break;
         
       case 'image': {
-        const data = extractImageData(section.content);
-        console.log('🖼️ Rendering ImageSection with data:', data);
-        result = <ImageSection key={section.index} {...data} />;
+        const imageData = extractImageData(section.content);
+        result = <ImageSection key={section.index} {...imageData} />;
+        break;
+      }
+      
+      case 'callout': {
+        const calloutData = extractCalloutData(section.content);
+        result = <CalloutSection key={section.index} type={calloutData.type} content={calloutData.content} />;
         break;
       }
       
       case 'card': {
-        const card = parseCard(section.content);
-        console.log('🎯 Rendering CardSection with data:', card);
-        result = <CardSection key={section.index} card={card} />;
+        const cardData = parseCard(section.content);
+        result = <CardSection key={section.index} card={cardData} />;
         break;
       }
       
@@ -882,44 +1041,27 @@ const HashnodeMarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) 
         break;
       }
       
-      case 'mixed': {
-        console.log('🔀 Rendering MixedContentSection');
-        result = <MixedContentSection key={section.index} content={section.content} />;
-        break;
-      }
-        
-      case 'callout': {
-        const data = extractCalloutData(section.content);
-        console.log('💬 Rendering CalloutSection with data:', data);
-        result = <CalloutSection key={section.index} type={data.type} content={data.content} />;
-        break;
-      }
-      
       case 'accordion': {
-        const accordion = parseAccordion(section.content);
-        console.log('📂 Rendering AccordionSection with data:', accordion);
-        result = <AccordionSection key={section.index} accordion={accordion} />;
+        const accordionData = parseAccordion(section.content);
+        result = <AccordionSection key={section.index} accordion={accordionData} />;
         break;
       }
       
       case 'accordiongroup': {
-        const accordions = parseAccordionGroup(section.content);
-        console.log('📁 Rendering AccordionGroupSection with data:', { count: accordions.length });
-        result = <AccordionGroupSection key={section.index} accordions={accordions} />;
+        const accordionGroupData = parseAccordionGroup(section.content);
+        result = <AccordionGroupSection key={section.index} accordions={accordionGroupData} />;
         break;
       }
       
       case 'tabs': {
-        const tabs = parseTabs(section.content);
-        console.log('📑 Rendering TabsSection with data:', { count: tabs.length });
-        result = <TabsSection key={section.index} tabs={tabs} />;
+        const tabsData = parseTabs(section.content);
+        result = <TabsSection key={section.index} tabs={tabsData} />;
         break;
       }
       
       case 'button': {
-        const button = parseButton(section.content);
-        console.log('🔘 Rendering ButtonSection with data:', button);
-        result = <ButtonSection key={section.index} button={button} />;
+        const buttonData = parseButton(section.content);
+        result = <ButtonSection key={section.index} button={buttonData} />;
         break;
       }
       
@@ -930,6 +1072,12 @@ const HashnodeMarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) 
         break;
       }
       
+      case 'mixed': {
+        console.log('🔀 Rendering MixedContentSection');
+        result = <MixedContentSection key={section.index} content={section.content} />;
+        break;
+      }
+        
       case 'markdown':
         console.log('📝 Rendering markdown section with content:', section.content.substring(0, 100));
         result = (

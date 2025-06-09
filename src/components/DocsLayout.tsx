@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -18,13 +19,42 @@ function DocsSidebar({ className, onNavigate }: { className?: string; onNavigate
   const [searchTerm, setSearchTerm] = useState("");
   const { navigation, isLoading, error } = useNavigation();
 
+  // Auto-expand sections and items based on current path
   useEffect(() => {
-    // Auto-open all sections by default
     if (navigation?.sections) {
-      const allSectionIds = navigation.sections.map(section => section.id);
-      setOpenSections(allSectionIds);
+      const currentPath = location.pathname;
+      const sectionsToOpen = new Set<string>();
+      
+      // Find all items that match the current path and expand their entire parent chain
+      const findAndExpandParents = (items: NavigationItem[], parentChain: string[] = []) => {
+        items.forEach(item => {
+          const currentChain = [...parentChain, item.id];
+          
+          if (item.href === currentPath) {
+            // Found the current item, expand all parents in the chain
+            currentChain.forEach(id => sectionsToOpen.add(id));
+          }
+          
+          if (item.items && item.items.length > 0) {
+            // Recursively check children
+            findAndExpandParents(item.items, currentChain);
+          }
+        });
+      };
+
+      // Check all sections for the current path
+      navigation.sections.forEach(section => {
+        // Always auto-open all sections by default
+        sectionsToOpen.add(section.id);
+        
+        if (section.items) {
+          findAndExpandParents(section.items);
+        }
+      });
+
+      setOpenSections(Array.from(sectionsToOpen));
     }
-  }, [navigation]);
+  }, [navigation, location.pathname]);
 
   const toggleSection = (sectionId: string) => {
     setOpenSections(prev => 
@@ -36,45 +66,6 @@ function DocsSidebar({ className, onNavigate }: { className?: string; onNavigate
 
   const isActive = (href: string) => location.pathname === href;
   const isSectionOpen = (sectionId: string) => openSections.includes(sectionId);
-
-  // Build hierarchical structure from flat items
-  const buildHierarchy = (items: NavigationItem[]): NavigationItem[] => {
-    const itemMap = new Map<string, NavigationItem>();
-    const rootItems: NavigationItem[] = [];
-
-    // First pass: create map of all items
-    items.forEach(item => {
-      itemMap.set(item.id, { ...item, items: [] });
-    });
-
-    // Second pass: build hierarchy
-    items.forEach(item => {
-      const mappedItem = itemMap.get(item.id)!;
-      
-      if (item.parent_id && itemMap.has(item.parent_id)) {
-        // This is a child item
-        const parent = itemMap.get(item.parent_id)!;
-        if (!parent.items) parent.items = [];
-        parent.items.push(mappedItem);
-      } else {
-        // This is a root item
-        rootItems.push(mappedItem);
-      }
-    });
-
-    // Sort items by order_index
-    const sortItems = (items: NavigationItem[]) => {
-      items.sort((a, b) => a.order_index - b.order_index);
-      items.forEach(item => {
-        if (item.items && item.items.length > 0) {
-          sortItems(item.items);
-        }
-      });
-    };
-
-    sortItems(rootItems);
-    return rootItems;
-  };
 
   const filterItems = (items: NavigationItem[], searchTerm: string): NavigationItem[] => {
     return items.filter(item => {
@@ -96,20 +87,14 @@ function DocsSidebar({ className, onNavigate }: { className?: string; onNavigate
   };
 
   const filteredNavigation = searchTerm 
-    ? navigation.sections.map(section => {
-        const hierarchicalItems = buildHierarchy(section.items);
-        return {
-          ...section,
-          items: filterItems(hierarchicalItems, searchTerm)
-        };
-      }).filter(section => 
-        section.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        section.items.length > 0
-      )
-    : navigation.sections.map(section => ({
+    ? navigation.sections.map(section => ({
         ...section,
-        items: buildHierarchy(section.items)
-      }));
+        items: filterItems(section.items || [], searchTerm)
+      })).filter(section => 
+        section.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        (section.items && section.items.length > 0)
+      )
+    : navigation.sections;
 
   const renderNavItem = (item: NavigationItem, depth = 0) => {
     const hasSubItems = item.items && item.items.length > 0;
@@ -182,7 +167,7 @@ function DocsSidebar({ className, onNavigate }: { className?: string; onNavigate
 
   if (isLoading) {
     return (
-      <ScrollArea className={cn("h-full w-full lg:w-64", className)}>
+      <ScrollArea className={cn("h-full w-full lg:w-72", className)}>
         <div className="space-y-4 py-4">
           <div className="px-3 py-2">
             <div className="animate-pulse space-y-2">
@@ -198,7 +183,7 @@ function DocsSidebar({ className, onNavigate }: { className?: string; onNavigate
 
   if (error) {
     return (
-      <ScrollArea className={cn("h-full w-full lg:w-64", className)}>
+      <ScrollArea className={cn("h-full w-full lg:w-72", className)}>
         <div className="space-y-4 py-4">
           <div className="px-3 py-2">
             <div className="text-sm text-muted-foreground">
@@ -211,7 +196,7 @@ function DocsSidebar({ className, onNavigate }: { className?: string; onNavigate
   }
 
   return (
-    <ScrollArea className={cn("h-full w-full lg:w-64", className)}>
+    <ScrollArea className={cn("h-full w-full lg:w-72", className)}>
       <div className="space-y-4 py-4">
         <div className="px-3 py-2">
           <div className="mb-6">
@@ -295,7 +280,7 @@ export default function DocsLayout() {
       <div className="lg:flex">
         {/* Desktop sidebar */}
         <div className="hidden lg:flex lg:flex-shrink-0">
-          <div className="flex flex-col w-64 border-r border-border bg-card/95 backdrop-blur-sm">
+          <div className="flex flex-col w-72 border-r border-border bg-card/95 backdrop-blur-sm">
             <div className="flex items-center justify-between p-4 border-b border-border">
               <Link to="/" className="flex items-center space-x-2">
                 <PiecesLogo className="w-8 h-8" alt="Pieces" />
@@ -312,7 +297,7 @@ export default function DocsLayout() {
           <main className="flex-1 relative overflow-y-auto focus:outline-none">
             <div className="min-h-full flex flex-col">
               <div className="flex-1 py-4 sm:py-6 lg:py-8">
-                <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
                   <Outlet />
                 </div>
               </div>

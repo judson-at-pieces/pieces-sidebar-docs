@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ExpandableImage as ExpandableImageComponent } from './ExpandableImage';
@@ -28,6 +27,33 @@ import {
   CodeProps, 
   ListProps 
 } from './types';
+
+// Helper function to safely extract text from React children
+function extractTextFromChildren(node: any): string {
+  if (!node) return '';
+  if (typeof node === 'string') return node;
+  if (typeof node === 'number') return String(node);
+  if (Array.isArray(node)) return node.map(extractTextFromChildren).join('');
+  if (React.isValidElement(node) && node.props && 'children' in node.props) {
+    return extractTextFromChildren(node.props.children);
+  }
+  return '';
+}
+
+// Helper function to safely process React children
+function safeMapChildren(children: any, mapFn: (child: any, index: number) => any) {
+  if (!children) return null;
+  
+  try {
+    return React.Children.map(children, (child, index) => {
+      if (!child) return null;
+      return mapFn(child, index);
+    });
+  } catch (error) {
+    console.warn('Error mapping children:', error);
+    return children;
+  }
+}
 
 export const createComponentMappings = () => ({
   // Handle custom components that are being rendered as raw HTML
@@ -111,16 +137,23 @@ export const createComponentMappings = () => ({
     return <ExpandableImageComponent src={src} alt={caption as string} caption={(caption as string) || ''} {...props} />;
   },
 
+  // Standard image handler - ensure rounded edges for ALL images
+  img: ({ src, alt, ...props }: ImageProps) => {
+    return <img src={src} alt={alt} className="rounded-lg max-w-full h-auto" {...props} />;
+  },
+
   // Custom div handler for callouts, steps, cards, and card groups
   div: ({ children, ...props }: DivProps) => {
-    // Get data attributes directly from props object
-    const dataProps = Object.keys(props).reduce((acc, key) => {
-      if (key.startsWith('data-')) {
-        const cleanKey = key.replace('data-', '').replace(/-([a-z])/g, (g) => g[1].toUpperCase());
-        acc[cleanKey] = props[key as keyof typeof props];
-      }
-      return acc;
-    }, {} as Record<string, any>);
+    // Safely get data attributes from props object
+    const dataProps = React.useMemo(() => {
+      return Object.keys(props || {}).reduce((acc, key) => {
+        if (key.startsWith('data-')) {
+          const cleanKey = key.replace('data-', '').replace(/-([a-z])/g, (g) => g[1].toUpperCase());
+          acc[cleanKey] = (props as any)[key];
+        }
+        return acc;
+      }, {} as Record<string, any>);
+    }, [props]);
 
     console.log('Div component mapping - dataProps:', dataProps, 'hasChildren:', !!children);
     
@@ -153,26 +186,15 @@ export const createComponentMappings = () => ({
       });
       
       let cardContent = children;
-      if (React.isValidElement(children) || Array.isArray(children)) {
-        const extractTextFromChildren = (node: any): string => {
-          if (typeof node === 'string') return node;
-          if (typeof node === 'number') return String(node);
-          if (Array.isArray(node)) return node.map(extractTextFromChildren).join('');
-          if (React.isValidElement(node)) {
-            if (node.props && typeof node.props === 'object' && 'children' in node.props) {
-              return extractTextFromChildren(node.props.children);
-            }
-          }
-          return '';
-        };
+      if (children && (React.isValidElement(children) || Array.isArray(children))) {
         cardContent = extractTextFromChildren(children);
       }
       
-      return <MarkdownCard title={dataProps.title} image={dataProps.image} icon={dataProps.icon} href={dataProps.href} external={dataProps.external}>{cardContent}</MarkdownCard>;
+      return <MarkdownCard title={dataProps.title} image={dataProps.image} href={dataProps.href} external={dataProps.external}>{cardContent}</MarkdownCard>;
     }
     
     if (dataProps.image && dataProps.src) {
-      return <Image src={dataProps.src} alt={dataProps.alt} caption={dataProps.caption} align={dataProps.align as any} fullwidth={dataProps.fullwidth} />;
+      return <Image src={dataProps.src} alt={dataProps.alt} align={dataProps.align as any} fullwidth={dataProps.fullwidth} />;
     }
     
     if (dataProps.piecesCloudModels) {
@@ -208,7 +230,7 @@ export const createComponentMappings = () => ({
     }
     
     if (dataProps.tabs === 'true') {
-      return <Tabs defaultActiveTab={parseInt(dataProps.defaultActiveTab) || 0} {...props}>{children}</Tabs>;
+      return <Tabs defaultActiveTab={parseInt(dataProps.defaultActiveTab) || 0} {...props}>{React.Children.toArray(children) as React.ReactElement[]}</Tabs>;
     }
     
     if (dataProps.tabitem === 'true') {
@@ -325,7 +347,7 @@ function generateHeadingId(children: React.ReactNode): string {
   if (typeof children === 'string') {
     return children.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   }
-  if (React.isValidElement(children) && typeof children.props.children === 'string') {
+  if (React.isValidElement(children) && children.props && typeof children.props.children === 'string') {
     return children.props.children.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
   }
   return '';

@@ -1,11 +1,16 @@
-
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { WYSIWYGEditor } from './WYSIWYGEditor';
-import HashnodeMarkdownRenderer from '@/components/HashnodeMarkdownRenderer';
+import ReactMarkdown from 'react-markdown';
+import { createComponentMappings } from '@/components/markdown/componentMappings';
+import { processCustomSyntax } from '@/components/markdown/customSyntaxProcessor';
+import remarkGfm from 'remark-gfm';
+import remarkBreaks from 'remark-breaks';
+import remarkFrontmatter from 'remark-frontmatter';
+import rehypeRaw from 'rehype-raw';
 import { Edit, Eye, Sparkles, Wand2, GitPullRequest } from 'lucide-react';
 import { toast } from 'sonner';
-import { githubAppService } from '@/services/githubAppService';
+import { githubService } from '@/services/githubService';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 
@@ -19,32 +24,181 @@ interface TSXRendererProps {
 export function TSXRenderer({ content, onContentChange, readOnly = false, filePath }: TSXRendererProps) {
   const [mode, setMode] = useState<'preview' | 'wysiwyg'>('preview');
   const { user } = useAuth();
+  const components = createComponentMappings();
 
-  // Process the content to match the compiled content format
+  // Process the content using the EXACT same method as the actual user-facing docs
   const processedContent = React.useMemo(() => {
-    // If content doesn't start with frontmatter, add a basic one
-    if (!content.startsWith('---')) {
-      return `---
-title: "Preview"
----
-***
-${content}`;
-    }
+    console.log('🔧 TSXRenderer processing content with EXACT docs process...');
     
-    // If content has frontmatter but no section delimiter, add it
-    if (!content.includes('***')) {
-      const frontmatterEnd = content.indexOf('---', 3);
-      if (frontmatterEnd !== -1) {
-        const frontmatter = content.substring(0, frontmatterEnd + 3);
-        const markdownContent = content.substring(frontmatterEnd + 3).trim();
-        return `${frontmatter}
-***
-${markdownContent}`;
+    try {
+      // Apply custom syntax processing (same as MarkdownRenderer)
+      const processedMarkdown = processCustomSyntax(content);
+      
+      console.log('🔧 TSXRenderer content processed:', {
+        originalLength: content.length,
+        processedLength: processedMarkdown.length,
+        hasCustomSyntax: processedMarkdown !== content
+      });
+
+      return processedMarkdown;
+    } catch (error) {
+      console.error('Error processing content:', error);
+      return content; // Fallback to original content
+    }
+  }, [content]);
+
+  async function handleCreatePR() {
+    try {
+      toast.info('Creating pull request...', { duration: 2000 });
+      
+      // Get GitHub configuration first
+      const config = await githubService.getRepoConfig();
+      if (!config) {
+        toast.error('GitHub repository not configured. Please configure it in Admin settings.', { duration: 5000 });
+        return;
+      }
+
+      // Check if we have the file path
+      if (!filePath) {
+        toast.error('No file selected for editing. Please select a file first.', { duration: 3000 });
+        return;
+      }
+
+      // Get the installation ID from the config
+      const { data: configData, error: configError } = await supabase
+        .from('github_config')
+        .select('installation_id')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (configError || !configData?.installation_id) {
+        toast.error('GitHub App not properly configured. Please check Admin settings.', { duration: 5000 });
+        return;
+      }
+
+      console.log('Getting GitHub App token for installation:', configData.installation_id);
+
+      // Get GitHub App installation token using your existing edge function
+      const { data: authResponse, error: authError } = await supabase.functions.invoke('github-app-auth', {
+        body: { installationId: configData.installation_id }
+      });
+
+      if (authError || !authResponse?.token) {
+        console.error('GitHub App auth error:', authError);
+        toast.error('Failed to authenticate with GitHub App. Please check the configuration.', { duration: 5000 });
+        return;
+      }
+
+      const githubToken = authResponse.token;
+      const { owner, repo } = config;
+
+      // Extract title from frontmatter or use filename
+      let title = 'Update documentation content';
+      const frontmatterMatch = content.match(/^---\s*\n([\s\S]*?)\n---/);
+      if (frontmatterMatch) {
+        const titleMatch = frontmatterMatch[1].match(/title:\s*["']?([^"'\n]+)["']?/);
+        if (titleMatch) {
+          title = `Update: ${titleMatch[1]}`;
+        }
+      } else {
+        // Use filename as fallback
+        const fileName = filePath.split('/').pop()?.replace(/\.md$/, '') || 'content';
+        title = `Update: ${fileName.replace(/-/g, ' ')}`;
+      }
+
+      // Get user information for PR attribution
+      const userEmail = user?.email || 'unknown@pieces.app';
+      const userName = user?.user_metadata?.full_name || user?.user_metadata?.name || userEmail.split('@')[0];
+
+      // Determine the correct file path in the repository
+      let repoFilePath = filePath;
+      
+      // If it's a content file, place it in public/content
+      if (!filePath.startsWith('public/') && !filePath.startsWith('src/')) {
+        repoFilePath = `public/content/${filePath}`;
+      }
+      
+      // Ensure .md extension
+      if (!repoFilePath.endsWith('.md')) {
+        repoFilePath = `${repoFilePath}.md`;
+      }
+
+      console.log('Creating PR with GitHub App token for:', { 
+        title, 
+        repoFilePath, 
+        owner, 
+        repo,
+        installationId: configData.installation_id
+      });
+
+      // Create the pull request using the GitHub App token
+      const result = await githubService.createPullRequest(
+        {
+          title,
+          body: `This pull request updates documentation content via the Pieces documentation editor.
+
+## Changes
+- Updated content for: \`${repoFilePath}\`
+- Content reviewed and ready for publication
+
+## Authored By
+- **Editor:** ${userName} (${userEmail})
+- **Date:** ${new Date().toISOString().split('T')[0]}
+
+## Review Notes
+Please review the changes and merge when ready.
+
+---
+*This PR was created automatically by the Pieces Documentation Editor*`,
+          files: [
+            {
+              path: repoFilePath,
+              content: content
+            }
+          ],
+          baseBranch: 'main',
+          headBranch: `doc-update-${Date.now()}`,
+          useExistingBranch: false
+        },
+        githubToken,
+        config
+      );
+
+      if (result.success) {
+        toast.success(`Pull request created successfully!`, {
+          duration: 5000,
+          action: {
+            label: 'View PR',
+            onClick: () => window.open(result.prUrl, '_blank')
+          }
+        });
+      } else {
+        throw new Error(result.error || 'Failed to create PR');
+      }
+      
+      console.log('PR created successfully for file:', repoFilePath);
+    } catch (error: any) {
+      console.error('PR creation failed:', error);
+      
+      // Provide more specific error messages
+      if (error.message?.includes('401') || error.message?.includes('Authentication failed')) {
+        toast.error('GitHub App authentication failed. Please check the GitHub App configuration in Admin settings.', { 
+          duration: 5000,
+          action: {
+            label: 'Go to Admin',
+            onClick: () => window.location.href = '/admin'
+          }
+        });
+      } else if (error.message?.includes('403') || error.message?.includes('Access forbidden')) {
+        toast.error('Access forbidden. Please ensure the GitHub App is installed on the repository with proper permissions.', { duration: 5000 });
+      } else if (error.message?.includes('404')) {
+        toast.error('Repository not found. Please check the repository configuration in Admin settings.', { duration: 5000 });
+      } else {
+        toast.error(`Failed to create pull request: ${error.message || 'Unknown error'}`, { duration: 5000 });
       }
     }
-    
-    return content;
-  }, [content]);
+  }
 
   return (
     <div className="h-full flex flex-col bg-gradient-to-br from-background to-muted/10">
@@ -60,7 +214,7 @@ ${markdownContent}`;
               <div className="text-xs text-muted-foreground">
                 {mode === 'wysiwyg' 
                   ? "✨ Click elements to edit them directly" 
-                  : "📝 Real-time Hashnode markdown rendering"
+                  : "📝 Real-time markdown rendering with exact docs processing"
                 }
               </div>
             </div>
@@ -121,10 +275,17 @@ ${markdownContent}`;
                 <div className="bg-background rounded-lg border border-border p-6 shadow-sm">
                   <div className="mb-4 text-sm text-muted-foreground border-b border-border pb-2">
                     <span className="font-medium">Live Preview</span>
-                    <p className="text-xs mt-1">This shows exactly how the content will appear using Hashnode renderer.</p>
+                    <p className="text-xs mt-1">This shows exactly how the content will appear using the same processing and components as the actual docs.</p>
                   </div>
                   <div className="markdown-content">
-                    <HashnodeMarkdownRenderer content={processedContent} />
+                    <ReactMarkdown
+                      components={components}
+                      remarkPlugins={[remarkGfm, remarkBreaks, remarkFrontmatter]}
+                      rehypePlugins={[rehypeRaw]}
+                      skipHtml={false}
+                    >
+                      {processedContent}
+                    </ReactMarkdown>
                   </div>
                 </div>
               </div>
@@ -134,110 +295,4 @@ ${markdownContent}`;
       </div>
     </div>
   );
-
-  async function handleCreatePR() {
-    try {
-      toast.info('Creating pull request...', { duration: 2000 });
-      
-      // Get GitHub configuration
-      const { data: configData, error: configError } = await supabase.rpc('get_current_github_config');
-      
-      if (configError || !configData || configData.length === 0) {
-        toast.error('GitHub repository not configured. Please configure it in Admin settings.', { duration: 5000 });
-        return;
-      }
-
-      const config = configData[0];
-      const { repo_owner, repo_name, installation_id } = config;
-
-      if (!installation_id) {
-        toast.error('GitHub App installation not found. Please reinstall the GitHub App.', { duration: 5000 });
-        return;
-      }
-
-      if (!filePath) {
-        toast.error('No file selected for editing. Please select a file first.', { duration: 3000 });
-        return;
-      }
-
-      // Extract title from frontmatter or use filename
-      let title = 'Update documentation content';
-      const frontmatterMatch = content.match(/^---\s*\n([\s\S]*?)\n---/);
-      if (frontmatterMatch) {
-        const titleMatch = frontmatterMatch[1].match(/title:\s*["']?([^"'\n]+)["']?/);
-        if (titleMatch) {
-          title = `Update: ${titleMatch[1]}`;
-        }
-      } else {
-        // Use filename as fallback
-        const fileName = filePath.split('/').pop()?.replace(/\.md$/, '') || 'content';
-        title = `Update: ${fileName.replace(/-/g, ' ')}`;
-      }
-
-      // Get user information for PR attribution
-      const userEmail = user?.email || 'unknown@pieces.app';
-      const userName = user?.user_metadata?.full_name || user?.user_metadata?.name || userEmail.split('@')[0];
-
-      // Determine the correct file path in the repository
-      let repoFilePath = filePath;
-      
-      // If it's a content file, place it in public/content
-      if (!filePath.startsWith('public/') && !filePath.startsWith('src/')) {
-        repoFilePath = `public/content/${filePath}`;
-      }
-      
-      // Ensure .md extension
-      if (!repoFilePath.endsWith('.md')) {
-        repoFilePath = `${repoFilePath}.md`;
-      }
-
-      // Create the pull request using our GitHub service
-      const result = await githubAppService.createBranchAndPR(
-        installation_id,
-        repo_owner,
-        repo_name,
-        {
-          title,
-          body: `This pull request updates documentation content via the Pieces documentation editor.
-
-## Changes
-- Updated content for: \`${repoFilePath}\`
-- Content reviewed and ready for publication
-
-## Authored By
-- **Editor:** ${userName} (${userEmail})
-- **Date:** ${new Date().toISOString().split('T')[0]}
-
-## Review Notes
-Please review the changes and merge when ready.
-
----
-*This PR was created automatically by the Pieces Documentation Editor*`,
-          files: [
-            {
-              path: repoFilePath,
-              content: content
-            }
-          ]
-        }
-      );
-
-      if (result.success) {
-        toast.success(`Pull request created successfully! #${result.prNumber}`, { 
-          duration: 5000,
-          action: {
-            label: 'View PR',
-            onClick: () => window.open(result.prUrl, '_blank')
-          }
-        });
-      } else {
-        throw new Error('Failed to create PR');
-      }
-      
-      console.log('PR created with content changes for file:', repoFilePath);
-    } catch (error) {
-      toast.error('Failed to create pull request. Please check your GitHub connection.', { duration: 3000 });
-      console.error('PR creation failed:', error);
-    }
-  }
 }

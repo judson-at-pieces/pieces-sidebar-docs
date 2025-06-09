@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigation } from "@/hooks/useNavigation";
 import { FileNode } from "@/utils/fileSystem";
@@ -106,6 +105,23 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
     }
   };
 
+  const handleUpdateItemTitle = async (itemId: string, title: string) => {
+    try {
+      await navigationService.updateNavigationItem(itemId, { title });
+      
+      console.log('Navigation item title updated, refreshing navigation data');
+      const refreshedData = await refetch();
+      if (refreshedData.data?.sections) {
+        setSections(refreshedData.data.sections);
+      }
+      onNavigationChange();
+      toast.success("Navigation item title updated");
+    } catch (error) {
+      console.error('Error updating navigation item title:', error);
+      toast.error("Failed to update navigation item title");
+    }
+  };
+
   const handleTogglePendingDeletion = (sectionId: string, itemIndex: number) => {
     const section = sections.find(s => s.id === sectionId);
     if (!section || !section.items || !section.items[itemIndex]) {
@@ -160,27 +176,33 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
 
   const handleSectionReorder = async (newSections: typeof sections) => {
     try {
-      console.log('Reordering sections');
-      // Update sections with new order
+      console.log('Reordering sections with new order:', newSections.map(s => ({ id: s.id, title: s.title, order_index: s.order_index })));
+      
+      // Optimistically update local state first
       setSections(newSections);
       
-      // Update order in database
-      for (let i = 0; i < newSections.length; i++) {
-        await navigationService.updateNavigationSection(newSections[i].id, {
-          order_index: i
-        });
-      }
+      // Update each section's order_index in the database
+      const updatePromises = newSections.map((section, index) => 
+        navigationService.updateNavigationSection(section.id, {
+          order_index: index
+        })
+      );
       
+      await Promise.all(updatePromises);
+      console.log('All section orders updated successfully');
+      
+      // Refresh data from database to ensure consistency
       const refreshedData = await refetch();
       if (refreshedData.data?.sections) {
         setSections(refreshedData.data.sections);
       }
       onNavigationChange();
-      toast.success("Sections reordered");
+      toast.success("Sections reordered successfully");
     } catch (error) {
       console.error('Error reordering sections:', error);
       toast.error("Failed to reorder sections");
-      // Revert on error
+      
+      // Revert to original state on error
       const refreshedData = await refetch();
       if (refreshedData.data?.sections) {
         setSections(refreshedData.data.sections);
@@ -205,33 +227,38 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
 
   return (
     <div className="h-full flex flex-col">
-      <div className="p-4 border-b">
+      <div className="p-4 border-b flex-shrink-0">
         <h2 className="text-lg font-semibold mb-2">Navigation Editor</h2>
         <p className="text-sm text-muted-foreground">
-          Add files or folders to organize your documentation. Drag sections to reorder them.
+          Add files or folders to organize your documentation. Drag sections to reorder them. Click on titles to edit them.
         </p>
       </div>
       
       <div className="flex-1 overflow-hidden">
         <div className="grid grid-cols-2 gap-4 h-full p-4">
-          <AvailableFilesPanel 
-            fileStructure={fileStructure}
-            isFileUsed={isFileUsed}
-            sections={sections}
-            onAddToSection={setPendingChange}
-            onShowPreview={setShowConfirmDialog}
-          />
-          <NavigationStructurePanel
-            sections={sections}
-            pendingDeletions={pendingDeletions}
-            onAddSection={handleAddSection}
-            onUpdateSectionTitle={handleUpdateSectionTitle}
-            onTogglePendingDeletion={handleTogglePendingDeletion}
-            onBulkDelete={handleBulkDelete}
-            onResetPendingDeletions={clearPendingDeletions}
-            onSectionReorder={handleSectionReorder}
-            onNavigationChange={handleNavigationRefresh}
-          />
+          <div className="h-full overflow-auto">
+            <AvailableFilesPanel 
+              fileStructure={fileStructure}
+              isFileUsed={isFileUsed}
+              sections={sections}
+              onAddToSection={setPendingChange}
+              onShowPreview={setShowConfirmDialog}
+            />
+          </div>
+          <div className="h-full overflow-auto">
+            <NavigationStructurePanel
+              sections={sections}
+              pendingDeletions={pendingDeletions}
+              onAddSection={handleAddSection}
+              onUpdateSectionTitle={handleUpdateSectionTitle}
+              onUpdateItemTitle={handleUpdateItemTitle}
+              onTogglePendingDeletion={handleTogglePendingDeletion}
+              onBulkDelete={handleBulkDelete}
+              onResetPendingDeletions={clearPendingDeletions}
+              onSectionReorder={handleSectionReorder}
+              onNavigationChange={handleNavigationRefresh}
+            />
+          </div>
         </div>
       </div>
 

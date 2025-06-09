@@ -152,28 +152,34 @@ const Index = () => {
           </div>
           
           <h1 className="text-5xl md:text-6xl font-bold mb-6 leading-tight">
-  <span
-    className="
-      bg-clip-text 
-      text-transparent 
-      bg-gradient-to-r 
-      from-gray-400 
-      to-black 
-      dark:from-gray-300 
-      dark:to-white
-    "
-  >
-    Get Up and Running with Pieces
-  </span>
-</h1>
-          
+            <span
+              className="
+                bg-clip-text 
+                text-transparent 
+                bg-gradient-to-r 
+                from-gray-400 
+                to-black 
+                dark:from-gray-300 
+                dark:to-white
+              "
+            >
+              Get Up and Running with Pieces
+            </span>
+          </h1>
           <p className="text-xl text-muted-foreground mb-12 max-w-4xl mx-auto leading-relaxed">
             Pieces captures and resurfaces your workflow context so you never lose track of what you were doing. This documentation helps you install, integrate, and master the tools that make that possible.
           </p>
-          
           <div className="flex flex-col sm:flex-row gap-4 justify-center items-center py-0 px-0 mx-0 mt-[56px] mb-[56px]">
             <Link to="/docs/getting-started">
-              <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-4 text-lg">
+              <Button
+                size="lg"
+                className="
+                  border-2 border-gray-800 bg-gray-800 text-white
+                  dark:border-gray-300 dark:bg-gray-300 dark:text-gray-900
+                  hover:opacity-90
+                  px-8 py-4 text-lg font-medium
+                "
+              >
                 <BookOpen className="mr-2 w-5 h-5" />
                 Read the Docs
                 <ArrowRight className="ml-2 w-4 h-4" />
