@@ -12,7 +12,7 @@ There are two ways to manage your Copilot chats in the Pieces CLI.
 ### Starting a New Copilot Chat
 
 To quickly start a conversation with Pieces Copilot:
-
+sss
 <Steps>
   <Step title="Open a Terminal">
     Opening a terminal on your device depends on your platform: Open your OS’ search bar and enter `terminal` (macOS/Linux) or `CMD` (Windows).
