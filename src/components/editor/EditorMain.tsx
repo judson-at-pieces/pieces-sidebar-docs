@@ -129,14 +129,7 @@ export function EditorMain({
             
             <ScrollArea className="h-[calc(100%-57px)]">
               <div className="p-6">
-                {/* Use the same renderer as the actual docs */}
-                {content.includes('***') ? (
-                  <HashnodeMarkdownRenderer content={content} />
-                ) : (
-                  <div className="hn-markdown-renderer">
-                    <HashnodeMarkdownRenderer content={content} />
-                  </div>
-                )}
+                <HashnodeMarkdownRenderer content={content} />
               </div>
             </ScrollArea>
           </div>

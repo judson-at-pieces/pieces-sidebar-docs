@@ -60,7 +60,7 @@ export function FileTreeSidebar({
     // Filter out nodes that don't match the search term
     if (searchTerm && !node.name.toLowerCase().includes(searchTerm.toLowerCase())) {
       // Check if any children match
-      if (node.type === 'directory' && node.children) {
+      if (node.type === 'folder' && node.children) {
         const hasMatchingChildren = node.children.some(child => 
           child.name.toLowerCase().includes(searchTerm.toLowerCase())
         );
@@ -70,7 +70,7 @@ export function FileTreeSidebar({
       }
     }
 
-    if (node.type === 'directory') {
+    if (node.type === 'folder') {
       const isExpanded = expandedDirs.has(node.path);
       
       return (
