@@ -6,10 +6,9 @@ import { Button } from '@/components/ui/button';
 interface CodeBlockProps {
   children: React.ReactNode;
   className?: string;
-  language?: string;
 }
 
-export function CodeBlock({ children, className, language }: CodeBlockProps) {
+export function CodeBlock({ children, className }: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
 
   const extractCodeContent = (node: React.ReactNode): string => {
