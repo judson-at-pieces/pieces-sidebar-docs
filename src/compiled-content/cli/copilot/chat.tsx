@@ -34,12 +34,12 @@ function _createMdxContent(props: MDX_cli_copilot_chatProps) {
     div: "div",
     ...props.components
   };
-  return _jsxs(_components.div, {
+  return _jsxs("div", {
     children: [
-      _jsx(_components.h2, {
+      _jsx("h2", {
         children: "Accessing Copilot Chat in your Terminal"
       }),
-      _jsx(_components.p, {
+      _jsx("p", {
         children: "Content for CLI copilot chat documentation."
       })
     ]
