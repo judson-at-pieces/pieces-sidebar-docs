@@ -82,13 +82,13 @@ export function EditorLayout() {
     setModifiedFiles(filesWithLiveContent);
   }, [sessions]);
 
-  // Auto-save live content with shorter interval for real-time feel - only when editing
+  // Auto-save live content - only when user is editing (has the lock)
   useEffect(() => {
     if (selectedFile && isLocked && lockedBy === 'You' && hasChanges && content) {
       const timeoutId = setTimeout(() => {
         console.log('Auto-saving live content for real-time updates');
         saveLiveContent(selectedFile, content);
-      }, 500); // Reduced to 500ms for more responsive live updates
+      }, 500);
 
       return () => clearTimeout(timeoutId);
     }
@@ -98,7 +98,7 @@ export function EditorLayout() {
     console.log('=== FILE SELECTION DEBUG ===');
     console.log('Selected file path:', filePath);
     
-    // Release lock on previous file if any
+    // Release lock on previous file if user owns it
     if (selectedFile && isLocked && lockedBy === 'You') {
       await releaseLock(selectedFile);
     }
@@ -212,10 +212,13 @@ Start editing to see the live preview!
   };
 
   const handleContentChange = (newContent: string) => {
-    setContent(newContent);
-    setHasChanges(true);
-    if (selectedFile) {
-      setModifiedFiles(prev => new Set(prev).add(selectedFile));
+    // Only allow content changes if user has the lock
+    if (isLocked && lockedBy === 'You') {
+      setContent(newContent);
+      setHasChanges(true);
+      if (selectedFile) {
+        setModifiedFiles(prev => new Set(prev).add(selectedFile));
+      }
     }
   };
 
@@ -604,7 +607,6 @@ Start editing to see the live preview!
                     isLocked={isLocked}
                     lockedBy={lockedBy}
                     liveContent={liveContent}
-                    onAcquireLock={handleAcquireLock}
                     isAcquiringLock={isAcquiringLock}
                   />
                 </div>

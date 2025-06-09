@@ -1,6 +1,6 @@
 
 import React, { useEffect } from 'react';
-import { FileText, MoreHorizontal, Copy, Trash2, Eye, Lock, Edit3 } from 'lucide-react';
+import { FileText, MoreHorizontal, Copy, Trash2, Eye, Edit3 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
@@ -39,7 +39,6 @@ export function EditorMain({
   // Determine if current user can edit
   const canEdit = isLocked && lockedBy === 'You';
   const isLockedByOther = isLocked && lockedBy !== 'You';
-  const isViewOnly = !isLocked;
 
   // Use live content if we're not the editor and live content is available
   const displayContent = isLockedByOther && liveContent ? liveContent : content;
@@ -71,14 +70,14 @@ export function EditorMain({
 
   return (
     <div className="h-full flex flex-col bg-background">
-      {/* Prominent Live Editing Banner */}
+      {/* Live Editing Banner - only show when someone else is editing */}
       {isLockedByOther && (
         <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 border-b shadow-lg">
           <div className="flex items-center justify-center gap-3">
             <div className="flex items-center gap-2">
               <Edit3 className="h-5 w-5 animate-pulse" />
               <span className="font-semibold text-lg">
-                {lockedBy} is currently editing this page
+                Another user is currently editing this page
               </span>
             </div>
             {liveContent && (
@@ -93,7 +92,7 @@ export function EditorMain({
         </div>
       )}
 
-      {/* File Header with Live Editing Status */}
+      {/* File Header */}
       <div className="flex items-center justify-between p-4 border-b border-border/50 bg-muted/20">
         <div className="flex items-center gap-3">
           <div className="flex items-center gap-2">
@@ -110,15 +109,10 @@ export function EditorMain({
             </Badge>
           )}
 
-          {isViewOnly && (
-            <Button 
-              onClick={onAcquireLock}
-              disabled={isAcquiringLock}
-              size="sm"
-              className="text-xs"
-            >
-              {isAcquiringLock ? 'Acquiring...' : 'Start Editing'}
-            </Button>
+          {isLockedByOther && (
+            <Badge variant="outline" className="text-xs">
+              Read-only
+            </Badge>
           )}
         </div>
 
@@ -161,10 +155,10 @@ export function EditorMain({
                 onChange={(e) => canEdit ? onContentChange(e.target.value) : undefined}
                 placeholder={
                   isLockedByOther 
-                    ? `This file is being edited by ${lockedBy}...` 
-                    : isViewOnly 
-                      ? "Click 'Start Editing' to begin editing this file..."
-                      : "Start typing your content here..."
+                    ? "Another user is editing this file..." 
+                    : canEdit
+                      ? "Start typing your content here..."
+                      : "Loading..."
                 }
                 disabled={!canEdit}
                 className={`h-full resize-none border-0 rounded-none focus:ring-0 font-mono text-sm leading-relaxed ${

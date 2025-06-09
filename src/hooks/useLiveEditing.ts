@@ -32,7 +32,7 @@ export function useLiveEditing(filePath?: string) {
     }
   }, []);
 
-  // Acquire lock on a file - only when user explicitly starts editing
+  // Acquire lock on a file - automatically when file is available
   const acquireLock = useCallback(async (filePathToLock: string) => {
     if (!user?.id) return false;
     
@@ -48,16 +48,15 @@ export function useLiveEditing(filePath?: string) {
       if (data) {
         setIsLocked(true);
         setLockedBy('You');
-        toast.success('Editing mode activated');
+        console.log('Successfully acquired lock for:', filePathToLock);
         return true;
       } else {
         setIsLocked(false);
-        toast.error('File is being edited by another user');
+        console.log('File is locked by another user:', filePathToLock);
         return false;
       }
     } catch (error) {
       console.error('Error acquiring lock:', error);
-      toast.error('Failed to acquire edit lock');
       return false;
     } finally {
       setIsAcquiringLock(false);
@@ -78,7 +77,7 @@ export function useLiveEditing(filePath?: string) {
       
       setIsLocked(false);
       setLockedBy(null);
-      toast.success('Edit lock released');
+      console.log('Released lock for:', filePathToRelease);
     } catch (error) {
       console.error('Error releasing lock:', error);
     }
@@ -130,8 +129,8 @@ export function useLiveEditing(filePath?: string) {
     }
   }, []);
 
-  // Check if current user has lock on file and get current status
-  const checkLockStatus = useCallback(async (filePathToCheck: string) => {
+  // Check lock status and auto-acquire if available
+  const checkLockStatusAndAutoAcquire = useCallback(async (filePathToCheck: string) => {
     if (!user?.id) return;
     
     try {
@@ -153,8 +152,10 @@ export function useLiveEditing(filePath?: string) {
           setLiveContent(data.content);
         }
       } else {
-        setIsLocked(false);
-        setLockedBy(null);
+        // File is not locked by anyone - auto-acquire lock
+        console.log('File is available, auto-acquiring lock...');
+        await acquireLock(filePathToCheck);
+        
         // Still load content if it exists
         if (data && data.content) {
           setLiveContent(data.content);
@@ -163,7 +164,7 @@ export function useLiveEditing(filePath?: string) {
     } catch (error) {
       console.error('Error checking lock status:', error);
     }
-  }, [user]);
+  }, [user, acquireLock]);
 
   // Set up real-time subscription for live editing sessions
   useEffect(() => {
@@ -195,9 +196,11 @@ export function useLiveEditing(filePath?: string) {
             
             // If someone else released a lock on the current file
             if (payload.eventType === 'UPDATE' && !newData.locked_by) {
-              setIsLocked(false);
-              setLockedBy(null);
-              console.log('Lock released on current file');
+              console.log('Lock released on current file, auto-acquiring...');
+              // Auto-acquire the lock since it's now available
+              if (filePath) {
+                acquireLock(filePath);
+              }
             }
             
             // If content was updated and we don't have the lock, update our view
@@ -213,12 +216,12 @@ export function useLiveEditing(filePath?: string) {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [fetchSessions, filePath, user?.id]);
+  }, [fetchSessions, filePath, user?.id, acquireLock]);
 
-  // Check lock status when file path changes
+  // Check lock status and auto-acquire when file path changes
   useEffect(() => {
     if (filePath) {
-      checkLockStatus(filePath);
+      checkLockStatusAndAutoAcquire(filePath);
       loadLiveContent(filePath);
     } else {
       // Reset state when no file is selected
@@ -226,12 +229,12 @@ export function useLiveEditing(filePath?: string) {
       setLockedBy(null);
       setLiveContent('');
     }
-  }, [filePath, checkLockStatus, loadLiveContent]);
+  }, [filePath, checkLockStatusAndAutoAcquire, loadLiveContent]);
 
   // Auto-release lock when component unmounts or user leaves
   useEffect(() => {
     const handleBeforeUnload = () => {
-      if (filePath && isLocked) {
+      if (filePath && isLocked && lockedBy === 'You') {
         releaseLock(filePath);
       }
     };
@@ -240,11 +243,11 @@ export function useLiveEditing(filePath?: string) {
     
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      if (filePath && isLocked) {
+      if (filePath && isLocked && lockedBy === 'You') {
         releaseLock(filePath);
       }
     };
-  }, [filePath, isLocked, releaseLock]);
+  }, [filePath, isLocked, lockedBy, releaseLock]);
 
   return {
     isLocked,
@@ -256,6 +259,6 @@ export function useLiveEditing(filePath?: string) {
     releaseLock,
     saveLiveContent,
     loadLiveContent,
-    checkLockStatus
+    checkLockStatus: checkLockStatusAndAutoAcquire
   };
 }
