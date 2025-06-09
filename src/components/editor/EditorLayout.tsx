@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useLiveEditing } from "@/hooks/useLiveEditing";
@@ -331,14 +332,17 @@ Start editing to see the live preview!
   };
 
   const handleCreatePR = async () => {
-    // Get the CURRENT branch value directly from the hook at execution time
-    const targetBranch = branchesHook.currentBranch || 'main';
-    console.log('Creating PR with target branch:', targetBranch);
+    // Get the current branch - this is the SOURCE branch (where changes come from)
+    const sourceBranch = branchesHook.currentBranch;
+    console.log('Creating PR from source branch:', sourceBranch);
     
-    if (!targetBranch) {
+    if (!sourceBranch) {
       toast.error('No current branch selected');
       return;
     }
+
+    // For now, default target is 'main' - in the future this could be configurable
+    const targetBranch = 'main';
 
     setCreatingPR(true);
     
@@ -367,11 +371,11 @@ Start editing to see the live preview!
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
       const prBranchName = `editor-changes-${timestamp}`;
 
-      // Create PR with all live content, using targetBranch as the TARGET (base)
+      // Create PR: FROM sourceBranch TO targetBranch
       const result = await githubService.createPullRequest(
         {
-          title: `Update documentation - ${allLiveContent.length} file${allLiveContent.length !== 1 ? 's' : ''} modified`,
-          body: `Updated documentation files targeting branch "${targetBranch}":\n${allLiveContent.map(item => `- ${item.path}`).join('\n')}\n\nThis pull request was created from the collaborative editor.`,
+          title: `Update documentation from ${sourceBranch} - ${allLiveContent.length} file${allLiveContent.length !== 1 ? 's' : ''} modified`,
+          body: `Updated documentation files from branch "${sourceBranch}" to "${targetBranch}":\n${allLiveContent.map(item => `- ${item.path}`).join('\n')}\n\nThis pull request was created from the collaborative editor.`,
           files: allLiveContent.map(item => ({
             path: item.path,
             content: item.content
@@ -384,7 +388,7 @@ Start editing to see the live preview!
       );
 
       if (result.success) {
-        toast.success(`Pull request created successfully targeting "${targetBranch}"!`, {
+        toast.success(`Pull request created successfully from "${sourceBranch}" to "${targetBranch}"!`, {
           action: {
             label: 'View PR',
             onClick: () => window.open(result.prUrl, '_blank')
@@ -396,7 +400,7 @@ Start editing to see the live preview!
           const { error } = await supabase
             .from('live_editing_sessions')
             .delete()
-            .eq('branch_name', targetBranch)
+            .eq('branch_name', sourceBranch)
             .in('file_path', sessions.map(s => s.file_path));
           
           if (!error) {
@@ -600,7 +604,7 @@ Start editing to see the live preview!
                           ? "No changes to create PR for" 
                           : creatingPR 
                             ? "Creating PR..." 
-                            : `Create pull request targeting ${currentBranch || 'main'} with all live changes`
+                            : `Create pull request from ${currentBranch || 'main'} to main with all live changes`
                       }
                     >
                       {creatingPR ? (
@@ -608,7 +612,7 @@ Start editing to see the live preview!
                       ) : (
                         <GitPullRequest className="w-4 h-4" />
                       )}
-                      Create PR → {currentBranch || 'main'} {totalLiveFiles > 0 && `(${totalLiveFiles})`}
+                      Create PR: {currentBranch || 'main'} → main {totalLiveFiles > 0 && `(${totalLiveFiles})`}
                     </Button>
                   </>
                 )}
