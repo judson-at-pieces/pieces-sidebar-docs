@@ -19,6 +19,8 @@ interface EditorTabNavigationProps {
   initialized: boolean;
 }
 
+const DEBUG_TAB_NAV = true;
+
 export function EditorTabNavigation({
   activeTab,
   setActiveTab,
@@ -33,6 +35,14 @@ export function EditorTabNavigation({
   hasChanges,
   initialized
 }: EditorTabNavigationProps) {
+  if (DEBUG_TAB_NAV) {
+    console.log('🔄 EDITOR TAB NAV RENDER');
+    console.log('  currentBranch:', currentBranch, 'type:', typeof currentBranch);
+    console.log('  initialized:', initialized);
+    console.log('  hasChanges:', hasChanges);
+    console.log('  sessions count:', sessions.length);
+  }
+
   return (
     <div className="border-b border-border/50 px-6 py-4 bg-background/95 backdrop-blur-sm">
       <div className="flex items-center justify-between">
@@ -85,6 +95,12 @@ export function EditorTabNavigation({
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
                   {totalLiveFiles} file{totalLiveFiles !== 1 ? 's' : ''} with live changes on {currentBranch || 'main'}
+                </div>
+              )}
+              
+              {DEBUG_TAB_NAV && (
+                <div className="text-xs text-red-500 bg-red-50 px-2 py-1 rounded">
+                  DEBUG: Passing currentBranch="{currentBranch}" to PR Button
                 </div>
               )}
               

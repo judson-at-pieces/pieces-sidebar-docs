@@ -13,6 +13,7 @@ import { EditorTabNavigation } from "./EditorTabNavigation";
 
 // Debug toggles
 const DEBUG_MARKDOWN = false;
+const DEBUG_EDITOR_LAYOUT = true;
 
 export function EditorLayout() {
   const { fileStructure, isLoading, error, refetch } = useFileStructure();
@@ -23,6 +24,12 @@ export function EditorLayout() {
   const [hasChanges, setHasChanges] = useState(false);
   const [activeTab, setActiveTab] = useState<'navigation' | 'content' | 'seo'>('content');
   const [loadingContent, setLoadingContent] = useState(false);
+
+  if (DEBUG_EDITOR_LAYOUT) {
+    console.log('🏗️ EDITOR LAYOUT RENDER');
+    console.log('  currentBranch from useBranches:', currentBranch);
+    console.log('  initialized from useBranches:', initialized);
+  }
 
   // Live editing hook
   const {
@@ -253,6 +260,10 @@ Start editing to see the live preview!
 
   const sessionsWithContent = sessions.filter(s => s.content && s.content.trim());
   const totalLiveFiles = sessionsWithContent.length;
+
+  if (DEBUG_EDITOR_LAYOUT) {
+    console.log('🔗 EDITOR LAYOUT: Passing currentBranch to children:', currentBranch);
+  }
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
