@@ -44,7 +44,6 @@ export function EditorMain({
   // Determine if current user can edit
   const canEdit = isLocked && lockedBy === 'You';
   const isLockedByOther = isLocked && lockedBy !== 'You';
-  const showReadOnlyContent = !isLocked || isLockedByOther;
 
   // Get the most recent content - prioritize live typing content over live editing content
   const latestTypingContent = getLatestTypingContent();
@@ -141,10 +140,17 @@ export function EditorMain({
             </Badge>
           )}
 
-          {showReadOnlyContent && !isLockedByOther && (
+          {!isLocked && !isAcquiringLock && (
             <Badge variant="secondary" className="text-xs">
               <Eye className="h-3 w-3 mr-1" />
               Viewing
+            </Badge>
+          )}
+
+          {isAcquiringLock && (
+            <Badge variant="secondary" className="text-xs">
+              <div className="w-3 h-3 mr-1 animate-spin rounded-full border border-current border-t-transparent" />
+              Acquiring Lock...
             </Badge>
           )}
 
@@ -195,7 +201,9 @@ export function EditorMain({
                     ? `${lockedBy} is editing this file...` 
                     : canEdit
                       ? "Start typing your content here..."
-                      : "Click 'Start Editing' to make changes..."
+                      : isAcquiringLock
+                        ? "Acquiring editing permissions..."
+                        : "Content will be editable once lock is acquired..."
                 }
                 disabled={!canEdit}
                 className={`h-full resize-none border-0 rounded-none focus:ring-0 font-mono text-sm leading-relaxed ${

@@ -20,7 +20,7 @@ import { useBranches } from "@/hooks/useBranches";
 export function EditorLayout() {
   const { fileStructure, isLoading, error, refetch } = useFileStructure();
   const { hasRole } = useAuth();
-  const { currentBranch } = useBranches(); // Get currentBranch from useBranches
+  const { currentBranch } = useBranches();
   const [selectedFile, setSelectedFile] = useState<string>();
   const [content, setContent] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
@@ -31,7 +31,7 @@ export function EditorLayout() {
   const [selectedForBulkDelete, setSelectedForBulkDelete] = useState<Set<string>>(new Set());
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
 
-  // Live editing hook - now includes currentBranch for branch-specific sessions
+  // Live editing hook
   const {
     isLocked,
     lockedBy,
@@ -56,7 +56,7 @@ export function EditorLayout() {
           .select('file_path, content')
           .not('content', 'is', null)
           .neq('content', '')
-          .eq('branch_name', currentBranch || 'main'); // Filter by current branch
+          .eq('branch_name', currentBranch || 'main');
 
         if (error) {
           console.error('Error loading existing live sessions:', error);
@@ -64,7 +64,6 @@ export function EditorLayout() {
         }
 
         if (existingSessions && existingSessions.length > 0) {
-          // Add all files with live content to modified files
           const filesWithChanges = new Set(existingSessions.map(session => session.file_path));
           setModifiedFiles(filesWithChanges);
           
@@ -90,7 +89,7 @@ export function EditorLayout() {
     setModifiedFiles(filesWithLiveContent);
   }, [sessions]);
 
-  // Auto-save live content - only when user is editing (has the lock)
+  // Auto-save live content when user is editing (has the lock)
   useEffect(() => {
     if (selectedFile && isLocked && lockedBy === 'You' && hasChanges && content && currentBranch) {
       const timeoutId = setTimeout(() => {
@@ -123,6 +122,8 @@ export function EditorLayout() {
         console.log('Found live content for:', filePath);
         setContent(liveFileContent);
         setLoadingContent(false);
+        // Try to acquire lock automatically for editing
+        setTimeout(() => acquireLock(filePath), 100);
         return;
       }
 
@@ -187,6 +188,10 @@ Start editing to see the live preview!
 `;
         setContent(defaultContent);
       }
+      
+      // Try to acquire lock automatically for editing after content is loaded
+      setTimeout(() => acquireLock(filePath), 100);
+      
     } catch (error) {
       console.error('=== ERROR LOADING FILE ===');
       console.error('File path:', filePath);
@@ -214,13 +219,16 @@ This is an information callout. Type "/" to see more available components.
 Start editing to see the live preview!
 `;
       setContent(defaultContent);
+      
+      // Try to acquire lock automatically for editing even on error
+      setTimeout(() => acquireLock(filePath), 100);
     } finally {
       setLoadingContent(false);
     }
   };
 
   const handleContentChange = (newContent: string) => {
-    // Only allow content changes if user has the lock
+    // Allow content changes if user has the lock
     if (isLocked && lockedBy === 'You') {
       setContent(newContent);
       setHasChanges(true);
@@ -234,7 +242,6 @@ Start editing to see the live preview!
     if (selectedFile) {
       const success = await acquireLock(selectedFile);
       if (success) {
-        // Successfully acquired lock, user can now edit
         console.log('Lock acquired for editing:', selectedFile);
       }
     }
@@ -549,16 +556,16 @@ Start editing to see the live preview!
               <div className="flex items-center gap-3">
                 {activeTab === 'content' && (
                   <>
-                    {/* Show start editing button when file is selected but not locked for editing */}
-                    {selectedFile && !isLocked && !isAcquiringLock && (
+                    {/* Show manual editing button only if file is selected but locked by someone else */}
+                    {selectedFile && isLocked && lockedBy !== 'You' && !isAcquiringLock && (
                       <Button
                         onClick={handleAcquireLock}
-                        variant="default"
+                        variant="outline"
                         size="sm"
                         className="flex items-center gap-2"
                       >
                         <Edit3 className="w-4 h-4" />
-                        Start Editing
+                        Take Control
                       </Button>
                     )}
 
@@ -639,7 +646,7 @@ Start editing to see the live preview!
                     selectedFile={selectedFile}
                     content={loadingContent ? "Loading content..." : content}
                     onContentChange={handleContentChange}
-                    onSave={() => {}} // No longer needed since we auto-save to live sessions
+                    onSave={() => {}}
                     hasChanges={hasChanges}
                     saving={false}
                     isLocked={isLocked}
