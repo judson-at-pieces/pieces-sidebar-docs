@@ -10,12 +10,21 @@ interface Branch {
   isDefault: boolean;
 }
 
+const DEBUG_BRANCHES = true;
+
 export function useBranches() {
   const [branches, setBranches] = useState<Branch[]>([]);
   const [currentBranch, setCurrentBranch] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
+
+  if (DEBUG_BRANCHES) {
+    console.log('🌿 USEBRANCHES HOOK RENDER');
+    console.log('  currentBranch state:', currentBranch);
+    console.log('  initialized state:', initialized);
+    console.log('  branches count:', branches.length);
+  }
 
   const getGitHubAppToken = async () => {
     try {
@@ -92,7 +101,9 @@ export function useBranches() {
       
       // Only initialize current branch once, or if current branch doesn't exist
       if (!initialized || !formattedBranches.find(b => b.name === currentBranch)) {
-        console.log('Initializing current branch to:', defaultBranch);
+        if (DEBUG_BRANCHES) {
+          console.log('🌿 USEBRANCHES: Initializing current branch to:', defaultBranch);
+        }
         setCurrentBranch(defaultBranch);
         setInitialized(true);
       }
@@ -226,21 +237,33 @@ export function useBranches() {
 
   const switchBranch = async (branchName: string) => {
     if (branchName === currentBranch) {
-      console.log('Already on branch:', branchName);
+      if (DEBUG_BRANCHES) {
+        console.log('🌿 USEBRANCHES: Already on branch:', branchName);
+      }
       return;
     }
 
-    console.log('=== SWITCHING TO BRANCH ===', branchName);
+    if (DEBUG_BRANCHES) {
+      console.log('🌿 USEBRANCHES: ===== SWITCHING TO BRANCH =====', branchName);
+      console.log('🌿 USEBRANCHES: Current branch before switch:', currentBranch);
+    }
     
     try {
       // First ensure sessions exist for the target branch
       await ensureSessionsForBranch(branchName);
       
       // Then update the current branch state
+      if (DEBUG_BRANCHES) {
+        console.log('🌿 USEBRANCHES: Setting currentBranch state to:', branchName);
+      }
       setCurrentBranch(branchName);
       
       toast.success(`Switched to branch "${branchName}"`);
-      console.log('✅ Branch switch completed:', branchName);
+      
+      if (DEBUG_BRANCHES) {
+        console.log('🌿 USEBRANCHES: ✅ Branch switch completed:', branchName);
+        console.log('🌿 USEBRANCHES: State should now be:', branchName);
+      }
     } catch (error) {
       console.error('Error switching branch:', error);
       toast.error('Failed to switch branch');
@@ -296,6 +319,21 @@ export function useBranches() {
   useEffect(() => {
     fetchBranches();
   }, [fetchBranches]);
+
+  // Add effect to log currentBranch changes
+  useEffect(() => {
+    if (DEBUG_BRANCHES) {
+      console.log('🌿 USEBRANCHES: currentBranch state changed to:', currentBranch);
+    }
+  }, [currentBranch]);
+
+  if (DEBUG_BRANCHES) {
+    console.log('🌿 USEBRANCHES: HOOK RETURNING:', {
+      currentBranch,
+      initialized,
+      branchesCount: branches.length
+    });
+  }
 
   return {
     branches,
