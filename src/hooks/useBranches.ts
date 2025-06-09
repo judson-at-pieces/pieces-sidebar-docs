@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+
+import { useState, useEffect, useCallback } from 'react';
 import { githubService } from '@/services/githubService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
@@ -11,9 +12,10 @@ interface Branch {
 
 export function useBranches() {
   const [branches, setBranches] = useState<Branch[]>([]);
-  const [currentBranch, setCurrentBranch] = useState<string>('main');
+  const [currentBranch, setCurrentBranch] = useState<string>('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [initialized, setInitialized] = useState(false);
 
   const getGitHubAppToken = async () => {
     try {
@@ -43,7 +45,7 @@ export function useBranches() {
     }
   };
 
-  const fetchBranches = async () => {
+  const fetchBranches = useCallback(async () => {
     setLoading(true);
     setError(null);
     
@@ -88,10 +90,11 @@ export function useBranches() {
 
       setBranches(formattedBranches);
       
-      // Set current branch to default if not already set or if current branch doesn't exist
-      if (!currentBranch || currentBranch === 'main' || !formattedBranches.find(b => b.name === currentBranch)) {
-        console.log('Setting current branch to default:', defaultBranch);
+      // Only initialize current branch once, or if current branch doesn't exist
+      if (!initialized || !formattedBranches.find(b => b.name === currentBranch)) {
+        console.log('Initializing current branch to:', defaultBranch);
         setCurrentBranch(defaultBranch);
+        setInitialized(true);
       }
 
     } catch (error) {
@@ -101,31 +104,41 @@ export function useBranches() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [initialized, currentBranch]);
 
-  const updateDatabaseForBranchSwitch = async (newBranchName: string) => {
+  const ensureSessionsForBranch = async (branchName: string) => {
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      console.log('=== UPDATING DATABASE FOR BRANCH SWITCH ===', newBranchName);
+      console.log('=== ENSURING SESSIONS FOR BRANCH ===', branchName);
 
-      // Get all existing sessions for this user
-      const { data: existingSessions } = await supabase
+      // Get latest content for each file across all branches for this user
+      const { data: allSessions } = await supabase
         .from('live_editing_sessions')
-        .select('file_path, content')
-        .eq('user_id', user.id);
+        .select('file_path, content, updated_at, branch_name')
+        .eq('user_id', user.id)
+        .order('updated_at', { ascending: false });
 
-      if (existingSessions && existingSessions.length > 0) {
-        // For each session, create or update a session on the new branch
-        for (const session of existingSessions) {
-          const { error: upsertError } = await supabase
+      if (allSessions && allSessions.length > 0) {
+        // Group by file_path and get the most recent content
+        const latestByFile = new Map<string, string>();
+        
+        allSessions.forEach(session => {
+          if (!latestByFile.has(session.file_path) && session.content) {
+            latestByFile.set(session.file_path, session.content);
+          }
+        });
+
+        // Ensure each file has a session on the target branch
+        const upsertPromises = Array.from(latestByFile.entries()).map(async ([filePath, content]) => {
+          const { error } = await supabase
             .from('live_editing_sessions')
             .upsert({
-              file_path: session.file_path,
-              content: session.content || '',
+              file_path: filePath,
+              content: content,
               user_id: user.id,
-              branch_name: newBranchName,
+              branch_name: branchName,
               locked_by: null,
               locked_at: null,
               updated_at: new Date().toISOString()
@@ -133,17 +146,19 @@ export function useBranches() {
               onConflict: 'file_path,branch_name'
             });
 
-          if (upsertError) {
-            console.error('Error upserting session for branch switch:', upsertError);
+          if (error) {
+            console.error('Error upserting session for', filePath, ':', error);
           } else {
-            console.log('✅ Upserted session for', session.file_path, 'on branch:', newBranchName);
+            console.log('✅ Ensured session for', filePath, 'on branch:', branchName);
           }
-        }
+        });
+
+        await Promise.all(upsertPromises);
       }
 
-      console.log('✅ Database updated for branch switch to:', newBranchName);
+      console.log('✅ Sessions ensured for branch:', branchName);
     } catch (error) {
-      console.error('Error updating database for branch switch:', error);
+      console.error('Error ensuring sessions for branch:', error);
     }
   };
 
@@ -194,11 +209,12 @@ export function useBranches() {
       }
 
       toast.success(`Branch "${branchName}" created successfully`);
+      
+      // Refresh branches first
       await fetchBranches();
       
-      // Switch to the new branch and update database
-      await updateDatabaseForBranchSwitch(branchName);
-      setCurrentBranch(branchName);
+      // Then switch to the new branch
+      await switchBranch(branchName);
 
     } catch (error) {
       console.error('Error creating branch:', error);
@@ -209,16 +225,26 @@ export function useBranches() {
   };
 
   const switchBranch = async (branchName: string) => {
+    if (branchName === currentBranch) {
+      console.log('Already on branch:', branchName);
+      return;
+    }
+
     console.log('=== SWITCHING TO BRANCH ===', branchName);
     
-    // Update database first - this is the critical fix
-    await updateDatabaseForBranchSwitch(branchName);
-    
-    // Then update the UI state
-    setCurrentBranch(branchName);
-    toast.success(`Switched to branch "${branchName}"`);
-    
-    console.log('✅ Branch switch completed:', branchName);
+    try {
+      // First ensure sessions exist for the target branch
+      await ensureSessionsForBranch(branchName);
+      
+      // Then update the current branch state
+      setCurrentBranch(branchName);
+      
+      toast.success(`Switched to branch "${branchName}"`);
+      console.log('✅ Branch switch completed:', branchName);
+    } catch (error) {
+      console.error('Error switching branch:', error);
+      toast.error('Failed to switch branch');
+    }
   };
 
   const deleteBranch = async (branchName: string) => {
@@ -269,18 +295,14 @@ export function useBranches() {
 
   useEffect(() => {
     fetchBranches();
-  }, []);
-
-  // Debug log to track current branch changes
-  useEffect(() => {
-    console.log('Current branch changed to:', currentBranch);
-  }, [currentBranch]);
+  }, [fetchBranches]);
 
   return {
     branches,
     currentBranch,
     loading,
     error,
+    initialized,
     fetchBranches,
     createBranch,
     switchBranch,

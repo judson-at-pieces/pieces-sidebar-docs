@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useLiveEditing } from "@/hooks/useLiveEditing";
@@ -21,25 +20,27 @@ import { useBranches } from "@/hooks/useBranches";
 export function EditorLayout() {
   const { fileStructure, isLoading, error, refetch } = useFileStructure();
   const { hasRole } = useAuth();
+  
+  // Branch management with proper initialization
   const branchesHook = useBranches();
-  const { currentBranch, branches } = branchesHook;
+  const { currentBranch, branches, initialized } = branchesHook;
 
   const [selectedFile, setSelectedFile] = useState<string>();
   const [content, setContent] = useState("");
   const [hasChanges, setHasChanges] = useState(false);
-  const [modifiedFiles, setModifiedFiles] = useState<Set<string>>(new Set());
   const [activeTab, setActiveTab] = useState<'navigation' | 'content' | 'seo'>('content');
   const [loadingContent, setLoadingContent] = useState(false);
   const [creatingPR, setCreatingPR] = useState(false);
-  const [selectedForBulkDelete, setSelectedForBulkDelete] = useState<Set<string>>(new Set());
-  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
 
-  // Use the current branch consistently throughout
-  const activeBranch = currentBranch || 'main';
-  
-  console.log('EditorLayout: Using active branch:', activeBranch);
+  // Debug logs
+  console.log('EditorLayout render:', {
+    currentBranch,
+    initialized,
+    branchesCount: branches.length
+  });
 
-  // Live editing hook - ensure currentBranch is passed correctly
+  // Live editing hook - only use when branch is properly initialized
+  const liveEditingHook = useLiveEditing(selectedFile, initialized ? currentBranch : undefined);
   const {
     isLocked,
     lockedBy,
@@ -50,157 +51,56 @@ export function EditorLayout() {
     releaseLock,
     saveLiveContent,
     loadLiveContent
-  } = useLiveEditing(selectedFile, activeBranch);
+  } = liveEditingHook;
 
   // SEO data for the current file
   const { pendingChanges, hasUnsavedChanges } = useSeoData(selectedFile);
 
-  // Force database update when current branch changes
-  const forceUpdateDatabaseForBranch = async (branchName: string) => {
-    if (!branchName) return;
+  // Calculate PR button state - use currentBranch directly
+  const activeBranch = currentBranch || 'main';
+  const sessionsWithContent = sessions.filter(s => s.content && s.content.trim());
+  const totalLiveFiles = sessionsWithContent.length;
+  const hasAnyChanges = hasChanges || totalLiveFiles > 0;
+  const isPRButtonDisabled = !hasAnyChanges || creatingPR || !currentBranch || currentBranch === 'main';
 
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
+  console.log('PR Button State:', {
+    activeBranch,
+    totalLiveFiles,
+    hasAnyChanges,
+    isPRButtonDisabled,
+    currentBranch
+  });
 
-      console.log('=== FORCE UPDATING DATABASE FOR BRANCH ===', branchName);
-
-      // Get all sessions for this user
-      const { data: userSessions } = await supabase
-        .from('live_editing_sessions')
-        .select('*')
-        .eq('user_id', user.id);
-
-      if (userSessions && userSessions.length > 0) {
-        console.log('Found', userSessions.length, 'user sessions to process');
-
-        // Group sessions by file_path to avoid duplicates
-        const fileSessionMap = new Map();
-        userSessions.forEach(session => {
-          const key = session.file_path;
-          if (!fileSessionMap.has(key) || session.updated_at > fileSessionMap.get(key).updated_at) {
-            fileSessionMap.set(key, session);
-          }
-        });
-
-        // For each unique file, ensure there's a session on the current branch
-        for (const [filePath, latestSession] of fileSessionMap) {
-          const { data: branchSession } = await supabase
-            .from('live_editing_sessions')
-            .select('id')
-            .eq('file_path', filePath)
-            .eq('branch_name', branchName)
-            .eq('user_id', user.id)
-            .maybeSingle();
-
-          if (!branchSession) {
-            console.log('Creating missing session for', filePath, 'on branch', branchName);
-            const { error } = await supabase
-              .from('live_editing_sessions')
-              .insert({
-                file_path: filePath,
-                content: latestSession.content || '',
-                user_id: user.id,
-                branch_name: branchName,
-                locked_by: null,
-                locked_at: null
-              });
-
-            if (error) {
-              console.error('Error creating session for branch:', error);
-            } else {
-              console.log('✅ Created session for', filePath, 'on branch', branchName);
-            }
-          } else {
-            console.log('✅ Session already exists for', filePath, 'on branch', branchName);
-          }
-        }
-      }
-    } catch (error) {
-      console.error('Error in forceUpdateDatabaseForBranch:', error);
+  // Clear local state when branch changes
+  useEffect(() => {
+    if (currentBranch) {
+      console.log('Branch changed, clearing local state for:', currentBranch);
+      setSelectedFile(undefined);
+      setContent("");
+      setHasChanges(false);
     }
-  };
+  }, [currentBranch]);
 
-  // Load existing live editing sessions on mount to restore work state
+  // Auto-save live content when user has the lock
   useEffect(() => {
-    const loadExistingLiveSessions = async () => {
-      if (!activeBranch) return;
-      
-      try {
-        console.log('Loading existing live sessions for branch:', activeBranch);
-        
-        const { data: existingSessions, error } = await supabase
-          .from('live_editing_sessions')
-          .select('file_path, content, branch_name')
-          .not('content', 'is', null)
-          .neq('content', '')
-          .eq('branch_name', activeBranch);
-
-        if (error) {
-          console.error('Error loading existing live sessions:', error);
-          return;
-        }
-
-        if (existingSessions && existingSessions.length > 0) {
-          const filesWithChanges = new Set(existingSessions.map(session => session.file_path));
-          setModifiedFiles(filesWithChanges);
-          
-          console.log('Loaded existing live sessions for branch', activeBranch, ':', existingSessions.length, 'files with uncommitted changes');
-        } else {
-          console.log('No existing live sessions found for branch:', activeBranch);
-          setModifiedFiles(new Set());
-        }
-      } catch (error) {
-        console.error('Error loading existing live sessions:', error);
-      }
-    };
-
-    loadExistingLiveSessions();
-  }, [activeBranch]);
-
-  // Update modified files when sessions change
-  useEffect(() => {
-    const filesWithLiveContent = new Set(
-      sessions
-        .filter(session => session.content && session.content.trim())
-        .map(session => session.file_path)
-    );
-    setModifiedFiles(filesWithLiveContent);
-    console.log('Updated modified files for branch', activeBranch, ':', filesWithLiveContent.size, 'files');
-  }, [sessions, activeBranch]);
-
-  // Auto-save live content when user is editing (has the lock)
-  useEffect(() => {
-    if (selectedFile && isLocked && lockedBy === 'You' && hasChanges && content && activeBranch) {
+    if (selectedFile && isLocked && lockedBy === 'You' && hasChanges && content && currentBranch) {
       const timeoutId = setTimeout(() => {
-        console.log('Auto-saving live content for file:', selectedFile, 'on branch:', activeBranch);
+        console.log('Auto-saving live content for file:', selectedFile, 'on branch:', currentBranch);
         saveLiveContent(selectedFile, content);
       }, 500);
 
       return () => clearTimeout(timeoutId);
     }
-  }, [selectedFile, isLocked, lockedBy, hasChanges, content, activeBranch, saveLiveContent]);
-
-  // CRITICAL: Clear state and force DB update when branch changes
-  useEffect(() => {
-    console.log('=== BRANCH CHANGE EFFECT ===', activeBranch);
-    setSelectedFile(undefined);
-    setContent("");
-    setHasChanges(false);
-    setModifiedFiles(new Set());
-
-    // Force database update for the new branch
-    forceUpdateDatabaseForBranch(activeBranch);
-  }, [activeBranch]);
+  }, [selectedFile, isLocked, lockedBy, hasChanges, content, currentBranch, saveLiveContent]);
 
   const handleFileSelect = async (filePath: string) => {
-    console.log('=== FILE SELECTION DEBUG ===');
-    console.log('Selected file path:', filePath);
-    console.log('Current active branch:', activeBranch);
+    console.log('=== FILE SELECTION ===');
+    console.log('Selected file:', filePath);
+    console.log('Current branch:', currentBranch);
     
     // Release lock on previous file if user owns it
     if (selectedFile && isLocked && lockedBy === 'You') {
-      console.log('Releasing lock on previous file:', selectedFile, 'on branch:', activeBranch);
+      console.log('Releasing lock on previous file:', selectedFile);
       await releaseLock(selectedFile);
     }
     
@@ -209,27 +109,24 @@ export function EditorLayout() {
     setLoadingContent(true);
 
     try {
-      // Check if there's live content for this file on the current branch first
+      // Check if there's live content for this file first
       const liveFileContent = await loadLiveContent(filePath);
       
       if (liveFileContent) {
-        console.log('Found live content for:', filePath, 'on branch:', activeBranch);
+        console.log('Found live content for:', filePath);
         setContent(liveFileContent);
         setLoadingContent(false);
-        // Try to acquire lock automatically for editing
+        // Try to acquire lock automatically
         setTimeout(() => acquireLock(filePath), 100);
         return;
       }
 
-      // Use the exact file path as provided - don't modify it
+      // Load from file system
       let fetchPath = filePath;
-      
-      // Only add .md extension if the path doesn't already have it
       if (!fetchPath.endsWith('.md')) {
         fetchPath = `${fetchPath}.md`;
       }
       
-      // Remove leading slashes for fetch URL
       const cleanFetchPath = fetchPath.replace(/^\/+/, '');
       const fetchUrl = `/content/${cleanFetchPath}`;
       
@@ -243,12 +140,8 @@ export function EditorLayout() {
         }
       });
       
-      console.log('Response status:', response.status);
-      
       const responseText = await response.text();
-      console.log('Response text length:', responseText.length);
       
-      // Check if response looks like HTML (indicating wrong file was served)
       if (responseText.trim().startsWith('<!DOCTYPE html>') || responseText.trim().startsWith('<html')) {
         console.error('ERROR: Received HTML instead of markdown for:', fetchUrl);
         throw new Error('Server returned HTML instead of markdown file');
@@ -259,7 +152,6 @@ export function EditorLayout() {
         setContent(responseText);
       } else {
         console.log('File not found, creating default content for:', filePath);
-        // Create default markdown content for new files
         const fileName = filePath.split('/').pop()?.replace(/\.md$/, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
         const pathForFrontmatter = filePath.replace(/\.md$/, '').replace(/^\//, '');
         
@@ -283,7 +175,7 @@ Start editing to see the live preview!
         setContent(defaultContent);
       }
       
-      // Try to acquire lock automatically for editing after content is loaded
+      // Try to acquire lock automatically
       setTimeout(() => acquireLock(filePath), 100);
       
     } catch (error) {
@@ -314,7 +206,7 @@ Start editing to see the live preview!
 `;
       setContent(defaultContent);
       
-      // Try to acquire lock automatically for editing even on error
+      // Try to acquire lock automatically even on error
       setTimeout(() => acquireLock(filePath), 100);
     } finally {
       setLoadingContent(false);
@@ -326,25 +218,21 @@ Start editing to see the live preview!
     if (isLocked && lockedBy === 'You') {
       setContent(newContent);
       setHasChanges(true);
-      if (selectedFile) {
-        setModifiedFiles(prev => new Set(prev).add(selectedFile));
-      }
     }
   };
 
   const handleAcquireLock = async () => {
-    if (selectedFile && activeBranch) {
-      console.log('Manually acquiring lock for:', selectedFile, 'on branch:', activeBranch);
+    if (selectedFile && currentBranch) {
+      console.log('Manually acquiring lock for:', selectedFile, 'on branch:', currentBranch);
       const success = await acquireLock(selectedFile);
       if (success) {
-        console.log('Lock acquired for editing:', selectedFile, 'on branch:', activeBranch);
+        console.log('Lock acquired for editing:', selectedFile);
       }
     }
   };
 
   const getGitHubAppToken = async () => {
     try {
-      // Get the GitHub installation ID from the database
       const { data: installations, error } = await supabase
         .from('github_installations')
         .select('installation_id')
@@ -361,7 +249,6 @@ Start editing to see the live preview!
         throw new Error('No GitHub app installation found. Please configure GitHub app first.');
       }
 
-      // Get installation token from the edge function
       const { data, error: tokenError } = await supabase.functions.invoke('github-app-auth', {
         body: { installationId: installations.installation_id }
       });
@@ -378,25 +265,17 @@ Start editing to see the live preview!
     }
   };
 
-  // Helper function to convert editor file path to original content path
   const getOriginalFilePath = (editorFilePath: string): string => {
-    // Remove leading slashes
     let cleanPath = editorFilePath.replace(/^\/+/, '');
-    
-    // Ensure it has .md extension
     if (!cleanPath.endsWith('.md')) {
       cleanPath = `${cleanPath}.md`;
     }
-    
-    // The original file structure should be preserved as public/content/{path}
-    // But for GitHub, we want just the content/{path} structure
     return `public/content/${cleanPath}`;
   };
 
   const collectAllLiveContent = async () => {
     const allContent: { path: string; content: string }[] = [];
     
-    // Get all live editing sessions for current branch
     console.log('Collecting live content from', sessions.length, 'sessions for branch:', activeBranch);
     
     for (const session of sessions) {
@@ -430,9 +309,8 @@ Start editing to see the live preview!
   };
 
   const handleCreatePR = async () => {
-    // Use activeBranch as the SOURCE branch (where changes come from)
-    const sourceBranch = activeBranch;
-    const targetBranch = 'main';
+    const sourceBranch = currentBranch; // The branch we're creating PR FROM
+    const targetBranch = 'main'; // The branch we're merging TO
     
     console.log('Creating PR FROM branch:', sourceBranch, 'TO branch:', targetBranch);
     
@@ -450,11 +328,9 @@ Start editing to see the live preview!
     setCreatingPR(true);
     
     try {
-      // Get GitHub app token instead of OAuth token
       const token = await getGitHubAppToken();
-      
-      // Get repository configuration
       const repoConfig = await githubService.getRepoConfig();
+      
       if (!repoConfig) {
         toast.error('No GitHub repository configured. Please configure a repository first.');
         return;
@@ -470,7 +346,7 @@ Start editing to see the live preview!
 
       console.log('Files to include in PR:', allLiveContent.map(item => item.path));
 
-      // Create PR FROM sourceBranch TO targetBranch - using existing branch
+      // Create PR using existing branch
       const result = await githubService.createPullRequest(
         {
           title: `Update documentation from ${sourceBranch} - ${allLiveContent.length} file${allLiveContent.length !== 1 ? 's' : ''} modified`,
@@ -479,8 +355,8 @@ Start editing to see the live preview!
             path: item.path,
             content: item.content
           })),
-          baseBranch: targetBranch, // TARGET branch (where changes should be merged TO)
-          headBranch: sourceBranch, // SOURCE branch (where changes come FROM) - use existing branch
+          baseBranch: targetBranch, // TARGET branch (main)
+          headBranch: sourceBranch, // SOURCE branch (current working branch)
           useExistingBranch: true // Use existing branch instead of creating temporary one
         },
         token,
@@ -506,7 +382,6 @@ Start editing to see the live preview!
           
           if (!error) {
             setHasChanges(false);
-            setModifiedFiles(new Set());
             toast.success('Live editing sessions cleared');
           } else {
             console.error('Error clearing live sessions:', error);
@@ -523,27 +398,6 @@ Start editing to see the live preview!
     } finally {
       setCreatingPR(false);
     }
-  };
-
-  const handleCreateFile = (fileName: string, parentPath?: string) => {
-    console.log('Creating markdown file:', fileName, 'in:', parentPath);
-    const fullPath = parentPath ? `${parentPath}/${fileName}` : fileName;
-    const filePath = fullPath.endsWith('.md') ? fullPath : `${fullPath}.md`;
-    
-    // Automatically select the new file and set up initial content
-    handleFileSelect(filePath);
-  };
-
-  const handleSeoDataChange = (seoData: any) => {
-    console.log('SEO data updated for:', selectedFile, seoData);
-    // Here you would typically save the SEO data to your backend or local storage
-    // For now, we'll just log it
-  };
-
-  const handleBulkDelete = (filesToDelete: string[]) => {
-    const fileSet = new Set(filesToDelete);
-    setSelectedForBulkDelete(fileSet);
-    setShowBulkDeleteDialog(true);
   };
 
   if (isLoading) {
@@ -582,14 +436,6 @@ Start editing to see the live preview!
     );
   }
 
-  // Convert modifiedFiles Set to array for consistent interface
-  const modifiedFilesArray = Array.from(modifiedFiles);
-
-  // Calculate if PR button should be disabled
-  const totalLiveFiles = sessions.filter(s => s.content && s.content.trim()).length;
-  const hasAnyChanges = hasChanges || totalLiveFiles > 0;
-  const isPRButtonDisabled = !hasAnyChanges || creatingPR || activeBranch === 'main';
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
       {/* Enhanced Header */}
@@ -610,7 +456,6 @@ Start editing to see the live preview!
                   {activeTab === 'content' ? 'Content Editor' : activeTab === 'seo' ? 'SEO Editor' : 'Navigation Editor'}
                 </h1>
               </div>
-              {/* Add Branch Selector */}
               <BranchSelector />
             </div>
           </div>
@@ -620,7 +465,6 @@ Start editing to see the live preview!
               <Button variant="ghost" size="sm" className="gap-2 hover:bg-muted/50 transition-colors relative">
                 <Home className="h-4 w-4" />
                 Home
-                {/* Orange dot for uncommitted changes */}
                 {hasAnyChanges && (
                   <div className="absolute -top-1 -right-1 w-3 h-3 bg-orange-500 rounded-full border-2 border-background"></div>
                 )}
@@ -640,9 +484,8 @@ Start editing to see the live preview!
       </div>
       
       <div className="flex h-[calc(100vh-4rem)]">
-        {/* Main Content */}
         <div className="flex-1 flex flex-col">
-          {/* Enhanced Tab Navigation with Live Editing Info and Create PR Button */}
+          {/* Enhanced Tab Navigation */}
           <div className="border-b border-border/50 px-6 py-4 bg-background/95 backdrop-blur-sm">
             <div className="flex items-center justify-between">
               <div className="flex space-x-1 bg-muted/30 p-1 rounded-lg">
@@ -678,7 +521,6 @@ Start editing to see the live preview!
               <div className="flex items-center gap-3">
                 {activeTab === 'content' && (
                   <>
-                    {/* Show manual editing button only if file is selected but locked by someone else */}
                     {selectedFile && isLocked && lockedBy !== 'You' && !isAcquiringLock && (
                       <Button
                         onClick={handleAcquireLock}
@@ -705,13 +547,15 @@ Start editing to see the live preview!
                       disabled={isPRButtonDisabled}
                       className="flex items-center gap-2"
                       title={
-                        activeBranch === 'main'
-                          ? "Cannot create PR from main branch to main branch"
-                          : !hasAnyChanges 
-                            ? "No changes to create PR for" 
-                            : creatingPR 
-                              ? "Creating PR..." 
-                              : `Create pull request from ${activeBranch} to main with all live changes`
+                        !currentBranch
+                          ? "No branch selected"
+                          : currentBranch === 'main'
+                            ? "Cannot create PR from main branch to main branch"
+                            : !hasAnyChanges 
+                              ? "No changes to create PR for" 
+                              : creatingPR 
+                                ? "Creating PR..." 
+                                : `Create pull request from ${currentBranch} to main with all live changes`
                       }
                     >
                       {creatingPR ? (
@@ -727,7 +571,7 @@ Start editing to see the live preview!
             </div>
           </div>
           
-          {/* Enhanced Tab Content */}
+          {/* Tab Content */}
           <div className="flex-1 overflow-hidden flex">
             {activeTab === 'navigation' ? (
               <>
@@ -762,7 +606,7 @@ Start editing to see the live preview!
                   selectedFile={selectedFile}
                   onFileSelect={handleFileSelect}
                   fileStructure={fileStructure}
-                  pendingChanges={modifiedFilesArray}
+                  pendingChanges={sessionsWithContent.map(s => s.file_path)}
                   liveSessions={sessions}
                 />
                 <div className="flex-1 animate-in fade-in slide-in-from-bottom-2 duration-300">
