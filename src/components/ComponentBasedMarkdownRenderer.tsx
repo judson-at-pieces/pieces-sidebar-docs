@@ -1,18 +1,17 @@
 import React from 'react';
-
-// Import all the individual components
-import { Callout } from './markdown/Callout';
-import { MarkdownCard as Card } from './markdown/MarkdownCard';
-import { CardGroup } from './markdown/CardGroup';
-import { Accordion } from './Accordion';
-import { AccordionGroup } from './AccordionGroup';
-import { Tabs, TabItem } from './Tabs';
-import { Button } from './Button';
-import { Steps, Step } from './markdown/Steps';
-import { Image } from './markdown/Image';
-import { CodeBlock } from './markdown/CodeBlock';
-import { Table } from './Table';
-import { Typography } from './Typography';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism';
+import Accordion from './Accordion';
+import AccordionGroup from './AccordionGroup';
+import Tabs from './Tabs';
+import Button from './Button';
+import { Card } from './Card';
+import { CardGroup } from './CardGroup';
+import { Callout } from './Callout';
+import Table from './Table';
+import Typography from './Typography';
 
 // Constants
 const SECTION_DELIMITER = '***';

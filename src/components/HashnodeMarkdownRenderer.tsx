@@ -1,4 +1,6 @@
 import React, { useState } from 'react';
+import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
+import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
 // Constants
 const SECTION_DELIMITER = '***';
@@ -327,8 +329,57 @@ const parseSteps = (content: string): StepData[] => {
 const processInlineMarkdown = (text: string): React.ReactNode => {
   console.log('🔄 processInlineMarkdown: Processing text:', text);
   
+  // Handle code blocks with language support
+  const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match;
+
+  while ((match = codeBlockRegex.exec(text)) !== null) {
+    // Add text before code block
+    if (match.index > lastIndex) {
+      const beforeText = text.slice(lastIndex, match.index);
+      parts.push(processSimpleMarkdown(beforeText));
+    }
+
+    const language = match[1] || 'text';
+    const code = match[2].trim();
+    
+    // Add syntax highlighted code block
+    parts.push(
+      <div key={match.index} className="my-4">
+        <SyntaxHighlighter
+          language={language}
+          style={oneDark}
+          customStyle={{
+            margin: 0,
+            borderRadius: '0.5rem',
+            fontSize: '0.875rem',
+            lineHeight: '1.5'
+          }}
+          showLineNumbers={code.split('\n').length > 5}
+        >
+          {code}
+        </SyntaxHighlighter>
+      </div>
+    );
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Add remaining text
+  if (lastIndex < text.length) {
+    parts.push(processSimpleMarkdown(text.slice(lastIndex)));
+  }
+
+  return parts.length > 0 ? <>{parts}</> : processSimpleMarkdown(text);
+};
+
+const processSimpleMarkdown = (text: string): React.ReactNode => {
+  if (!text) return null;
+  
   // Handle inline code
-  text = text.replace(/`([^`]+)`/g, '<code class="hn-inline-code">$1</code>');
+  text = text.replace(/`([^`]+)`/g, '<code class="hn-inline-code bg-muted px-1 py-0.5 rounded text-sm font-mono">$1</code>');
   
   // Handle bold with **
   text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
@@ -337,9 +388,8 @@ const processInlineMarkdown = (text: string): React.ReactNode => {
   text = text.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
   
   // Handle links
-  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="hn-link">$1</a>');
+  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="hn-link text-primary underline hover:no-underline">$1</a>');
   
-  console.log('🔄 processInlineMarkdown: Result:', text);
   return <span dangerouslySetInnerHTML={{ __html: text }} />;
 };
 
@@ -521,11 +571,73 @@ const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => {
   );
 };
 
-// Basic markdown renderer
+// Basic markdown renderer with enhanced code block support
 const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
   if (!content) return null;
 
-  // Simple markdown parsing for basic elements
+  // First check for code blocks and handle them specially
+  const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match;
+  let elementIndex = 0;
+
+  while ((match = codeBlockRegex.exec(content)) !== null) {
+    // Add markdown content before code block
+    if (match.index > lastIndex) {
+      const markdownContent = content.slice(lastIndex, match.index).trim();
+      if (markdownContent) {
+        parts.push(
+          <div key={`markdown-${elementIndex}`}>
+            {renderBasicMarkdown(markdownContent)}
+          </div>
+        );
+        elementIndex++;
+      }
+    }
+
+    const language = match[1] || 'text';
+    const code = match[2].trim();
+    
+    // Add syntax highlighted code block
+    parts.push(
+      <div key={`code-${elementIndex}`} className="my-6">
+        <SyntaxHighlighter
+          language={language}
+          style={oneDark}
+          customStyle={{
+            margin: 0,
+            borderRadius: '0.5rem',
+            fontSize: '0.875rem',
+            lineHeight: '1.5'
+          }}
+          showLineNumbers={code.split('\n').length > 5}
+        >
+          {code}
+        </SyntaxHighlighter>
+      </div>
+    );
+    elementIndex++;
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Add remaining markdown content
+  if (lastIndex < content.length) {
+    const remainingContent = content.slice(lastIndex).trim();
+    if (remainingContent) {
+      parts.push(
+        <div key={`markdown-final`}>
+          {renderBasicMarkdown(remainingContent)}
+        </div>
+      );
+    }
+  }
+
+  return parts.length > 0 ? <>{parts}</> : renderBasicMarkdown(content);
+};
+
+const renderBasicMarkdown = (content: string): React.ReactNode => {
   const lines = content.split('\n');
   const elements: React.ReactNode[] = [];
   let currentListItems: string[] = [];
@@ -586,7 +698,7 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
       elements.push(React.createElement('h1', { key: index, className: 'text-2xl font-bold mt-8 mb-4' }, line.slice(2)));
     } else {
       // Regular paragraph
-      elements.push(React.createElement('p', { key: index, className: 'mb-3 leading-relaxed' }, processInlineMarkdown(line)));
+      elements.push(React.createElement('p', { key: index, className: 'mb-3 leading-relaxed' }, processSimpleMarkdown(line)));
     }
   });
 

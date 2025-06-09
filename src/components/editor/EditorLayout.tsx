@@ -25,6 +25,8 @@ export function EditorLayout() {
   const [activeTab, setActiveTab] = useState<'navigation' | 'content' | 'seo'>('content');
   const [loadingContent, setLoadingContent] = useState(false);
   const [creatingPR, setCreatingPR] = useState(false);
+  const [selectedForBulkDelete, setSelectedForBulkDelete] = useState<Set<string>>(new Set());
+  const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
 
   // Live editing hook
   const {
@@ -394,6 +396,12 @@ Start editing to see the live preview!
     console.log('SEO data updated for:', selectedFile, seoData);
     // Here you would typically save the SEO data to your backend or local storage
     // For now, we'll just log it
+  };
+
+  const handleBulkDelete = (filesToDelete: string[]) => {
+    const fileSet = new Set(filesToDelete);
+    setSelectedForBulkDelete(fileSet);
+    setShowBulkDeleteDialog(true);
   };
 
   if (isLoading) {
