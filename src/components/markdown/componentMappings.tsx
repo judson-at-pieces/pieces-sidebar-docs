@@ -35,7 +35,7 @@ function extractTextFromChildren(node: any): string {
   if (typeof node === 'string') return node;
   if (typeof node === 'number') return String(node);
   if (Array.isArray(node)) return node.map(extractTextFromChildren).join('');
-  if (React.isValidElement(node) && node.props && typeof node.props === 'object' && 'children' in node.props) {
+  if (React.isValidElement(node) && node.props && 'children' in node.props) {
     return extractTextFromChildren(node.props.children);
   }
   return '';
@@ -71,7 +71,7 @@ export const createComponentMappings = () => ({
   },
   
   accordionitem: ({ title, children, ...props }: any) => {
-    return <AccordionItem title={title} isOpen={false} onToggle={() => {}} {...(props as Record<string, any>)}>{children}</AccordionItem>;
+    return <AccordionItem title={title} isOpen={false} onToggle={() => {}} {...props}>{children}</AccordionItem>;
   },
   
   button: ({ label, linkHref, openLinkInNewTab, align, lightColor, darkColor, onClick, ...props }: any) => {
@@ -90,6 +90,10 @@ export const createComponentMappings = () => ({
     return <TabItem title={title} {...props}>{children}</TabItem>;
   },
   
+  table: ({ headers, rows, className, ...props }: any) => {
+    return <Table headers={headers} rows={rows} className={className} {...props} />;
+  },
+  
   steps: ({ children, ...props }: any) => {
     return <Steps {...props}>{children}</Steps>;
   },
@@ -99,7 +103,12 @@ export const createComponentMappings = () => ({
   },
   
   card: ({ title, image, href, external, children, ...props }: any) => {
-    return <MarkdownCard title={title} image={image} href={href} external={external} {...props}>{children}</MarkdownCard>;
+    // If href is provided, use MarkdownCard for link functionality
+    if (href) {
+      return <MarkdownCard title={title} image={image} href={href} external={external} {...props}>{children}</MarkdownCard>;
+    }
+    // Otherwise use the simple Card component
+    return <Card title={title} image={image} {...props}>{children}</Card>;
   },
   
   simplecard: ({ title, image, children, ...props }: any) => {
@@ -141,7 +150,7 @@ export const createComponentMappings = () => ({
       return Object.keys(props || {}).reduce((acc, key) => {
         if (key.startsWith('data-')) {
           const cleanKey = key.replace('data-', '').replace(/-([a-z])/g, (g) => g[1].toUpperCase());
-          acc[cleanKey] = (props as Record<string, any>)[key];
+          acc[cleanKey] = (props as any)[key];
         }
         return acc;
       }, {} as Record<string, any>);
@@ -150,22 +159,22 @@ export const createComponentMappings = () => ({
     console.log('Div component mapping - dataProps:', dataProps, 'hasChildren:', !!children);
     
     if (dataProps.callout) {
-      return <Callout type={dataProps.callout as 'info' | 'tip' | 'alert'} {...(props as Record<string, any>)}>{children}</Callout>;
+      return <Callout type={dataProps.callout as 'info' | 'tip' | 'alert'} {...props}>{children}</Callout>;
     }
     
     if (dataProps.steps === 'true') {
-      return <Steps {...(props as Record<string, any>)}>{children}</Steps>;
+      return <Steps {...props}>{children}</Steps>;
     }
     
     if (dataProps.step) {
-      return <Step title={dataProps.stepTitle || dataProps.title || ''} {...(props as Record<string, any>)}>{children}</Step>;
+      return <Step title={dataProps.stepTitle || dataProps.title || ''} {...props}>{children}</Step>;
     }
     
     if (dataProps.cardgroup === 'true') {
       console.log('Rendering CardGroup with cols:', dataProps.cols, 'children count:', React.Children.count(children));
       const colsNumber = typeof dataProps.cols === 'string' ? parseInt(dataProps.cols) : dataProps.cols;
       const validCols = [2, 3, 4].includes(colsNumber) ? colsNumber as 2 | 3 | 4 : 2;
-      return <CardGroup cols={validCols} {...(props as Record<string, any>)}>{children}</CardGroup>;
+      return <CardGroup cols={validCols} {...props}>{children}</CardGroup>;
     }
     
     if (dataProps.card === 'true' || dataProps.cardComponent === 'true') {
@@ -182,11 +191,11 @@ export const createComponentMappings = () => ({
         cardContent = extractTextFromChildren(children);
       }
       
-      return <MarkdownCard title={dataProps.title} image={dataProps.image} href={dataProps.href} external={dataProps.external}>{cardContent}</MarkdownCard>;
+      return <MarkdownCard title={dataProps.title} image={dataProps.image} icon={dataProps.icon} href={dataProps.href} external={dataProps.external}>{cardContent}</MarkdownCard>;
     }
     
     if (dataProps.image && dataProps.src) {
-      return <Image src={dataProps.src} alt={dataProps.alt} align={dataProps.align as any} fullwidth={dataProps.fullwidth} />;
+      return <Image src={dataProps.src} alt={dataProps.alt} caption={dataProps.caption} align={dataProps.align as any} fullwidth={dataProps.fullwidth} />;
     }
     
     if (dataProps.piecesCloudModels) {
@@ -202,11 +211,11 @@ export const createComponentMappings = () => ({
     }
     
     if (dataProps.accordion === 'true') {
-      return <Accordion title={dataProps.title || ''} defaultOpen={dataProps.defaultOpen === 'true'} {...(props as Record<string, any>)}>{children}</Accordion>;
+      return <Accordion title={dataProps.title || ''} defaultOpen={dataProps.defaultOpen === 'true'} {...props}>{children}</Accordion>;
     }
     
     if (dataProps.accordiongroup === 'true') {
-      return <AccordionGroup allowMultiple={dataProps.allowMultiple === 'true'} {...(props as Record<string, any>)}>{children}</AccordionGroup>;
+      return <AccordionGroup allowMultiple={dataProps.allowMultiple === 'true'} {...props}>{children}</AccordionGroup>;
     }
     
     if (dataProps.button === 'true') {
@@ -217,19 +226,19 @@ export const createComponentMappings = () => ({
         align={dataProps.align as any} 
         lightColor={dataProps.lightColor} 
         darkColor={dataProps.darkColor} 
-        {...(props as Record<string, any>)} 
+        {...props} 
       />;
     }
     
     if (dataProps.tabs === 'true') {
-      return <Tabs defaultActiveTab={parseInt(dataProps.defaultActiveTab) || 0} {...(props as Record<string, any>)}>{React.Children.toArray(children) as React.ReactElement[]}</Tabs>;
+      return <Tabs defaultActiveTab={parseInt(dataProps.defaultActiveTab) || 0} {...props}>{children}</Tabs>;
     }
     
     if (dataProps.tabitem === 'true') {
-      return <TabItem title={dataProps.title || ''} {...(props as Record<string, any>)}>{children}</TabItem>;
+      return <TabItem title={dataProps.title || ''} {...props}>{children}</TabItem>;
     }
     
-    return <div {...(props as Record<string, any>)}>{children}</div>;
+    return <div {...props}>{children}</div>;
   },
 
   // Custom link component to use React Router for internal links
@@ -238,7 +247,7 @@ export const createComponentMappings = () => ({
     
     if (href?.startsWith('/')) {
       return (
-        <Link to={href} className={linkClasses} {...(props as Record<string, any>)}>
+        <Link to={href} className={linkClasses} {...props}>
           {children}
         </Link>
       );
@@ -250,7 +259,7 @@ export const createComponentMappings = () => ({
         href={href} 
         className={`${linkClasses} ${isExternal ? 'after:content-["↗"] after:ml-1 after:text-xs after:opacity-70' : ''}`}
         {...(isExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-        {...(props as Record<string, any>)}
+        {...props}
       >
         {children}
       </a>

@@ -33,11 +33,6 @@ export function EditorTabs({
     // Here you would typically save the SEO data to your backend or local storage
   };
 
-  const handleFileSelect = (filePath: string) => {
-    console.log('File selected:', filePath);
-    // Handle file selection logic here
-  };
-
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="h-full flex flex-col">
       <TabsList className="grid w-full grid-cols-4 m-4 mb-0">
@@ -81,8 +76,6 @@ export function EditorTabs({
         <SeoEditor
           selectedFile={selectedFile}
           onSeoDataChange={handleSeoDataChange}
-          fileStructure={fileStructure}
-          onFileSelect={handleFileSelect}
         />
       </TabsContent>
       

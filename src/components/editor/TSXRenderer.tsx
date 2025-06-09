@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { WYSIWYGEditor } from './WYSIWYGEditor';
@@ -156,17 +157,14 @@ Please review the changes and merge when ready.
               path: repoFilePath,
               content: content
             }
-          ],
-          baseBranch: 'main',
-          headBranch: `doc-update-${Date.now()}`,
-          useExistingBranch: false
+          ]
         },
         githubToken,
         config
       );
 
-      if (result.success) {
-        toast.success(`Pull request created successfully!`, {
+      if (result.success && result.prNumber && result.prUrl) {
+        toast.success(`Pull request created successfully! #${result.prNumber}`, { 
           duration: 5000,
           action: {
             label: 'View PR',

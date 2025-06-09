@@ -1,76 +1,105 @@
-
-import React, { useState, ReactNode } from 'react';
-
-interface AccordionGroupProps {
-  children: ReactNode;
-  allowMultiple?: boolean;
-}
+import React, { useState } from 'react';
+import { ChevronRight, ChevronDown } from 'lucide-react';
 
 interface AccordionItemProps {
   title: string;
-  children: ReactNode;
+  children: React.ReactNode;
   isOpen: boolean;
   onToggle: () => void;
 }
 
-export default function AccordionGroup({ children, allowMultiple = false }: AccordionGroupProps) {
-  const [openItems, setOpenItems] = useState<number[]>([]);
+const AccordionItem: React.FC<AccordionItemProps> = ({ title, children, isOpen, onToggle }) => (
+  <div className="accordion-item group" data-state={isOpen ? 'open' : 'closed'}>
+    <div
+      role="button"
+      data-state={isOpen ? 'open' : 'closed'}
+      aria-expanded={isOpen}
+      className="w-full px-5 py-4 flex items-start gap-3 hover:bg-slate-50 dark:hover:bg-slate-900 cursor-pointer"
+      onClick={onToggle}
+    >
+      <div className="mt-0.5">
+        {isOpen ? (
+          <ChevronDown size={16} className="text-slate-600 dark:text-slate-400" />
+        ) : (
+          <ChevronRight size={16} className="text-slate-600 dark:text-slate-400" />
+        )}
+      </div>
+      <div className="font-medium text-base text-slate-700 dark:text-slate-200">
+        {title}
+      </div>
+    </div>
+    {isOpen && (
+      <div
+        role="region"
+        aria-labelledby="accordion-trigger"
+        className="px-6 py-4 text-base text-slate-600 dark:text-slate-300"
+      >
+        {children}
+      </div>
+    )}
+  </div>
+);
 
-  const handleToggle = (index: number) => {
+interface AccordionGroupProps {
+  children: React.ReactNode;
+  allowMultiple?: boolean;
+}
+
+const AccordionGroup: React.FC<AccordionGroupProps> = ({ children, allowMultiple = false }) => {
+  const [openItems, setOpenItems] = useState<Set<number>>(new Set());
+
+  const toggleItem = (index: number) => {
+    const newOpenItems = new Set(openItems);
+    
     if (allowMultiple) {
-      if (openItems.includes(index)) {
-        setOpenItems(openItems.filter(item => item !== index));
+      if (newOpenItems.has(index)) {
+        newOpenItems.delete(index);
       } else {
-        setOpenItems([...openItems, index]);
+        newOpenItems.add(index);
       }
     } else {
-      setOpenItems(openItems.includes(index) ? [] : [index]);
+      if (newOpenItems.has(index)) {
+        newOpenItems.clear();
+      } else {
+        newOpenItems.clear();
+        newOpenItems.add(index);
+      }
     }
+    
+    setOpenItems(newOpenItems);
   };
 
   return (
-    <div className="space-y-2 border border-border rounded-lg overflow-hidden">
+    <div className="my-4 border border-slate-200 rounded-xl overflow-hidden [&>.accordion-item]:border-b [&>.accordion-item]:border-b-slate-200 dark:[&>.accordion-item]:border-b-slate-800/80 [&>.accordion-item:last-of-type]:border-b-0 dark:border-slate-800/80">
       {React.Children.map(children, (child, index) => {
-        if (React.isValidElement(child)) {
-          const childProps = child.props as any;
-          if (child.type === AccordionItem || (childProps && 'title' in childProps)) {
-            return React.cloneElement(child as React.ReactElement<AccordionItemProps>, {
-              isOpen: openItems.includes(index),
-              onToggle: () => handleToggle(index),
-              title: childProps.title,
-              children: childProps.children
-            });
-          }
+        if (React.isValidElement(child) && child.type === AccordionItem) {
+          return React.cloneElement(child, {
+            ...child.props,
+            isOpen: openItems.has(index),
+            onToggle: () => toggleItem(index),
+          });
         }
+        
+        // If it's an Accordion component with title prop, convert it to AccordionItem
+        if (React.isValidElement(child) && child.props.title) {
+          return (
+            <AccordionItem
+              key={index}
+              title={child.props.title}
+              isOpen={openItems.has(index)}
+              onToggle={() => toggleItem(index)}
+            >
+              {child.props.children}
+            </AccordionItem>
+          );
+        }
+        
         return child;
       })}
     </div>
   );
-}
+};
 
-export function AccordionItem({ title, children, isOpen, onToggle }: AccordionItemProps) {
-  return (
-    <div className="border-b border-border">
-      <button
-        className="flex items-center justify-between w-full p-4 text-sm font-medium text-left focus:outline-none"
-        onClick={onToggle}
-      >
-        <span>{title}</span>
-        <svg
-          className={`w-4 h-4 shrink-0 text-gray-500 transition-transform ${isOpen ? 'rotate-180' : ''}`}
-          fill="none"
-          stroke="currentColor"
-          viewBox="0 0 24 24"
-          xmlns="http://www.w3.org/2000/svg"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7"></path>
-        </svg>
-      </button>
-      {isOpen && (
-        <div className="p-4">
-          {children}
-        </div>
-      )}
-    </div>
-  );
-}
+// Export both for flexibility
+export { AccordionItem };
+export default AccordionGroup;

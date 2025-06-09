@@ -1,3 +1,4 @@
+
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -212,10 +213,7 @@ export function WYSIWYGEditor({ content, onContentChange }: WYSIWYGEditorProps) 
             </div>
             <Button
               size="sm"
-              onClick={() => {
-                const textarea = document.getElementById(`editor-${element.id}`) as HTMLTextAreaElement;
-                updateElement(element.id, textarea?.value || element.content);
-              }}
+              onClick={() => updateElement(element.id, document.getElementById(`editor-${element.id}`)?.value || element.content)}
               className="h-6 px-2 text-xs"
             >
               <Save className="h-3 w-3 mr-1" />
