@@ -18,11 +18,15 @@ import { toast } from "sonner";
 import { BranchSelector } from "./BranchSelector";
 import { useBranches } from "@/hooks/useBranches";
 
+// Debug toggle - set to false to reduce console noise
+const DEBUG_MARKDOWN = false;
+const DEBUG_PR_BUTTON = true;
+
 export function EditorLayout() {
   const { fileStructure, isLoading, error, refetch } = useFileStructure();
   const { hasRole } = useAuth();
   
-  // Branch management - wait for initialization
+  // Branch management
   const { currentBranch, branches, initialized } = useBranches();
 
   const [selectedFile, setSelectedFile] = useState<string>();
@@ -32,7 +36,7 @@ export function EditorLayout() {
   const [loadingContent, setLoadingContent] = useState(false);
   const [creatingPR, setCreatingPR] = useState(false);
 
-  // Live editing hook - properly pass the current branch
+  // Live editing hook
   const {
     isLocked,
     lockedBy,
@@ -48,33 +52,56 @@ export function EditorLayout() {
   // SEO data for the current file
   const { pendingChanges, hasUnsavedChanges } = useSeoData(selectedFile);
 
-  // Calculate PR button state using ONLY the current branch
-  const sourceBranch = currentBranch; // The branch we're working on
-  const targetBranch = 'main'; // Always target main
+  // PR Button State Calculations with extensive debugging
+  const targetBranch = 'main';
+  const sourceBranch = currentBranch;
   const sessionsWithContent = sessions.filter(s => s.content && s.content.trim());
   const totalLiveFiles = sessionsWithContent.length;
   const hasAnyChanges = hasChanges || totalLiveFiles > 0;
   
-  // PR button logic - simple and clear
+  // PR button logic with detailed debugging
   const canCreatePR = initialized && 
-                      currentBranch && 
-                      currentBranch !== 'main' && 
+                      sourceBranch && 
+                      sourceBranch !== 'main' && 
                       hasAnyChanges && 
                       !creatingPR;
 
-  console.log('=== PR BUTTON DEBUG ===');
-  console.log('currentBranch:', currentBranch);
-  console.log('initialized:', initialized);
-  console.log('totalLiveFiles:', totalLiveFiles);
-  console.log('hasChanges:', hasChanges);
-  console.log('hasAnyChanges:', hasAnyChanges);
-  console.log('canCreatePR:', canCreatePR);
-  console.log('sourceBranch → targetBranch:', `${sourceBranch} → ${targetBranch}`);
+  if (DEBUG_PR_BUTTON) {
+    console.log('=================== PR BUTTON DEBUG ===================');
+    console.log('🌿 Branch Info:');
+    console.log('  currentBranch:', currentBranch);
+    console.log('  sourceBranch:', sourceBranch);
+    console.log('  targetBranch:', targetBranch);
+    console.log('  initialized:', initialized);
+    console.log('  branches:', branches);
+    
+    console.log('📁 Content Info:');
+    console.log('  sessions.length:', sessions.length);
+    console.log('  sessionsWithContent.length:', sessionsWithContent.length);
+    console.log('  totalLiveFiles:', totalLiveFiles);
+    console.log('  hasChanges:', hasChanges);
+    console.log('  hasAnyChanges:', hasAnyChanges);
+    
+    console.log('🎯 PR Button State:');
+    console.log('  canCreatePR:', canCreatePR);
+    console.log('  creatingPR:', creatingPR);
+    console.log('  PR Button Text Should Be:', `${sourceBranch || 'main'} → ${targetBranch} ${totalLiveFiles > 0 ? `(${totalLiveFiles})` : ''}`);
+    
+    console.log('🔍 Detailed Conditions:');
+    console.log('  initialized?', initialized);
+    console.log('  sourceBranch exists?', !!sourceBranch);
+    console.log('  sourceBranch !== main?', sourceBranch !== 'main');
+    console.log('  hasAnyChanges?', hasAnyChanges);
+    console.log('  !creatingPR?', !creatingPR);
+    console.log('====================================================');
+  }
 
   // Clear local state when branch changes
   useEffect(() => {
     if (currentBranch) {
-      console.log('Branch changed, clearing local state for:', currentBranch);
+      if (DEBUG_PR_BUTTON) {
+        console.log('🔄 Branch changed, clearing local state for:', currentBranch);
+      }
       setSelectedFile(undefined);
       setContent("");
       setHasChanges(false);
@@ -85,7 +112,9 @@ export function EditorLayout() {
   useEffect(() => {
     if (selectedFile && isLocked && lockedBy === 'You' && hasChanges && content && currentBranch) {
       const timeoutId = setTimeout(() => {
-        console.log('Auto-saving live content for file:', selectedFile, 'on branch:', currentBranch);
+        if (DEBUG_MARKDOWN) {
+          console.log('Auto-saving live content for file:', selectedFile, 'on branch:', currentBranch);
+        }
         saveLiveContent(selectedFile, content);
       }, 500);
 
@@ -94,13 +123,17 @@ export function EditorLayout() {
   }, [selectedFile, isLocked, lockedBy, hasChanges, content, currentBranch, saveLiveContent]);
 
   const handleFileSelect = async (filePath: string) => {
-    console.log('=== FILE SELECTION ===');
-    console.log('Selected file:', filePath);
-    console.log('Current branch:', currentBranch);
+    if (DEBUG_MARKDOWN) {
+      console.log('=== FILE SELECTION ===');
+      console.log('Selected file:', filePath);
+      console.log('Current branch:', currentBranch);
+    }
     
     // Release lock on previous file if user owns it
     if (selectedFile && isLocked && lockedBy === 'You') {
-      console.log('Releasing lock on previous file:', selectedFile);
+      if (DEBUG_MARKDOWN) {
+        console.log('Releasing lock on previous file:', selectedFile);
+      }
       await releaseLock(selectedFile);
     }
     
@@ -113,7 +146,9 @@ export function EditorLayout() {
       const liveFileContent = await loadLiveContent(filePath);
       
       if (liveFileContent) {
-        console.log('Found live content for:', filePath);
+        if (DEBUG_MARKDOWN) {
+          console.log('Found live content for:', filePath);
+        }
         setContent(liveFileContent);
         setLoadingContent(false);
         // Try to acquire lock automatically
@@ -130,7 +165,9 @@ export function EditorLayout() {
       const cleanFetchPath = fetchPath.replace(/^\/+/, '');
       const fetchUrl = `/content/${cleanFetchPath}`;
       
-      console.log('Fetching from URL:', fetchUrl);
+      if (DEBUG_MARKDOWN) {
+        console.log('Fetching from URL:', fetchUrl);
+      }
       
       const response = await fetch(fetchUrl, {
         method: 'GET',
@@ -148,10 +185,14 @@ export function EditorLayout() {
       }
       
       if (response.ok && responseText.length > 0) {
-        console.log('Successfully loaded content for:', filePath);
+        if (DEBUG_MARKDOWN) {
+          console.log('Successfully loaded content for:', filePath);
+        }
         setContent(responseText);
       } else {
-        console.log('File not found, creating default content for:', filePath);
+        if (DEBUG_MARKDOWN) {
+          console.log('File not found, creating default content for:', filePath);
+        }
         const fileName = filePath.split('/').pop()?.replace(/\.md$/, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
         const pathForFrontmatter = filePath.replace(/\.md$/, '').replace(/^\//, '');
         
@@ -223,9 +264,11 @@ Start editing to see the live preview!
 
   const handleAcquireLock = async () => {
     if (selectedFile && currentBranch) {
-      console.log('Manually acquiring lock for:', selectedFile, 'on branch:', currentBranch);
+      if (DEBUG_MARKDOWN) {
+        console.log('Manually acquiring lock for:', selectedFile, 'on branch:', currentBranch);
+      }
       const success = await acquireLock(selectedFile);
-      if (success) {
+      if (success && DEBUG_MARKDOWN) {
         console.log('Lock acquired for editing:', selectedFile);
       }
     }
@@ -276,7 +319,9 @@ Start editing to see the live preview!
   const collectAllLiveContent = async () => {
     const allContent: { path: string; content: string }[] = [];
     
-    console.log('Collecting live content from', sessions.length, 'sessions for branch:', sourceBranch);
+    if (DEBUG_PR_BUTTON) {
+      console.log('🗂️ Collecting live content from', sessions.length, 'sessions for branch:', sourceBranch);
+    }
     
     for (const session of sessions) {
       if (session.content && session.content.trim()) {
@@ -284,7 +329,9 @@ Start editing to see the live preview!
           path: getOriginalFilePath(session.file_path),
           content: session.content
         });
-        console.log('Added session content for:', session.file_path);
+        if (DEBUG_PR_BUTTON) {
+          console.log('✅ Added session content for:', session.file_path);
+        }
       }
     }
     
@@ -294,27 +341,45 @@ Start editing to see the live preview!
       const existingIndex = allContent.findIndex(item => item.path === originalPath);
       if (existingIndex >= 0) {
         allContent[existingIndex].content = content;
-        console.log('Updated current file content for:', selectedFile);
+        if (DEBUG_PR_BUTTON) {
+          console.log('🔄 Updated current file content for:', selectedFile);
+        }
       } else {
         allContent.push({
           path: originalPath,
           content: content
         });
-        console.log('Added current file content for:', selectedFile);
+        if (DEBUG_PR_BUTTON) {
+          console.log('➕ Added current file content for:', selectedFile);
+        }
       }
     }
     
-    console.log('Total live content collected:', allContent.length, 'files from branch:', sourceBranch);
+    if (DEBUG_PR_BUTTON) {
+      console.log('📊 Total live content collected:', allContent.length, 'files from branch:', sourceBranch);
+    }
     return allContent;
   };
 
   const handleCreatePR = async () => {
+    if (DEBUG_PR_BUTTON) {
+      console.log('🚀 handleCreatePR called');
+      console.log('  sourceBranch:', sourceBranch);
+      console.log('  canCreatePR:', canCreatePR);
+    }
+
     if (!sourceBranch || !canCreatePR) {
-      console.log('Cannot create PR:', { sourceBranch, canCreatePR });
+      if (DEBUG_PR_BUTTON) {
+        console.log('❌ Cannot create PR - conditions not met');
+        console.log('  sourceBranch:', sourceBranch);
+        console.log('  canCreatePR:', canCreatePR);
+      }
       return;
     }
 
-    console.log('Creating PR FROM branch:', sourceBranch, 'TO branch:', targetBranch);
+    if (DEBUG_PR_BUTTON) {
+      console.log('✅ Creating PR FROM branch:', sourceBranch, 'TO branch:', targetBranch);
+    }
     
     setCreatingPR(true);
     
@@ -335,7 +400,9 @@ Start editing to see the live preview!
         return;
       }
 
-      console.log('Files to include in PR:', allLiveContent.map(item => item.path));
+      if (DEBUG_PR_BUTTON) {
+        console.log('📋 Files to include in PR:', allLiveContent.map(item => item.path));
+      }
 
       // Create PR using existing branch
       const result = await githubService.createPullRequest(
@@ -364,7 +431,9 @@ Start editing to see the live preview!
         
         // Clear all live editing sessions for current branch after successful PR
         try {
-          console.log('Clearing live editing sessions for branch:', sourceBranch);
+          if (DEBUG_PR_BUTTON) {
+            console.log('🧹 Clearing live editing sessions for branch:', sourceBranch);
+          }
           const { error } = await supabase
             .from('live_editing_sessions')
             .delete()
@@ -540,9 +609,9 @@ Start editing to see the live preview!
                       title={
                         !initialized
                           ? "Loading branches..."
-                          : !currentBranch
+                          : !sourceBranch
                             ? "No branch selected"
-                            : currentBranch === 'main'
+                            : sourceBranch === 'main'
                               ? "Cannot create PR from main branch"
                               : !hasAnyChanges 
                                 ? "No changes to create PR for" 
