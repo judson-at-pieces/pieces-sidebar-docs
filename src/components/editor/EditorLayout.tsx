@@ -355,23 +355,31 @@ Start editing to see the live preview!
         return;
       }
 
-      // Create PR with all live content, targeting the current branch
+      console.log('Creating PR with base branch:', currentBranch);
+      console.log('Files to include:', allLiveContent.map(item => item.path));
+
+      // Create a temporary branch name for the PR
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const prBranchName = `editor-changes-${timestamp}`;
+
+      // Create PR with all live content, using current branch as the base
       const result = await githubService.createPullRequest(
         {
           title: `Update documentation - ${allLiveContent.length} file${allLiveContent.length !== 1 ? 's' : ''} modified`,
-          body: `Updated documentation files:\n${allLiveContent.map(item => `- ${item.path}`).join('\n')}\n\nThis pull request was created from the collaborative editor.`,
+          body: `Updated documentation files from branch "${currentBranch}":\n${allLiveContent.map(item => `- ${item.path}`).join('\n')}\n\nThis pull request was created from the collaborative editor.`,
           files: allLiveContent.map(item => ({
             path: item.path,
             content: item.content
           })),
-          baseBranch: currentBranch // Use current branch as base
+          baseBranch: currentBranch, // Use current branch as base
+          headBranch: prBranchName // Create a new branch for the PR
         },
         token,
         repoConfig
       );
 
       if (result.success) {
-        toast.success('Pull request created successfully!', {
+        toast.success(`Pull request created successfully targeting "${currentBranch}"!`, {
           action: {
             label: 'View PR',
             onClick: () => window.open(result.prUrl, '_blank')
@@ -587,7 +595,7 @@ Start editing to see the live preview!
                           ? "No changes to create PR for" 
                           : creatingPR 
                             ? "Creating PR..." 
-                            : `Create pull request with all live changes targeting ${currentBranch}`
+                            : `Create pull request targeting ${currentBranch} with all live changes`
                       }
                     >
                       {creatingPR ? (
@@ -595,7 +603,7 @@ Start editing to see the live preview!
                       ) : (
                         <GitPullRequest className="w-4 h-4" />
                       )}
-                      Create PR {totalLiveFiles > 0 && `(${totalLiveFiles})`}
+                      Create PR → {currentBranch} {totalLiveFiles > 0 && `(${totalLiveFiles})`}
                     </Button>
                   </>
                 )}
@@ -625,7 +633,7 @@ Start editing to see the live preview!
               <div className="flex-1">
                 <SeoEditor
                   selectedFile={selectedFile}
-                  onSeoDataChange={handleSeoDataChange}
+                  onSeoDataChange={() => {}}
                   fileStructure={fileStructure}
                   onFileSelect={handleFileSelect}
                 />
