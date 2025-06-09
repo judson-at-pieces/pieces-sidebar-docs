@@ -35,13 +35,14 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
         return;
       }
 
+      console.log('Fetched live editing sessions for branch', currentBranch, ':', data?.length || 0);
       setSessions(data || []);
     } catch (error) {
       console.error('Error fetching live editing sessions:', error);
     }
   }, [currentBranch]);
 
-  // Check lock status for the selected file
+  // Check lock status for the selected file on the current branch
   const checkLockStatus = useCallback(async () => {
     if (!selectedFile || !currentBranch) return;
 
@@ -49,17 +50,20 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Query the live editing sessions table directly and then join with profiles
+      console.log('Checking lock status for file:', selectedFile, 'on branch:', currentBranch);
+
+      // Query the live editing sessions table directly for this specific file and branch
       const { data, error } = await supabase
         .from('live_editing_sessions')
         .select(`
           locked_by, 
           locked_at, 
           content,
+          branch_name,
           profiles!inner(email, full_name)
         `)
         .eq('file_path', selectedFile)
-        .eq('branch_name', currentBranch || 'main')
+        .eq('branch_name', currentBranch)
         .maybeSingle();
 
       if (error && error.code !== 'PGRST116') { // PGRST116 is "no rows returned"
@@ -74,6 +78,13 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
         // Check if lock is still valid (within 30 minutes)
         const lockTime = data.locked_at ? new Date(data.locked_at) : null;
         const isLockValid = lockTime && (Date.now() - lockTime.getTime()) < 30 * 60 * 1000;
+
+        console.log('Lock status check result:', {
+          isFileLocked,
+          isLockValid,
+          isFileLockedByMe,
+          branch: data.branch_name
+        });
 
         setIsLocked(isFileLocked && isLockValid);
         
@@ -93,6 +104,7 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
           setLiveContent(data.content);
         }
       } else {
+        console.log('No existing lock/session found for file:', selectedFile, 'on branch:', currentBranch);
         setIsLocked(false);
         setLockedBy(null);
         setLiveContent('');
@@ -102,7 +114,7 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
     }
   }, [selectedFile, currentBranch]);
 
-  // Acquire lock for a file
+  // Acquire lock for a file on the current branch
   const acquireLock = useCallback(async (filePath: string): Promise<boolean> => {
     if (!currentBranch) {
       toast.error('No branch selected');
@@ -118,6 +130,8 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
         return false;
       }
 
+      console.log('Acquiring lock for file:', filePath, 'on branch:', currentBranch);
+
       const { data, error } = await supabase
         .rpc('acquire_file_lock_by_branch', { 
           p_file_path: filePath, 
@@ -132,6 +146,7 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
       }
 
       if (data) {
+        console.log('Successfully acquired lock for:', filePath, 'on branch:', currentBranch);
         setIsLocked(true);
         setLockedBy('You');
         toast.success('You can now edit this file');
@@ -150,13 +165,15 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
     }
   }, [currentBranch, fetchSessions]);
 
-  // Release lock for a file
+  // Release lock for a file on the current branch
   const releaseLock = useCallback(async (filePath: string): Promise<boolean> => {
     if (!currentBranch) return false;
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return false;
+
+      console.log('Releasing lock for file:', filePath, 'on branch:', currentBranch);
 
       const { data, error } = await supabase
         .rpc('release_file_lock_by_branch', { 
@@ -171,6 +188,7 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
       }
 
       if (data) {
+        console.log('Successfully released lock for:', filePath, 'on branch:', currentBranch);
         setIsLocked(false);
         setLockedBy(null);
         await fetchSessions();
@@ -184,13 +202,15 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
     }
   }, [currentBranch, fetchSessions]);
 
-  // Save live content for a file
+  // Save live content for a file on the current branch
   const saveLiveContent = useCallback(async (filePath: string, content: string): Promise<boolean> => {
     if (!currentBranch) return false;
 
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return false;
+
+      console.log('Saving live content for file:', filePath, 'on branch:', currentBranch);
 
       const { data, error } = await supabase
         .rpc('save_live_content_by_branch', { 
@@ -218,11 +238,13 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
     }
   }, [currentBranch, fetchSessions]);
 
-  // Load live content for a file
+  // Load live content for a file on the current branch
   const loadLiveContent = useCallback(async (filePath: string): Promise<string | null> => {
     if (!currentBranch) return null;
 
     try {
+      console.log('Loading live content for file:', filePath, 'on branch:', currentBranch);
+
       const { data, error } = await supabase
         .from('live_editing_sessions')
         .select('content')
@@ -235,6 +257,7 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
         return null;
       }
 
+      console.log('Loaded live content result:', data?.content ? 'Found content' : 'No content');
       return data?.content || null;
     } catch (error) {
       console.error('Error loading live content:', error);
@@ -242,12 +265,14 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
     }
   }, [currentBranch]);
 
-  // Set up real-time subscription for live editing sessions
+  // Set up real-time subscription for live editing sessions on the current branch
   useEffect(() => {
     if (!currentBranch) return;
 
+    console.log('Setting up real-time subscription for branch:', currentBranch);
+
     const channel = supabase
-      .channel('live_editing_sessions')
+      .channel(`live_editing_sessions_${currentBranch}`)
       .on(
         'postgres_changes',
         {
@@ -256,7 +281,8 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
           table: 'live_editing_sessions',
           filter: `branch_name=eq.${currentBranch}`
         },
-        () => {
+        (payload) => {
+          console.log('Real-time update received for branch:', currentBranch, payload);
           fetchSessions();
           if (selectedFile) {
             checkLockStatus();
@@ -266,6 +292,7 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
       .subscribe();
 
     return () => {
+      console.log('Cleaning up real-time subscription for branch:', currentBranch);
       supabase.removeChannel(channel);
     };
   }, [currentBranch, selectedFile, fetchSessions, checkLockStatus]);
@@ -273,12 +300,22 @@ export function useLiveEditing(selectedFile?: string, currentBranch?: string) {
   // Fetch sessions and check lock status when file or branch changes
   useEffect(() => {
     if (currentBranch) {
+      console.log('Branch or file changed, fetching sessions for branch:', currentBranch);
       fetchSessions();
     }
     if (selectedFile && currentBranch) {
       checkLockStatus();
     }
   }, [selectedFile, currentBranch, fetchSessions, checkLockStatus]);
+
+  // Clear state when branch changes
+  useEffect(() => {
+    console.log('Clearing live editing state for branch change to:', currentBranch);
+    setIsLocked(false);
+    setLockedBy(null);
+    setLiveContent('');
+    setSessions([]);
+  }, [currentBranch]);
 
   return {
     isLocked,
