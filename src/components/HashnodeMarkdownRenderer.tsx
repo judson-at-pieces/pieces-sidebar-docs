@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import CodeBlock from './CodeBlock';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 
@@ -345,23 +346,11 @@ const processInlineMarkdown = (text: string): React.ReactNode => {
     const language = match[1] || 'text';
     const code = match[2].trim();
     
-    // Add syntax highlighted code block
+    // Add syntax highlighted code block using CodeBlock component
     parts.push(
-      <div key={match.index} className="my-4">
-        <SyntaxHighlighter
-          language={language}
-          style={oneDark}
-          customStyle={{
-            margin: 0,
-            borderRadius: '0.5rem',
-            fontSize: '0.875rem',
-            lineHeight: '1.5'
-          }}
-          showLineNumbers={code.split('\n').length > 5}
-        >
-          {code}
-        </SyntaxHighlighter>
-      </div>
+      <CodeBlock key={match.index} language={language}>
+        {code}
+      </CodeBlock>
     );
 
     lastIndex = match.index + match[0].length;
@@ -599,23 +588,11 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
     const language = match[1] || 'text';
     const code = match[2].trim();
     
-    // Add syntax highlighted code block
+    // Add syntax highlighted code block using CodeBlock component
     parts.push(
-      <div key={`code-${elementIndex}`} className="my-6">
-        <SyntaxHighlighter
-          language={language}
-          style={oneDark}
-          customStyle={{
-            margin: 0,
-            borderRadius: '0.5rem',
-            fontSize: '0.875rem',
-            lineHeight: '1.5'
-          }}
-          showLineNumbers={code.split('\n').length > 5}
-        >
-          {code}
-        </SyntaxHighlighter>
-      </div>
+      <CodeBlock key={`code-${elementIndex}`} language={language}>
+        {code}
+      </CodeBlock>
     );
     elementIndex++;
 
