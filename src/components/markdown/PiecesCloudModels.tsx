@@ -30,7 +30,7 @@ export function PiecesCloudModels() {
             key={index}
             title={model.name}
             href={model.url}
-            external
+            external={true}
           >
             {model.description}
           </MarkdownCard>

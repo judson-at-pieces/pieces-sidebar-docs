@@ -406,7 +406,13 @@ Please review the changes and merge when ready.
       {/* File Tree Sidebar */}
       <div className="w-64 border-r border-border p-4">
         <h3 className="text-sm font-semibold mb-2">Content Structure</h3>
-        <FileTreeSidebar fileStructure={fileStructure} onFileSelect={onFileSelect} selectedFile={selectedFile} />
+        <FileTreeSidebar 
+          title="Content Files"
+          description="Select a file to edit SEO settings"
+          fileStructure={fileStructure} 
+          onFileSelect={onFileSelect} 
+          selectedFile={selectedFile} 
+        />
       </div>
 
       {/* SEO Editor Content */}

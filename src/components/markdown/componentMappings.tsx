@@ -98,12 +98,7 @@ export const createComponentMappings = () => ({
   },
   
   card: ({ title, image, href, external, children, ...props }: any) => {
-    // If href is provided, use MarkdownCard for link functionality
-    if (href) {
-      return <MarkdownCard title={title} image={image} href={href} external={external} {...props}>{children}</MarkdownCard>;
-    }
-    // Otherwise use the simple Card component
-    return <Card title={title} image={image} {...props}>{children}</Card>;
+    return <MarkdownCard title={title} image={image} href={href} external={external} {...props}>{children}</MarkdownCard>;
   },
   
   simplecard: ({ title, image, children, ...props }: any) => {
