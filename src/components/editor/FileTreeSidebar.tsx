@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { FileNode } from '@/hooks/useFileStructure';
 import { FileText, Folder, ChevronDown, ChevronRight } from 'lucide-react';

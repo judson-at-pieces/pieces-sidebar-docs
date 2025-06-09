@@ -1,7 +1,14 @@
+
 import React from 'react';
 import { EnhancedEditor } from './EnhancedEditor';
 import { FileText, MoreHorizontal, Copy, Trash2, Lock, Edit, Eye } from 'lucide-react';
-import { Badge, Button, DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem, ResizablePanelGroup, ResizablePanel, ResizableHandle, Textarea, ScrollArea, MarkdownRenderer } from 'react-daisyui';
+import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
+import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
+import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { MarkdownRenderer } from '@/components/MarkdownRenderer';
 
 interface EditorMainProps {
   selectedFile?: string;
