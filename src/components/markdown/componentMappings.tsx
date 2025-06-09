@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ExpandableImage as ExpandableImageComponent } from './ExpandableImage';
@@ -149,22 +150,22 @@ export const createComponentMappings = () => ({
     console.log('Div component mapping - dataProps:', dataProps, 'hasChildren:', !!children);
     
     if (dataProps.callout) {
-      return <Callout type={dataProps.callout as 'info' | 'tip' | 'alert'} {...props}>{children}</Callout>;
+      return <Callout type={dataProps.callout as 'info' | 'tip' | 'alert'} {...(props as Record<string, any>)}>{children}</Callout>;
     }
     
     if (dataProps.steps === 'true') {
-      return <Steps {...props}>{children}</Steps>;
+      return <Steps {...(props as Record<string, any>)}>{children}</Steps>;
     }
     
     if (dataProps.step) {
-      return <Step title={dataProps.stepTitle || dataProps.title || ''} {...props}>{children}</Step>;
+      return <Step title={dataProps.stepTitle || dataProps.title || ''} {...(props as Record<string, any>)}>{children}</Step>;
     }
     
     if (dataProps.cardgroup === 'true') {
       console.log('Rendering CardGroup with cols:', dataProps.cols, 'children count:', React.Children.count(children));
       const colsNumber = typeof dataProps.cols === 'string' ? parseInt(dataProps.cols) : dataProps.cols;
       const validCols = [2, 3, 4].includes(colsNumber) ? colsNumber as 2 | 3 | 4 : 2;
-      return <CardGroup cols={validCols} {...props}>{children}</CardGroup>;
+      return <CardGroup cols={validCols} {...(props as Record<string, any>)}>{children}</CardGroup>;
     }
     
     if (dataProps.card === 'true' || dataProps.cardComponent === 'true') {
@@ -201,11 +202,11 @@ export const createComponentMappings = () => ({
     }
     
     if (dataProps.accordion === 'true') {
-      return <Accordion title={dataProps.title || ''} defaultOpen={dataProps.defaultOpen === 'true'} {...props}>{children}</Accordion>;
+      return <Accordion title={dataProps.title || ''} defaultOpen={dataProps.defaultOpen === 'true'} {...(props as Record<string, any>)}>{children}</Accordion>;
     }
     
     if (dataProps.accordiongroup === 'true') {
-      return <AccordionGroup allowMultiple={dataProps.allowMultiple === 'true'} {...props}>{children}</AccordionGroup>;
+      return <AccordionGroup allowMultiple={dataProps.allowMultiple === 'true'} {...(props as Record<string, any>)}>{children}</AccordionGroup>;
     }
     
     if (dataProps.button === 'true') {
@@ -216,19 +217,19 @@ export const createComponentMappings = () => ({
         align={dataProps.align as any} 
         lightColor={dataProps.lightColor} 
         darkColor={dataProps.darkColor} 
-        {...props} 
+        {...(props as Record<string, any>)} 
       />;
     }
     
     if (dataProps.tabs === 'true') {
-      return <Tabs defaultActiveTab={parseInt(dataProps.defaultActiveTab) || 0} {...props}>{React.Children.toArray(children) as React.ReactElement[]}</Tabs>;
+      return <Tabs defaultActiveTab={parseInt(dataProps.defaultActiveTab) || 0} {...(props as Record<string, any>)}>{React.Children.toArray(children) as React.ReactElement[]}</Tabs>;
     }
     
     if (dataProps.tabitem === 'true') {
-      return <TabItem title={dataProps.title || ''} {...props}>{children}</TabItem>;
+      return <TabItem title={dataProps.title || ''} {...(props as Record<string, any>)}>{children}</TabItem>;
     }
     
-    return <div {...props}>{children}</div>;
+    return <div {...(props as Record<string, any>)}>{children}</div>;
   },
 
   // Custom link component to use React Router for internal links
