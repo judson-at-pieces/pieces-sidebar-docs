@@ -104,6 +104,71 @@ export function useBranches() {
     }
   };
 
+  const updateDatabaseForBranchSwitch = async (newBranchName: string) => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      console.log('=== UPDATING DATABASE FOR BRANCH SWITCH ===', newBranchName);
+
+      // Get all existing sessions for this user
+      const { data: userSessions } = await supabase
+        .from('live_editing_sessions')
+        .select('*')
+        .eq('user_id', user.id);
+
+      if (userSessions && userSessions.length > 0) {
+        console.log('Found', userSessions.length, 'user sessions to process for branch switch');
+        
+        // Group sessions by file_path to avoid duplicates
+        const fileSessionMap = new Map();
+        userSessions.forEach(session => {
+          const key = session.file_path;
+          if (!fileSessionMap.has(key) || session.updated_at > fileSessionMap.get(key).updated_at) {
+            fileSessionMap.set(key, session);
+          }
+        });
+
+        // For each unique file, ensure there's a session on the new branch
+        for (const [filePath, latestSession] of fileSessionMap) {
+          const { data: branchSession } = await supabase
+            .from('live_editing_sessions')
+            .select('id')
+            .eq('file_path', filePath)
+            .eq('branch_name', newBranchName)
+            .eq('user_id', user.id)
+            .maybeSingle();
+
+          if (!branchSession) {
+            console.log('Creating session for', filePath, 'on new branch', newBranchName);
+            const { error } = await supabase
+              .from('live_editing_sessions')
+              .insert({
+                file_path: filePath,
+                content: latestSession.content || '',
+                user_id: user.id,
+                branch_name: newBranchName,
+                locked_by: null,
+                locked_at: null
+              });
+
+            if (error) {
+              console.error('Error creating session for new branch:', error);
+            } else {
+              console.log('✅ Created session for', filePath, 'on branch', newBranchName);
+            }
+          } else {
+            console.log('✅ Session already exists for', filePath, 'on branch', newBranchName);
+          }
+        }
+      }
+
+      console.log('✅ Database updated for branch switch to:', newBranchName);
+    } catch (error) {
+      console.error('Error updating database for branch switch:', error);
+    }
+  };
+
   const createBranch = async (branchName: string, sourceBranch?: string) => {
     setLoading(true);
     
@@ -152,6 +217,9 @@ export function useBranches() {
 
       toast.success(`Branch "${branchName}" created successfully`);
       await fetchBranches();
+      
+      // Switch to the new branch and update database
+      await updateDatabaseForBranchSwitch(branchName);
       setCurrentBranch(branchName);
 
     } catch (error) {
@@ -162,10 +230,17 @@ export function useBranches() {
     }
   };
 
-  const switchBranch = (branchName: string) => {
-    console.log('Switching to branch:', branchName);
+  const switchBranch = async (branchName: string) => {
+    console.log('=== SWITCHING TO BRANCH ===', branchName);
+    
+    // Update database first
+    await updateDatabaseForBranchSwitch(branchName);
+    
+    // Then update the UI state
     setCurrentBranch(branchName);
     toast.success(`Switched to branch "${branchName}"`);
+    
+    console.log('✅ Branch switch completed:', branchName);
   };
 
   const deleteBranch = async (branchName: string) => {
@@ -201,7 +276,7 @@ export function useBranches() {
       // Switch to default branch if we deleted the current branch
       if (currentBranch === branchName) {
         const defaultBranch = branches.find(b => b.isDefault)?.name || 'main';
-        setCurrentBranch(defaultBranch);
+        await switchBranch(defaultBranch);
       }
       
       await fetchBranches();
