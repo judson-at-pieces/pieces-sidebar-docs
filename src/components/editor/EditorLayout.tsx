@@ -21,17 +21,6 @@ export function EditorLayout() {
   const { fileStructure, isLoading, error, refetch } = useFileStructure();
   const { hasRole } = useAuth();
   const { currentBranch, branches } = useBranches();
-  
-  // Local state to track the effective current branch
-  const [effectiveCurrentBranch, setEffectiveCurrentBranch] = useState<string>(currentBranch || 'main');
-  
-  // Update effective current branch when useBranches currentBranch changes
-  useEffect(() => {
-    if (currentBranch) {
-      console.log('EditorLayout updating effective branch to:', currentBranch);
-      setEffectiveCurrentBranch(currentBranch);
-    }
-  }, [currentBranch]);
 
   const [selectedFile, setSelectedFile] = useState<string>();
   const [content, setContent] = useState("");
@@ -43,7 +32,7 @@ export function EditorLayout() {
   const [selectedForBulkDelete, setSelectedForBulkDelete] = useState<Set<string>>(new Set());
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
 
-  // Live editing hook - use effectiveCurrentBranch
+  // Live editing hook - use currentBranch directly
   const {
     isLocked,
     lockedBy,
@@ -54,7 +43,7 @@ export function EditorLayout() {
     releaseLock,
     saveLiveContent,
     loadLiveContent
-  } = useLiveEditing(selectedFile, effectiveCurrentBranch);
+  } = useLiveEditing(selectedFile, currentBranch || 'main');
 
   // SEO data for the current file
   const { pendingChanges, hasUnsavedChanges } = useSeoData(selectedFile);
@@ -62,13 +51,15 @@ export function EditorLayout() {
   // Load existing live editing sessions on mount to restore work state
   useEffect(() => {
     const loadExistingLiveSessions = async () => {
+      if (!currentBranch) return;
+      
       try {
         const { data: existingSessions, error } = await supabase
           .from('live_editing_sessions')
           .select('file_path, content')
           .not('content', 'is', null)
           .neq('content', '')
-          .eq('branch_name', effectiveCurrentBranch || 'main');
+          .eq('branch_name', currentBranch);
 
         if (error) {
           console.error('Error loading existing live sessions:', error);
@@ -79,17 +70,15 @@ export function EditorLayout() {
           const filesWithChanges = new Set(existingSessions.map(session => session.file_path));
           setModifiedFiles(filesWithChanges);
           
-          console.log('Loaded existing live sessions for branch', effectiveCurrentBranch, ':', existingSessions.length, 'files with uncommitted changes');
+          console.log('Loaded existing live sessions for branch', currentBranch, ':', existingSessions.length, 'files with uncommitted changes');
         }
       } catch (error) {
         console.error('Error loading existing live sessions:', error);
       }
     };
 
-    if (effectiveCurrentBranch) {
-      loadExistingLiveSessions();
-    }
-  }, [effectiveCurrentBranch]);
+    loadExistingLiveSessions();
+  }, [currentBranch]);
 
   // Update modified files when sessions change
   useEffect(() => {
@@ -103,15 +92,15 @@ export function EditorLayout() {
 
   // Auto-save live content when user is editing (has the lock)
   useEffect(() => {
-    if (selectedFile && isLocked && lockedBy === 'You' && hasChanges && content && effectiveCurrentBranch) {
+    if (selectedFile && isLocked && lockedBy === 'You' && hasChanges && content && currentBranch) {
       const timeoutId = setTimeout(() => {
-        console.log('Auto-saving live content for real-time updates on branch:', effectiveCurrentBranch);
+        console.log('Auto-saving live content for real-time updates on branch:', currentBranch);
         saveLiveContent(selectedFile, content);
       }, 500);
 
       return () => clearTimeout(timeoutId);
     }
-  }, [selectedFile, isLocked, lockedBy, hasChanges, content, effectiveCurrentBranch, saveLiveContent]);
+  }, [selectedFile, isLocked, lockedBy, hasChanges, content, currentBranch, saveLiveContent]);
 
   const handleFileSelect = async (filePath: string) => {
     console.log('=== FILE SELECTION DEBUG ===');
@@ -341,9 +330,10 @@ Start editing to see the live preview!
   };
 
   const handleCreatePR = async () => {
-    console.log('Creating PR with target branch:', effectiveCurrentBranch);
+    const targetBranch = currentBranch || 'main';
+    console.log('Creating PR with target branch:', targetBranch);
     
-    if (!effectiveCurrentBranch) {
+    if (!targetBranch) {
       toast.error('No current branch selected');
       return;
     }
@@ -375,16 +365,16 @@ Start editing to see the live preview!
       const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
       const prBranchName = `editor-changes-${timestamp}`;
 
-      // Create PR with all live content, using effectiveCurrentBranch as the TARGET (base)
+      // Create PR with all live content, using targetBranch as the TARGET (base)
       const result = await githubService.createPullRequest(
         {
           title: `Update documentation - ${allLiveContent.length} file${allLiveContent.length !== 1 ? 's' : ''} modified`,
-          body: `Updated documentation files targeting branch "${effectiveCurrentBranch}":\n${allLiveContent.map(item => `- ${item.path}`).join('\n')}\n\nThis pull request was created from the collaborative editor.`,
+          body: `Updated documentation files targeting branch "${targetBranch}":\n${allLiveContent.map(item => `- ${item.path}`).join('\n')}\n\nThis pull request was created from the collaborative editor.`,
           files: allLiveContent.map(item => ({
             path: item.path,
             content: item.content
           })),
-          baseBranch: effectiveCurrentBranch, // TARGET branch (where changes should be merged TO)
+          baseBranch: targetBranch, // TARGET branch (where changes should be merged TO)
           headBranch: prBranchName // SOURCE branch (where changes come FROM)
         },
         token,
@@ -392,7 +382,7 @@ Start editing to see the live preview!
       );
 
       if (result.success) {
-        toast.success(`Pull request created successfully targeting "${effectiveCurrentBranch}"!`, {
+        toast.success(`Pull request created successfully targeting "${targetBranch}"!`, {
           action: {
             label: 'View PR',
             onClick: () => window.open(result.prUrl, '_blank')
@@ -404,7 +394,7 @@ Start editing to see the live preview!
           const { error } = await supabase
             .from('live_editing_sessions')
             .delete()
-            .eq('branch_name', effectiveCurrentBranch)
+            .eq('branch_name', targetBranch)
             .in('file_path', sessions.map(s => s.file_path));
           
           if (!error) {
@@ -593,7 +583,7 @@ Start editing to see the live preview!
                     {totalLiveFiles > 0 && (
                       <div className="flex items-center gap-2 text-sm text-muted-foreground">
                         <div className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></div>
-                        {totalLiveFiles} file{totalLiveFiles !== 1 ? 's' : ''} with live changes on {effectiveCurrentBranch}
+                        {totalLiveFiles} file{totalLiveFiles !== 1 ? 's' : ''} with live changes on {currentBranch || 'main'}
                       </div>
                     )}
                     
@@ -608,7 +598,7 @@ Start editing to see the live preview!
                           ? "No changes to create PR for" 
                           : creatingPR 
                             ? "Creating PR..." 
-                            : `Create pull request targeting ${effectiveCurrentBranch} with all live changes`
+                            : `Create pull request targeting ${currentBranch || 'main'} with all live changes`
                       }
                     >
                       {creatingPR ? (
@@ -616,7 +606,7 @@ Start editing to see the live preview!
                       ) : (
                         <GitPullRequest className="w-4 h-4" />
                       )}
-                      Create PR → {effectiveCurrentBranch} {totalLiveFiles > 0 && `(${totalLiveFiles})`}
+                      Create PR → {currentBranch || 'main'} {totalLiveFiles > 0 && `(${totalLiveFiles})`}
                     </Button>
                   </>
                 )}
