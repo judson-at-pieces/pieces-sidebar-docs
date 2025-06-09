@@ -8,7 +8,7 @@ visibility: "PUBLIC"
 <Image src="https://storage.googleapis.com/hashnode_product_documentation_assets/core_dependencies_assets/figma_mockups/core_dependencies.png" alt="" align="center" fullwidth="true" />
 
 ***
-
+Hello judson! test 
 ## What Are Core Dependencies?
 
 Pieces for Developers products, including the [Pieces for Developers Desktop Application](https://docs.pieces.app/products/desktop), utilize *two core dependencies* to provide a local, secure, and efficient development experience—[PiecesOS](https://docs.pieces.app/products/core-dependencies/pieces-os) and [Ollama](https://docs.pieces.app/products/core-dependencies/ollama)**.**
