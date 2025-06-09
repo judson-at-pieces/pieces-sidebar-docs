@@ -42,6 +42,46 @@ export function EditorLayout() {
   // SEO data for the current file
   const { pendingChanges, hasUnsavedChanges } = useSeoData(selectedFile);
 
+  // Load existing live editing sessions on mount to restore work state
+  useEffect(() => {
+    const loadExistingLiveSessions = async () => {
+      try {
+        const { data: existingSessions, error } = await supabase
+          .from('live_editing_sessions')
+          .select('file_path, content')
+          .not('content', 'is', null)
+          .neq('content', '');
+
+        if (error) {
+          console.error('Error loading existing live sessions:', error);
+          return;
+        }
+
+        if (existingSessions && existingSessions.length > 0) {
+          // Add all files with live content to modified files
+          const filesWithChanges = new Set(existingSessions.map(session => session.file_path));
+          setModifiedFiles(filesWithChanges);
+          
+          console.log('Loaded existing live sessions:', existingSessions.length, 'files with uncommitted changes');
+        }
+      } catch (error) {
+        console.error('Error loading existing live sessions:', error);
+      }
+    };
+
+    loadExistingLiveSessions();
+  }, []);
+
+  // Update modified files when sessions change
+  useEffect(() => {
+    const filesWithLiveContent = new Set(
+      sessions
+        .filter(session => session.content && session.content.trim())
+        .map(session => session.file_path)
+    );
+    setModifiedFiles(filesWithLiveContent);
+  }, [sessions]);
+
   // Auto-acquire lock and start editing when file is selected
   useEffect(() => {
     if (selectedFile && !isLocked) {

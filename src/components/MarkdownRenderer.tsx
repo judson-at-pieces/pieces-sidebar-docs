@@ -7,7 +7,7 @@ import { createComponentMappings } from './markdown/componentMappings';
 
 interface MarkdownRendererProps {
   content: string;
-  components?: any;
+  components?: Record<string, React.ComponentType<any>>;
 }
 
 const MarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content, components }) => {
