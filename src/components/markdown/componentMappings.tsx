@@ -238,7 +238,7 @@ export const createComponentMappings = () => ({
     
     if (href?.startsWith('/')) {
       return (
-        <Link to={href} className={linkClasses} {...props}>
+        <Link to={href} className={linkClasses} {...(props as Record<string, any>)}>
           {children}
         </Link>
       );
@@ -250,7 +250,7 @@ export const createComponentMappings = () => ({
         href={href} 
         className={`${linkClasses} ${isExternal ? 'after:content-["↗"] after:ml-1 after:text-xs after:opacity-70' : ''}`}
         {...(isExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-        {...props}
+        {...(props as Record<string, any>)}
       >
         {children}
       </a>
