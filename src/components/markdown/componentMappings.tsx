@@ -31,7 +31,7 @@ export const componentMap: Record<string, React.ComponentType<any>> = {
   // Layout Components
   Card: (props: ComponentProps & { title?: string }) => <Card title={props.title || 'Untitled'} {...props} />,
   CardGroup: (props: ComponentProps & { children: React.ReactNode }) => <CardGroup {...props} />,
-  SimpleCard: (props: ComponentProps) => <SimpleCard title={props.title || 'Untitled'} {...props} />,
+  SimpleCard: (props: ComponentProps & { title?: string; children?: React.ReactNode }) => <SimpleCard title={props.title || 'Untitled'} {...props} />,
   
   // Interactive Components
   Accordion: (props: ComponentProps & { title: string; children: React.ReactNode }) => <Accordion {...props} />,

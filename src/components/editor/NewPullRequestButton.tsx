@@ -8,77 +8,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useBranchManager } from '@/hooks/useBranchManager';
 import { useBranchSessions } from '@/hooks/useBranchSessions';
 
-const DEBUG = true;
-
 export function NewPullRequestButton() {
   const { branches, currentBranch, initialized } = useBranchManager();
   const { sessions } = useBranchSessions(currentBranch);
   const [creating, setCreating] = useState(false);
 
-  if (DEBUG) {
-    console.log('🚀 NewPullRequestButton RENDER - currentBranch from useBranchManager:', currentBranch);
-    console.log('🚀 NewPullRequestButton RENDER - initialized:', initialized);
-    console.log('🚀 NewPullRequestButton RENDER - branches count:', branches.length);
-  }
-
-  const getTargetBranch = () => {
-    // Always target main branch
-    return 'main';
-  };
-
-  const getButtonState = () => {
-    if (!initialized || !currentBranch) {
-      return {
-        text: initialized ? 'No branch' : 'Loading...',
-        enabled: false,
-        tooltip: initialized ? 'No branch selected' : 'Loading branches...'
-      };
-    }
-
-    // Always show current branch → main, but if current IS main, show main → develop as target
-    let displayTarget = 'main';
-    if (currentBranch === 'main') {
-      // If on main branch, target develop or another branch
-      const developBranch = branches.find(b => b.name === 'develop' || b.name === 'dev');
-      if (developBranch) {
-        displayTarget = developBranch.name;
-      } else {
-        // If no develop branch, find any other branch
-        const otherBranch = branches.find(b => b.name !== 'main');
-        if (otherBranch) {
-          displayTarget = otherBranch.name;
-        } else {
-          displayTarget = 'develop'; // Default to develop even if it doesn't exist
-        }
-      }
-    }
-
-    const forcedText = `${currentBranch} → ${displayTarget}`;
-    const activeSessions = sessions.filter(s => s.content && s.content.trim());
-    const fileCount = activeSessions.length;
-
-    if (creating) {
-      return {
-        text: 'Creating PR...',
-        enabled: false,
-        tooltip: 'Creating pull request...'
-      };
-    }
-
-    if (fileCount === 0) {
-      return {
-        text: forcedText,
-        enabled: false,
-        tooltip: `No changes to create PR for. Current: ${forcedText}`
-      };
-    }
-
-    return {
-      text: `${forcedText} (${fileCount})`,
-      enabled: true,
-      tooltip: `Create pull request from ${currentBranch} to ${displayTarget} with ${fileCount} file${fileCount !== 1 ? 's' : ''}`
-    };
-  };
+  const activeSessions = sessions.filter(s => s.content && s.content.trim());
+  const hasChanges = activeSessions.length > 0;
 
   const getGitHubAppToken = async () => {
     const { data: installations, error } = await supabase
@@ -112,40 +48,18 @@ export function NewPullRequestButton() {
   };
 
   const handleCreatePR = async () => {
-    const buttonState = getButtonState();
-    
-    if (!currentBranch || !buttonState.enabled) {
-      if (DEBUG) console.log('🚀 Cannot create PR - conditions not met');
+    if (!initialized || !currentBranch || !hasChanges) {
       return;
     }
 
-    const targetBranch = getTargetBranch(); // This will always be 'main'
-    const activeSessions = sessions.filter(s => s.content && s.content.trim());
-    
-    if (DEBUG) {
-      console.log('🚀 CREATING PR:', {
-        from: currentBranch,
-        to: targetBranch,
-        files: activeSessions.length
-      });
-    }
-    
     setCreating(true);
     
     try {
-      // Add cheese toast for fun
-      toast.success('🧀 CHEESE - Creating that delicious PR!');
-      
       const token = await getGitHubAppToken();
       const repoConfig = await githubService.getRepoConfig();
       
       if (!repoConfig) {
         toast.error('No GitHub repository configured. Please configure a repository first.');
-        return;
-      }
-
-      if (activeSessions.length === 0) {
-        toast.error('No changes to create a pull request for');
         return;
       }
 
@@ -160,9 +74,9 @@ export function NewPullRequestButton() {
       const result = await githubService.createPullRequest(
         {
           title: `Update documentation from ${currentBranch} - ${files.length} file${files.length !== 1 ? 's' : ''} modified`,
-          body: `Updated documentation files from branch "${currentBranch}" to ${targetBranch}:\n${files.map(file => `- ${file.path}`).join('\n')}\n\nThis pull request was created from the collaborative editor.`,
+          body: `Updated documentation files from branch "${currentBranch}" to main:\n${files.map(file => `- ${file.path}`).join('\n')}\n\nThis pull request was created from the collaborative editor.`,
           files,
-          baseBranch: targetBranch,
+          baseBranch: 'main',
           headBranch: tempBranchName,
           useExistingBranch: false
         },
@@ -171,7 +85,7 @@ export function NewPullRequestButton() {
       );
 
       if (result.success) {
-        toast.success(`Pull request created successfully from "${currentBranch}" to ${targetBranch}!`, {
+        toast.success(`Pull request created successfully!`, {
           action: {
             label: 'View PR',
             onClick: () => window.open(result.prUrl, '_blank')
@@ -179,20 +93,14 @@ export function NewPullRequestButton() {
         });
         
         // Clear sessions after successful PR
-        try {
-          const { error } = await supabase
-            .from('live_editing_sessions')
-            .delete()
-            .eq('branch_name', currentBranch)
-            .in('file_path', activeSessions.map(s => s.file_path));
-          
-          if (!error) {
-            toast.success('Live editing sessions cleared');
-          } else {
-            console.error('Error clearing live sessions:', error);
-          }
-        } catch (error) {
-          console.error('Error clearing live sessions:', error);
+        const { error } = await supabase
+          .from('live_editing_sessions')
+          .delete()
+          .eq('branch_name', currentBranch)
+          .in('file_path', activeSessions.map(s => s.file_path));
+        
+        if (!error) {
+          toast.success('Live editing sessions cleared');
         }
       } else {
         toast.error(result.error || 'Failed to create pull request');
@@ -205,28 +113,23 @@ export function NewPullRequestButton() {
     }
   };
 
-  const buttonState = getButtonState();
-
-  if (DEBUG) {
-    console.log('🚀 NewPullRequestButton buttonState:', buttonState);
-    console.log('🚀 NewPullRequestButton FINAL currentBranch used in text:', currentBranch);
-  }
+  const isEnabled = initialized && currentBranch && hasChanges;
 
   return (
     <Button
       onClick={handleCreatePR}
       variant="outline"
       size="sm"
-      disabled={!buttonState.enabled}
+      disabled={!isEnabled}
       className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-pink-500 text-white border-0 hover:from-blue-600 hover:to-pink-600"
-      title={buttonState.tooltip}
+      title={isEnabled ? 'Create pull request' : 'No changes to create PR for'}
     >
       {creating ? (
         <div className="w-4 h-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
       ) : (
-        <GitPullRequest className="w-4 w-4" />
+        <GitPullRequest className="w-4 h-4" />
       )}
-      PR: {buttonState.text}
+      Create PR
     </Button>
   );
 }
