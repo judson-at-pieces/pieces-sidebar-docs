@@ -5,16 +5,29 @@ import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { githubService } from '@/services/githubService';
 import { supabase } from '@/integrations/supabase/client';
-import { useBranchManager } from '@/hooks/useBranchManager';
-import { useBranchSessions } from '@/hooks/useBranchSessions';
 
-export function NewPullRequestButton() {
-  const { branches, currentBranch, initialized } = useBranchManager();
-  const { sessions } = useBranchSessions(currentBranch);
+interface NewPullRequestButtonProps {
+  currentBranch: string;
+  sessions: Array<{ file_path: string; content: string }>;
+  hasChanges: boolean;
+  initialized: boolean;
+  targetBranch?: string; // Optional target branch, defaults to 'main'
+}
+
+export function NewPullRequestButton({ 
+  currentBranch, 
+  sessions, 
+  hasChanges, 
+  initialized, 
+  targetBranch = 'main' 
+}: NewPullRequestButtonProps) {
   const [creating, setCreating] = useState(false);
 
   const activeSessions = sessions.filter(s => s.content && s.content.trim());
-  const hasChanges = activeSessions.length > 0;
+  
+  // For main branch: always create PR using temp branch
+  // For other branches: create PR from current branch to target
+  const isEnabled = initialized && currentBranch && hasChanges && currentBranch !== targetBranch;
 
   const getGitHubAppToken = async () => {
     const { data: installations, error } = await supabase
@@ -48,9 +61,7 @@ export function NewPullRequestButton() {
   };
 
   const handleCreatePR = async () => {
-    if (!initialized || !currentBranch || !hasChanges) {
-      return;
-    }
+    if (!isEnabled) return;
 
     setCreating(true);
     
@@ -59,7 +70,7 @@ export function NewPullRequestButton() {
       const repoConfig = await githubService.getRepoConfig();
       
       if (!repoConfig) {
-        toast.error('No GitHub repository configured. Please configure a repository first.');
+        toast.error('No GitHub repository configured.');
         return;
       }
 
@@ -68,22 +79,32 @@ export function NewPullRequestButton() {
         content: session.content
       }));
 
-      // Use the current branch as the head branch and enable useExistingBranch
+      console.log('🚀 Creating PR:', {
+        from: currentBranch,
+        to: targetBranch,
+        filesCount: files.length,
+        isMainBranch: currentBranch === 'main'
+      });
+
+      // Different logic for main vs other branches
+      const useExistingBranch = currentBranch !== 'main';
+      const headBranch = currentBranch === 'main' ? undefined : currentBranch; // Let service generate temp branch for main
+
       const result = await githubService.createPullRequest(
         {
           title: `Update documentation from ${currentBranch} - ${files.length} file${files.length !== 1 ? 's' : ''} modified`,
-          body: `Updated documentation files from branch "${currentBranch}" to main:\n${files.map(file => `- ${file.path}`).join('\n')}\n\nThis pull request was created from the collaborative editor.`,
+          body: `Updated documentation files from branch "${currentBranch}" to ${targetBranch}:\n${files.map(file => `- ${file.path}`).join('\n')}\n\nThis pull request was created from the collaborative editor.`,
           files,
-          baseBranch: 'main',
-          headBranch: currentBranch,
-          useExistingBranch: true
+          baseBranch: targetBranch,
+          headBranch,
+          useExistingBranch
         },
         token,
         repoConfig
       );
 
       if (result.success) {
-        toast.success(`Pull request created successfully!`, {
+        toast.success(`Pull request created from "${currentBranch}" to ${targetBranch}!`, {
           action: {
             label: 'View PR',
             onClick: () => window.open(result.prUrl, '_blank')
@@ -111,15 +132,30 @@ export function NewPullRequestButton() {
     }
   };
 
-  const isEnabled = initialized && currentBranch && hasChanges;
+  const getButtonText = () => {
+    if (creating) return 'Creating PR...';
+    if (!initialized) return 'Loading...';
+    if (!currentBranch) return 'No Branch';
+    if (!hasChanges) return 'No Changes';
+    if (currentBranch === targetBranch) return 'Same Branch';
+    return `PR → ${targetBranch}`;
+  };
+
+  const getTooltip = () => {
+    if (!initialized) return 'Loading...';
+    if (!currentBranch) return 'No branch selected';
+    if (!hasChanges) return 'No changes to create PR for';
+    if (currentBranch === targetBranch) return `Cannot create PR to same branch (${targetBranch})`;
+    return `Create pull request from ${currentBranch} to ${targetBranch}`;
+  };
 
   console.log('🚀 NewPullRequestButton DEBUG:', {
     currentBranch,
+    targetBranch,
     initialized,
     hasChanges,
-    sessionsCount: sessions.length,
-    activeSessionsCount: activeSessions.length,
-    isEnabled
+    isEnabled,
+    sessionsCount: activeSessions.length
   });
 
   return (
@@ -128,15 +164,15 @@ export function NewPullRequestButton() {
       variant="outline"
       size="sm"
       disabled={!isEnabled}
-      className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-pink-500 text-white border-0 hover:from-blue-600 hover:to-pink-600"
-      title={isEnabled ? 'Create pull request' : hasChanges ? 'No changes to create PR for' : 'No repository or branch selected'}
+      className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-purple-500 text-white border-0 hover:from-blue-600 hover:to-purple-600"
+      title={getTooltip()}
     >
       {creating ? (
         <div className="w-4 h-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
       ) : (
         <GitPullRequest className="w-4 h-4" />
       )}
-      Create PR
+      {getButtonText()}
     </Button>
   );
 }

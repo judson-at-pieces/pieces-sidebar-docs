@@ -5,6 +5,7 @@ import { FileText, Navigation, Search, Lock, Unlock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { NewPullRequestButton } from './NewPullRequestButton';
+import { PublishButton } from './PublishButton';
 
 interface Branch {
   name: string;
@@ -59,14 +60,9 @@ export function EditorTabNavigation({
   const canEdit = isLocked && lockedBy === 'You';
   const isOtherUserEditing = isLocked && lockedBy !== 'You';
 
-  if (DEBUG_TAB_NAV) {
-    console.log('🟡 TAB NAV PASSING TO NEW PR BUTTON:');
-    console.log('  🟡 currentBranch:', currentBranch);
-    console.log('  🟡 sessions:', sessions);
-    console.log('  🟡 hasChanges:', hasChanges);
-    console.log('  🟡 initialized:', initialized);
-    console.log('  🟡 branches:', branches);
-  }
+  // Show Publish button for non-main branches, PR button for all branches
+  const showPublishButton = currentBranch && currentBranch !== 'main';
+  const showPRButton = currentBranch; // Always show PR button when we have a branch
 
   return (
     <div className="border-b border-border/50 bg-background/80 backdrop-blur-sm">
@@ -126,8 +122,26 @@ export function EditorTabNavigation({
             </div>
           )}
 
-          {/* New Pull Request Button */}
-          <NewPullRequestButton />
+          {/* Publish Button for non-main branches */}
+          {showPublishButton && (
+            <PublishButton
+              currentBranch={currentBranch}
+              sessions={sessions}
+              hasChanges={hasChanges}
+              initialized={initialized}
+            />
+          )}
+
+          {/* PR Button for all branches */}
+          {showPRButton && (
+            <NewPullRequestButton
+              currentBranch={currentBranch}
+              sessions={sessions}
+              hasChanges={hasChanges}
+              initialized={initialized}
+              targetBranch="main"
+            />
+          )}
         </div>
       </div>
     </div>
