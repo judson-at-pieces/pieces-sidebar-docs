@@ -5,13 +5,12 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Bold, Italic, List, Link, Image, Save } from 'lucide-react';
+import { Bold, Italic, List, Link, Image, Type, Save } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface WYSIWYGEditorProps {
   content: string;
   onChange: (content: string) => void;
-  onContentChange?: (content: string) => void; // Added this prop for backward compatibility
   onSave?: () => void;
   isLocked?: boolean;
   lockedBy?: string | null;
@@ -20,7 +19,6 @@ interface WYSIWYGEditorProps {
 export function WYSIWYGEditor({ 
   content, 
   onChange, 
-  onContentChange,
   onSave, 
   isLocked = false, 
   lockedBy 
@@ -35,14 +33,6 @@ export function WYSIWYGEditor({
       editorRef.current.innerText = content;
     }
   }, [content]);
-
-  const handleContentChange = (newContent: string) => {
-    onChange(newContent);
-    // Use both onChange and onContentChange if provided for backward compatibility
-    if (onContentChange) {
-      onContentChange(newContent);
-    }
-  };
 
   const handleBoldClick = () => {
     insertAtCursor(`**${selectedText}**`);
@@ -99,7 +89,7 @@ export function WYSIWYGEditor({
       
       // Update content
       const newContent = (editorRef.current as HTMLElement).innerText || '';
-      handleContentChange(newContent);
+      onChange(newContent);
     }
   };
 

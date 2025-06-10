@@ -1,14 +1,13 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useBranchManager } from './useBranchManager';
+import { useBranches } from './useBranches';
 
 const DEBUG_LIVE = false;
 
 export function useLiveEditing(selectedFile?: string, activeBranch?: string) {
-  const { currentBranch: branchFromHook, initialized: branchesInitialized } = useBranchManager();
+  const { currentBranch: branchFromHook, initialized: branchesInitialized } = useBranches();
   
-  // Use the branch from useBranchManager hook if available, otherwise fall back to activeBranch prop or 'main'
+  // Use the branch from useBranches hook if available, otherwise fall back to activeBranch prop or 'main'
   const effectiveBranch = branchesInitialized && branchFromHook ? branchFromHook : (activeBranch || 'main');
   
   const [isLocked, setIsLocked] = useState(false);

@@ -143,7 +143,7 @@ export function EnhancedEditor({
         {viewMode === 'wysiwyg' && (
           <WYSIWYGEditor
             content={textareaContent}
-            onChange={handleContentChange}
+            onContentChange={handleContentChange}
           />
         )}
 
