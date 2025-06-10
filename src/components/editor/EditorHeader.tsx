@@ -2,9 +2,7 @@
 import React from "react";
 import { useBranchManager } from "@/hooks/useBranchManager";
 import { useBranchSessions } from "@/hooks/useBranchSessions";
-import { NewBranchSelector } from "./NewBranchSelector";
 import { NewPullRequestButton } from "./NewPullRequestButton";
-import { NewEditorTabNavigation } from "./NewEditorTabNavigation";
 
 interface EditorHeaderProps {
   activeTab: 'navigation' | 'content' | 'seo';
@@ -13,7 +11,7 @@ interface EditorHeaderProps {
 }
 
 export function EditorHeader({ activeTab, hasChanges, totalLiveFiles }: EditorHeaderProps) {
-  const { branches, currentBranch, initialized } = useBranchManager();
+  const { currentBranch, initialized } = useBranchManager();
   const { sessions } = useBranchSessions(currentBranch);
 
   // Debug logs to see what's happening
@@ -21,7 +19,6 @@ export function EditorHeader({ activeTab, hasChanges, totalLiveFiles }: EditorHe
     currentBranch: JSON.stringify(currentBranch),
     currentBranchType: typeof currentBranch,
     initialized,
-    branchesCount: branches.length,
     sessionsCount: sessions.length,
     hasChanges,
     totalLiveFiles
@@ -36,16 +33,12 @@ export function EditorHeader({ activeTab, hasChanges, totalLiveFiles }: EditorHe
           Documentation Editor
         </h1>
         
-        <div className="flex items-center gap-2">
-          <NewBranchSelector />
-          
-          {totalLiveFiles > 0 && (
-            <div className="flex items-center gap-1 text-sm text-muted-foreground bg-muted/50 px-2 py-1 rounded-md">
-              <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
-              <span>{totalLiveFiles} file{totalLiveFiles !== 1 ? 's' : ''} modified</span>
-            </div>
-          )}
-        </div>
+        {totalLiveFiles > 0 && (
+          <div className="flex items-center gap-1 text-sm text-muted-foreground bg-muted/50 px-2 py-1 rounded-md">
+            <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+            <span>{totalLiveFiles} file{totalLiveFiles !== 1 ? 's' : ''} modified</span>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-3">
