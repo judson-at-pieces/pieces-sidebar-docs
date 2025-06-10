@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { githubService } from '@/services/githubService';
 import { supabase } from '@/integrations/supabase/client';
@@ -72,6 +73,7 @@ export function useBranches() {
         setCurrentBranch('main');
         setBranches([{ name: 'main', sha: '', isDefault: true }]);
         setInitialized(true);
+        setLoading(false);
         return;
       }
 
@@ -110,7 +112,7 @@ export function useBranches() {
 
       setBranches(formattedBranches);
       
-      // Set current branch based on initialization state
+      // Initialize current branch logic - ALWAYS start with default branch on first load
       if (!initialized) {
         if (DEBUG_BRANCHES) {
           console.log('🌿 FIRST INITIALIZATION - setting to default branch:', defaultBranch);
@@ -149,7 +151,7 @@ export function useBranches() {
     } finally {
       setLoading(false);
     }
-  }, []); // Remove dependencies to prevent infinite loops
+  }, [currentBranch, initialized]);
 
   const ensureSessionsForBranch = async (branchName: string) => {
     try {
@@ -350,15 +352,13 @@ export function useBranches() {
     }
   };
 
-  // Single useEffect to initialize branches only once
   useEffect(() => {
-    if (!initialized) {
-      if (DEBUG_BRANCHES) {
-        console.log('🌿 USEBRANCHES: Initial useEffect triggered');
-      }
-      fetchBranches(false);
+    if (DEBUG_BRANCHES) {
+      console.log('🌿 USEBRANCHES: Initial useEffect triggered');
     }
-  }, [initialized]); // Only depend on initialized to prevent multiple calls
+    // Only fetch branches on initial mount
+    fetchBranches(false);
+  }, []);
 
   // Add effect to log currentBranch changes
   useEffect(() => {
