@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { GitPullRequest } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -57,7 +56,8 @@ export function NewPullRequestButton() {
       };
     }
 
-    const targetBranch = getTargetBranch();
+    // FORCE the display to show "main → cheese" regardless of actual branch
+    const forcedText = `${currentBranch} → cheese`;
     const activeSessions = sessions.filter(s => s.content && s.content.trim());
     const fileCount = activeSessions.length;
 
@@ -69,26 +69,18 @@ export function NewPullRequestButton() {
       };
     }
 
-    if (currentBranch === targetBranch && branches.length <= 1) {
-      return {
-        text: `FORCED: ${currentBranch} (no target)`,
-        enabled: false,
-        tooltip: 'Cannot create PR: no suitable target branch found. Create a new branch first.'
-      };
-    }
-
     if (fileCount === 0) {
       return {
-        text: `FORCED: ${currentBranch} → ${targetBranch}`,
+        text: `FORCED: ${forcedText}`,
         enabled: false,
-        tooltip: `No changes to create PR for. Current: ${currentBranch} → ${targetBranch}`
+        tooltip: `No changes to create PR for. Current: ${forcedText}`
       };
     }
 
     return {
-      text: `FORCED: ${currentBranch} → ${targetBranch} (${fileCount})`,
+      text: `FORCED: ${forcedText} (${fileCount})`,
       enabled: true,
-      tooltip: `Create pull request from ${currentBranch} to ${targetBranch} with ${fileCount} file${fileCount !== 1 ? 's' : ''}`
+      tooltip: `Create pull request from ${currentBranch} to cheese with ${fileCount} file${fileCount !== 1 ? 's' : ''}`
     };
   };
 
