@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -65,7 +64,7 @@ export function NewEditorTabNavigation({
                   size="sm"
                   className={`gap-2 transition-all duration-200 ${
                     activeTab === tab.id 
-                      ? 'bg-background shadow-sm border border-border/50' 
+                      ? 'bg-background shadow-sm border border-border/50 text-foreground' 
                       : 'hover:bg-muted/50'
                   }`}
                 >
@@ -122,14 +121,6 @@ export function NewEditorTabNavigation({
         <div className="flex items-center gap-3">
           {/* Branch Selector */}
           <NewBranchSelector />
-
-          {/* Live Files Indicator */}
-          {totalLiveFiles > 0 && (
-            <Badge variant="secondary" className="gap-1">
-              <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
-              {totalLiveFiles} pending
-            </Badge>
-          )}
 
           {/* Single PR Button */}
           <CookieBasedPRButton

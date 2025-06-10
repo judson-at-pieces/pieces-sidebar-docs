@@ -5,7 +5,6 @@ import { Settings, Crown } from "lucide-react";
 import { UserMenu } from "@/components/auth/UserMenu";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBranchSessions } from "@/hooks/useBranchSessions";
-import { CookieBasedPRButton } from "./CookieBasedPRButton";
 import { getBranchCookie } from "@/utils/branchCookies";
 import { useNavigate } from "react-router-dom";
 
@@ -61,14 +60,6 @@ export function EditorMainHeader({ hasChanges, totalLiveFiles }: EditorMainHeade
             Admin
           </Button>
         )}
-
-        {/* PR Button */}
-        <CookieBasedPRButton
-          sessions={activeSessions}
-          hasChanges={hasChanges || activeSessions.length > 0}
-          initialized={true}
-          targetBranch="main"
-        />
 
         {/* User Menu */}
         <UserMenu />
