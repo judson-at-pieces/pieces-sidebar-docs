@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Accordion from './Accordion';
 import AccordionGroup from './AccordionGroup';
