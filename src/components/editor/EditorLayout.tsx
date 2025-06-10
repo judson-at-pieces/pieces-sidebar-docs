@@ -29,7 +29,7 @@ export function EditorLayout() {
   const [activeTab, setActiveTab] = useState<'navigation' | 'content' | 'seo'>('content');
   const [loadingContent, setLoadingContent] = useState(false);
   const [lastBranch, setLastBranch] = useState<string | null>(null);
-  const [isSwitchingBranch, setIsSwitchingBranch] = useState(false);
+  const [editorKey, setEditorKey] = useState(0); // Force re-render key
 
   if (DEBUG_EDITOR) {
     console.log('🎯 EDITOR STATE:', {
@@ -37,11 +37,11 @@ export function EditorLayout() {
       currentBranch,
       lastBranch,
       localContentLength: localContent.length,
-      isSwitchingBranch
+      editorKey
     });
   }
 
-  // Handle branch changes with improved isolation
+  // Handle branch changes with COMPLETE reload
   useEffect(() => {
     if (!currentBranch) return;
     
@@ -51,17 +51,15 @@ export function EditorLayout() {
       return;
     }
     
-    // Actual branch change detected
+    // Actual branch change detected - FORCE COMPLETE RELOAD
     if (currentBranch !== lastBranch) {
       if (DEBUG_EDITOR) {
-        console.log('🔄 Branch switch detected:', lastBranch, '->', currentBranch);
+        console.log('🔄 FORCING COMPLETE RELOAD - Branch switch:', lastBranch, '->', currentBranch);
       }
       
-      setIsSwitchingBranch(true);
-      
-      const handleBranchSwitch = async () => {
+      const handleBranchSwitchWithCompleteReload = async () => {
         try {
-          // Step 1: Save current content to old branch if we have unsaved changes
+          // Step 1: Save current content to old branch if we have it
           if (selectedFile && localContent && lockManager.isFileLockedByMe(selectedFile)) {
             if (DEBUG_EDITOR) {
               console.log('💾 Saving current content to old branch:', lastBranch);
@@ -69,34 +67,35 @@ export function EditorLayout() {
             await contentManager.saveContentToBranch(selectedFile, localContent, lastBranch);
           }
           
-          // Step 2: Release ALL locks from current user
+          // Step 2: Release ALL locks
           if (lockManager.myCurrentLock) {
             await lockManager.releaseLock(lockManager.myCurrentLock);
           }
           
-          // Step 3: Force clear local content and show loading
+          // Step 3: FORCE COMPLETE STATE RESET
           setLocalContent("");
           setLoadingContent(true);
+          setEditorKey(prev => prev + 1); // Force complete re-render
           
-          // Step 4: Force refresh content manager for new branch (clear cache)
+          // Step 4: Force clear content manager cache
           await contentManager.refreshContentForBranch(currentBranch);
           
-          // Step 5: Force reload the current file from the new branch
+          // Step 5: Add significant delay to ensure cache is cleared
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+          // Step 6: If we have a selected file, force reload it completely
           if (selectedFile) {
             if (DEBUG_EDITOR) {
-              console.log('📄 Force loading content for new branch:', currentBranch, 'file:', selectedFile);
+              console.log('📄 FORCE loading content for new branch (complete reload):', currentBranch, 'file:', selectedFile);
             }
             
-            // Add delay to ensure content manager has refreshed
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            
-            // Force reload content by bypassing cache
+            // Force reload content bypassing ALL caches
             const newContent = await contentManager.loadContentForced(selectedFile, currentBranch);
             
             if (newContent !== null) {
               setLocalContent(newContent);
               if (DEBUG_EDITOR) {
-                console.log('✅ Force loaded content from new branch, length:', newContent.length);
+                console.log('✅ FORCE loaded content from new branch (complete reload), length:', newContent.length);
               }
             } else {
               // Create default content for new branch
@@ -124,36 +123,35 @@ Start editing to see the live preview!
 `;
               setLocalContent(defaultContent);
               if (DEBUG_EDITOR) {
-                console.log('📝 Created default content for new branch');
+                console.log('📝 Created default content for new branch (complete reload)');
               }
             }
-            
-            setLoadingContent(false);
-            
-            // Step 6: Try to acquire lock for the new branch after content is loaded
+          }
+          
+          setLoadingContent(false);
+          
+          // Step 7: Try to acquire lock after everything is loaded
+          if (selectedFile) {
             setTimeout(async () => {
               const lockAcquired = await lockManager.acquireLock(selectedFile);
               if (DEBUG_EDITOR) {
-                console.log('🔒 Lock acquisition result:', lockAcquired);
+                console.log('🔒 Lock acquisition result after complete reload:', lockAcquired);
               }
             }, 1000);
-          } else {
-            setLoadingContent(false);
           }
           
         } catch (error) {
-          console.error('❌ Error during branch switch:', error);
+          console.error('❌ Error during complete branch reload:', error);
           setLoadingContent(false);
         } finally {
           setLastBranch(currentBranch);
-          setIsSwitchingBranch(false);
           if (DEBUG_EDITOR) {
-            console.log('✅ Branch switch completed');
+            console.log('✅ Complete branch reload completed');
           }
         }
       };
       
-      handleBranchSwitch();
+      handleBranchSwitchWithCompleteReload();
     }
   }, [currentBranch, lastBranch, selectedFile, localContent, lockManager, contentManager]);
 
@@ -161,12 +159,13 @@ Start editing to see the live preview!
     setLoadingContent(true);
     
     try {
-      const content = await contentManager.loadContent(filePath);
+      // Force load content bypassing cache
+      const content = await contentManager.loadContentForced(filePath, currentBranch);
       
       if (content !== null) {
         setLocalContent(content);
         if (DEBUG_EDITOR) {
-          console.log('📄 Loaded content for:', filePath, 'in branch:', currentBranch);
+          console.log('📄 Force loaded content for:', filePath, 'in branch:', currentBranch);
         }
       } else {
         // Create default content
@@ -202,12 +201,12 @@ Start editing to see the live preview!
     }
   };
 
-  // Auto-save when user has the lock and content changes (but not during branch switches)
+  // Auto-save when user has the lock and content changes
   useEffect(() => {
-    if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && localContent && !isSwitchingBranch) {
+    if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && localContent) {
       contentManager.saveContent(selectedFile, localContent, false);
     }
-  }, [selectedFile, localContent, lockManager, contentManager, isSwitchingBranch]);
+  }, [selectedFile, localContent, lockManager, contentManager]);
 
   // Release lock when navigating away from the page
   useEffect(() => {
@@ -267,7 +266,7 @@ Start editing to see the live preview!
   };
 
   const handleContentChange = (newContent: string) => {
-    if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && !isSwitchingBranch) {
+    if (selectedFile && lockManager.isFileLockedByMe(selectedFile)) {
       setLocalContent(newContent);
     }
   };
@@ -360,8 +359,8 @@ Start editing to see the live preview!
             branches={branches}
           />
           
-          {/* Tab Content */}
-          <div className="flex-1 overflow-hidden flex">
+          {/* Tab Content - Force re-render with key */}
+          <div key={editorKey} className="flex-1 overflow-hidden flex">
             {activeTab === 'navigation' ? (
               <>
                 <FileTreeSidebar
