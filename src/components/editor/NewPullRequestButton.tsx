@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { GitPullRequest } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -212,19 +211,15 @@ export function NewPullRequestButton() {
 
   return (
     <Button
-      onClick={handleCreatePR}
+      onClick={() => toast.info('Cheese button clicked!')}
       variant="outline"
       size="sm"
-      disabled={!buttonState.enabled}
+      disabled={false}
       className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-pink-500 text-white border-0 hover:from-blue-600 hover:to-pink-600"
-      title={buttonState.tooltip}
+      title="This is the cheese button!"
     >
-      {creating ? (
-        <div className="w-4 h-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
-      ) : (
-        <GitPullRequest className="w-4 h-4" />
-      )}
-      PR: {buttonState.text}
+      <GitPullRequest className="w-4 h-4" />
+      🧀 CHEESE
     </Button>
   );
 }
