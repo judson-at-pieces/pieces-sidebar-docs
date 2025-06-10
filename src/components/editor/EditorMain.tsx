@@ -1,6 +1,6 @@
 
 import React, { useEffect, useRef } from 'react';
-import { FileText, MoreHorizontal, Copy, Trash2, Eye, Edit3, Lock } from 'lucide-react';
+import { FileText, MoreHorizontal, Copy, Trash2, Eye, Edit3, Lock, Unlock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
@@ -22,6 +22,7 @@ interface EditorMainProps {
   lockedBy?: string | null;
   liveContent?: string;
   isAcquiringLock?: boolean;
+  onTakeLock?: () => void;
 }
 
 export function EditorMain({
@@ -34,7 +35,8 @@ export function EditorMain({
   isLocked = false,
   lockedBy = null,
   liveContent,
-  isAcquiringLock = false
+  isAcquiringLock = false,
+  onTakeLock
 }: EditorMainProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
@@ -97,17 +99,42 @@ export function EditorMain({
       {/* Live Editing Banner - only show when someone else is editing */}
       {isLockedByOther && (
         <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 border-b shadow-lg">
-          <div className="flex items-center justify-center gap-3">
-            <div className="flex items-center gap-2">
-              <Edit3 className="h-5 w-5 animate-pulse" />
-              <span className="font-semibold text-lg">
-                {lockedBy} is currently editing this page
-              </span>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
+                <Edit3 className="h-5 w-5 animate-pulse" />
+                <span className="font-semibold text-lg">
+                  {lockedBy} is currently editing this page
+                </span>
+              </div>
+              {(liveContent || latestTypingContent) && (
+                <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
+                  Live Updates
+                </Badge>
+              )}
             </div>
-            {(liveContent || latestTypingContent) && (
-              <Badge variant="secondary" className="bg-white/20 text-white border-white/30">
-                Live Updates
-              </Badge>
+            
+            {/* Take Lock Button */}
+            {onTakeLock && (
+              <Button
+                onClick={onTakeLock}
+                disabled={isAcquiringLock}
+                variant="secondary"
+                size="sm"
+                className="bg-white/20 hover:bg-white/30 text-white border-white/30"
+              >
+                {isAcquiringLock ? (
+                  <>
+                    <div className="w-4 h-4 mr-2 animate-spin rounded-full border border-current border-t-transparent" />
+                    Taking Lock...
+                  </>
+                ) : (
+                  <>
+                    <Unlock className="h-4 w-4 mr-2" />
+                    Take Lock
+                  </>
+                )}
+              </Button>
             )}
           </div>
           <p className="text-center text-blue-100 mt-1 text-sm">

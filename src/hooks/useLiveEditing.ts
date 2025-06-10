@@ -132,6 +132,45 @@ export function useLiveEditing(selectedFile?: string, activeBranch?: string) {
     }
   }, [effectiveBranch]);
 
+  // Force take lock function - forcefully acquires lock even if someone else has it
+  const takeLock = useCallback(async (filePath: string): Promise<boolean> => {
+    if (!effectiveBranch) return false;
+    
+    setIsAcquiringLock(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return false;
+
+      console.log('Force taking lock for file:', filePath);
+
+      // First release any existing lock by directly updating the session
+      const { error: updateError } = await supabase
+        .from('live_editing_sessions')
+        .update({
+          locked_by: user.id,
+          locked_at: new Date().toISOString(),
+          updated_at: new Date().toISOString()
+        })
+        .eq('file_path', filePath)
+        .eq('branch_name', effectiveBranch);
+
+      if (updateError) {
+        console.error('Error force taking lock:', updateError);
+        return false;
+      }
+
+      setIsLocked(true);
+      setLockedBy('You');
+      console.log('Successfully force took lock for:', filePath);
+      return true;
+    } catch (error) {
+      console.error('Error in takeLock:', error);
+      return false;
+    } finally {
+      setIsAcquiringLock(false);
+    }
+  }, [effectiveBranch]);
+
   // Release lock function
   const releaseLock = useCallback(async (filePath: string): Promise<boolean> => {
     if (!effectiveBranch) return false;
@@ -245,6 +284,7 @@ export function useLiveEditing(selectedFile?: string, activeBranch?: string) {
     sessions,
     isAcquiringLock,
     acquireLock,
+    takeLock, // New function to force take a lock
     releaseLock,
     saveLiveContent,
     loadLiveContent,
