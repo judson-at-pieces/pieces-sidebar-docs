@@ -2,7 +2,7 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Lock, Users, GitBranch } from 'lucide-react';
+import { Lock, Users, FileText, Navigation, Search } from 'lucide-react';
 import { NewBranchSelector } from './NewBranchSelector';
 import { CookieBasedPRButton } from './CookieBasedPRButton';
 
@@ -44,9 +44,9 @@ export function NewEditorTabNavigation({
   const totalLiveFiles = sessions.filter(s => s.content && s.content.trim()).length;
 
   const tabs = [
-    { id: 'navigation' as const, label: 'Navigation', icon: '🗂️' },
-    { id: 'content' as const, label: 'Content', icon: '📝' },
-    { id: 'seo' as const, label: 'SEO', icon: '🔍' },
+    { id: 'navigation' as const, label: 'Navigation', icon: Navigation },
+    { id: 'content' as const, label: 'Content', icon: FileText },
+    { id: 'seo' as const, label: 'SEO', icon: Search },
   ];
 
   return (
@@ -55,22 +55,25 @@ export function NewEditorTabNavigation({
         <div className="flex items-center gap-2">
           {/* Tab Navigation */}
           <div className="flex bg-muted/30 rounded-lg p-1">
-            {tabs.map((tab) => (
-              <Button
-                key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                variant={activeTab === tab.id ? "default" : "ghost"}
-                size="sm"
-                className={`gap-2 transition-all duration-200 ${
-                  activeTab === tab.id 
-                    ? 'bg-background shadow-sm border border-border/50' 
-                    : 'hover:bg-muted/50'
-                }`}
-              >
-                <span className="text-sm">{tab.icon}</span>
-                {tab.label}
-              </Button>
-            ))}
+            {tabs.map((tab) => {
+              const IconComponent = tab.icon;
+              return (
+                <Button
+                  key={tab.id}
+                  onClick={() => setActiveTab(tab.id)}
+                  variant={activeTab === tab.id ? "default" : "ghost"}
+                  size="sm"
+                  className={`gap-2 transition-all duration-200 ${
+                    activeTab === tab.id 
+                      ? 'bg-background shadow-sm border border-border/50' 
+                      : 'hover:bg-muted/50'
+                  }`}
+                >
+                  <IconComponent className="h-4 w-4" />
+                  {tab.label}
+                </Button>
+              );
+            })}
           </div>
 
           {/* File Lock Status */}
@@ -128,7 +131,7 @@ export function NewEditorTabNavigation({
             </Badge>
           )}
 
-          {/* PR Button */}
+          {/* Single PR Button */}
           <CookieBasedPRButton
             sessions={sessions}
             hasChanges={hasChanges || totalLiveFiles > 0}

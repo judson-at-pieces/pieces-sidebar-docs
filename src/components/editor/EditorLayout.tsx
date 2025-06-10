@@ -8,14 +8,13 @@ import { EditorMain } from "./EditorMain";
 import { SeoEditor } from "./SeoEditor";
 import { FileTreeSidebar } from "./FileTreeSidebar";
 import { Button } from "@/components/ui/button";
-import { EditorHeader } from "./EditorHeader";
+import { EditorMainHeader } from "./EditorMainHeader";
 import { NewEditorTabNavigation } from "./NewEditorTabNavigation";
 
 const DEBUG_MARKDOWN = false;
 
 export function EditorLayout() {
   const { fileStructure, isLoading, error, refetch } = useFileStructure();
-  // Only use useBranchManager - completely removed useBranches hook
   const { currentBranch, initialized, branches } = useBranchManager();
   const { sessions } = useBranchSessions(currentBranch);
 
@@ -261,8 +260,7 @@ Start editing to see the live preview!
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
-      <EditorHeader 
-        activeTab={activeTab}
+      <EditorMainHeader 
         hasChanges={hasChanges}
         totalLiveFiles={totalLiveFiles}
       />
@@ -322,7 +320,7 @@ Start editing to see the live preview!
                   pendingChanges={sessions.map(s => s.file_path)}
                   liveSessions={sessions}
                 />
-                <div className="flex-1 animate-in fade-in slide-in-from-bottom-2 duration-300">
+                <div className="flex-1 animate-in fade-in-from-bottom-2 duration-300">
                   <EditorMain 
                     selectedFile={selectedFile}
                     content={loadingContent ? "Loading content..." : content}
