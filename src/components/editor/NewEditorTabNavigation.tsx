@@ -73,7 +73,13 @@ export function NewEditorTabNavigation({
 
           {/* PR Button for all branches */}
           {showPRButton && (
-            <NewPullRequestButton />
+            <NewPullRequestButton
+              currentBranch={currentBranch}
+              sessions={sessions}
+              hasChanges={hasChanges}
+              initialized={initialized}
+              targetBranch="main"
+            />
           )}
         </div>
       </div>
