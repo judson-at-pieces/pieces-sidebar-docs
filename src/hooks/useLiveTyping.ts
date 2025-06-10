@@ -55,7 +55,50 @@ export function useLiveTyping(filePath?: string) {
     }
   }, [user?.id, filePath]);
 
-  // Clean up typing session
+  // Clean up typing sessions for current user except the active file
+  const cleanupAllOtherTypingSessions = useCallback(async (exceptFilePath?: string) => {
+    if (!user?.id) return;
+
+    try {
+      console.log('Cleaning up all typing sessions except:', exceptFilePath);
+      
+      // First get all typing sessions for this user
+      const { data: sessions, error: fetchError } = await supabase
+        .from('live_typing_sessions')
+        .select('file_path')
+        .eq('user_id', user.id);
+
+      if (fetchError) {
+        console.error('Error fetching typing sessions:', fetchError);
+        return;
+      }
+
+      // Delete all sessions except the current file
+      for (const session of sessions || []) {
+        if (session.file_path !== exceptFilePath) {
+          console.log('Deleting typing session for:', session.file_path);
+          
+          const { error: deleteError } = await supabase.functions.invoke('live-typing', {
+            body: {
+              method: 'DELETE',
+              file_path: session.file_path,
+              user_id: user.id
+            }
+          });
+          
+          if (deleteError) {
+            console.error('Error deleting typing session:', deleteError);
+          }
+        }
+      }
+      
+      console.log('All other typing sessions cleaned up successfully');
+    } catch (error) {
+      console.error('Error cleaning up typing sessions:', error);
+    }
+  }, [user?.id]);
+
+  // Clean up typing session for specific file
   const cleanupTypingSession = useCallback(async () => {
     if (!user?.id || !filePath || cleanupExecutedRef.current) return;
 
@@ -167,24 +210,29 @@ export function useLiveTyping(filePath?: string) {
     // Reset cleanup flag when file path changes
     cleanupExecutedRef.current = false;
 
+    // Clean up all other typing sessions when switching to a new file
+    if (filePath && user?.id) {
+      cleanupAllOtherTypingSessions(filePath);
+    }
+
     return () => {
       cleanupTypingSession();
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
     };
-  }, [filePath, cleanupTypingSession]);
+  }, [filePath, cleanupTypingSession, cleanupAllOtherTypingSessions, user?.id]);
 
   // Add page visibility and beforeunload event listeners for immediate cleanup
   useEffect(() => {
     const handlePageHide = () => {
-      console.log('Page hiding, cleaning up typing session immediately');
-      cleanupTypingSession();
+      console.log('Page hiding, cleaning up all typing sessions immediately');
+      cleanupAllOtherTypingSessions();
     };
 
     const handleBeforeUnload = () => {
-      console.log('Page unloading, cleaning up typing session immediately');
-      cleanupTypingSession();
+      console.log('Page unloading, cleaning up all typing sessions immediately');
+      cleanupAllOtherTypingSessions();
     };
 
     // Listen for page visibility changes
@@ -203,7 +251,7 @@ export function useLiveTyping(filePath?: string) {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('pagehide', handlePageHide);
     };
-  }, [cleanupTypingSession]);
+  }, [cleanupAllOtherTypingSessions]);
 
   // Get latest content from other users
   const getLatestTypingContent = useCallback(() => {
