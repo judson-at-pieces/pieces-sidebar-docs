@@ -1,14 +1,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { useBranches } from './useBranches';
+import { getBranchCookie } from '@/utils/branchCookies';
 
 const DEBUG_LIVE = false;
 
 export function useLiveEditing(selectedFile?: string, activeBranch?: string) {
-  const { currentBranch: branchFromHook, initialized: branchesInitialized } = useBranches();
-  
-  // Use the branch from useBranches hook if available, otherwise fall back to activeBranch prop or 'main'
-  const effectiveBranch = branchesInitialized && branchFromHook ? branchFromHook : (activeBranch || 'main');
+  // Use cookie-based branch instead of the old hook
+  const effectiveBranch = getBranchCookie() || activeBranch || 'main';
   
   const [isLocked, setIsLocked] = useState(false);
   const [lockedBy, setLockedBy] = useState<string | null>(null);
@@ -17,7 +15,7 @@ export function useLiveEditing(selectedFile?: string, activeBranch?: string) {
   const [isAcquiringLock, setIsAcquiringLock] = useState(false);
 
   if (DEBUG_LIVE) {
-    console.log('useLiveEditing: activeBranch =', effectiveBranch, 'selectedFile =', selectedFile);
+    console.log('useLiveEditing: effectiveBranch =', effectiveBranch, 'selectedFile =', selectedFile);
   }
 
   // Fetch sessions for current branch
