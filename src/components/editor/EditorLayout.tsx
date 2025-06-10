@@ -277,7 +277,6 @@ Start editing to see the live preview!
             lockedBy={lockedBy}
             isAcquiringLock={isAcquiringLock}
             onAcquireLock={handleAcquireLock}
-            totalLiveFiles={totalLiveFiles}
             currentBranch={currentBranch}
             sessions={sessions}
             hasChanges={hasChanges}

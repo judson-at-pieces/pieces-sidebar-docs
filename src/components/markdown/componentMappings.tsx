@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Accordion from './Accordion';
 import AccordionGroup from './AccordionGroup';
@@ -24,6 +23,20 @@ import Typography from './Typography';
 interface ComponentProps {
   children?: React.ReactNode;
   [key: string]: any;
+}
+
+interface CardProps {
+  children: React.ReactNode;
+  title: string;
+}
+
+function Card({ children, title }: CardProps) {
+  return (
+    <div className="border rounded-lg p-4 my-4">
+      <h3 className="text-lg font-semibold mb-2">{title}</h3>
+      {children}
+    </div>
+  );
 }
 
 // Map component names to their actual components

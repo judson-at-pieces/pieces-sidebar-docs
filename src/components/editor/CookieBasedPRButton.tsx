@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect } from 'react';
-import { GitPullRequest } from 'lucide-react';
+import { GitPullRequest, ExternalLink } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
 import { githubService } from '@/services/githubService';
@@ -75,6 +75,29 @@ export function CookieBasedPRButton({
     return `public/content/${cleanPath}`;
   };
 
+  const findExistingPR = async (token: string, repoConfig: any, headBranch: string, baseBranch: string) => {
+    try {
+      const response = await fetch(
+        `https://api.github.com/repos/${repoConfig.owner}/${repoConfig.repo}/pulls?head=${repoConfig.owner}:${headBranch}&base=${baseBranch}&state=open`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/vnd.github.v3+json',
+          }
+        }
+      );
+
+      if (response.ok) {
+        const prs = await response.json();
+        return prs.length > 0 ? prs[0] : null;
+      }
+      return null;
+    } catch (error) {
+      console.error('Error checking for existing PR:', error);
+      return null;
+    }
+  };
+
   const handleCreatePR = async () => {
     if (!isEnabled) return;
 
@@ -95,6 +118,19 @@ export function CookieBasedPRButton({
       }));
 
       console.log('🍪 Creating PR from cookie branch:', currentBranch, 'to:', targetBranch);
+
+      // Check if a PR already exists for this branch
+      const existingPR = await findExistingPR(token, repoConfig, currentBranch, targetBranch);
+      
+      if (existingPR) {
+        toast.error(`A pull request already exists for branch "${currentBranch}"`, {
+          action: {
+            label: 'View Existing PR',
+            onClick: () => window.open(existingPR.html_url, '_blank')
+          }
+        });
+        return;
+      }
 
       const useExistingBranch = currentBranch !== 'main';
       const headBranch = currentBranch === 'main' ? undefined : currentBranch;
@@ -131,7 +167,21 @@ export function CookieBasedPRButton({
           toast.success('Live editing sessions cleared');
         }
       } else {
-        toast.error(result.error || 'Failed to create pull request');
+        // Handle specific GitHub API errors
+        if (result.error && result.error.includes('pull request already exists')) {
+          const branchMatch = result.error.match(/for (.+)\./);
+          const branchName = branchMatch ? branchMatch[1] : currentBranch;
+          
+          toast.error(`A pull request already exists for branch "${branchName}"`, {
+            description: 'You can view or update the existing pull request instead.',
+            action: {
+              label: 'View on GitHub',
+              onClick: () => window.open(`https://github.com/${repoConfig.owner}/${repoConfig.repo}/pulls`, '_blank')
+            }
+          });
+        } else {
+          toast.error(result.error || 'Failed to create pull request');
+        }
       }
     } catch (error) {
       console.error('Error creating PR:', error);
