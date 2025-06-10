@@ -29,11 +29,12 @@ export function NewPullRequestButton({
   // For other branches: create PR from current branch to target
   const isEnabled = initialized && currentBranch && hasChanges && currentBranch !== targetBranch;
 
-  // 🚨 COMPREHENSIVE PR BUTTON DEBUGGING
-  console.group('🚀 NEW PULL REQUEST BUTTON DEBUG');
+  // 🚨🚨🚨 ULTRA INTENSIVE PR BUTTON DEBUGGING
+  console.group('🚀🚀🚀 NEW PULL REQUEST BUTTON RENDER');
   console.log('📊 PROPS RECEIVED:', {
     currentBranch: JSON.stringify(currentBranch),
     currentBranchType: typeof currentBranch,
+    currentBranchRaw: currentBranch,
     targetBranch: JSON.stringify(targetBranch),
     targetBranchType: typeof targetBranch,
     hasChanges,
@@ -63,6 +64,12 @@ export function NewPullRequestButton({
     'currentBranch == targetBranch': currentBranch == targetBranch,
     currentBranchCharCodes: currentBranch ? Array.from(currentBranch).map(c => `${c}(${c.charCodeAt(0)})`) : 'null',
     targetBranchCharCodes: targetBranch ? Array.from(targetBranch).map(c => `${c}(${c.charCodeAt(0)})`) : 'null'
+  });
+  
+  console.log('📊 FINAL BUTTON STATE:', {
+    buttonEnabled: isEnabled,
+    buttonText: getButtonText(),
+    tooltip: getTooltip()
   });
   console.groupEnd();
 
@@ -188,13 +195,6 @@ export function NewPullRequestButton({
     if (currentBranch === targetBranch) return `Cannot create PR to same branch (${targetBranch})`;
     return `Create pull request from ${currentBranch} to ${targetBranch}`;
   };
-
-  console.log('🚀 NewPullRequestButton RENDER:', {
-    buttonText: getButtonText(),
-    tooltip: getTooltip(),
-    isEnabled,
-    disabled: !isEnabled
-  });
 
   return (
     <Button
