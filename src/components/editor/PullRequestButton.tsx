@@ -1,4 +1,5 @@
-import React, { useState, useEffect } from 'react';
+
+import React, { useState } from 'react';
 import { GitPullRequest } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { toast } from 'sonner';
@@ -23,28 +24,16 @@ const DEBUG_PR_BUTTON = true;
 
 export function PullRequestButton({ currentBranch, sessions, hasChanges, initialized, branches }: PullRequestButtonProps) {
   const [creating, setCreating] = useState(false);
-  const [buttonState, setButtonState] = useState({
-    text: 'Loading...',
-    enabled: false,
-    tooltip: 'Loading...',
-    targetBranch: 'main'
-  });
 
-  // Force re-computation when key props change
-  useEffect(() => {
-    if (DEBUG_PR_BUTTON) {
-      console.log('🔵 PR BUTTON USEEFFECT TRIGGERED - currentBranch:', currentBranch, 'initialized:', initialized);
-    }
-
-    // Early return if not ready
+  // Compute button state directly from props - no caching
+  const computeButtonState = () => {
     if (!initialized || !currentBranch) {
-      setButtonState({
+      return {
         text: initialized ? 'No branch selected' : 'Loading branches...',
         enabled: false,
         tooltip: initialized ? 'No branch selected' : 'Loading branches...',
         targetBranch: 'main'
-      });
-      return;
+      };
     }
 
     // Determine target branch intelligently
@@ -76,7 +65,7 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
     }
 
     if (DEBUG_PR_BUTTON) {
-      console.log('🔵 PR BUTTON LOGIC:');
+      console.log('🔵 PR BUTTON COMPUTE STATE:');
       console.log('  🔵 currentBranch:', currentBranch);
       console.log('  🔵 targetBranch:', targetBranch);
       console.log('  🔵 branches available:', branches.map(b => b.name));
@@ -84,13 +73,12 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
 
     // Check if we can create a PR
     if (currentBranch === targetBranch && branches.length <= 1) {
-      setButtonState({
+      return {
         text: `${currentBranch} (no target)`,
         enabled: false,
         tooltip: `Cannot create PR: no suitable target branch found. Create a new branch first.`,
         targetBranch
-      });
-      return;
+      };
     }
 
     // Filter sessions to only include those with content
@@ -101,34 +89,33 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
     const buttonText = `${currentBranch} → ${targetBranch}${totalLiveFiles > 0 ? ` (${totalLiveFiles})` : ''}`;
 
     if (creating) {
-      setButtonState({
+      return {
         text: 'Creating PR...',
         enabled: false,
         tooltip: 'Creating pull request...',
         targetBranch
-      });
-      return;
+      };
     }
 
     if (!hasAnyChanges) {
-      setButtonState({
+      return {
         text: buttonText,
         enabled: false,
         tooltip: `No changes to create PR for. Current: ${currentBranch} → ${targetBranch}`,
         targetBranch
-      });
-      return;
+      };
     }
 
     // Enable the button
-    setButtonState({
+    return {
       text: buttonText,
       enabled: true,
       tooltip: `Create pull request from ${currentBranch} to ${targetBranch} with ${totalLiveFiles} file${totalLiveFiles !== 1 ? 's' : ''}`,
       targetBranch
-    });
+    };
+  };
 
-  }, [currentBranch, initialized, sessions, hasChanges, creating, branches]);
+  const buttonState = computeButtonState();
 
   const getGitHubAppToken = async () => {
     try {
@@ -295,7 +282,9 @@ export function PullRequestButton({ currentBranch, sessions, hasChanges, initial
   };
 
   if (DEBUG_PR_BUTTON) {
-    console.log('🔵 PR BUTTON RENDER - CURRENT:', currentBranch, 'TARGET:', buttonState.targetBranch, 'TEXT:', buttonState.text, 'ENABLED:', buttonState.enabled);
+    console.log('🔵 PR BUTTON RENDER:');
+    console.log('  🔵 currentBranch prop:', currentBranch);
+    console.log('  🔵 computed state:', buttonState);
   }
 
   return (

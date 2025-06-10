@@ -259,7 +259,12 @@ Start editing to see the live preview!
     );
   }
 
-  const sessionsWithContent = sessions.filter(s => s.content && s.content.trim());
+  // Filter sessions to only include those with content AND for current branch
+  const sessionsWithContent = sessions.filter(s => 
+    s.content && 
+    s.content.trim() && 
+    s.branch_name === currentBranch
+  );
   const totalLiveFiles = sessionsWithContent.length;
 
   if (DEBUG_EDITOR_LAYOUT) {
