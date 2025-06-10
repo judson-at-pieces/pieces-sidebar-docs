@@ -17,6 +17,7 @@ export function useLiveTyping(filePath?: string) {
   const [isTyping, setIsTyping] = useState(false);
   const typingTimeoutRef = useRef<NodeJS.Timeout>();
   const lastSentContentRef = useRef<string>('');
+  const cleanupExecutedRef = useRef<boolean>(false);
 
   // Send typing event to webhook
   const sendTypingEvent = useCallback(async (content: string, cursorPosition: number) => {
@@ -56,7 +57,9 @@ export function useLiveTyping(filePath?: string) {
 
   // Clean up typing session
   const cleanupTypingSession = useCallback(async () => {
-    if (!user?.id || !filePath) return;
+    if (!user?.id || !filePath || cleanupExecutedRef.current) return;
+
+    cleanupExecutedRef.current = true;
 
     try {
       console.log('Cleaning up typing session for:', filePath);
@@ -159,13 +162,46 @@ export function useLiveTyping(filePath?: string) {
     };
   }, [filePath, user?.id]);
 
-  // Cleanup on unmount or file change
+  // Enhanced cleanup on file path change or unmount
   useEffect(() => {
+    // Reset cleanup flag when file path changes
+    cleanupExecutedRef.current = false;
+
     return () => {
       cleanupTypingSession();
       if (typingTimeoutRef.current) {
         clearTimeout(typingTimeoutRef.current);
       }
+    };
+  }, [filePath, cleanupTypingSession]);
+
+  // Add page visibility and beforeunload event listeners for immediate cleanup
+  useEffect(() => {
+    const handlePageHide = () => {
+      console.log('Page hiding, cleaning up typing session immediately');
+      cleanupTypingSession();
+    };
+
+    const handleBeforeUnload = () => {
+      console.log('Page unloading, cleaning up typing session immediately');
+      cleanupTypingSession();
+    };
+
+    // Listen for page visibility changes
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'hidden') {
+        handlePageHide();
+      }
+    });
+
+    // Listen for page unload
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', handlePageHide);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handlePageHide);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handlePageHide);
     };
   }, [cleanupTypingSession]);
 

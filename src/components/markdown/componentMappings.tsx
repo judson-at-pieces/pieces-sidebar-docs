@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Accordion from './Accordion';
 import AccordionGroup from './AccordionGroup';
@@ -43,8 +42,7 @@ function Card({ children, title }: CardProps) {
 export const componentMap: Record<string, React.ComponentType<any>> = {
   // Layout Components
   Card: (props: ComponentProps & { title?: string; children?: React.ReactNode }) => (
-    <Card title={props.title || 'Untitled'} children={props.children || <div>No content provided</div>}>
-    </Card>
+    <Card title={props.title || 'Untitled'} children={props.children || <div>No content provided</div>} />
   ),
   CardGroup: (props: ComponentProps & { children: React.ReactNode }) => <CardGroup {...props} />,
   SimpleCard: (props: ComponentProps & { title?: string; children?: React.ReactNode }) => <SimpleCard title={props.title || 'Untitled'} {...props} />,
