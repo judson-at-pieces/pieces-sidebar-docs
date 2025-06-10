@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getBranchCookie } from '@/utils/branchCookies';
@@ -29,7 +30,8 @@ export function useLiveEditing(selectedFile?: string, activeBranch?: string) {
         .select('file_path, content, locked_by, locked_at, updated_at, branch_name, user_id')
         .eq('branch_name', effectiveBranch)
         .not('content', 'is', null)
-        .neq('content', '');
+        .neq('content', '')
+        .order('updated_at', { ascending: false });
 
       if (error) {
         console.error('Error fetching sessions:', error);
@@ -158,7 +160,7 @@ export function useLiveEditing(selectedFile?: string, activeBranch?: string) {
     }
   }, [effectiveBranch]);
 
-  // Save live content function
+  // Enhanced save live content function with better timestamp handling
   const saveLiveContent = useCallback(async (filePath: string, content: string): Promise<boolean> => {
     if (!effectiveBranch) return false;
     
@@ -166,19 +168,33 @@ export function useLiveEditing(selectedFile?: string, activeBranch?: string) {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return false;
 
-      const { data, error } = await supabase.rpc('save_live_content_by_branch', {
-        p_file_path: filePath,
-        p_content: content,
-        p_user_id: user.id,
-        p_branch_name: effectiveBranch
-      });
+      // Use upsert with explicit timestamp to ensure proper ordering
+      const { data, error } = await supabase
+        .from('live_editing_sessions')
+        .upsert({
+          file_path: filePath,
+          content: content,
+          user_id: user.id,
+          branch_name: effectiveBranch,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'file_path,branch_name'
+        })
+        .select();
 
       if (error) {
         console.error('Error saving live content:', error);
         return false;
       }
 
-      return !!data;
+      console.log('Live content saved successfully:', {
+        filePath,
+        branch: effectiveBranch,
+        contentLength: content.length,
+        timestamp: new Date().toISOString()
+      });
+
+      return true;
     } catch (error) {
       console.error('Error in saveLiveContent:', error);
       return false;
@@ -192,9 +208,10 @@ export function useLiveEditing(selectedFile?: string, activeBranch?: string) {
     try {
       const { data, error } = await supabase
         .from('live_editing_sessions')
-        .select('content, locked_by, locked_at')
+        .select('content, locked_by, locked_at, updated_at')
         .eq('file_path', filePath)
         .eq('branch_name', effectiveBranch)
+        .order('updated_at', { ascending: false })
         .maybeSingle();
 
       if (error) {
@@ -205,6 +222,12 @@ export function useLiveEditing(selectedFile?: string, activeBranch?: string) {
       if (data) {
         setIsLocked(!!data.locked_by);
         setLockedBy(data.locked_by ? 'Someone else' : null);
+        console.log('Loaded live content:', {
+          filePath,
+          branch: effectiveBranch,
+          contentLength: data.content?.length || 0,
+          lastUpdated: data.updated_at
+        });
         return data.content || null;
       }
 

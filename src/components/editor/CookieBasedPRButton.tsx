@@ -1,11 +1,20 @@
 
 import React, { useState, useEffect } from 'react';
-import { GitPullRequest, ExternalLink } from 'lucide-react';
+import { GitPullRequest, ExternalLink, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuTrigger, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { toast } from 'sonner';
 import { githubService } from '@/services/githubService';
 import { supabase } from '@/integrations/supabase/client';
 import { getBranchCookie } from '@/utils/branchCookies';
+
+interface ExistingPR {
+  number: number;
+  title: string;
+  html_url: string;
+  head: { ref: string };
+  base: { ref: string };
+}
 
 interface CookieBasedPRButtonProps {
   sessions: Array<{ file_path: string; content: string }>;
@@ -22,6 +31,8 @@ export function CookieBasedPRButton({
 }: CookieBasedPRButtonProps) {
   const [creating, setCreating] = useState(false);
   const [currentBranch, setCurrentBranch] = useState<string>('');
+  const [existingPRs, setExistingPRs] = useState<ExistingPR[]>([]);
+  const [loadingPRs, setLoadingPRs] = useState(false);
 
   // Update current branch from cookie every 500ms
   useEffect(() => {
@@ -33,13 +44,50 @@ export function CookieBasedPRButton({
       }
     };
 
-    // Initial update
     updateBranchFromCookie();
-
-    // Poll for changes
     const interval = setInterval(updateBranchFromCookie, 500);
     return () => clearInterval(interval);
   }, [currentBranch]);
+
+  // Check for existing PRs when branch changes
+  useEffect(() => {
+    if (!currentBranch || !initialized) return;
+    
+    const checkExistingPRs = async () => {
+      setLoadingPRs(true);
+      try {
+        const token = await getGitHubAppToken();
+        const repoConfig = await githubService.getRepoConfig();
+        
+        if (!repoConfig) return;
+
+        const response = await fetch(
+          `https://api.github.com/repos/${repoConfig.owner}/${repoConfig.repo}/pulls?state=open`,
+          {
+            headers: {
+              'Authorization': `Bearer ${token}`,
+              'Accept': 'application/vnd.github.v3+json',
+            }
+          }
+        );
+
+        if (response.ok) {
+          const allPRs = await response.json();
+          // Filter PRs that involve our current branch
+          const relevantPRs = allPRs.filter((pr: ExistingPR) => 
+            pr.head.ref === currentBranch || pr.base.ref === currentBranch
+          );
+          setExistingPRs(relevantPRs);
+        }
+      } catch (error) {
+        console.error('Error checking existing PRs:', error);
+      } finally {
+        setLoadingPRs(false);
+      }
+    };
+
+    checkExistingPRs();
+  }, [currentBranch, initialized]);
 
   const activeSessions = sessions.filter(s => s.content && s.content.trim());
   const isEnabled = initialized && currentBranch && hasChanges && currentBranch !== targetBranch;
@@ -75,29 +123,6 @@ export function CookieBasedPRButton({
     return `public/content/${cleanPath}`;
   };
 
-  const findExistingPR = async (token: string, repoConfig: any, headBranch: string, baseBranch: string) => {
-    try {
-      const response = await fetch(
-        `https://api.github.com/repos/${repoConfig.owner}/${repoConfig.repo}/pulls?head=${repoConfig.owner}:${headBranch}&base=${baseBranch}&state=open`,
-        {
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Accept': 'application/vnd.github.v3+json',
-          }
-        }
-      );
-
-      if (response.ok) {
-        const prs = await response.json();
-        return prs.length > 0 ? prs[0] : null;
-      }
-      return null;
-    } catch (error) {
-      console.error('Error checking for existing PR:', error);
-      return null;
-    }
-  };
-
   const handleCreatePR = async () => {
     if (!isEnabled) return;
 
@@ -112,25 +137,37 @@ export function CookieBasedPRButton({
         return;
       }
 
+      // Check for existing PR again before creating
+      const existingPRResponse = await fetch(
+        `https://api.github.com/repos/${repoConfig.owner}/${repoConfig.repo}/pulls?head=${repoConfig.owner}:${currentBranch}&base=${targetBranch}&state=open`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Accept': 'application/vnd.github.v3+json',
+          }
+        }
+      );
+
+      if (existingPRResponse.ok) {
+        const existingPRs = await existingPRResponse.json();
+        if (existingPRs.length > 0) {
+          const existingPR = existingPRs[0];
+          toast.error(`A pull request already exists for branch "${currentBranch}"`, {
+            action: {
+              label: 'View Existing PR',
+              onClick: () => window.open(existingPR.html_url, '_blank')
+            }
+          });
+          return;
+        }
+      }
+
       const files = activeSessions.map(session => ({
         path: getOriginalFilePath(session.file_path),
         content: session.content
       }));
 
       console.log('🍪 Creating PR from cookie branch:', currentBranch, 'to:', targetBranch);
-
-      // Check if a PR already exists for this branch
-      const existingPR = await findExistingPR(token, repoConfig, currentBranch, targetBranch);
-      
-      if (existingPR) {
-        toast.error(`A pull request already exists for branch "${currentBranch}"`, {
-          action: {
-            label: 'View Existing PR',
-            onClick: () => window.open(existingPR.html_url, '_blank')
-          }
-        });
-        return;
-      }
 
       const useExistingBranch = currentBranch !== 'main';
       const headBranch = currentBranch === 'main' ? undefined : currentBranch;
@@ -165,9 +202,10 @@ export function CookieBasedPRButton({
         
         if (!error) {
           toast.success('Live editing sessions cleared');
+          // Refresh existing PRs list
+          setExistingPRs(prev => [...prev]);
         }
       } else {
-        // Handle specific GitHub API errors
         if (result.error && result.error.includes('pull request already exists')) {
           const branchMatch = result.error.match(/for (.+)\./);
           const branchName = branchMatch ? branchMatch[1] : currentBranch;
@@ -208,13 +246,71 @@ export function CookieBasedPRButton({
     return `Create pull request from ${currentBranch} to ${targetBranch}`;
   };
 
+  // Show existing PRs dropdown if there are any
+  if (existingPRs.length > 0) {
+    return (
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button
+            variant="outline"
+            size="sm"
+            className="flex items-center gap-2 bg-gradient-to-r from-green-500 to-blue-500 text-white border-0 hover:from-green-600 hover:to-blue-600"
+          >
+            <GitPullRequest className="w-4 h-4" />
+            {existingPRs.length} PR{existingPRs.length !== 1 ? 's' : ''} Open
+            <ChevronDown className="w-3 h-3" />
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-80">
+          {existingPRs.map((pr) => (
+            <DropdownMenuItem 
+              key={pr.number}
+              onClick={() => window.open(pr.html_url, '_blank')}
+              className="flex flex-col items-start gap-1 p-3"
+            >
+              <div className="flex items-center gap-2 w-full">
+                <GitPullRequest className="w-4 h-4" />
+                <span className="font-medium">#{pr.number}</span>
+                <ExternalLink className="w-3 h-3 ml-auto" />
+              </div>
+              <span className="text-sm text-muted-foreground truncate w-full">
+                {pr.title}
+              </span>
+              <span className="text-xs text-muted-foreground">
+                {pr.head.ref} → {pr.base.ref}
+              </span>
+            </DropdownMenuItem>
+          ))}
+          {isEnabled && (
+            <>
+              <div className="border-t my-1" />
+              <DropdownMenuItem 
+                onClick={handleCreatePR}
+                disabled={creating}
+                className="flex items-center gap-2 p-3"
+              >
+                {creating ? (
+                  <div className="w-4 h-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
+                ) : (
+                  <GitPullRequest className="w-4 h-4" />
+                )}
+                Create New PR: {currentBranch} → {targetBranch}
+              </DropdownMenuItem>
+            </>
+          )}
+        </DropdownMenuContent>
+      </DropdownMenu>
+    );
+  }
+
   console.log('🍪 COOKIE PR BUTTON RENDER:', {
     currentBranch,
     targetBranch,
     isEnabled,
     hasChanges,
     initialized,
-    activeSessions: activeSessions.length
+    activeSessions: activeSessions.length,
+    existingPRs: existingPRs.length
   });
 
   return (
