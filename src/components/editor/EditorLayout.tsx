@@ -28,27 +28,38 @@ export function EditorLayout() {
   const [localContent, setLocalContent] = useState("");
   const [activeTab, setActiveTab] = useState<'navigation' | 'content' | 'seo'>('content');
   const [loadingContent, setLoadingContent] = useState(false);
+  const [previousBranch, setPreviousBranch] = useState<string | null>(null);
 
   if (DEBUG_EDITOR) {
     console.log('🎯 EDITOR STATE:', {
       selectedFile,
       currentBranch,
+      previousBranch,
       myCurrentLock: lockManager.myCurrentLock,
       isFileLockedByMe: selectedFile ? lockManager.isFileLockedByMe(selectedFile) : false,
       hasUnsavedChanges: selectedFile ? contentManager.hasUnsavedChanges(selectedFile, localContent) : false
     });
   }
 
-  // Clear local state when branch changes
+  // Handle branch changes - clear local state and reload content
   useEffect(() => {
-    if (currentBranch) {
+    if (currentBranch && currentBranch !== previousBranch) {
       if (DEBUG_EDITOR) {
-        console.log('🔄 Branch changed, clearing local state for:', currentBranch);
+        console.log('🔄 Branch changed from', previousBranch, 'to', currentBranch);
       }
+
+      // Release any existing locks when switching branches
+      if (lockManager.myCurrentLock) {
+        lockManager.releaseLock(lockManager.myCurrentLock);
+      }
+
+      // Clear local state
       setSelectedFile(undefined);
       setLocalContent("");
+      
+      setPreviousBranch(currentBranch);
     }
-  }, [currentBranch]);
+  }, [currentBranch, previousBranch, lockManager]);
 
   // Auto-save when user has the lock and content changes
   useEffect(() => {
@@ -90,7 +101,7 @@ export function EditorLayout() {
 
   const handleFileSelect = async (filePath: string) => {
     if (DEBUG_EDITOR) {
-      console.log('=== FILE SELECTION ===');
+      console.log('=== BRANCH-AWARE FILE SELECTION ===');
       console.log('Selected file:', filePath);
       console.log('Current branch:', currentBranch);
       console.log('Previous file:', selectedFile);
@@ -103,16 +114,16 @@ export function EditorLayout() {
     setLoadingContent(true);
     
     try {
-      // Load content for the new file
+      // Load content for the new file from the current branch
       const content = await contentManager.loadContent(filePath);
       
       if (content !== null) {
         setLocalContent(content);
         if (DEBUG_EDITOR) {
-          console.log('📄 Loaded content for:', filePath, 'Length:', content.length);
+          console.log('📄 Loaded branch content for:', filePath, 'Branch:', currentBranch, 'Length:', content.length);
         }
       } else {
-        // Create default content if file doesn't exist
+        // Create default content if file doesn't exist in this branch
         const fileName = filePath.split('/').pop()?.replace(/\.md$/, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
         const pathForFrontmatter = filePath.replace(/\.md$/, '').replace(/^\//, '');
         
@@ -134,6 +145,9 @@ This is an information callout. Type "/" to see more available components.
 Start editing to see the live preview!
 `;
         setLocalContent(defaultContent);
+        if (DEBUG_EDITOR) {
+          console.log('📄 Created default content for new file in branch:', currentBranch);
+        }
       }
 
       setSelectedFile(filePath);
@@ -161,11 +175,11 @@ Start editing to see the live preview!
   const handleAcquireLock = async () => {
     if (selectedFile) {
       if (DEBUG_EDITOR) {
-        console.log('🔒 Manually acquiring lock for:', selectedFile);
+        console.log('🔒 Manually acquiring lock for:', selectedFile, 'in branch:', currentBranch);
       }
       const success = await lockManager.acquireLock(selectedFile);
       if (success && DEBUG_EDITOR) {
-        console.log('✅ Lock acquired for:', selectedFile);
+        console.log('✅ Lock acquired for:', selectedFile, 'in branch:', currentBranch);
       }
     }
   };
@@ -173,11 +187,11 @@ Start editing to see the live preview!
   const handleTakeLock = async () => {
     if (selectedFile) {
       if (DEBUG_EDITOR) {
-        console.log('🔒 Force taking lock for:', selectedFile);
+        console.log('🔒 Force taking lock for:', selectedFile, 'in branch:', currentBranch);
       }
       const success = await lockManager.forceTakeLock(selectedFile);
       if (success && DEBUG_EDITOR) {
-        console.log('✅ Lock force taken for:', selectedFile);
+        console.log('✅ Lock force taken for:', selectedFile, 'in branch:', currentBranch);
       }
     }
   };
@@ -288,8 +302,8 @@ Start editing to see the live preview!
             ) : (
               <>
                 <FileTreeSidebar
-                  title="Content Files"
-                  description="Select a file to edit its content"
+                  title={`Content Files (${currentBranch})`}
+                  description={`Select a file to edit its content in the ${currentBranch} branch`}
                   selectedFile={selectedFile}
                   onFileSelect={handleFileSelect}
                   fileStructure={fileStructure}

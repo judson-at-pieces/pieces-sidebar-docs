@@ -19,8 +19,20 @@ export function useContentManager(lockManager: any) {
   const currentBranch = getBranchCookie() || 'main';
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
   const lastSavedContentRef = useRef<Map<string, string>>(new Map());
+  const branchContentCacheRef = useRef<Map<string, Map<string, string>>>(new Map());
 
   const { currentUserId, isFileLockedByMe } = lockManager;
+
+  // Clear cache when branch changes
+  useEffect(() => {
+    if (currentBranch) {
+      if (DEBUG_CONTENT) {
+        console.log('📄 Branch changed to:', currentBranch, 'clearing content cache');
+      }
+      setLiveContent(new Map());
+      lastSavedContentRef.current = new Map();
+    }
+  }, [currentBranch]);
 
   // Fetch live content for current branch
   const fetchLiveContent = useCallback(async () => {
@@ -44,10 +56,12 @@ export function useContentManager(lockManager: any) {
         contentMap.set(session.file_path, session.content);
       });
 
+      // Cache the content for this branch
+      branchContentCacheRef.current.set(currentBranch, contentMap);
       setLiveContent(contentMap);
 
       if (DEBUG_CONTENT) {
-        console.log('📄 FETCHED CONTENT:', {
+        console.log('📄 FETCHED BRANCH CONTENT:', {
           branch: currentBranch,
           filesWithContent: contentMap.size,
           files: Array.from(contentMap.keys())
@@ -62,7 +76,7 @@ export function useContentManager(lockManager: any) {
   useEffect(() => {
     if (!currentBranch) return;
     
-    console.log('📄 Setting up content subscription for branch:', currentBranch);
+    console.log('📄 Setting up branch-specific content subscription for:', currentBranch);
     
     const channel = supabase
       .channel(`content_${currentBranch}`)
@@ -75,7 +89,7 @@ export function useContentManager(lockManager: any) {
           filter: `branch_name=eq.${currentBranch}`
         },
         (payload) => {
-          console.log('📄 Content update received:', payload);
+          console.log('📄 Branch content update received:', payload);
           
           if (payload.eventType === 'UPDATE' || payload.eventType === 'INSERT') {
             const session = payload.new as ContentSession;
@@ -83,6 +97,12 @@ export function useContentManager(lockManager: any) {
               setLiveContent(prev => {
                 const newMap = new Map(prev);
                 newMap.set(session.file_path, session.content);
+                
+                // Update branch cache
+                const branchCache = branchContentCacheRef.current.get(currentBranch) || new Map();
+                branchCache.set(session.file_path, session.content);
+                branchContentCacheRef.current.set(currentBranch, branchCache);
+                
                 return newMap;
               });
             }
@@ -91,6 +111,12 @@ export function useContentManager(lockManager: any) {
             setLiveContent(prev => {
               const newMap = new Map(prev);
               newMap.delete(session.file_path);
+              
+              // Update branch cache
+              const branchCache = branchContentCacheRef.current.get(currentBranch) || new Map();
+              branchCache.delete(session.file_path);
+              branchContentCacheRef.current.set(currentBranch, branchCache);
+              
               return newMap;
             });
           }
@@ -99,12 +125,12 @@ export function useContentManager(lockManager: any) {
       .subscribe();
 
     return () => {
-      console.log('📄 Cleaning up content subscription');
+      console.log('📄 Cleaning up branch content subscription for:', currentBranch);
       supabase.removeChannel(channel);
     };
   }, [currentBranch]);
 
-  // Auto-save content with debouncing
+  // Auto-save content with branch awareness
   const saveContent = useCallback(async (filePath: string, content: string, immediate = false) => {
     if (!currentUserId || !currentBranch || !isFileLockedByMe(filePath)) {
       if (DEBUG_CONTENT) {
@@ -117,8 +143,9 @@ export function useContentManager(lockManager: any) {
       return false;
     }
 
-    // Check if content has actually changed
-    const lastSaved = lastSavedContentRef.current.get(filePath);
+    // Check if content has actually changed for this branch
+    const branchKey = `${currentBranch}:${filePath}`;
+    const lastSaved = lastSavedContentRef.current.get(branchKey);
     if (lastSaved === content && !immediate) {
       return true; // No change, no need to save
     }
@@ -129,32 +156,40 @@ export function useContentManager(lockManager: any) {
 
         const { error } = await supabase
           .from('live_editing_sessions')
-          .update({
+          .upsert({
+            file_path: filePath,
             content,
+            user_id: currentUserId,
+            branch_name: currentBranch,
+            locked_by: currentUserId,
             updated_at: new Date().toISOString()
-          })
-          .eq('file_path', filePath)
-          .eq('branch_name', currentBranch)
-          .eq('locked_by', currentUserId);
+          }, {
+            onConflict: 'file_path,branch_name'
+          });
 
         if (error) {
-          console.error('Error saving content:', error);
+          console.error('Error saving branch content:', error);
           return false;
         }
 
-        // Update our local cache
-        lastSavedContentRef.current.set(filePath, content);
+        // Update our local cache with branch awareness
+        lastSavedContentRef.current.set(branchKey, content);
         setLiveContent(prev => {
           const newMap = new Map(prev);
           newMap.set(filePath, content);
           return newMap;
         });
 
+        // Update branch cache
+        const branchCache = branchContentCacheRef.current.get(currentBranch) || new Map();
+        branchCache.set(filePath, content);
+        branchContentCacheRef.current.set(currentBranch, branchCache);
+
         if (DEBUG_CONTENT) {
-          console.log('📄 Content saved successfully:', {
+          console.log('📄 Branch content saved successfully:', {
             filePath,
-            contentLength: content.length,
-            branch: currentBranch
+            branch: currentBranch,
+            contentLength: content.length
           });
         }
 
@@ -183,21 +218,31 @@ export function useContentManager(lockManager: any) {
     }
   }, [currentUserId, currentBranch, isFileLockedByMe]);
 
-  // Load content for a specific file
+  // Load content for a specific file with branch awareness
   const loadContent = useCallback(async (filePath: string): Promise<string | null> => {
     if (!currentBranch) return null;
     
-    // Check if we have live content first
+    // Check branch cache first
+    const branchCache = branchContentCacheRef.current.get(currentBranch);
+    if (branchCache?.has(filePath)) {
+      const cachedContent = branchCache.get(filePath);
+      if (DEBUG_CONTENT) {
+        console.log('📄 Using cached branch content for:', filePath, 'in branch:', currentBranch);
+      }
+      return cachedContent || null;
+    }
+
+    // Check if we have live content for this branch
     const live = liveContent.get(filePath);
     if (live) {
       if (DEBUG_CONTENT) {
-        console.log('📄 Using live content for:', filePath);
+        console.log('📄 Using live branch content for:', filePath, 'in branch:', currentBranch);
       }
       return live;
     }
 
     try {
-      // Try to load from database
+      // Try to load from database for this specific branch
       const { data, error } = await supabase
         .from('live_editing_sessions')
         .select('content')
@@ -206,18 +251,24 @@ export function useContentManager(lockManager: any) {
         .maybeSingle();
 
       if (error) {
-        console.error('Error loading content from DB:', error);
+        console.error('Error loading branch content from DB:', error);
         return null;
       }
 
       if (data?.content) {
         if (DEBUG_CONTENT) {
-          console.log('📄 Loaded content from DB for:', filePath);
+          console.log('📄 Loaded branch content from DB for:', filePath, 'in branch:', currentBranch);
         }
+        
+        // Cache the content
+        const branchCache = branchContentCacheRef.current.get(currentBranch) || new Map();
+        branchCache.set(filePath, data.content);
+        branchContentCacheRef.current.set(currentBranch, branchCache);
+        
         return data.content;
       }
 
-      // Fall back to file system
+      // Fall back to file system only if no branch-specific content exists
       let fetchPath = filePath;
       if (!fetchPath.endsWith('.md')) {
         fetchPath = `${fetchPath}.md`;
@@ -237,7 +288,7 @@ export function useContentManager(lockManager: any) {
       if (response.ok) {
         const content = await response.text();
         if (DEBUG_CONTENT) {
-          console.log('📄 Loaded content from filesystem for:', filePath);
+          console.log('📄 Loaded content from filesystem for:', filePath, '(no branch-specific content)');
         }
         return content;
       }
@@ -249,18 +300,25 @@ export function useContentManager(lockManager: any) {
     }
   }, [currentBranch, liveContent]);
 
-  // Get content for a file (live or cached)
+  // Get content for a file (live or cached) with branch awareness
   const getContent = useCallback((filePath: string): string | null => {
+    // Check branch cache first
+    const branchCache = branchContentCacheRef.current.get(currentBranch);
+    if (branchCache?.has(filePath)) {
+      return branchCache.get(filePath) || null;
+    }
+    
     return liveContent.get(filePath) || null;
-  }, [liveContent]);
+  }, [liveContent, currentBranch]);
 
-  // Check if file has unsaved changes
+  // Check if file has unsaved changes with branch awareness
   const hasUnsavedChanges = useCallback((filePath: string, currentContent: string): boolean => {
-    const lastSaved = lastSavedContentRef.current.get(filePath);
+    const branchKey = `${currentBranch}:${filePath}`;
+    const lastSaved = lastSavedContentRef.current.get(branchKey);
     const liveContentForFile = liveContent.get(filePath);
     
     return currentContent !== (lastSaved || liveContentForFile || '');
-  }, [liveContent]);
+  }, [liveContent, currentBranch]);
 
   // Initial fetch
   useEffect(() => {
