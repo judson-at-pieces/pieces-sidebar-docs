@@ -17,6 +17,8 @@ export function NewPullRequestButton() {
 
   if (DEBUG) {
     console.log('🚀 NewPullRequestButton RENDER - currentBranch from useBranchManager:', currentBranch);
+    console.log('🚀 NewPullRequestButton RENDER - initialized:', initialized);
+    console.log('🚀 NewPullRequestButton RENDER - branches count:', branches.length);
   }
 
   const getTargetBranch = () => {
@@ -219,6 +221,7 @@ export function NewPullRequestButton() {
 
   if (DEBUG) {
     console.log('🚀 NewPullRequestButton buttonState:', buttonState);
+    console.log('🚀 NewPullRequestButton FINAL currentBranch used in text:', currentBranch);
   }
 
   return (
