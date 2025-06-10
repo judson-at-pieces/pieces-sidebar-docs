@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getBranchCookie } from '@/utils/branchCookies';
@@ -28,7 +29,8 @@ export function useLockManager() {
       currentUserId,
       myCurrentLock,
       activeLocksCount: activeLocks.size,
-      branch: currentBranch
+      branch: currentBranch,
+      userNamesCount: userNames.size
     });
   }
 
@@ -63,6 +65,14 @@ export function useLockManager() {
       });
       
       setUserNames(nameMap);
+
+      if (DEBUG_LOCK) {
+        console.log('🔒 FETCHED USER NAMES:', {
+          newUsers: data?.length || 0,
+          totalCached: nameMap.size,
+          names: Array.from(nameMap.entries())
+        });
+      }
     } catch (error) {
       console.error('Error in fetchUserNames:', error);
     }
@@ -104,14 +114,15 @@ export function useLockManager() {
 
       // Fetch user names for any new users
       if (userIdsToFetch.length > 0) {
-        fetchUserNames(userIdsToFetch);
+        await fetchUserNames(userIdsToFetch);
       }
 
       if (DEBUG_LOCK) {
         console.log('🔒 FETCHED LOCKS:', {
           totalLocks: lockMap.size,
           myLock,
-          allLocks: Array.from(lockMap.entries())
+          allLocks: Array.from(lockMap.entries()),
+          usersToFetch: userIdsToFetch.length
         });
       }
     } catch (error) {
@@ -356,8 +367,15 @@ export function useLockManager() {
     
     if (lock.locked_by === currentUserId) return 'You';
     
-    return userNames.get(lock.locked_by) || `User ${lock.locked_by.slice(0, 8)}`;
-  }, [activeLocks, currentUserId, userNames]);
+    const cachedName = userNames.get(lock.locked_by);
+    if (cachedName) {
+      return cachedName;
+    }
+    
+    // If we don't have the name cached, trigger a fetch and return a placeholder
+    fetchUserNames([lock.locked_by]);
+    return `User ${lock.locked_by.slice(0, 8)}`;
+  }, [activeLocks, currentUserId, userNames, fetchUserNames]);
 
   return {
     // State

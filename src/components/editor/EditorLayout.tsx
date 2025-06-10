@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useLockManager } from "@/hooks/useLockManager";
@@ -55,6 +56,37 @@ export function EditorLayout() {
       contentManager.saveContent(selectedFile, localContent, false);
     }
   }, [selectedFile, localContent, lockManager, contentManager]);
+
+  // Release lock when navigating away from the page
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      if (lockManager.myCurrentLock) {
+        lockManager.releaseLock(lockManager.myCurrentLock);
+      }
+    };
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden' && lockManager.myCurrentLock) {
+        lockManager.releaseLock(lockManager.myCurrentLock);
+      }
+    };
+
+    const handlePopState = () => {
+      if (lockManager.myCurrentLock) {
+        lockManager.releaseLock(lockManager.myCurrentLock);
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [lockManager]);
 
   const handleFileSelect = async (filePath: string) => {
     if (DEBUG_EDITOR) {
@@ -160,7 +192,7 @@ Start editing to see the live preview!
   const isLocked = selectedFile ? lockManager.isFileLocked(selectedFile) : false;
   const lockedByMe = selectedFile ? lockManager.isFileLockedByMe(selectedFile) : false;
   const lockedByOther = selectedFile ? lockManager.isFileLockedByOther(selectedFile) : false;
-  const lockedBy = selectedFile ? lockManager.getFileLockOwnerName(selectedFile) : null;
+  const lockedByName = selectedFile ? lockManager.getFileLockOwnerName(selectedFile) : null;
   const hasChanges = selectedFile ? contentManager.hasUnsavedChanges(selectedFile, localContent) : false;
   const liveContent = selectedFile ? contentManager.getContent(selectedFile) : null;
 
@@ -216,7 +248,7 @@ Start editing to see the live preview!
             setActiveTab={setActiveTab}
             selectedFile={selectedFile}
             isLocked={isLocked}
-            lockedBy={lockedBy}
+            lockedBy={lockedByName}
             isAcquiringLock={false}
             onAcquireLock={handleAcquireLock}
             currentBranch={currentBranch}
@@ -273,7 +305,7 @@ Start editing to see the live preview!
                     hasChanges={hasChanges}
                     saving={contentManager.isAutoSaving}
                     isLocked={isLocked}
-                    lockedBy={lockedBy}
+                    lockedBy={lockedByName}
                     liveContent={liveContent}
                     isAcquiringLock={false}
                     onTakeLock={handleTakeLock}
