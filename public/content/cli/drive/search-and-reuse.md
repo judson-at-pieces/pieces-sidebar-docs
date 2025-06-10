@@ -1,8 +1,11 @@
 ---
-title: "Search & Reuse"
-path: "/cli/drive/search-and-reuse"
-visibility: "PUBLIC"
+title: "This is a test SEO"
+description: "This is a test description"
+twitterSite: "@pieces_app"
+priority: 0.8
+schemaType: "Article"
 ---
+
 ***
 
 ## Locate Materials in Pieces Drive
