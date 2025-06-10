@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { GitPullRequest } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -34,8 +35,25 @@ export function NewPullRequestButton() {
       };
     }
 
-    // Always show current branch → main
-    const forcedText = `${currentBranch} → main`;
+    // Always show current branch → main, but if current IS main, show main → develop as target
+    let displayTarget = 'main';
+    if (currentBranch === 'main') {
+      // If on main branch, target develop or another branch
+      const developBranch = branches.find(b => b.name === 'develop' || b.name === 'dev');
+      if (developBranch) {
+        displayTarget = developBranch.name;
+      } else {
+        // If no develop branch, find any other branch
+        const otherBranch = branches.find(b => b.name !== 'main');
+        if (otherBranch) {
+          displayTarget = otherBranch.name;
+        } else {
+          displayTarget = 'develop'; // Default to develop even if it doesn't exist
+        }
+      }
+    }
+
+    const forcedText = `${currentBranch} → ${displayTarget}`;
     const activeSessions = sessions.filter(s => s.content && s.content.trim());
     const fileCount = activeSessions.length;
 
@@ -58,7 +76,7 @@ export function NewPullRequestButton() {
     return {
       text: `${forcedText} (${fileCount})`,
       enabled: true,
-      tooltip: `Create pull request from ${currentBranch} to main with ${fileCount} file${fileCount !== 1 ? 's' : ''}`
+      tooltip: `Create pull request from ${currentBranch} to ${displayTarget} with ${fileCount} file${fileCount !== 1 ? 's' : ''}`
     };
   };
 
