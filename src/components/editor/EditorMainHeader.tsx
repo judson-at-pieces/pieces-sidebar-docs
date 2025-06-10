@@ -1,8 +1,9 @@
 
 import React from "react";
 import { Button } from "@/components/ui/button";
-import { Settings, Crown } from "lucide-react";
+import { Settings, Crown, Home, ExternalLink } from "lucide-react";
 import { UserMenu } from "@/components/auth/UserMenu";
+import { ThemeToggle } from "@/components/ThemeToggle";
 import { useAuth } from "@/contexts/AuthContext";
 import { useBranchSessions } from "@/hooks/useBranchSessions";
 import { getBranchCookie } from "@/utils/branchCookies";
@@ -23,6 +24,10 @@ export function EditorMainHeader({ hasChanges, totalLiveFiles }: EditorMainHeade
 
   const handleAdminClick = () => {
     navigate('/admin');
+  };
+
+  const handleHomeClick = () => {
+    window.open('/', '_blank');
   };
 
   return (
@@ -48,6 +53,20 @@ export function EditorMainHeader({ hasChanges, totalLiveFiles }: EditorMainHeade
       </div>
 
       <div className="flex items-center gap-3">
+        {/* Homepage Button */}
+        <Button
+          onClick={handleHomeClick}
+          variant="outline"
+          size="sm"
+          className="gap-2"
+        >
+          <Home className="h-4 w-4" />
+          <ExternalLink className="h-3 w-3" />
+        </Button>
+
+        {/* Theme Toggle */}
+        <ThemeToggle />
+
         {/* Admin Button */}
         {hasRole('admin') && (
           <Button
