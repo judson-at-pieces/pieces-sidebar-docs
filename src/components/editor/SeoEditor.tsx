@@ -349,7 +349,7 @@ This is the main content of the page. Add your documentation content here.
     }
   };
 
-  const handleCreatePRForCurrentFile = async () => {
+  const createSEOPullRequest = async () => {
     if (!selectedFile) {
       showToast('No file selected', 'error');
       return;
@@ -435,7 +435,16 @@ This is the main content of the page. Add your documentation content here.
         hasTwitterData: !!(seoData.twitterTitle || seoData.twitterDescription)
       });
 
-      // Create the pull request using the GitHub App token
+      const changedFiles = [
+        {
+          path: repoFilePath,
+          content: updatedContent
+        }
+      ];
+
+      const token = githubToken;
+      const repoConfig = config;
+
       const result = await githubService.createPullRequest(
         {
           title,
@@ -463,15 +472,11 @@ Please review the SEO changes and merge when ready. The existing content has bee
 
 ---
 *This PR was created automatically by the Pieces Documentation SEO Editor*`,
-          files: [
-            {
-              path: repoFilePath,
-              content: updatedContent
-            }
-          ]
+          files: changedFiles,
+          baseBranch: 'main', // Add this required field
         },
-        githubToken,
-        config
+        token,
+        repoConfig
       );
 
       if (result.success && result.prNumber && result.prUrl) {
@@ -494,7 +499,7 @@ Please review the SEO changes and merge when ready. The existing content has bee
     }
   };
 
-  const handleCreatePRForAllChanges = async () => {
+  const createBulkSEOPullRequest = async () => {
     if (pendingChanges.length === 0) {
       showToast('No changes to save', 'info');
       return;
@@ -546,7 +551,7 @@ Please review the SEO changes and merge when ready. The existing content has bee
       const userName = user?.user_metadata?.full_name || user?.user_metadata?.name || userEmail.split('@')[0];
 
       // Prepare files for all pending changes
-      const files = await Promise.all(pendingChanges.map(async filePath => {
+      const filesToUpdate = pendingChanges.map(filePath => {
         let repoFilePath = filePath;
         if (!filePath.startsWith('public/') && !filePath.startsWith('src/')) {
           repoFilePath = `public/content/${filePath}`;
@@ -555,17 +560,22 @@ Please review the SEO changes and merge when ready. The existing content has bee
           repoFilePath = `${repoFilePath}.md`;
         }
 
-        // Load existing content and update with SEO data
-        const existingContent = await loadExistingContent(filePath);
-        const updatedContent = await updateContentWithSeoData(existingContent, seoData);
-
         return {
           path: repoFilePath,
-          content: updatedContent
+          content: ''
         };
-      }));
+      });
 
-      // Create the pull request using the GitHub App token
+      const changedFiles = filesToUpdate.map(file => {
+        const existingContent = await loadExistingContent(file.path);
+        const updatedContent = await updateContentWithSeoData(existingContent, seoData);
+        file.content = updatedContent;
+        return file;
+      });
+
+      const token = githubToken;
+      const repoConfig = config;
+
       const result = await githubService.createPullRequest(
         {
           title: `Bulk SEO Configuration Update (${pendingChanges.length} files)`,
@@ -583,10 +593,11 @@ Please review all SEO changes and merge when ready. All existing content has bee
 
 ---
 *This PR was created automatically by the Pieces Documentation SEO Editor*`,
-          files
+          files: changedFiles,
+          baseBranch: 'main', // Add this required field
         },
-        githubToken,
-        config
+        token,
+        repoConfig
       );
 
       if (result.success && result.prNumber && result.prUrl) {
@@ -624,7 +635,7 @@ Please review all SEO changes and merge when ready. All existing content has bee
               </div>
               {hasUnsavedChanges && (
                 <Button 
-                  onClick={handleCreatePRForAllChanges} 
+                  onClick={createBulkSEOPullRequest} 
                   disabled={isCreatingPR}
                   size="sm" 
                   className="gap-2"
@@ -703,7 +714,7 @@ Please review all SEO changes and merge when ready. All existing content has bee
                     {previewMode ? 'Disable Preview' : 'Preview Changes'}
                   </Button>
                   <Button 
-                    onClick={handleCreatePRForCurrentFile} 
+                    onClick={createSEOPullRequest} 
                     disabled={isCreatingPR}
                     size="sm" 
                     className="gap-2"
@@ -722,7 +733,7 @@ Please review all SEO changes and merge when ready. All existing content has bee
                   </Button>
                   {hasUnsavedChanges && (
                     <Button 
-                      onClick={handleCreatePRForAllChanges} 
+                      onClick={createBulkSEOPullRequest} 
                       disabled={isCreatingPR} 
                       variant="secondary" 
                       size="sm" 

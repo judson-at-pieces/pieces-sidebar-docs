@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Link } from 'react-router-dom';
 import { ExpandableImage as ExpandableImageComponent } from './ExpandableImage';
@@ -150,7 +149,7 @@ export const createComponentMappings = () => ({
       return Object.keys(props || {}).reduce((acc, key) => {
         if (key.startsWith('data-')) {
           const cleanKey = key.replace('data-', '').replace(/-([a-z])/g, (g) => g[1].toUpperCase());
-          acc[cleanKey] = (props as any)[key];
+          acc[cleanKey] = (props as Record<string, unknown>)[key];
         }
         return acc;
       }, {} as Record<string, any>);
@@ -178,24 +177,16 @@ export const createComponentMappings = () => ({
     }
     
     if (dataProps.card === 'true' || dataProps.cardComponent === 'true') {
-      console.log('Rendering Card with:', { 
-        title: dataProps.title, 
-        image: dataProps.image, 
-        href: dataProps.href, 
-        external: dataProps.external, 
-        hasChildren: !!children 
-      });
-      
       let cardContent = children;
       if (children && (React.isValidElement(children) || Array.isArray(children))) {
         cardContent = extractTextFromChildren(children);
       }
       
-      return <MarkdownCard title={dataProps.title} image={dataProps.image} icon={dataProps.icon} href={dataProps.href} external={dataProps.external}>{cardContent}</MarkdownCard>;
+      return <MarkdownCard title={dataProps.title} image={dataProps.image} href={dataProps.href} external={dataProps.external}>{cardContent}</MarkdownCard>;
     }
     
     if (dataProps.image && dataProps.src) {
-      return <Image src={dataProps.src} alt={dataProps.alt} caption={dataProps.caption} align={dataProps.align as any} fullwidth={dataProps.fullwidth} />;
+      return <Image src={dataProps.src} alt={dataProps.alt} align={dataProps.align as any} fullwidth={dataProps.fullwidth} />;
     }
     
     if (dataProps.piecesCloudModels) {

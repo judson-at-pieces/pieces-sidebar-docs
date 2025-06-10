@@ -1,22 +1,23 @@
+
 import { useState, useEffect } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useLiveEditing } from "@/hooks/useLiveEditing";
+import { useBranchManager } from "@/hooks/useBranchManager";
+import { useBranchSessions } from "@/hooks/useBranchSessions";
 import { NavigationEditor } from "./NavigationEditor";
 import { EditorMain } from "./EditorMain";
 import { SeoEditor } from "./SeoEditor";
 import { FileTreeSidebar } from "./FileTreeSidebar";
 import { Button } from "@/components/ui/button";
-import { useBranches } from "@/hooks/useBranches";
 import { EditorHeader } from "./EditorHeader";
-import { EditorTabNavigation } from "./EditorTabNavigation";
+import { NewEditorTabNavigation } from "./NewEditorTabNavigation";
 
-// Debug toggles
 const DEBUG_MARKDOWN = false;
-const DEBUG_EDITOR_LAYOUT = true;
 
 export function EditorLayout() {
   const { fileStructure, isLoading, error, refetch } = useFileStructure();
-  const { currentBranch, initialized, branches } = useBranches();
+  const { currentBranch, initialized } = useBranchManager();
+  const { sessions } = useBranchSessions(currentBranch);
 
   const [selectedFile, setSelectedFile] = useState<string>();
   const [content, setContent] = useState("");
@@ -24,20 +25,11 @@ export function EditorLayout() {
   const [activeTab, setActiveTab] = useState<'navigation' | 'content' | 'seo'>('content');
   const [loadingContent, setLoadingContent] = useState(false);
 
-  if (DEBUG_EDITOR_LAYOUT) {
-    console.log('🟠 EDITOR LAYOUT RENDER');
-    console.log('🟠 EDITOR LAYOUT RECEIVED FROM USEBRANCHES:');
-    console.log('  🟠 currentBranch:', JSON.stringify(currentBranch), 'type:', typeof currentBranch);
-    console.log('  🟠 initialized:', initialized);
-    console.log('  🟠 branches count:', branches.length);
-  }
-
   // Live editing hook
   const {
     isLocked,
     lockedBy,
     liveContent,
-    sessions,
     isAcquiringLock,
     acquireLock,
     releaseLock,
@@ -259,22 +251,7 @@ Start editing to see the live preview!
     );
   }
 
-  // Filter sessions to only include those with content AND for current branch
-  const sessionsWithContent = sessions.filter(s => 
-    s.content && 
-    s.content.trim() && 
-    s.branch_name === currentBranch
-  );
-  const totalLiveFiles = sessionsWithContent.length;
-
-  if (DEBUG_EDITOR_LAYOUT) {
-    console.log('🟠 EDITOR LAYOUT: PASSING TO TAB NAVIGATION:');
-    console.log('  🟠 currentBranch:', JSON.stringify(currentBranch));
-    console.log('  🟠 initialized:', initialized);
-    console.log('  🟠 sessionsWithContent.length:', sessionsWithContent.length);
-    console.log('  🟠 hasChanges:', hasChanges);
-    console.log('  🟠 branches count:', branches.length);
-  }
+  const totalLiveFiles = sessions.filter(s => s.content && s.content.trim()).length;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
@@ -286,7 +263,7 @@ Start editing to see the live preview!
       
       <div className="flex h-[calc(100vh-4rem)]">
         <div className="flex-1 flex flex-col">
-          <EditorTabNavigation
+          <NewEditorTabNavigation
             activeTab={activeTab}
             setActiveTab={setActiveTab}
             selectedFile={selectedFile}
@@ -294,12 +271,6 @@ Start editing to see the live preview!
             lockedBy={lockedBy}
             isAcquiringLock={isAcquiringLock}
             onAcquireLock={handleAcquireLock}
-            totalLiveFiles={totalLiveFiles}
-            currentBranch={currentBranch}
-            sessions={sessionsWithContent}
-            hasChanges={hasChanges}
-            initialized={initialized}
-            branches={branches}
           />
           
           {/* Tab Content */}
@@ -337,7 +308,7 @@ Start editing to see the live preview!
                   selectedFile={selectedFile}
                   onFileSelect={handleFileSelect}
                   fileStructure={fileStructure}
-                  pendingChanges={sessionsWithContent.map(s => s.file_path)}
+                  pendingChanges={sessions.map(s => s.file_path)}
                   liveSessions={sessions}
                 />
                 <div className="flex-1 animate-in fade-in slide-in-from-bottom-2 duration-300">

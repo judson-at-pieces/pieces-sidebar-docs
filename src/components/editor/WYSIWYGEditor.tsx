@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -285,6 +284,33 @@ export function WYSIWYGEditor({ content, onContentChange }: WYSIWYGEditorProps) 
         </div>
       </div>
     );
+  };
+
+  const handleToolbarAction = (action: string) => {
+    if (action === 'format_paint') {
+      const selection = window.getSelection();
+      if (selection && selection.rangeCount > 0) {
+        const range = selection.getRangeAt(0);
+        const selectedText = range.toString();
+        
+        if (selectedText) {
+          // Use proper type checking for HTML elements
+          const activeElement = document.activeElement;
+          if (activeElement && 'value' in activeElement && typeof activeElement.value === 'string') {
+            const input = activeElement as HTMLInputElement | HTMLTextAreaElement;
+            const start = input.selectionStart || 0;
+            const end = input.selectionEnd || 0;
+            const formattedText = `**${selectedText}**`;
+            const newValue = input.value.substring(0, start) + formattedText + input.value.substring(end);
+            
+            if (onContentChange) {
+              onContentChange(newValue);
+            }
+          }
+        }
+      }
+      return;
+    }
   };
 
   return (
