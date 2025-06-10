@@ -29,6 +29,43 @@ export function NewPullRequestButton({
   // For other branches: create PR from current branch to target
   const isEnabled = initialized && currentBranch && hasChanges && currentBranch !== targetBranch;
 
+  // 🚨 COMPREHENSIVE PR BUTTON DEBUGGING
+  console.group('🚀 NEW PULL REQUEST BUTTON DEBUG');
+  console.log('📊 PROPS RECEIVED:', {
+    currentBranch: JSON.stringify(currentBranch),
+    currentBranchType: typeof currentBranch,
+    targetBranch: JSON.stringify(targetBranch),
+    targetBranchType: typeof targetBranch,
+    hasChanges,
+    initialized,
+    sessionsCount: sessions.length,
+    activeSessionsCount: activeSessions.length
+  });
+  
+  console.log('📊 BUTTON STATE LOGIC:', {
+    isEnabled,
+    'initialized': initialized,
+    'currentBranch exists': !!currentBranch,
+    'hasChanges': hasChanges,
+    'currentBranch !== targetBranch': currentBranch !== targetBranch,
+    'exact comparison': `"${currentBranch}" !== "${targetBranch}"`,
+    'string lengths': { 
+      current: currentBranch?.length, 
+      target: targetBranch?.length 
+    }
+  });
+  
+  console.log('📊 STRING COMPARISON DEEP DIVE:', {
+    currentBranchRaw: currentBranch,
+    targetBranchRaw: targetBranch,
+    'currentBranch === "main"': currentBranch === 'main',
+    'currentBranch === targetBranch': currentBranch === targetBranch,
+    'currentBranch == targetBranch': currentBranch == targetBranch,
+    currentBranchCharCodes: currentBranch ? Array.from(currentBranch).map(c => `${c}(${c.charCodeAt(0)})`) : 'null',
+    targetBranchCharCodes: targetBranch ? Array.from(targetBranch).map(c => `${c}(${c.charCodeAt(0)})`) : 'null'
+  });
+  console.groupEnd();
+
   const getGitHubAppToken = async () => {
     const { data: installations, error } = await supabase
       .from('github_installations')
@@ -61,7 +98,10 @@ export function NewPullRequestButton({
   };
 
   const handleCreatePR = async () => {
-    if (!isEnabled) return;
+    if (!isEnabled) {
+      console.warn('🚀 PR BUTTON: handleCreatePR called but button is disabled', { isEnabled });
+      return;
+    }
 
     setCreating(true);
     
@@ -149,13 +189,11 @@ export function NewPullRequestButton({
     return `Create pull request from ${currentBranch} to ${targetBranch}`;
   };
 
-  console.log('🚀 NewPullRequestButton DEBUG:', {
-    currentBranch,
-    targetBranch,
-    initialized,
-    hasChanges,
+  console.log('🚀 NewPullRequestButton RENDER:', {
+    buttonText: getButtonText(),
+    tooltip: getTooltip(),
     isEnabled,
-    sessionsCount: activeSessions.length
+    disabled: !isEnabled
   });
 
   return (

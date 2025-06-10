@@ -33,6 +33,40 @@ export function NewEditorTabNavigation({
   const showPublishButton = currentBranch && currentBranch !== 'main';
   const showPRButton = currentBranch; // Always show PR button when we have a branch
 
+  // 🚨 COMPREHENSIVE DEBUGGING
+  console.group('🔍 NEW EDITOR TAB NAVIGATION DEBUG');
+  console.log('📊 BRANCH STATE:', {
+    currentBranch: JSON.stringify(currentBranch),
+    currentBranchType: typeof currentBranch,
+    currentBranchLength: currentBranch?.length,
+    initialized,
+    branchesCount: branches.length,
+    branchesArray: branches.map(b => ({ name: b.name, isDefault: b.isDefault }))
+  });
+  
+  console.log('📊 SESSIONS STATE:', {
+    sessionsCount: sessions.length,
+    totalLiveFiles,
+    hasChanges,
+    sessionFiles: sessions.map(s => s.file_path)
+  });
+  
+  console.log('📊 BUTTON LOGIC:', {
+    showPublishButton,
+    showPRButton,
+    publishCondition: `currentBranch(${currentBranch}) && currentBranch !== 'main'`,
+    prCondition: `currentBranch(${currentBranch}) exists`
+  });
+  
+  console.log('📊 COMPARISON CHECKS:', {
+    'currentBranch === "main"': currentBranch === 'main',
+    'currentBranch !== "main"': currentBranch !== 'main',
+    'currentBranch == "main"': currentBranch == 'main',
+    'currentBranch.trim() === "main"': currentBranch?.trim() === 'main',
+    currentBranchCharCodes: currentBranch ? Array.from(currentBranch).map(c => c.charCodeAt(0)) : 'null'
+  });
+  console.groupEnd();
+
   return (
     <div className="border-b border-border/50 bg-background/80 backdrop-blur-sm">
       <div className="flex items-center justify-between px-6 py-3">

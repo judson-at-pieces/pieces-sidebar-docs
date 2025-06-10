@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { githubService } from '@/services/githubService';
 import { supabase } from '@/integrations/supabase/client';
@@ -32,19 +31,44 @@ export function useBranchManager() {
   const initializationRef = useRef(false);
   const mountedRef = useRef(true);
 
+  // 🚨 COMPREHENSIVE BRANCH MANAGER DEBUGGING
   if (DEBUG) {
-    console.log('🔥 BRANCH MANAGER RENDER:', {
-      currentBranch: state.currentBranch,
+    console.group('🔥 BRANCH MANAGER RENDER');
+    console.log('📊 CURRENT STATE:', {
+      currentBranch: JSON.stringify(state.currentBranch),
+      currentBranchType: typeof state.currentBranch,
+      currentBranchLength: state.currentBranch?.length,
+      currentBranchCharCodes: state.currentBranch ? Array.from(state.currentBranch).map(c => `${c}(${c.charCodeAt(0)})`) : 'empty',
       initialized: state.initialized,
       branchCount: state.branches.length,
-      loading: state.loading
+      loading: state.loading,
+      error: state.error
     });
+    
+    console.log('📊 BRANCHES ARRAY:', state.branches.map(b => ({
+      name: JSON.stringify(b.name),
+      isDefault: b.isDefault,
+      charCodes: Array.from(b.name).map(c => `${c}(${c.charCodeAt(0)})`)
+    })));
+    console.groupEnd();
   }
 
   const updateState = useCallback((updates: Partial<BranchManagerState>) => {
     if (!mountedRef.current) return;
+    
+    if (DEBUG && updates.currentBranch !== undefined) {
+      console.group('🔥 BRANCH MANAGER STATE UPDATE');
+      console.log('📊 UPDATING currentBranch FROM:', {
+        from: JSON.stringify(state.currentBranch),
+        to: JSON.stringify(updates.currentBranch),
+        fromCharCodes: state.currentBranch ? Array.from(state.currentBranch).map(c => `${c}(${c.charCodeAt(0)})`) : 'empty',
+        toCharCodes: updates.currentBranch ? Array.from(updates.currentBranch).map(c => `${c}(${c.charCodeAt(0)})`) : 'empty'
+      });
+      console.groupEnd();
+    }
+    
     setState(prev => ({ ...prev, ...updates }));
-  }, []);
+  }, [state.currentBranch]);
 
   const getGitHubAppToken = useCallback(async () => {
     const { data: installations, error } = await supabase
@@ -130,8 +154,8 @@ export function useBranchManager() {
 
       if (DEBUG) {
         console.log('🔥 BRANCHES LOADED:', {
-          branches: formattedBranches.map(b => b.name),
-          defaultBranch: defaultBranchName
+          branches: formattedBranches.map(b => ({ name: JSON.stringify(b.name), isDefault: b.isDefault })),
+          defaultBranch: JSON.stringify(defaultBranchName)
         });
       }
 
@@ -162,11 +186,20 @@ export function useBranchManager() {
 
   const switchBranch = useCallback(async (branchName: string) => {
     if (branchName === state.currentBranch) {
-      if (DEBUG) console.log('🔥 Already on branch:', branchName);
+      if (DEBUG) console.log('🔥 Already on branch:', JSON.stringify(branchName));
       return;
     }
 
-    if (DEBUG) console.log('🔥 SWITCHING TO BRANCH:', branchName);
+    if (DEBUG) {
+      console.group('🔥 SWITCHING TO BRANCH');
+      console.log('📊 BRANCH SWITCH REQUEST:', {
+        from: JSON.stringify(state.currentBranch),
+        to: JSON.stringify(branchName),
+        fromCharCodes: state.currentBranch ? Array.from(state.currentBranch).map(c => `${c}(${c.charCodeAt(0)})`) : 'empty',
+        toCharCodes: Array.from(branchName).map(c => `${c}(${c.charCodeAt(0)})`)
+      });
+      console.groupEnd();
+    }
 
     try {
       // Ensure sessions exist for the target branch
@@ -213,7 +246,12 @@ export function useBranchManager() {
       updateState({ currentBranch: branchName });
       toast.success(`Switched to branch "${branchName}"`);
 
-      if (DEBUG) console.log('🔥 BRANCH SWITCH COMPLETED:', branchName);
+      if (DEBUG) {
+        console.log('🔥 BRANCH SWITCH COMPLETED:', {
+          newBranch: JSON.stringify(branchName),
+          charCodes: Array.from(branchName).map(c => `${c}(${c.charCodeAt(0)})`)
+        });
+      }
     } catch (error) {
       console.error('Error switching branch:', error);
       toast.error('Failed to switch branch');

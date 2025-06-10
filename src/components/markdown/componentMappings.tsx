@@ -1,4 +1,3 @@
-
 import React from 'react';
 import Accordion from './Accordion';
 import AccordionGroup from './AccordionGroup';
@@ -31,7 +30,7 @@ export const componentMap: Record<string, React.ComponentType<any>> = {
   // Layout Components
   Card: (props: ComponentProps & { title?: string; children?: React.ReactNode }) => (
     <Card title={props.title || 'Untitled'}>
-      {props.children || <div>No content provided</div>}
+      {props.children}
     </Card>
   ),
   CardGroup: (props: ComponentProps & { children: React.ReactNode }) => <CardGroup {...props} />,
