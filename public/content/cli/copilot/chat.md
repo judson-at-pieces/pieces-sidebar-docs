@@ -4,9 +4,9 @@ path: "/cli/copilot/chat"
 visibility: "PUBLIC"
 ---
 ***
-tesesssssssssssssesessessseeeses cheesebyrger
+tesesssssss sdasdasdasdasdasdasdasd s
 ## Accessing Copilot Chat in your Terminal
-ss
+s
 There are two ways to manage your Copilot chats in the Pieces CLI.
 
 ### Starting a New Copilot Chat
