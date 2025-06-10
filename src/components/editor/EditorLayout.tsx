@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useLockManager } from "@/hooks/useLockManager";
@@ -41,25 +40,80 @@ export function EditorLayout() {
     });
   }
 
-  // Handle branch changes - clear local state and reload content
+  // Handle branch changes - save current content and load new branch content
   useEffect(() => {
-    if (currentBranch && currentBranch !== previousBranch) {
+    if (currentBranch && currentBranch !== previousBranch && previousBranch !== null) {
       if (DEBUG_EDITOR) {
         console.log('🔄 Branch changed from', previousBranch, 'to', currentBranch);
       }
 
-      // Release any existing locks when switching branches
-      if (lockManager.myCurrentLock) {
-        lockManager.releaseLock(lockManager.myCurrentLock);
-      }
+      const handleBranchSwitch = async () => {
+        // Save current content to the previous branch if we have unsaved changes
+        if (selectedFile && localContent && lockManager.isFileLockedByMe(selectedFile)) {
+          if (DEBUG_EDITOR) {
+            console.log('💾 Saving content to previous branch before switch:', previousBranch);
+          }
+          await contentManager.saveContent(selectedFile, localContent, true);
+        }
 
-      // Clear local state
-      setSelectedFile(undefined);
-      setLocalContent("");
-      
+        // Release any existing locks when switching branches
+        if (lockManager.myCurrentLock) {
+          await lockManager.releaseLock(lockManager.myCurrentLock);
+        }
+
+        // Load content for current file from the new branch
+        if (selectedFile) {
+          setLoadingContent(true);
+          try {
+            const branchContent = await contentManager.loadContent(selectedFile);
+            if (branchContent !== null) {
+              setLocalContent(branchContent);
+              if (DEBUG_EDITOR) {
+                console.log('📄 Loaded content from new branch:', currentBranch, 'Length:', branchContent.length);
+              }
+            } else {
+              // No content for this file in the new branch, create default
+              const fileName = selectedFile.split('/').pop()?.replace(/\.md$/, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
+              const pathForFrontmatter = selectedFile.replace(/\.md$/, '').replace(/^\//, '');
+              
+              const defaultContent = `---
+title: "${fileName}"
+path: "/${pathForFrontmatter}"
+visibility: "PUBLIC"
+description: "Add a description for this page"
+---
+
+# ${fileName}
+
+Add your content here. You can use markdown and custom components:
+
+:::info
+This is an information callout. Type "/" to see more available components.
+:::
+
+Start editing to see the live preview!
+`;
+              setLocalContent(defaultContent);
+              if (DEBUG_EDITOR) {
+                console.log('📄 No content in new branch, created default content');
+              }
+            }
+          } catch (error) {
+            console.error('Error loading content for new branch:', error);
+            setLocalContent("Error loading file content");
+          } finally {
+            setLoadingContent(false);
+          }
+        }
+      };
+
+      handleBranchSwitch();
+      setPreviousBranch(currentBranch);
+    } else if (currentBranch && previousBranch === null) {
+      // Initial branch set
       setPreviousBranch(currentBranch);
     }
-  }, [currentBranch, previousBranch, lockManager]);
+  }, [currentBranch, previousBranch, selectedFile, localContent, lockManager, contentManager]);
 
   // Auto-save when user has the lock and content changes
   useEffect(() => {
