@@ -113,6 +113,15 @@ export function NewPullRequestButton() {
 
   const isEnabled = initialized && currentBranch && hasChanges;
 
+  console.log('🚀 NewPullRequestButton DEBUG:', {
+    currentBranch,
+    initialized,
+    hasChanges,
+    sessionsCount: sessions.length,
+    activeSessionsCount: activeSessions.length,
+    isEnabled
+  });
+
   return (
     <Button
       onClick={handleCreatePR}
@@ -120,7 +129,7 @@ export function NewPullRequestButton() {
       size="sm"
       disabled={!isEnabled}
       className="flex items-center gap-2 bg-gradient-to-r from-blue-500 to-pink-500 text-white border-0 hover:from-blue-600 hover:to-pink-600"
-      title={isEnabled ? 'Create pull request' : 'No changes to create PR for'}
+      title={isEnabled ? 'Create pull request' : hasChanges ? 'No changes to create PR for' : 'No repository or branch selected'}
     >
       {creating ? (
         <div className="w-4 h-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
