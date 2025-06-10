@@ -29,6 +29,12 @@ export function EditorLayout() {
   const [loadingContent, setLoadingContent] = useState(false);
   const [lastBranch, setLastBranch] = useState<string | null>(null);
   const [isHandlingBranchSwitch, setIsHandlingBranchSwitch] = useState(false);
+  const [pendingSwitchData, setPendingSwitchData] = useState<{
+    file: string;
+    content: string;
+    oldBranch: string;
+    newBranch: string;
+  } | null>(null);
 
   if (DEBUG_EDITOR) {
     console.log('🎯 EDITOR STATE:', {
@@ -36,7 +42,8 @@ export function EditorLayout() {
       currentBranch,
       lastBranch,
       localContentLength: localContent.length,
-      isHandlingBranchSwitch
+      isHandlingBranchSwitch,
+      pendingSwitchData
     });
   }
 
@@ -46,33 +53,84 @@ export function EditorLayout() {
       if (DEBUG_EDITOR) {
         console.log('🔄 Branch changed from', lastBranch, 'to', currentBranch);
         console.log('🔄 Current file:', selectedFile);
+        console.log('🔄 Current content length:', localContent.length);
       }
 
       setIsHandlingBranchSwitch(true);
 
       const handleBranchSwitch = async () => {
         try {
-          // If we have a selected file and unsaved changes, save them to the OLD branch first
+          // If we have a selected file and content, prepare the switch data
           if (selectedFile && localContent && lockManager.isFileLockedByMe(selectedFile)) {
             if (DEBUG_EDITOR) {
-              console.log('💾 Saving changes to old branch:', lastBranch, 'for file:', selectedFile);
+              console.log('💾 Preparing to save changes to old branch:', lastBranch, 'for file:', selectedFile);
             }
-            // Save to the old branch by temporarily switching back
-            await contentManager.saveContentToBranch(selectedFile, localContent, lastBranch);
+            
+            // Store the pending switch data
+            setPendingSwitchData({
+              file: selectedFile,
+              content: localContent,
+              oldBranch: lastBranch,
+              newBranch: currentBranch
+            });
+            
+            // Save to the old branch first
+            const saveSuccess = await contentManager.saveContentToBranch(selectedFile, localContent, lastBranch);
+            
+            if (DEBUG_EDITOR) {
+              console.log('💾 Save to old branch result:', saveSuccess);
+            }
           }
 
-          // Clear local state
-          setLocalContent("");
-          
           // Force refresh content for new branch
           await contentManager.refreshContentForBranch(currentBranch);
           
-          // Reload the current file for the new branch
+          // If we have a selected file, reload it for the new branch
           if (selectedFile) {
             if (DEBUG_EDITOR) {
               console.log('🔄 Reloading file for new branch:', currentBranch, 'file:', selectedFile);
             }
-            await loadFileContent(selectedFile);
+            
+            // Load content from the new branch
+            const newBranchContent = await contentManager.loadContent(selectedFile);
+            
+            if (newBranchContent !== null) {
+              setLocalContent(newBranchContent);
+              if (DEBUG_EDITOR) {
+                console.log('📄 Loaded content from new branch:', currentBranch, 'length:', newBranchContent.length);
+              }
+            } else {
+              // Create default content for new branch
+              const fileName = selectedFile.split('/').pop()?.replace(/\.md$/, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
+              const pathForFrontmatter = selectedFile.replace(/\.md$/, '').replace(/^\//, '');
+              
+              const defaultContent = `---
+title: "${fileName}"
+path: "/${pathForFrontmatter}"
+visibility: "PUBLIC"
+description: "Add a description for this page"
+---
+
+# ${fileName}
+
+This content is specific to the ${currentBranch} branch.
+
+Add your content here. You can use markdown and custom components:
+
+:::info
+This is an information callout. Type "/" to see more available components.
+:::
+
+Start editing to see the live preview!
+`;
+              setLocalContent(defaultContent);
+              if (DEBUG_EDITOR) {
+                console.log('📄 Created default content for new branch:', currentBranch);
+              }
+            }
+          } else {
+            // Clear content if no file is selected
+            setLocalContent("");
           }
           
         } catch (error) {
@@ -80,6 +138,7 @@ export function EditorLayout() {
         } finally {
           setLastBranch(currentBranch);
           setIsHandlingBranchSwitch(false);
+          setPendingSwitchData(null);
         }
       };
 
@@ -134,12 +193,12 @@ Start editing to see the live preview!
     }
   };
 
-  // Auto-save when user has the lock and content changes
+  // Auto-save when user has the lock and content changes (but not during branch switches)
   useEffect(() => {
-    if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && localContent && !isHandlingBranchSwitch) {
+    if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && localContent && !isHandlingBranchSwitch && !pendingSwitchData) {
       contentManager.saveContent(selectedFile, localContent, false);
     }
-  }, [selectedFile, localContent, lockManager, contentManager, isHandlingBranchSwitch]);
+  }, [selectedFile, localContent, lockManager, contentManager, isHandlingBranchSwitch, pendingSwitchData]);
 
   // Release lock when navigating away from the page
   useEffect(() => {
