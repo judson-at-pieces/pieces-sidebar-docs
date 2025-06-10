@@ -92,7 +92,7 @@ export function NewBranchSelector() {
             disabled={loading}
           >
             <GitBranch className="h-4 w-4" />
-            DEBUG: {currentBranch || 'Loading...'}
+            FORCED: {currentBranch || 'Loading...'}
             {currentBranchData?.isDefault && (
               <Badge variant="secondary" className="text-xs ml-1">
                 default
@@ -102,7 +102,7 @@ export function NewBranchSelector() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-64">
           <div className="px-2 py-1.5 text-sm font-medium text-muted-foreground">
-            Switch Branch (Total: {branches.length})
+            Switch Branch (Current: {currentBranch})
           </div>
           <DropdownMenuSeparator />
           

@@ -65,7 +65,7 @@ export function NewPullRequestButton() {
 
     if (currentBranch === targetBranch && branches.length <= 1) {
       return {
-        text: `${currentBranch} (no target)`,
+        text: `FORCED: ${currentBranch} (no target)`,
         enabled: false,
         tooltip: 'Cannot create PR: no suitable target branch found. Create a new branch first.'
       };
@@ -73,14 +73,14 @@ export function NewPullRequestButton() {
 
     if (fileCount === 0) {
       return {
-        text: `${currentBranch} → ${targetBranch}`,
+        text: `FORCED: ${currentBranch} → ${targetBranch}`,
         enabled: false,
         tooltip: `No changes to create PR for. Current: ${currentBranch} → ${targetBranch}`
       };
     }
 
     return {
-      text: `${currentBranch} → ${targetBranch} (${fileCount})`,
+      text: `FORCED: ${currentBranch} → ${targetBranch} (${fileCount})`,
       enabled: true,
       tooltip: `Create pull request from ${currentBranch} to ${targetBranch} with ${fileCount} file${fileCount !== 1 ? 's' : ''}`
     };

@@ -29,7 +29,7 @@ interface ComponentProps {
 // Map component names to their actual components
 export const componentMap: Record<string, React.ComponentType<any>> = {
   // Layout Components
-  Card: (props: ComponentProps) => <Card {...props} />,
+  Card: (props: ComponentProps & { title?: string }) => <Card {...props} />,
   CardGroup: (props: ComponentProps & { children: React.ReactNode }) => <CardGroup {...props} />,
   SimpleCard: (props: ComponentProps) => <SimpleCard {...props} />,
   
@@ -48,8 +48,8 @@ export const componentMap: Record<string, React.ComponentType<any>> = {
   
   // Navigation Components
   Steps: (props: ComponentProps & { children: React.ReactNode }) => <Steps {...props} />,
-  Tabs: (props: ComponentProps & { children: React.ReactNode }) => <Tabs {...props} />,
-  TabItem: (props: ComponentProps & { label: string; children: React.ReactNode }) => <TabItem {...props} />,
+  Tabs: (props: ComponentProps & { children: any }) => <Tabs {...props} />,
+  TabItem: (props: ComponentProps & { label: string; title?: string; children: React.ReactNode }) => <TabItem {...props} />,
   TableOfContents: (props: ComponentProps & { content: string }) => <TableOfContents {...props} />,
   
   // Special Components
