@@ -12,6 +12,7 @@ import { FileTreeSidebar } from "./FileTreeSidebar";
 import { Button } from "@/components/ui/button";
 import { EditorMainHeader } from "./EditorMainHeader";
 import { NewEditorTabNavigation } from "./NewEditorTabNavigation";
+import { getBranchCookie } from "@/utils/branchCookies";
 
 const DEBUG_EDITOR = true;
 
@@ -28,37 +29,46 @@ export function EditorLayout() {
   const [localContent, setLocalContent] = useState("");
   const [activeTab, setActiveTab] = useState<'navigation' | 'content' | 'seo'>('content');
   const [loadingContent, setLoadingContent] = useState(false);
-  const [lastBranch, setLastBranch] = useState<string | null>(null);
+  const [editorKey, setEditorKey] = useState(0); // Force re-render key
 
-  if (DEBUG_EDITOR) {
-    console.log('🎯 EDITOR STATE:', {
-      selectedFile,
-      currentBranch,
-      lastBranch,
-      localContentLength: localContent.length
-    });
-  }
-
-  // FORCE COMPLETE PAGE RELOAD on branch changes
+  // Watch for branch cookie changes and force content refresh
   useEffect(() => {
-    if (!currentBranch) return;
-    
-    // First time initialization
-    if (lastBranch === null) {
-      setLastBranch(currentBranch);
-      return;
-    }
-    
-    // Branch change detected - FORCE COMPLETE PAGE RELOAD
-    if (currentBranch !== lastBranch) {
+    const checkBranchCookie = () => {
+      const cookieBranch = getBranchCookie();
       if (DEBUG_EDITOR) {
-        console.log('🔄 FORCING COMPLETE PAGE RELOAD - Branch switch:', lastBranch, '->', currentBranch);
+        console.log('🍪 Cookie branch check:', cookieBranch, 'current:', currentBranch);
       }
       
-      // Force complete page reload to ensure ALL state is cleared
-      window.location.reload();
-    }
-  }, [currentBranch, lastBranch]);
+      if (cookieBranch && cookieBranch !== currentBranch && initialized) {
+        if (DEBUG_EDITOR) {
+          console.log('🔄 BRANCH COOKIE CHANGED - FORCING CONTENT REFRESH');
+        }
+        
+        // Force complete content manager refresh for the new branch
+        contentManager.refreshContentForBranch(cookieBranch);
+        
+        // Clear current file selection and content
+        setSelectedFile(undefined);
+        setLocalContent("");
+        
+        // Force complete editor re-render
+        setEditorKey(prev => prev + 1);
+        
+        // Release any current locks
+        if (lockManager.myCurrentLock) {
+          lockManager.releaseLock(lockManager.myCurrentLock);
+        }
+      }
+    };
+
+    // Check immediately
+    checkBranchCookie();
+    
+    // Poll for cookie changes every 100ms
+    const interval = setInterval(checkBranchCookie, 100);
+    
+    return () => clearInterval(interval);
+  }, [currentBranch, initialized, contentManager, lockManager]);
 
   const loadFileContent = async (filePath: string) => {
     setLoadingContent(true);
@@ -241,7 +251,7 @@ Start editing to see the live preview!
   const totalLiveFiles = sessions.filter(s => s.content && s.content.trim()).length;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
+    <div key={editorKey} className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
       <EditorMainHeader 
         hasChanges={hasChanges}
         totalLiveFiles={totalLiveFiles}
