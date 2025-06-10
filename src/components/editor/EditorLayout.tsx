@@ -32,7 +32,7 @@ export function EditorLayout() {
 
   // Watch for branch cookie changes and only refresh content
   useEffect(() => {
-    const checkBranchCookie = async () => {
+    const checkBranchCookie = () => {
       const cookieBranch = getBranchCookie();
       
       // Only process if we have a valid cookie branch and it's different from what we last saw
@@ -44,15 +44,14 @@ export function EditorLayout() {
         // Update our tracking
         setLastCookieBranch(cookieBranch);
         
-        // Force refresh content for the new branch and wait for it to complete
-        await contentManager.refreshContentForBranch(cookieBranch);
+        // Force refresh content for the new branch
+        contentManager.refreshContentForBranch(cookieBranch);
         
-        // If we have a selected file, reload its content for the new branch after content refresh
-        if (selectedFile) {
-          await loadFileContent(selectedFile);
-        }
+        // Clear current file selection and content
+        setSelectedFile(undefined);
+        setLocalContent("");
         
-        // Release any current locks (but keep the file selected)
+        // Release any current locks
         if (lockManager.myCurrentLock) {
           lockManager.releaseLock(lockManager.myCurrentLock);
         }
@@ -65,8 +64,8 @@ export function EditorLayout() {
     // Check immediately
     checkBranchCookie();
     
-    // Poll for cookie changes every 1000ms (less aggressive)
-    const interval = setInterval(checkBranchCookie, 1000);
+    // Poll for cookie changes every 500ms (less aggressive)
+    const interval = setInterval(checkBranchCookie, 500);
     
     return () => clearInterval(interval);
   }, [lastCookieBranch, initialized, contentManager, lockManager]);
