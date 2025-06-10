@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useLiveEditing } from "@/hooks/useLiveEditing";
@@ -16,6 +15,7 @@ const DEBUG_MARKDOWN = false;
 
 export function EditorLayout() {
   const { fileStructure, isLoading, error, refetch } = useFileStructure();
+  // Only use useBranchManager - remove the old useBranches hook completely
   const { currentBranch, initialized } = useBranchManager();
   const { sessions } = useBranchSessions(currentBranch);
 

@@ -34,21 +34,21 @@ interface TabItemProps {
 // Map component names to their actual components
 export const componentMap: Record<string, React.ComponentType<any>> = {
   // Layout Components
-  Card: (props: ComponentProps) => <Card {...props} />,
+  Card: (props: ComponentProps & { title: string }) => <Card {...props} />,
   CardGroup: (props: ComponentProps & { children: React.ReactNode }) => <CardGroup {...props} />,
   SimpleCard: (props: ComponentProps) => <SimpleCard {...props} />,
   
   // Interactive Components
-  Accordion: (props: ComponentProps) => <Accordion {...props} />,
-  AccordionGroup: (props: ComponentProps) => <AccordionGroup {...props} />,
-  Button: (props: ComponentProps) => <Button {...props} />,
+  Accordion: (props: ComponentProps & { title: string }) => <Accordion {...props} />,
+  AccordionGroup: (props: ComponentProps & { children: React.ReactNode }) => <AccordionGroup {...props} />,
+  Button: (props: ComponentProps & { label: string }) => <Button {...props} />,
   Callout: (props: ComponentProps & { children: React.ReactNode }) => <Callout {...props} />,
   
   // Content Components
   CodeBlock: (props: ComponentProps & { children: React.ReactNode }) => <CodeBlock {...props} />,
   Image: (props: ComponentProps & { src: string }) => <Image {...props} />,
   ExpandableImage: (props: ComponentProps & { src: string; alt: string }) => <ExpandableImage {...props} />,
-  Table: (props: ComponentProps) => <Table {...props} />,
+  Table: (props: ComponentProps & { headers: string[]; rows: string[][] }) => <Table {...props} />,
   CustomTable: (props: ComponentProps & { children: React.ReactNode }) => <CustomTable {...props} />,
   
   // Navigation Components
@@ -58,14 +58,13 @@ export const componentMap: Record<string, React.ComponentType<any>> = {
   TableOfContents: (props: ComponentProps & { content: string }) => <TableOfContents {...props} />,
   
   // Special Components
-  HorizontalRule: (props: ComponentProps) => <HorizontalRule {...props} />,
-  Typography: (props: ComponentProps) => <Typography {...props} />,
-  PiecesCloudModels: (props: ComponentProps) => <PiecesCloudModels {...props} />,
-  PiecesLocalModels: (props: ComponentProps) => <PiecesLocalModels {...props} />,
+  HorizontalRule: () => <HorizontalRule />,
+  PiecesCloudModels: () => <PiecesCloudModels />,
+  PiecesLocalModels: () => <PiecesLocalModels />,
   
   // Dynamic Components
   MarkdownCard: (props: ComponentProps & {
-    title?: string;
+    title: string;
     image?: string;
     url?: string;
     external?: boolean;

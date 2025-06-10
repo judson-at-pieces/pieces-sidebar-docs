@@ -86,9 +86,14 @@ export function NewBranchSelector() {
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="outline" size="sm" className="gap-2" disabled={loading}>
+          <Button 
+            variant="outline" 
+            size="sm" 
+            className={`gap-2 ${currentBranch ? 'bg-blue-500 text-white border-blue-600' : ''}`} 
+            disabled={loading}
+          >
             <GitBranch className="h-4 w-4" />
-            {currentBranch || 'Loading...'}
+            🔍 DEBUG: {currentBranch || 'Loading...'}
             {currentBranchData?.isDefault && (
               <Badge variant="secondary" className="text-xs ml-1">
                 default
@@ -98,7 +103,7 @@ export function NewBranchSelector() {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="start" className="w-64">
           <div className="px-2 py-1.5 text-sm font-medium text-muted-foreground">
-            Switch Branch
+            Switch Branch (Total: {branches.length})
           </div>
           <DropdownMenuSeparator />
           
@@ -106,7 +111,9 @@ export function NewBranchSelector() {
             <DropdownMenuItem
               key={branch.name}
               onClick={() => switchBranch(branch.name)}
-              className="flex items-center justify-between"
+              className={`flex items-center justify-between ${
+                branch.name === currentBranch ? 'bg-blue-100 text-blue-900' : ''
+              }`}
             >
               <div className="flex items-center gap-2">
                 <GitBranch className="h-4 w-4" />
