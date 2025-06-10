@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getBranchCookie } from '@/utils/branchCookies';
@@ -113,6 +112,60 @@ export function useContentManager(lockManager: any) {
       supabase.removeChannel(channel);
     };
   }, [currentBranch]);
+
+  // Enhanced save content with branch parameter
+  const saveContentToBranch = useCallback(async (filePath: string, content: string, branchName: string) => {
+    if (!currentUserId || !branchName) {
+      return false;
+    }
+
+    try {
+      setIsAutoSaving(true);
+
+      const { error } = await supabase
+        .from('live_editing_sessions')
+        .upsert({
+          file_path: filePath,
+          content,
+          user_id: currentUserId,
+          branch_name: branchName,
+          locked_by: currentUserId,
+          updated_at: new Date().toISOString()
+        }, {
+          onConflict: 'file_path,branch_name'
+        });
+
+      if (error) {
+        console.error('Error saving content to branch:', error);
+        return false;
+      }
+
+      if (DEBUG_CONTENT) {
+        console.log('📄 Content saved to branch:', branchName, 'file:', filePath);
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error in saveContentToBranch:', error);
+      return false;
+    } finally {
+      setIsAutoSaving(false);
+    }
+  }, [currentUserId]);
+
+  // Enhanced refresh for specific branch
+  const refreshContentForBranch = useCallback(async (branchName: string) => {
+    if (DEBUG_CONTENT) {
+      console.log('🔄 Refreshing content for branch:', branchName);
+    }
+    
+    const contentMap = await fetchContentForBranch(branchName);
+    
+    // Only update if this is still the current branch
+    if (branchName === getBranchCookie()) {
+      setLiveContent(contentMap);
+    }
+  }, [fetchContentForBranch]);
 
   // Save content
   const saveContent = useCallback(async (filePath: string, content: string, immediate = false) => {
@@ -258,9 +311,11 @@ export function useContentManager(lockManager: any) {
     liveContent,
     isAutoSaving,
     saveContent,
+    saveContentToBranch,
     loadContent,
     getContent,
     hasUnsavedChanges,
-    refreshContent: () => fetchContentForBranch(currentBranch).then(setLiveContent)
+    refreshContent: () => fetchContentForBranch(currentBranch).then(setLiveContent),
+    refreshContentForBranch
   };
 }
