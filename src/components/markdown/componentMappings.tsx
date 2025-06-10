@@ -26,15 +26,10 @@ interface ComponentProps {
   [key: string]: any;
 }
 
-interface TabItemProps {
-  label: string;
-  children: React.ReactNode;
-}
-
 // Map component names to their actual components
 export const componentMap: Record<string, React.ComponentType<any>> = {
   // Layout Components
-  Card: (props: ComponentProps & { title?: string }) => <Card {...props} />,
+  Card: (props: ComponentProps) => <Card {...props} />,
   CardGroup: (props: ComponentProps & { children: React.ReactNode }) => <CardGroup {...props} />,
   SimpleCard: (props: ComponentProps) => <SimpleCard {...props} />,
   
