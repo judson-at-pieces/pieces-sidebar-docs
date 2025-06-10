@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { GitPullRequest } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -138,6 +139,9 @@ export function NewPullRequestButton() {
     setCreating(true);
     
     try {
+      // Add cheese toast for fun
+      toast.success('🧀 CHEESE - Creating that delicious PR!');
+      
       const token = await getGitHubAppToken();
       const repoConfig = await githubService.getRepoConfig();
       
@@ -205,6 +209,37 @@ export function NewPullRequestButton() {
     } finally {
       setCreating(false);
     }
+  };
+
+  const getGitHubAppToken = async () => {
+    const { data: installations, error } = await supabase
+      .from('github_installations')
+      .select('installation_id')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error || !installations) {
+      throw new Error('No GitHub app installation found');
+    }
+
+    const { data, error: tokenError } = await supabase.functions.invoke('github-app-auth', {
+      body: { installationId: installations.installation_id }
+    });
+
+    if (tokenError) {
+      throw new Error('Failed to get GitHub app token');
+    }
+
+    return data.token;
+  };
+
+  const getOriginalFilePath = (editorFilePath: string): string => {
+    let cleanPath = editorFilePath.replace(/^\/+/, '');
+    if (!cleanPath.endsWith('.md')) {
+      cleanPath = `${cleanPath}.md`;
+    }
+    return `public/content/${cleanPath}`;
   };
 
   const buttonState = getButtonState();

@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { GitBranch, Plus, Trash2, Check, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -93,7 +92,7 @@ export function NewBranchSelector() {
             disabled={loading}
           >
             <GitBranch className="h-4 w-4" />
-            🔍 DEBUG: {currentBranch || 'Loading...'}
+            DEBUG: {currentBranch || 'Loading...'}
             {currentBranchData?.isDefault && (
               <Badge variant="secondary" className="text-xs ml-1">
                 default
