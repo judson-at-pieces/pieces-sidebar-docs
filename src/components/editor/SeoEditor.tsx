@@ -147,6 +147,70 @@ export function SeoEditor({
     }
   };
 
+  // Helper function to parse existing frontmatter into an object
+  const parseExistingFrontmatter = (frontmatter: string): Record<string, any> => {
+    const result: Record<string, any> = {};
+    const lines = frontmatter.split('\n');
+    
+    let currentKey = '';
+    let isMultilineValue = false;
+    let multilineValue: string[] = [];
+    
+    for (const line of lines) {
+      const trimmedLine = line.trim();
+      
+      if (isMultilineValue) {
+        if (trimmedLine.startsWith('- ')) {
+          multilineValue.push(trimmedLine.substring(2));
+        } else if (trimmedLine && !trimmedLine.includes(':')) {
+          multilineValue.push(trimmedLine);
+        } else {
+          // End of multiline, process next key
+          if (currentKey) {
+            result[currentKey] = multilineValue;
+          }
+          isMultilineValue = false;
+          multilineValue = [];
+          currentKey = '';
+          
+          // Process current line as new key
+          const match = trimmedLine.match(/^(\w+):\s*(.*)$/);
+          if (match) {
+            const [, key, value] = match;
+            currentKey = key;
+            if (value.trim() === '' || value.trim() === '|' || value.trim() === '>') {
+              isMultilineValue = true;
+              multilineValue = [];
+            } else {
+              result[key] = value.replace(/^["']|["']$/g, '');
+              currentKey = '';
+            }
+          }
+        }
+      } else {
+        const match = trimmedLine.match(/^(\w+):\s*(.*)$/);
+        if (match) {
+          const [, key, value] = match;
+          currentKey = key;
+          if (value.trim() === '' || value.trim() === '|' || value.trim() === '>') {
+            isMultilineValue = true;
+            multilineValue = [];
+          } else {
+            result[key] = value.replace(/^["']|["']$/g, '');
+            currentKey = '';
+          }
+        }
+      }
+    }
+    
+    // Handle case where file ends with multiline value
+    if (isMultilineValue && currentKey) {
+      result[currentKey] = multilineValue;
+    }
+    
+    return result;
+  };
+
   // Helper function to load existing file content with better path handling
   const loadExistingContent = async (filePath: string): Promise<string> => {
     try {
@@ -273,91 +337,123 @@ This is the main content of the page. Add your documentation content here.
     showToast(previewMode ? "Preview disabled" : "Preview enabled", "info");
   };
 
-  // Improved frontmatter generation with better formatting
-  const generateFrontmatter = (data: SeoData): string => {
+  // Improved frontmatter generation that merges with existing frontmatter
+  const generateFrontmatter = (data: SeoData, existingFrontmatter?: Record<string, any>): string => {
+    // Start with existing frontmatter or empty object
+    const mergedData = { ...existingFrontmatter };
+    
     const frontmatterLines = ['---'];
     
-    // Add basic SEO fields
-    if (data.metaTitle || data.title) frontmatterLines.push(`title: "${data.metaTitle || data.title}"`);
-    if (data.metaDescription || data.description) frontmatterLines.push(`description: "${data.metaDescription || data.description}"`);
-    if (data.keywords.length > 0) frontmatterLines.push(`keywords: "${data.keywords.join(', ')}"`);
-    if (data.canonicalUrl) frontmatterLines.push(`canonicalUrl: "${data.canonicalUrl}"`);
+    // Update with SEO data, only overriding SEO-specific fields
+    if (data.metaTitle || data.title) mergedData.title = data.metaTitle || data.title;
+    if (data.metaDescription || data.description) mergedData.description = data.metaDescription || data.description;
+    if (data.keywords.length > 0) mergedData.keywords = data.keywords.join(', ');
+    if (data.canonicalUrl) mergedData.canonicalUrl = data.canonicalUrl;
     
     // SEO specific fields
-    if (data.metaTitle) frontmatterLines.push(`seoTitle: "${data.metaTitle}"`);
-    if (data.metaDescription) frontmatterLines.push(`seoDescription: "${data.metaDescription}"`);
-    if (data.keywords.length) frontmatterLines.push(`seoKeywords: "${data.keywords.join(', ')}"`);
+    if (data.metaTitle) mergedData.seoTitle = data.metaTitle;
+    if (data.metaDescription) mergedData.seoDescription = data.metaDescription;
+    if (data.keywords.length) mergedData.seoKeywords = data.keywords.join(', ');
     
     // Open Graph fields
-    if (data.ogTitle) frontmatterLines.push(`ogTitle: "${data.ogTitle}"`);
-    if (data.ogDescription) frontmatterLines.push(`ogDescription: "${data.ogDescription}"`);
-    if (data.ogImage) frontmatterLines.push(`ogImage: "${data.ogImage}"`);
-    if (data.ogType && data.ogType !== 'article') frontmatterLines.push(`ogType: "${data.ogType}"`);
+    if (data.ogTitle) mergedData.ogTitle = data.ogTitle;
+    if (data.ogDescription) mergedData.ogDescription = data.ogDescription;
+    if (data.ogImage) mergedData.ogImage = data.ogImage;
+    if (data.ogType && data.ogType !== 'article') mergedData.ogType = data.ogType;
     
     // Twitter fields
-    if (data.twitterCard && data.twitterCard !== 'summary_large_image') frontmatterLines.push(`twitterCard: "${data.twitterCard}"`);
-    if (data.twitterTitle) frontmatterLines.push(`twitterTitle: "${data.twitterTitle}"`);
-    if (data.twitterDescription) frontmatterLines.push(`twitterDescription: "${data.twitterDescription}"`);
-    if (data.twitterImage) frontmatterLines.push(`twitterImage: "${data.twitterImage}"`);
-    if (data.twitterSite) frontmatterLines.push(`twitterSite: "${data.twitterSite}"`);
-    if (data.twitterCreator) frontmatterLines.push(`twitterCreator: "${data.twitterCreator}"`);
+    if (data.twitterCard && data.twitterCard !== 'summary_large_image') mergedData.twitterCard = data.twitterCard;
+    if (data.twitterTitle) mergedData.twitterTitle = data.twitterTitle;
+    if (data.twitterDescription) mergedData.twitterDescription = data.twitterDescription;
+    if (data.twitterImage) mergedData.twitterImage = data.twitterImage;
+    if (data.twitterSite) mergedData.twitterSite = data.twitterSite;
+    if (data.twitterCreator) mergedData.twitterCreator = data.twitterCreator;
     
     // Technical SEO fields
-    if (data.robots && data.robots !== 'index,follow') frontmatterLines.push(`robots: "${data.robots}"`);
-    if (data.noindex) frontmatterLines.push(`noindex: true`);
-    if (data.nofollow) frontmatterLines.push(`nofollow: true`);
-    if (data.priority !== undefined && data.priority !== 0.5) frontmatterLines.push(`priority: ${data.priority}`);
-    if (data.changefreq && data.changefreq !== 'weekly') frontmatterLines.push(`changefreq: "${data.changefreq}"`);
+    if (data.robots && data.robots !== 'index,follow') mergedData.robots = data.robots;
+    if (data.noindex) mergedData.noindex = true;
+    if (data.nofollow) mergedData.nofollow = true;
+    if (data.priority !== undefined && data.priority !== 0.5) mergedData.priority = data.priority;
+    if (data.changefreq && data.changefreq !== 'weekly') mergedData.changefreq = data.changefreq;
     
     // Schema fields
-    if (data.schemaType) frontmatterLines.push(`schemaType: "${data.schemaType}"`);
+    if (data.schemaType) mergedData.schemaType = data.schemaType;
     if (data.schemaData) {
-      // For complex schema data, we might want to handle it differently
-      frontmatterLines.push(`schemaData: |`);
-      const schemaLines = data.schemaData.split('\n');
-      schemaLines.forEach(line => {
-        frontmatterLines.push(`  ${line}`);
-      });
+      mergedData.schemaData = data.schemaData;
     }
     
     // Custom meta tags
     if (data.customMeta.length > 0) {
-      frontmatterLines.push(`customMeta:`);
-      data.customMeta.forEach(meta => {
-        frontmatterLines.push(`  - name: "${meta.name}"`);
-        frontmatterLines.push(`    content: "${meta.content}"`);
-        if (meta.property) frontmatterLines.push(`    property: "${meta.property}"`);
-      });
+      mergedData.customMeta = data.customMeta;
     }
+    
+    // Write all fields to frontmatter in a consistent order
+    // Keep existing non-SEO fields first, then add SEO fields
+    Object.keys(mergedData).forEach(key => {
+      const value = mergedData[key];
+      
+      if (Array.isArray(value)) {
+        if (key === 'customMeta') {
+          frontmatterLines.push(`${key}:`);
+          value.forEach((meta: any) => {
+            frontmatterLines.push(`  - name: "${meta.name}"`);
+            frontmatterLines.push(`    content: "${meta.content}"`);
+            if (meta.property) frontmatterLines.push(`    property: "${meta.property}"`);
+          });
+        } else {
+          frontmatterLines.push(`${key}:`);
+          value.forEach((item: string) => {
+            frontmatterLines.push(`  - ${item}`);
+          });
+        }
+      } else if (typeof value === 'boolean') {
+        frontmatterLines.push(`${key}: ${value}`);
+      } else if (typeof value === 'number') {
+        frontmatterLines.push(`${key}: ${value}`);
+      } else if (typeof value === 'string' && value.includes('\n')) {
+        frontmatterLines.push(`${key}: |`);
+        const lines = value.split('\n');
+        lines.forEach(line => {
+          frontmatterLines.push(`  ${line}`);
+        });
+      } else {
+        frontmatterLines.push(`${key}: "${value}"`);
+      }
+    });
     
     frontmatterLines.push('---');
     return frontmatterLines.join('\n');
   };
 
-  // Improved content merging function
+  // Improved content merging function that preserves existing frontmatter
   const updateContentWithSeoData = async (existingContent: string, seoData: SeoData): Promise<string> => {
-    const newFrontmatter = generateFrontmatter(seoData);
-    console.log('Generated frontmatter:', newFrontmatter);
+    console.log('Updating content with SEO data, preserving existing frontmatter');
     
     // Check if content has existing frontmatter
     const frontmatterRegex = /^---\n([\s\S]*?)\n---\n?/;
     const match = existingContent.match(frontmatterRegex);
     
+    let existingFrontmatterData: Record<string, any> = {};
+    let bodyContent = existingContent;
+    
     if (match) {
-      // Replace existing frontmatter
-      console.log('Replacing existing frontmatter');
-      const bodyContent = existingContent.substring(match[0].length).trim();
-      const result = `${newFrontmatter}\n\n${bodyContent}`;
-      console.log('Final content with replaced frontmatter, length:', result.length);
-      console.log('Body content preserved, length:', bodyContent.length);
-      return result;
+      // Parse existing frontmatter
+      const existingFrontmatter = match[1];
+      existingFrontmatterData = parseExistingFrontmatter(existingFrontmatter);
+      bodyContent = existingContent.substring(match[0].length).trim();
+      console.log('Found existing frontmatter with keys:', Object.keys(existingFrontmatterData));
     } else {
-      // No existing frontmatter, prepend new frontmatter
-      console.log('Adding frontmatter to content without existing frontmatter');
-      const result = `${newFrontmatter}\n\n${existingContent.trim()}`;
-      console.log('Final content with new frontmatter, length:', result.length);
-      return result;
+      console.log('No existing frontmatter found');
     }
+    
+    // Generate new frontmatter that merges existing with SEO data
+    const newFrontmatter = generateFrontmatter(seoData, existingFrontmatterData);
+    console.log('Generated merged frontmatter');
+    
+    const result = `${newFrontmatter}\n\n${bodyContent}`;
+    console.log('Final content with merged frontmatter, length:', result.length);
+    console.log('Body content preserved, length:', bodyContent.length);
+    return result;
   };
 
   const createSEOPullRequest = async () => {
