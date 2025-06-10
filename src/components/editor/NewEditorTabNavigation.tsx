@@ -4,6 +4,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileText, Navigation, Search } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { NewPullRequestButton } from './NewPullRequestButton';
+import { PublishButton } from './PublishButton';
 import { NewBranchSelector } from './NewBranchSelector';
 import { useBranchManager } from '@/hooks/useBranchManager';
 import { useBranchSessions } from '@/hooks/useBranchSessions';
@@ -27,6 +28,10 @@ export function NewEditorTabNavigation({
   
   const totalLiveFiles = sessions.filter(s => s.content && s.content.trim()).length;
   const hasChanges = totalLiveFiles > 0;
+
+  // Show Publish button for non-main branches, PR button for all branches
+  const showPublishButton = currentBranch && currentBranch !== 'main';
+  const showPRButton = currentBranch; // Always show PR button when we have a branch
 
   return (
     <div className="border-b border-border/50 bg-background/80 backdrop-blur-sm">
@@ -55,7 +60,21 @@ export function NewEditorTabNavigation({
 
         <div className="flex items-center gap-3">
           <NewBranchSelector />
-          <NewPullRequestButton />
+          
+          {/* Publish Button for non-main branches */}
+          {showPublishButton && (
+            <PublishButton
+              currentBranch={currentBranch}
+              sessions={sessions}
+              hasChanges={hasChanges}
+              initialized={initialized}
+            />
+          )}
+
+          {/* PR Button for all branches */}
+          {showPRButton && (
+            <NewPullRequestButton />
+          )}
         </div>
       </div>
     </div>
