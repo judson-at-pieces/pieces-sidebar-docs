@@ -29,7 +29,7 @@ interface ComponentProps {
 // Map component names to their actual components
 export const componentMap: Record<string, React.ComponentType<any>> = {
   // Layout Components
-  Card: (props: ComponentProps) => <Card title={props.title || 'Untitled'} {...props} />,
+  Card: (props: ComponentProps & { title?: string }) => <Card title={props.title || 'Untitled'} {...props} />,
   CardGroup: (props: ComponentProps & { children: React.ReactNode }) => <CardGroup {...props} />,
   SimpleCard: (props: ComponentProps) => <SimpleCard {...props} />,
   

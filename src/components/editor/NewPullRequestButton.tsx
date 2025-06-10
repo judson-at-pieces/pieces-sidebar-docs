@@ -21,30 +21,8 @@ export function NewPullRequestButton() {
   }
 
   const getTargetBranch = () => {
-    if (!currentBranch || branches.length === 0) return 'main';
-
-    // Find the default branch
-    const defaultBranch = branches.find(b => b.isDefault);
-    let targetBranch = defaultBranch?.name || 'main';
-
-    // If current branch is the default branch, find an alternative
-    if (currentBranch === targetBranch) {
-      const alternativeTargets = ['develop', 'dev', 'development', 'staging'];
-      const alternative = branches.find(b => 
-        alternativeTargets.includes(b.name.toLowerCase()) && b.name !== currentBranch
-      );
-      
-      if (alternative) {
-        targetBranch = alternative.name;
-      } else {
-        const otherBranch = branches.find(b => b.name !== currentBranch);
-        if (otherBranch) {
-          targetBranch = otherBranch.name;
-        }
-      }
-    }
-
-    return targetBranch;
+    // Always target main branch
+    return 'main';
   };
 
   const getButtonState = () => {
@@ -56,8 +34,8 @@ export function NewPullRequestButton() {
       };
     }
 
-    // FORCE the display to show "main → cheese" regardless of actual branch
-    const forcedText = `${currentBranch} → cheese`;
+    // Always show current branch → main
+    const forcedText = `${currentBranch} → main`;
     const activeSessions = sessions.filter(s => s.content && s.content.trim());
     const fileCount = activeSessions.length;
 
@@ -71,16 +49,16 @@ export function NewPullRequestButton() {
 
     if (fileCount === 0) {
       return {
-        text: `FORCED: ${forcedText}`,
+        text: forcedText,
         enabled: false,
         tooltip: `No changes to create PR for. Current: ${forcedText}`
       };
     }
 
     return {
-      text: `FORCED: ${forcedText} (${fileCount})`,
+      text: `${forcedText} (${fileCount})`,
       enabled: true,
-      tooltip: `Create pull request from ${currentBranch} to cheese with ${fileCount} file${fileCount !== 1 ? 's' : ''}`
+      tooltip: `Create pull request from ${currentBranch} to main with ${fileCount} file${fileCount !== 1 ? 's' : ''}`
     };
   };
 
@@ -123,7 +101,7 @@ export function NewPullRequestButton() {
       return;
     }
 
-    const targetBranch = getTargetBranch();
+    const targetBranch = getTargetBranch(); // This will always be 'main'
     const activeSessions = sessions.filter(s => s.content && s.content.trim());
     
     if (DEBUG) {
