@@ -4,7 +4,7 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { FileText, Navigation, Search, Lock, Unlock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { PullRequestButton } from './PullRequestButton';
+import { NewPullRequestButton } from './NewPullRequestButton';
 
 interface Branch {
   name: string;
@@ -60,7 +60,7 @@ export function EditorTabNavigation({
   const isOtherUserEditing = isLocked && lockedBy !== 'You';
 
   if (DEBUG_TAB_NAV) {
-    console.log('🟡 TAB NAV PASSING TO PR BUTTON:');
+    console.log('🟡 TAB NAV PASSING TO NEW PR BUTTON:');
     console.log('  🟡 currentBranch:', currentBranch);
     console.log('  🟡 sessions:', sessions);
     console.log('  🟡 hasChanges:', hasChanges);
@@ -126,14 +126,8 @@ export function EditorTabNavigation({
             </div>
           )}
 
-          {/* Pull Request Button */}
-          <PullRequestButton
-            currentBranch={currentBranch}
-            sessions={sessions}
-            hasChanges={hasChanges}
-            initialized={initialized}
-            branches={branches}
-          />
+          {/* New Pull Request Button */}
+          <NewPullRequestButton />
         </div>
       </div>
     </div>
