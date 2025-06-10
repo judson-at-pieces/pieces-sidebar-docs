@@ -1,3 +1,4 @@
+
 import React from 'react';
 import Accordion from './Accordion';
 import AccordionGroup from './AccordionGroup';
@@ -28,9 +29,9 @@ interface ComponentProps {
 // Map component names to their actual components
 export const componentMap: Record<string, React.ComponentType<any>> = {
   // Layout Components
-  Card: (props: ComponentProps & { title?: string; children: React.ReactNode }) => (
+  Card: (props: ComponentProps & { title?: string; children?: React.ReactNode }) => (
     <Card title={props.title || 'Untitled'}>
-      {props.children}
+      {props.children || <div>No content provided</div>}
     </Card>
   ),
   CardGroup: (props: ComponentProps & { children: React.ReactNode }) => <CardGroup {...props} />,

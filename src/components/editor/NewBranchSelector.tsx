@@ -44,7 +44,7 @@ export function NewBranchSelector() {
   } = useBranchManager();
 
   // 🚨 ULTRA INTENSIVE DROPDOWN DEBUGGING
-  console.group('🔧 NEW BRANCH SELECTOR RENDER');
+  console.group('🚨🚨🚨 NEW BRANCH SELECTOR RENDER');
   console.log('📊 HOOK DATA:', {
     currentBranch: JSON.stringify(currentBranch),
     currentBranchType: typeof currentBranch,
@@ -88,7 +88,7 @@ export function NewBranchSelector() {
   const currentBranchData = branches.find(b => b.name === currentBranch);
 
   // 🚨 CURRENT BRANCH FINDING DEBUGGING
-  console.group('🔧 CURRENT BRANCH FINDING');
+  console.group('🚨🚨🚨 CURRENT BRANCH FINDING');
   console.log('📊 SEARCH DETAILS:', {
     searchingFor: JSON.stringify(currentBranch),
     foundBranch: currentBranchData ? JSON.stringify(currentBranchData.name) : 'NOT FOUND',
@@ -114,13 +114,23 @@ export function NewBranchSelector() {
   );
 
   const handleSwitchBranch = async (branchName: string) => {
-    console.group('🔧 MANUAL BRANCH SWITCH');
-    console.log('📊 SWITCH REQUEST:', {
-      from: JSON.stringify(currentBranch),
-      to: JSON.stringify(branchName),
+    console.group('🚨🚨🚨 BRANCH CLICK HANDLER CALLED');
+    console.log('📊 CLICK EVENT DETAILS:', {
+      clickedBranch: JSON.stringify(branchName),
+      currentBranch: JSON.stringify(currentBranch),
       fromCharCodes: currentBranch ? Array.from(currentBranch).map(c => `${c}(${c.charCodeAt(0)})`) : 'null',
-      toCharCodes: Array.from(branchName).map(c => `${c}(${c.charCodeAt(0)})`)
+      toCharCodes: Array.from(branchName).map(c => `${c}(${c.charCodeAt(0)})`),
+      isSameBranch: branchName === currentBranch,
+      timestamp: new Date().toISOString()
     });
+    
+    if (branchName === currentBranch) {
+      console.log('🚨 CLICK HANDLER: Same branch, exiting early');
+      console.groupEnd();
+      return;
+    }
+    
+    console.log('🚨 CLICK HANDLER: About to call switchBranch...');
     console.groupEnd();
     
     await switchBranch(branchName);
@@ -155,7 +165,7 @@ export function NewBranchSelector() {
             const isCurrentBranch = branch.name === currentBranch;
             
             // 🚨 PER-BRANCH DEBUGGING
-            console.log('🔧 BRANCH ITEM RENDER:', {
+            console.log('🚨🚨🚨 BRANCH ITEM RENDER:', {
               branchName: JSON.stringify(branch.name),
               currentBranch: JSON.stringify(currentBranch),
               isCurrentBranch,
@@ -167,7 +177,13 @@ export function NewBranchSelector() {
             return (
               <DropdownMenuItem
                 key={branch.name}
-                onClick={() => handleSwitchBranch(branch.name)}
+                onClick={() => {
+                  console.log('🚨🚨🚨 DROPDOWN MENU ITEM ONCLICK FIRED:', {
+                    branchName: JSON.stringify(branch.name),
+                    timestamp: new Date().toISOString()
+                  });
+                  handleSwitchBranch(branch.name);
+                }}
                 className={`flex items-center justify-between ${
                   isCurrentBranch ? 'bg-blue-100 text-blue-900' : ''
                 }`}

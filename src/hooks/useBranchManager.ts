@@ -33,7 +33,7 @@ export function useBranchManager() {
 
   // 🚨 ULTRA COMPREHENSIVE BRANCH MANAGER DEBUGGING
   if (DEBUG) {
-    console.group('🔥 BRANCH MANAGER HOOK RENDER');
+    console.group('🔥🔥🔥 BRANCH MANAGER HOOK RENDER');
     console.log('📊 CURRENT STATE SNAPSHOT:', {
       currentBranch: JSON.stringify(state.currentBranch),
       currentBranchType: typeof state.currentBranch,
@@ -64,7 +64,7 @@ export function useBranchManager() {
     if (!mountedRef.current) return;
     
     if (DEBUG) {
-      console.group('🔥 BRANCH MANAGER STATE UPDATE');
+      console.group('🔥🔥🔥 BRANCH MANAGER STATE UPDATE');
       console.log('📊 UPDATE DETAILS:', {
         updateKeys: Object.keys(updates),
         updates: Object.entries(updates).reduce((acc, [key, value]) => {
@@ -89,7 +89,7 @@ export function useBranchManager() {
       const newState = { ...prev, ...updates };
       
       if (DEBUG && updates.currentBranch !== undefined) {
-        console.log('🔥 BRANCH MANAGER: STATE ACTUALLY UPDATED TO:', {
+        console.log('🔥🔥🔥 BRANCH MANAGER: STATE ACTUALLY UPDATED TO:', {
           newCurrentBranch: JSON.stringify(newState.currentBranch),
           newCharCodes: newState.currentBranch ? Array.from(newState.currentBranch).map(c => `${c}(${c.charCodeAt(0)})`) : 'empty'
         });
@@ -123,7 +123,7 @@ export function useBranchManager() {
   }, []);
 
   const loadBranches = useCallback(async () => {
-    if (DEBUG) console.log('🔥 LOADING BRANCHES...');
+    if (DEBUG) console.log('🔥🔥🔥 LOADING BRANCHES...');
     
     updateState({ loading: true, error: null });
 
@@ -131,7 +131,7 @@ export function useBranchManager() {
       const repoConfig = await githubService.getRepoConfig();
       
       if (!repoConfig) {
-        if (DEBUG) console.log('🔥 No repo config - using default');
+        if (DEBUG) console.log('🔥🔥🔥 No repo config - using default');
         const defaultBranch: Branch = { name: 'main', sha: '', isDefault: true };
         updateState({
           branches: [defaultBranch],
@@ -182,7 +182,7 @@ export function useBranchManager() {
       }));
 
       if (DEBUG) {
-        console.log('🔥 BRANCHES LOADED:', {
+        console.log('🔥🔥🔥 BRANCHES LOADED:', {
           branches: formattedBranches.map(b => ({ name: JSON.stringify(b.name), isDefault: b.isDefault })),
           defaultBranch: JSON.stringify(defaultBranchName)
         });
@@ -214,26 +214,30 @@ export function useBranchManager() {
   }, [getGitHubAppToken, updateState]);
 
   const switchBranch = useCallback(async (branchName: string) => {
+    console.group('🚨🚨🚨 SWITCH BRANCH FUNCTION CALLED');
+    console.log('📊 FUNCTION ENTRY:', {
+      requestedBranch: JSON.stringify(branchName),
+      currentBranchState: JSON.stringify(state.currentBranch),
+      timestamp: new Date().toISOString(),
+      isSame: branchName === state.currentBranch,
+      requestedCharCodes: Array.from(branchName).map(c => `${c}(${c.charCodeAt(0)})`),
+      currentCharCodes: state.currentBranch ? Array.from(state.currentBranch).map(c => `${c}(${c.charCodeAt(0)})`) : 'empty'
+    });
+    
     if (branchName === state.currentBranch) {
-      if (DEBUG) console.log('🔥 Already on branch:', JSON.stringify(branchName));
+      console.log('🚨 SWITCH BRANCH: Already on branch, exiting');
+      console.groupEnd();
       return;
     }
 
-    if (DEBUG) {
-      console.group('🔥 SWITCHING TO BRANCH');
-      console.log('📊 BRANCH SWITCH REQUEST:', {
-        from: JSON.stringify(state.currentBranch),
-        to: JSON.stringify(branchName),
-        fromCharCodes: state.currentBranch ? Array.from(state.currentBranch).map(c => `${c}(${c.charCodeAt(0)})`) : 'empty',
-        toCharCodes: Array.from(branchName).map(c => `${c}(${c.charCodeAt(0)})`)
-      });
-      console.groupEnd();
-    }
+    console.log('🚨 SWITCH BRANCH: Proceeding with branch switch...');
 
     try {
       // Ensure sessions exist for the target branch
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
+        console.log('🚨 SWITCH BRANCH: User found, ensuring sessions...');
+        
         // Get latest content for each file from any branch
         const { data: allSessions } = await supabase
           .from('live_editing_sessions')
@@ -242,6 +246,8 @@ export function useBranchManager() {
           .order('updated_at', { ascending: false });
 
         if (allSessions && allSessions.length > 0) {
+          console.log('🚨 SWITCH BRANCH: Found existing sessions, creating for new branch...');
+          
           // Group by file_path and get the most recent content
           const latestByFile = new Map<string, string>();
           
@@ -269,28 +275,26 @@ export function useBranchManager() {
           });
 
           await Promise.all(upsertPromises);
+          console.log('🚨 SWITCH BRANCH: Sessions created for new branch');
         }
       }
 
-      if (DEBUG) {
-        console.log('🔥 ABOUT TO UPDATE CURRENT BRANCH STATE TO:', {
-          branchName: JSON.stringify(branchName),
-          charCodes: Array.from(branchName).map(c => `${c}(${c.charCodeAt(0)})`)
-        });
-      }
+      console.log('🚨 SWITCH BRANCH: About to update state to:', {
+        newBranch: JSON.stringify(branchName),
+        charCodes: Array.from(branchName).map(c => `${c}(${c.charCodeAt(0)})`)
+      });
 
       updateState({ currentBranch: branchName });
+      
+      console.log('🚨 SWITCH BRANCH: State update called, showing toast...');
       toast.success(`Switched to branch "${branchName}"`);
 
-      if (DEBUG) {
-        console.log('🔥 BRANCH SWITCH COMPLETED:', {
-          newBranch: JSON.stringify(branchName),
-          charCodes: Array.from(branchName).map(c => `${c}(${c.charCodeAt(0)})`)
-        });
-      }
+      console.log('🚨 SWITCH BRANCH: Branch switch completed successfully');
     } catch (error) {
-      console.error('Error switching branch:', error);
+      console.error('🚨 SWITCH BRANCH: Error occurred:', error);
       toast.error('Failed to switch branch');
+    } finally {
+      console.groupEnd();
     }
   }, [state.currentBranch, updateState]);
 
@@ -414,7 +418,7 @@ export function useBranchManager() {
   useEffect(() => {
     if (!initializationRef.current) {
       initializationRef.current = true;
-      if (DEBUG) console.log('🔥 INITIALIZING BRANCH MANAGER');
+      if (DEBUG) console.log('🔥🔥🔥 INITIALIZING BRANCH MANAGER');
       loadBranches();
     }
 
