@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { UserMenu } from '@/components/auth/UserMenu';
 import { Settings, Home } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
-import { BranchSelector } from './BranchSelector';
+import { NewBranchSelector } from './NewBranchSelector';
 
 interface EditorHeaderProps {
   activeTab: 'navigation' | 'content' | 'seo';
@@ -34,7 +34,7 @@ export function EditorHeader({ activeTab, hasChanges, totalLiveFiles }: EditorHe
                 {activeTab === 'content' ? 'Content Editor' : activeTab === 'seo' ? 'SEO Editor' : 'Navigation Editor'}
               </h1>
             </div>
-            <BranchSelector />
+            <NewBranchSelector />
           </div>
         </div>
         

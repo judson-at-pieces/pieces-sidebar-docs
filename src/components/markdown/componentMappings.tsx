@@ -28,18 +28,19 @@ interface ComponentProps {
 
 interface TabItemProps {
   label: string;
+  title: string;
   children: React.ReactNode;
 }
 
 // Map component names to their actual components
 export const componentMap: Record<string, React.ComponentType<any>> = {
   // Layout Components
-  Card: (props: ComponentProps & { title: string }) => <Card {...props} />,
+  Card: (props: ComponentProps & { title?: string }) => <Card title={props.title || 'Card'} {...props} />,
   CardGroup: (props: ComponentProps & { children: React.ReactNode }) => <CardGroup {...props} />,
   SimpleCard: (props: ComponentProps) => <SimpleCard {...props} />,
   
   // Interactive Components
-  Accordion: (props: ComponentProps & { title: string }) => <Accordion {...props} />,
+  Accordion: (props: ComponentProps & { title: string; children: React.ReactNode }) => <Accordion {...props} />,
   AccordionGroup: (props: ComponentProps & { children: React.ReactNode }) => <AccordionGroup {...props} />,
   Button: (props: ComponentProps & { label: string }) => <Button {...props} />,
   Callout: (props: ComponentProps & { children: React.ReactNode }) => <Callout {...props} />,
@@ -54,7 +55,7 @@ export const componentMap: Record<string, React.ComponentType<any>> = {
   // Navigation Components
   Steps: (props: ComponentProps & { children: React.ReactNode }) => <Steps {...props} />,
   Tabs: (props: ComponentProps & { children: React.ReactElement<TabItemProps>[] }) => <Tabs {...props} />,
-  TabItem: (props: TabItemProps & { title: string }) => <TabItem {...props} />,
+  TabItem: (props: TabItemProps) => <TabItem {...props} />,
   TableOfContents: (props: ComponentProps & { content: string }) => <TableOfContents {...props} />,
   
   // Special Components
@@ -68,6 +69,7 @@ export const componentMap: Record<string, React.ComponentType<any>> = {
     image?: string;
     url?: string;
     external?: boolean;
+    children: React.ReactNode;
   }) => <MarkdownCard {...props} />
 };
 
