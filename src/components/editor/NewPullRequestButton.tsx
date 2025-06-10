@@ -15,6 +15,10 @@ export function NewPullRequestButton() {
   const { sessions } = useBranchSessions(currentBranch);
   const [creating, setCreating] = useState(false);
 
+  if (DEBUG) {
+    console.log('🚀 NewPullRequestButton RENDER - currentBranch from useBranchManager:', currentBranch);
+  }
+
   const getTargetBranch = () => {
     if (!currentBranch || branches.length === 0) return 'main';
 
@@ -212,6 +216,10 @@ export function NewPullRequestButton() {
   };
 
   const buttonState = getButtonState();
+
+  if (DEBUG) {
+    console.log('🚀 NewPullRequestButton buttonState:', buttonState);
+  }
 
   return (
     <Button
