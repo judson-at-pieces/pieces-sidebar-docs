@@ -211,37 +211,6 @@ export function NewPullRequestButton() {
     }
   };
 
-  const getGitHubAppToken = async () => {
-    const { data: installations, error } = await supabase
-      .from('github_installations')
-      .select('installation_id')
-      .order('created_at', { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (error || !installations) {
-      throw new Error('No GitHub app installation found');
-    }
-
-    const { data, error: tokenError } = await supabase.functions.invoke('github-app-auth', {
-      body: { installationId: installations.installation_id }
-    });
-
-    if (tokenError) {
-      throw new Error('Failed to get GitHub app token');
-    }
-
-    return data.token;
-  };
-
-  const getOriginalFilePath = (editorFilePath: string): string => {
-    let cleanPath = editorFilePath.replace(/^\/+/, '');
-    if (!cleanPath.endsWith('.md')) {
-      cleanPath = `${cleanPath}.md`;
-    }
-    return `public/content/${cleanPath}`;
-  };
-
   const buttonState = getButtonState();
 
   return (
@@ -256,7 +225,7 @@ export function NewPullRequestButton() {
       {creating ? (
         <div className="w-4 h-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
       ) : (
-        <GitPullRequest className="w-4 h-4" />
+        <GitPullRequest className="w-4 w-4" />
       )}
       PR: {buttonState.text}
     </Button>
