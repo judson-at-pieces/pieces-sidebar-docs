@@ -1,355 +1,193 @@
-
 import React from 'react';
-import { Link } from 'react-router-dom';
-import { ExpandableImage as ExpandableImageComponent } from './ExpandableImage';
-import { Image } from './Image';
-import { Callout } from './Callout';
-import { Steps, Step } from './Steps';
 import { MarkdownCard } from './MarkdownCard';
-import { CardGroup } from './CardGroup';
-import Card from './SimpleCard';
-import { CustomTable, CustomTableHeader, CustomTableBody, CustomTableRow, CustomTableHead, CustomTableCell } from './CustomTable';
-import Table from './Table';
+import { Image } from './Image';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/tabs';
+import { Steps } from './Steps';
+import { Callout } from './Callout';
 import { CodeBlock } from './CodeBlock';
+import { CustomTable } from './CustomTable';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '../ui/accordion';
+import { CardGroup } from './CardGroup';
+import { DynamicCardGroup } from './DynamicCardGroup';
+import { HorizontalRule } from './HorizontalRule';
 import { PiecesCloudModels } from './PiecesCloudModels';
 import { PiecesLocalModels } from './PiecesLocalModels';
 import { GlossaryAll } from './GlossaryAll';
-import Accordion from './Accordion';
-import AccordionGroup, { AccordionItem } from './AccordionGroup';
-import Button from './Button';
-import HorizontalRule from './HorizontalRule';
-import Tabs, { TabItem } from './Tabs';
-import { 
-  CustomTableComponentProps, 
-  ImageProps, 
-  LinkProps, 
-  DivProps, 
-  HeadingProps, 
-  CodeProps, 
-  ListProps 
-} from './types';
+import { Card } from './Card';
+import { SimpleCard } from './SimpleCard';
 
-// Helper function to safely extract text from React children
-function extractTextFromChildren(node: any): string {
-  if (!node) return '';
-  if (typeof node === 'string') return node;
-  if (typeof node === 'number') return String(node);
-  if (Array.isArray(node)) return node.map(extractTextFromChildren).join('');
-  if (React.isValidElement(node) && node.props && 'children' in node.props) {
-    return extractTextFromChildren(node.props.children);
-  }
-  return '';
+interface ComponentMappings {
+  [key: string]: React.ComponentType<any>;
 }
 
-// Helper function to safely process React children
-function safeMapChildren(children: any, mapFn: (child: any, index: number) => any) {
-  if (!children) return null;
-  
-  try {
-    return React.Children.map(children, (child, index) => {
-      if (!child) return null;
-      return mapFn(child, index);
-    });
-  } catch (error) {
-    console.warn('Error mapping children:', error);
-    return children;
-  }
+interface TabItemProps {
+  label: string;
+  children: React.ReactNode;
 }
 
-export const createComponentMappings = () => ({
-  // Handle custom components that are being rendered as raw HTML
-  callout: ({ type, title, children, ...props }: any) => {
-    return <Callout type={type as 'info' | 'tip' | 'alert'} {...props}>{children}</Callout>;
-  },
-  
-  accordion: ({ title, defaultOpen, children, ...props }: any) => {
-    return <Accordion title={title} defaultOpen={defaultOpen} {...props}>{children}</Accordion>;
-  },
-  
-  accordiongroup: ({ allowMultiple, children, ...props }: any) => {
-    return <AccordionGroup allowMultiple={allowMultiple} {...props}>{children}</AccordionGroup>;
-  },
-  
-  accordionitem: ({ title, children, ...props }: any) => {
-    return <AccordionItem title={title} isOpen={false} onToggle={() => {}} {...props}>{children}</AccordionItem>;
-  },
-  
-  button: ({ label, linkHref, openLinkInNewTab, align, lightColor, darkColor, onClick, ...props }: any) => {
-    return <Button label={label} linkHref={linkHref} openLinkInNewTab={openLinkInNewTab} align={align} lightColor={lightColor} darkColor={darkColor} onClick={onClick} {...props} />;
-  },
-  
-  horizontalrule: ({ className, ...props }: any) => {
-    return <HorizontalRule className={className} {...props} />;
-  },
-  
-  tabs: ({ defaultActiveTab, children, ...props }: any) => {
-    return <Tabs defaultActiveTab={defaultActiveTab} {...props}>{children}</Tabs>;
-  },
-  
-  tabitem: ({ title, children, ...props }: any) => {
-    return <TabItem title={title} {...props}>{children}</TabItem>;
-  },
-  
-  table: ({ headers, rows, className, ...props }: any) => {
-    return <Table headers={headers} rows={rows} className={className} {...props} />;
-  },
-  
-  steps: ({ children, ...props }: any) => {
-    return <Steps {...props}>{children}</Steps>;
-  },
-  
-  step: ({ title, children, ...props }: any) => {
-    return <Step title={title} {...props}>{children}</Step>;
-  },
-  
-  card: ({ title, image, href, external, children, ...props }: any) => {
-    // If href is provided, use MarkdownCard for link functionality
-    if (href) {
-      return <MarkdownCard title={title} image={image} href={href} external={external} {...props}>{children}</MarkdownCard>;
-    }
-    // Otherwise use the simple Card component
-    return <Card title={title} image={image} {...props}>{children}</Card>;
-  },
-  
-  simplecard: ({ title, image, children, ...props }: any) => {
-    return <Card title={title} image={image} {...props}>{children}</Card>;
-  },
-  
-  cardgroup: ({ cols, children, ...props }: any) => {
-    const colsNumber = typeof cols === 'string' ? parseInt(cols) : cols;
-    const validCols = [2, 3, 4].includes(colsNumber) ? colsNumber as 2 | 3 | 4 : 2;
-    return <CardGroup cols={validCols} {...props}>{children}</CardGroup>;
-  },
-  
-  'pieces-cloud-models': () => {
-    return <PiecesCloudModels />;
-  },
-  
-  'pieces-local-models': () => {
-    return <PiecesLocalModels />;
-  },
-  
-  'glossary-all': () => {
-    return <GlossaryAll />;
-  },
+const TabItem: React.FC<TabItemProps> = ({ children }) => {
+  return <>{children}</>;
+};
 
-  // Explicit ExpandableImage component handler
-  ExpandableImage: ({ src, alt, caption, ...props }: ImageProps) => {
-    return <ExpandableImageComponent src={src} alt={caption as string} caption={(caption as string) || ''} {...props} />;
-  },
+interface StepProps {
+  children: React.ReactNode;
+}
 
-  // Standard image handler - ensure rounded edges for ALL images
-  img: ({ src, alt, ...props }: ImageProps) => {
-    return <img src={src} alt={alt} className="rounded-lg max-w-full h-auto" {...props} />;
-  },
+const Step: React.FC<StepProps> = ({ children }) => {
+  return <div className="step-content">{children}</div>;
+};
 
-  // Custom div handler for callouts, steps, cards, and card groups
-  div: ({ children, ...props }: DivProps) => {
-    // Safely get data attributes from props object
-    const dataProps = React.useMemo(() => {
-      return Object.keys(props || {}).reduce((acc, key) => {
-        if (key.startsWith('data-')) {
-          const cleanKey = key.replace('data-', '').replace(/-([a-z])/g, (g) => g[1].toUpperCase());
-          acc[cleanKey] = (props as any)[key];
-        }
-        return acc;
-      }, {} as Record<string, any>);
-    }, [props]);
-
-    console.log('Div component mapping - dataProps:', dataProps, 'hasChildren:', !!children);
-    
-    if (dataProps.callout) {
-      return <Callout type={dataProps.callout as 'info' | 'tip' | 'alert'} {...props}>{children}</Callout>;
-    }
-    
-    if (dataProps.steps === 'true') {
-      return <Steps {...props}>{children}</Steps>;
-    }
-    
-    if (dataProps.step) {
-      return <Step title={dataProps.stepTitle || dataProps.title || ''} {...props}>{children}</Step>;
-    }
-    
-    if (dataProps.cardgroup === 'true') {
-      console.log('Rendering CardGroup with cols:', dataProps.cols, 'children count:', React.Children.count(children));
-      const colsNumber = typeof dataProps.cols === 'string' ? parseInt(dataProps.cols) : dataProps.cols;
-      const validCols = [2, 3, 4].includes(colsNumber) ? colsNumber as 2 | 3 | 4 : 2;
-      return <CardGroup cols={validCols} {...props}>{children}</CardGroup>;
-    }
-    
-    if (dataProps.card === 'true' || dataProps.cardComponent === 'true') {
-      console.log('Rendering Card with:', { 
-        title: dataProps.title, 
-        image: dataProps.image, 
-        href: dataProps.href, 
-        external: dataProps.external, 
-        hasChildren: !!children 
-      });
-      
-      let cardContent = children;
-      if (children && (React.isValidElement(children) || Array.isArray(children))) {
-        cardContent = extractTextFromChildren(children);
-      }
-      
-      return <MarkdownCard title={dataProps.title} image={dataProps.image} icon={dataProps.icon} href={dataProps.href} external={dataProps.external}>{cardContent}</MarkdownCard>;
-    }
-    
-    if (dataProps.image && dataProps.src) {
-      return <Image src={dataProps.src} alt={dataProps.alt} caption={dataProps.caption} align={dataProps.align as any} fullwidth={dataProps.fullwidth} />;
-    }
-    
-    if (dataProps.piecesCloudModels) {
-      return <PiecesCloudModels />;
-    }
-
-    if (dataProps.piecesLocalModels) {
-      return <PiecesLocalModels />;
-    }
-
-    if (dataProps.glossaryAll) {
-      return <GlossaryAll />;
-    }
-    
-    if (dataProps.accordion === 'true') {
-      return <Accordion title={dataProps.title || ''} defaultOpen={dataProps.defaultOpen === 'true'} {...props}>{children}</Accordion>;
-    }
-    
-    if (dataProps.accordiongroup === 'true') {
-      return <AccordionGroup allowMultiple={dataProps.allowMultiple === 'true'} {...props}>{children}</AccordionGroup>;
-    }
-    
-    if (dataProps.button === 'true') {
-      return <Button 
-        label={dataProps.label || ''} 
-        linkHref={dataProps.linkHref} 
-        openLinkInNewTab={dataProps.openLinkInNewTab === 'true'} 
-        align={dataProps.align as any} 
-        lightColor={dataProps.lightColor} 
-        darkColor={dataProps.darkColor} 
-        {...props} 
-      />;
-    }
-    
-    if (dataProps.tabs === 'true') {
-      return <Tabs defaultActiveTab={parseInt(dataProps.defaultActiveTab) || 0} {...props}>{children}</Tabs>;
-    }
-    
-    if (dataProps.tabitem === 'true') {
-      return <TabItem title={dataProps.title || ''} {...props}>{children}</TabItem>;
-    }
-    
-    return <div {...props}>{children}</div>;
-  },
-
-  // Custom link component to use React Router for internal links
-  a: ({ href, children, ...props }: LinkProps) => {
-    const linkClasses = "text-primary hover:text-primary/80 underline underline-offset-2 decoration-primary/50 hover:decoration-primary transition-colors font-medium";
-    
-    if (href?.startsWith('/')) {
-      return (
-        <Link to={href} className={linkClasses} {...props}>
-          {children}
-        </Link>
-      );
-    }
-    
-    const isExternal = href?.startsWith('http');
-    return (
-      <a 
-        href={href} 
-        className={`${linkClasses} ${isExternal ? 'after:content-["↗"] after:ml-1 after:text-xs after:opacity-70' : ''}`}
-        {...(isExternal ? { target: '_blank', rel: 'noopener noreferrer' } : {})}
-        {...props}
-      >
-        {children}
-      </a>
-    );
-  },
-
-  // Enhanced table styling using custom components
-  table: ({ children, ...props }: CustomTableComponentProps) => (
-    <CustomTable {...props}>{children}</CustomTable>
-  ),
-  thead: ({ children, ...props }: CustomTableComponentProps) => (
-    <CustomTableHeader {...props}>{children}</CustomTableHeader>
-  ),
-  tbody: ({ children, ...props }: CustomTableComponentProps) => (
-    <CustomTableBody {...props}>{children}</CustomTableBody>
-  ),
-  tr: ({ children, ...props }: CustomTableComponentProps) => (
-    <CustomTableRow {...props}>{children}</CustomTableRow>
-  ),
-  th: ({ children, ...props }: CustomTableComponentProps) => (
-    <CustomTableHead {...props}>{children}</CustomTableHead>
-  ),
-  td: ({ children, ...props }: CustomTableComponentProps) => (
-    <CustomTableCell {...props}>{children}</CustomTableCell>
-  ),
-
-  h1: ({ children, ...props }: HeadingProps) => (
-    <h1 className="scroll-m-20 text-xl sm:text-2xl md:text-3xl lg:text-4xl font-bold tracking-tight leading-tight mt-0 mb-6 first:mt-0" id={generateHeadingId(children)} {...props}>
+const componentMappings: ComponentMappings = {
+  h1: ({ children }) => <h1 className="scroll-m-20 text-4xl font-bold tracking-tight lg:text-5xl">{children}</h1>,
+  h2: ({ children }) => <h2 className="mt-10 scroll-m-20 border-b pb-2 text-3xl font-semibold tracking-tight transition-colors first:mt-0">{children}</h2>,
+  h3: ({ children }) => <h3 className="mt-8 scroll-m-20 text-2xl font-semibold tracking-tight">{children}</h3>,
+  h4: ({ children }) => <h4 className="mt-8 scroll-m-20 text-xl font-semibold tracking-tight">{children}</h4>,
+  h5: ({ children }) => <h5 className="mt-8 scroll-m-20 text-lg font-semibold tracking-tight">{children}</h5>,
+  h6: ({ children }) => <h6 className="mt-8 scroll-m-20 text-base font-semibold tracking-tight">{children}</h6>,
+  p: ({ children }) => <p className="leading-7 [&:not(:first-child)]:mt-6">{children}</p>,
+  ol: ({ children }) => <ol className="mt-6 ml-4 list-decimal">{children}</ol>,
+  ul: ({ children }) => <ul className="mt-6 ml-4 list-disc">{children}</ul>,
+  li: ({ children }) => <li className="mt-2 leading-7">{children}</li>,
+  a: ({ children, href, ...props }) => (
+    <a href={href} className="font-medium text-primary underline underline-offset-4" {...props}>
       {children}
-    </h1>
+    </a>
   ),
-  h2: ({ children, ...props }: HeadingProps) => (
-    <h2 className="scroll-m-20 text-lg sm:text-xl md:text-2xl lg:text-3xl font-semibold tracking-tight mt-8 mb-4 pb-2 border-b border-border first:mt-0" id={generateHeadingId(children)} {...props}>
-      {children}
-    </h2>
-  ),
-  h3: ({ children, ...props }: HeadingProps) => (
-    <h3 className="scroll-m-20 text-base sm:text-lg md:text-xl lg:text-2xl font-semibold tracking-tight mt-6 mb-3 first:mt-0" id={generateHeadingId(children)} {...props}>
-      {children}
-    </h3>
-  ),
-  h4: ({ children, ...props }: HeadingProps) => (
-    <h4 className="scroll-m-20 text-base sm:text-lg font-semibold tracking-tight mt-4 mb-2 first:mt-0" id={generateHeadingId(children)} {...props}>
-      {children}
-    </h4>
-  ),
-  pre: ({ children, ...props }: CodeProps) => (
-    <CodeBlock {...props}>{children}</CodeBlock>
-  ),
-  code: ({ children, ...props }: CodeProps) => (
-    <code className="relative rounded bg-muted px-1.5 py-0.5 font-mono text-sm font-medium text-foreground" {...props}>
-      {children}
-    </code>
-  ),
-  ul: ({ children, ...props }: ListProps) => (
-    <ul className="my-4 ml-6 list-disc space-y-1 [&>li]:leading-relaxed" {...props}>
-      {children}
-    </ul>
-  ),
-  ol: ({ children, ...props }: ListProps) => (
-    <ol className="my-4 ml-6 list-decimal space-y-1 [&>li]:leading-relaxed" {...props}>
-      {children}
-    </ol>
-  ),
-  li: ({ children, ...props }: ListProps) => (
-    <li className="py-0.5 [&>p]:mb-1 [&>p:last-child]:mb-0" {...props}>
-      {children}
-    </li>
-  ),
-  blockquote: ({ children, ...props }: ListProps) => (
-    <blockquote className="my-6 border-l-4 border-primary/30 pl-6 italic text-muted-foreground bg-muted/30 py-4 rounded-r-lg" {...props}>
+  strong: ({ children }) => <strong className="font-semibold">{children}</strong>,
+  blockquote: ({ children }) => (
+    <blockquote className="mt-6 border-l-2 pl-6 italic">
       {children}
     </blockquote>
   ),
-  p: ({ children, ...props }: ListProps) => (
-    <p className="mb-4 leading-relaxed text-base [&:last-child]:mb-0" {...props}>
+  code: ({ children }) => (
+    <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold">
       {children}
-    </p>
+    </code>
   ),
-  hr: ({ ...props }: Record<string, unknown>) => (
-    <HorizontalRule {...props} />
+  hr: HorizontalRule,
+  table: ({ children }) => (
+    <div className="my-6 w-full overflow-y-auto">
+      <CustomTable>
+        {children}
+      </CustomTable>
+    </div>
   ),
-});
+  thead: ({ children }) => (
+    <thead className="[&_th]:border-b font-medium [&:first-child]">
+      {children}
+    </thead>
+  ),
+  tbody: ({ children }) => <tbody className="[&_tr:nth-child(even)]:bg-muted">{children}</tbody>,
+  tr: ({ children }) => <tr className="border-b transition-colors hover:bg-muted/50 data-[state=selected]:bg-muted" >{children}</tr>,
+  th: ({ children }) => <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground [&:not([align])]:text-left">{children}</th>,
+  td: ({ children }) => <td className="p-4 align-middle [&:not([align])]:text-left">{children}</td>,
+  Card,
+  SimpleCard,
+  CardGroup,
+  DynamicCardGroup,
+  Callout: ({ children, variant, title, icon, ...props }: any) => (
+    <Callout variant={variant} title={title} icon={icon} {...props}>
+      {children}
+    </Callout>
+  ),
+  Accordion: ({ children, ...props }: any) => (
+    <Accordion type="single" collapsible {...props}>
+      {children}
+    </Accordion>
+  ),
+  AccordionItem: ({ children, value, ...props }: any) => {
+    const trigger = React.Children.toArray(children).find((child: any) => child.type === AccordionTrigger) as React.ReactElement;
+    const content = React.Children.toArray(children).find((child: any) => child.type === AccordionContent) as React.ReactElement;
 
-function generateHeadingId(children: React.ReactNode): string {
-  if (typeof children === 'string') {
-    return children.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  }
-  if (React.isValidElement(children) && children.props && typeof children.props.children === 'string') {
-    return children.props.children.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
-  }
-  return '';
-}
+    return (
+      <AccordionItem value={value} {...props}>
+        {trigger}
+        {content}
+      </AccordionItem>
+    );
+  },
+  AccordionTrigger: ({ children, ...props }: any) => (
+    <AccordionTrigger {...props}>
+      {children}
+    </AccordionTrigger>
+  ),
+  AccordionContent: ({ children, ...props }: any) => (
+    <AccordionContent {...props}>
+      {children}
+    </AccordionContent>
+  ),
+  CodeBlock: ({ children, language, title, ...props }: any) => (
+    <CodeBlock language={language} title={title} {...props}>
+      {children}
+    </CodeBlock>
+  ),
+  PiecesCloudModels: PiecesCloudModels,
+  PiecesLocalModels: PiecesLocalModels,
+  GlossaryAll: GlossaryAll,
+  MarkdownCard: ({ children, title, image, href, external, ...props }: any) => (
+    <MarkdownCard 
+      title={title}
+      image={image}
+      href={href}
+      external={external}
+      {...(props as object)}
+    >
+      {children}
+    </MarkdownCard>
+  ),
+
+  Image: ({ src, alt, align, fullwidth, ...props }: any) => (
+    <Image
+      src={src}
+      alt={alt}
+      align={align}
+      fullwidth={fullwidth}
+      {...props}
+    />
+  ),
+
+  Tabs: ({ children, ...props }: any) => {
+    const processedChildren = React.Children.map(children, (child, index) => {
+      if (React.isValidElement(child) && child.props.label) {
+        return (
+          <TabsContent key={index} value={child.props.label}>
+            {child.props.children}
+          </TabsContent>
+        );
+      }
+      return child;
+    });
+
+    const tabLabels = React.Children.map(children, (child) => {
+      if (React.isValidElement(child) && child.props.label) {
+        return child.props.label;
+      }
+      return null;
+    }).filter(Boolean);
+
+    return (
+      <Tabs defaultValue={tabLabels?.[0]} {...props}>
+        <TabsList>
+          {tabLabels?.map((label) => (
+            <TabsTrigger key={label} value={label}>
+              {label}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+        {processedChildren}
+      </Tabs>
+    );
+  },
+
+  TabItem,
+
+  Steps: ({ children, ...props }: any) => (
+    <Steps {...props}>
+      {children}
+    </Steps>
+  ),
+
+  Step,
+};
+
+export { componentMappings, type ComponentMappings };

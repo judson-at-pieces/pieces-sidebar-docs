@@ -1,4 +1,3 @@
-
 import React, { useState, useRef, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -285,6 +284,30 @@ export function WYSIWYGEditor({ content, onContentChange }: WYSIWYGEditorProps) 
         </div>
       </div>
     );
+  };
+
+  const handleTableInsert = (rows: number, cols: number) => {
+    const tableMarkdown = generateTableMarkdown(rows, cols);
+    const selection = window.getSelection();
+    if (selection && selection.rangeCount > 0) {
+      const range = selection.getRangeAt(0);
+      const textNode = document.createTextNode(tableMarkdown);
+      range.deleteContents();
+      range.insertNode(textNode);
+      
+      // Move cursor to end of inserted text
+      range.setStartAfter(textNode);
+      range.setEndAfter(textNode);
+      selection.removeAllRanges();
+      selection.addRange(range);
+      
+      // Update the editor content
+      const editorElement = document.querySelector('[contenteditable="true"]') as HTMLElement;
+      if (editorElement && 'textContent' in editorElement) {
+        handleContentChange(editorElement.textContent || '');
+      }
+    }
+    setShowTableDialog(false);
   };
 
   return (
