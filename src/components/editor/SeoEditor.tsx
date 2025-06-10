@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -18,6 +18,9 @@ import { useDocumentSeo } from "@/hooks/useDocumentSeo";
 import { githubService } from "@/services/githubService";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useBranchManager } from "@/hooks/useBranchManager";
+import { useBranchSessions } from "@/hooks/useBranchSessions";
+import { FileTreeSidebar } from './FileTreeSidebar';
 
 import type { SeoData } from "@/hooks/useSeoData";
 
@@ -114,7 +117,14 @@ function FileTreeItem({
   );
 }
 
-export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFileSelect }: SeoEditorProps) {
+export function SeoEditor({
+  selectedFile,
+  onSeoDataChange,
+  fileStructure,
+  onFileSelect
+}: SeoEditorProps) {
+  const { currentBranch } = useBranchManager();
+  const { sessions } = useBranchSessions(currentBranch);
   const { seoData, updateSeoData, saveAllChanges, pendingChanges, isSaving, hasUnsavedChanges } = useSeoData(selectedFile);
   const { user } = useAuth();
   const [newKeyword, setNewKeyword] = useState("");
@@ -123,6 +133,8 @@ export function SeoEditor({ selectedFile, onSeoDataChange, fileStructure, onFile
   const [newMetaProperty, setNewMetaProperty] = useState("");
   const [previewMode, setPreviewMode] = useState(false);
   const [isCreatingPR, setIsCreatingPR] = useState(false);
+  const [bulkUpdating, setBulkUpdating] = useState(false);
+  const [sitemapGenerating, setSitemapGenerating] = useState(false);
 
   useDocumentSeo(previewMode ? seoData : {});
 
@@ -618,6 +630,182 @@ Please review all SEO changes and merge when ready. All existing content has bee
     } finally {
       setIsCreatingPR(false);
     }
+  };
+
+  const handleBulkSeoUpdate = async () => {
+    if (!currentBranch) {
+      toast.error('No branch selected');
+      return;
+    }
+
+    setBulkUpdating(true);
+    
+    try {
+      // Get GitHub App token
+      const { data: installations, error } = await supabase
+        .from('github_installations')
+        .select('installation_id')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error || !installations) {
+        throw new Error('No GitHub app installation found');
+      }
+
+      const { data, error: tokenError } = await supabase.functions.invoke('github-app-auth', {
+        body: { installationId: installations.installation_id }
+      });
+
+      if (tokenError) {
+        throw new Error('Failed to get GitHub app token');
+      }
+
+      const token = data.token;
+      const repoConfig = await githubService.getRepoConfig();
+      
+      if (!repoConfig) {
+        toast.error('No GitHub repository configured');
+        return;
+      }
+
+      // Process files with Promise.all for async operations
+      const changedFiles = await Promise.all(filesToUpdate.map(async (file) => {
+        const existingContent = await loadExistingContent(file.path);
+        const updatedContent = await updateContentWithSeoData(existingContent, seoData);
+        return {
+          ...file,
+          content: updatedContent
+        };
+      }));
+
+      // Create PR
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const tempBranchName = `seo-updates-${currentBranch}-${timestamp}`;
+
+      const result = await githubService.createPullRequest(
+        {
+          title: `SEO updates for ${changedFiles.length} files from ${currentBranch}`,
+          body: `Bulk SEO metadata updates:\n${changedFiles.map(file => `- ${file.path}`).join('\n')}\n\nUpdated from SEO editor on branch "${currentBranch}".`,
+          files: changedFiles,
+          baseBranch: 'main',
+          headBranch: tempBranchName,
+          useExistingBranch: false
+        },
+        token,
+        repoConfig
+      );
+
+      if (result.success) {
+        toast.success(`SEO update PR created successfully!`, {
+          action: {
+            label: 'View PR',
+            onClick: () => window.open(result.prUrl, '_blank')
+          }
+        });
+        setFilesToUpdate([]);
+      } else {
+        toast.error(result.error || 'Failed to create SEO update PR');
+      }
+    } catch (error) {
+      console.error('Error creating SEO update PR:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to create SEO update PR');
+    } finally {
+      setBulkUpdating(false);
+    }
+  };
+
+  const handleSitemapGeneration = async () => {
+    setSitemapGenerating(true);
+    
+    try {
+      const { data: installations, error } = await supabase
+        .from('github_installations')
+        .select('installation_id')
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (error || !installations) {
+        throw new Error('No GitHub app installation found');
+      }
+
+      const { data, error: tokenError } = await supabase.functions.invoke('github-app-auth', {
+        body: { installationId: installations.installation_id }
+      });
+
+      if (tokenError) {
+        throw new Error('Failed to get GitHub app token');
+      }
+
+      const token = data.token;
+      const repoConfig = await githubService.getRepoConfig();
+      
+      if (!repoConfig) {
+        toast.error('No GitHub repository configured');
+        return;
+      }
+
+      const sitemapContent = generateSitemapContent();
+      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const tempBranchName = `sitemap-update-${currentBranch}-${timestamp}`;
+
+      const result = await githubService.createPullRequest(
+        {
+          title: `Update sitemap.xml from ${currentBranch}`,
+          body: `Generated sitemap.xml with current site structure.\n\nGenerated from SEO editor on branch "${currentBranch}".`,
+          files: [{
+            path: 'public/sitemap.xml',
+            content: sitemapContent
+          }],
+          baseBranch: 'main',
+          headBranch: tempBranchName,
+          useExistingBranch: false
+        },
+        token,
+        repoConfig
+      );
+
+      if (result.success) {
+        toast.success(`Sitemap update PR created successfully!`, {
+          action: {
+            label: 'View PR',
+            onClick: () => window.open(result.prUrl, '_blank')
+          }
+        });
+      } else {
+        toast.error(result.error || 'Failed to create sitemap update PR');
+      }
+    } catch (error) {
+      console.error('Error creating sitemap update PR:', error);
+      toast.error(error instanceof Error ? error.message : 'Failed to create sitemap update PR');
+    } finally {
+      setSitemapGenerating(false);
+    }
+  };
+
+  const generateSitemapContent = () => {
+    const sitemapContent = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://pieces.app</loc>
+    <lastmod>${new Date().toISOString()}</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.5</priority>
+  </url>
+  ${fileStructure?.map(node => {
+    if (node.type === 'file') {
+      return `<url>
+        <loc>https://pieces.app${node.path}</loc>
+        <lastmod>${new Date().toISOString()}</lastmod>
+        <changefreq>weekly</changefreq>
+        <priority>0.5</priority>
+      </url>`;
+    }
+    return '';
+  }).join('')}
+</urlset>`;
+    return sitemapContent;
   };
 
   return (
