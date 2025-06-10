@@ -31,10 +31,10 @@ export function useBranchManager() {
   const initializationRef = useRef(false);
   const mountedRef = useRef(true);
 
-  // 🚨 COMPREHENSIVE BRANCH MANAGER DEBUGGING
+  // 🚨 ULTRA COMPREHENSIVE BRANCH MANAGER DEBUGGING
   if (DEBUG) {
-    console.group('🔥 BRANCH MANAGER RENDER');
-    console.log('📊 CURRENT STATE:', {
+    console.group('🔥 BRANCH MANAGER HOOK RENDER');
+    console.log('📊 CURRENT STATE SNAPSHOT:', {
       currentBranch: JSON.stringify(state.currentBranch),
       currentBranchType: typeof state.currentBranch,
       currentBranchLength: state.currentBranch?.length,
@@ -42,32 +42,61 @@ export function useBranchManager() {
       initialized: state.initialized,
       branchCount: state.branches.length,
       loading: state.loading,
-      error: state.error
+      error: state.error,
+      renderTimestamp: new Date().toISOString()
     });
     
-    console.log('📊 BRANCHES ARRAY:', state.branches.map(b => ({
+    console.log('📊 BRANCHES ARRAY DETAILED:', state.branches.map(b => ({
       name: JSON.stringify(b.name),
+      nameCharCodes: Array.from(b.name).map(c => `${c}(${c.charCodeAt(0)})`),
       isDefault: b.isDefault,
-      charCodes: Array.from(b.name).map(c => `${c}(${c.charCodeAt(0)})`)
+      sha: b.sha.substring(0, 7)
     })));
+    
+    console.log('📊 REFS STATE:', {
+      initializationRef: initializationRef.current,
+      mountedRef: mountedRef.current
+    });
     console.groupEnd();
   }
 
   const updateState = useCallback((updates: Partial<BranchManagerState>) => {
     if (!mountedRef.current) return;
     
-    if (DEBUG && updates.currentBranch !== undefined) {
+    if (DEBUG) {
       console.group('🔥 BRANCH MANAGER STATE UPDATE');
-      console.log('📊 UPDATING currentBranch FROM:', {
-        from: JSON.stringify(state.currentBranch),
-        to: JSON.stringify(updates.currentBranch),
-        fromCharCodes: state.currentBranch ? Array.from(state.currentBranch).map(c => `${c}(${c.charCodeAt(0)})`) : 'empty',
-        toCharCodes: updates.currentBranch ? Array.from(updates.currentBranch).map(c => `${c}(${c.charCodeAt(0)})`) : 'empty'
+      console.log('📊 UPDATE DETAILS:', {
+        updateKeys: Object.keys(updates),
+        updates: Object.entries(updates).reduce((acc, [key, value]) => {
+          if (key === 'currentBranch') {
+            acc[key] = {
+              from: JSON.stringify(state.currentBranch),
+              to: JSON.stringify(value),
+              fromCharCodes: state.currentBranch ? Array.from(state.currentBranch).map(c => `${c}(${c.charCodeAt(0)})`) : 'empty',
+              toCharCodes: value ? Array.from(value as string).map(c => `${c}(${c.charCodeAt(0)})`) : 'empty'
+            };
+          } else {
+            acc[key] = value;
+          }
+          return acc;
+        }, {} as any),
+        timestamp: new Date().toISOString()
       });
       console.groupEnd();
     }
     
-    setState(prev => ({ ...prev, ...updates }));
+    setState(prev => {
+      const newState = { ...prev, ...updates };
+      
+      if (DEBUG && updates.currentBranch !== undefined) {
+        console.log('🔥 BRANCH MANAGER: STATE ACTUALLY UPDATED TO:', {
+          newCurrentBranch: JSON.stringify(newState.currentBranch),
+          newCharCodes: newState.currentBranch ? Array.from(newState.currentBranch).map(c => `${c}(${c.charCodeAt(0)})`) : 'empty'
+        });
+      }
+      
+      return newState;
+    });
   }, [state.currentBranch]);
 
   const getGitHubAppToken = useCallback(async () => {
@@ -241,6 +270,13 @@ export function useBranchManager() {
 
           await Promise.all(upsertPromises);
         }
+      }
+
+      if (DEBUG) {
+        console.log('🔥 ABOUT TO UPDATE CURRENT BRANCH STATE TO:', {
+          branchName: JSON.stringify(branchName),
+          charCodes: Array.from(branchName).map(c => `${c}(${c.charCodeAt(0)})`)
+        });
       }
 
       updateState({ currentBranch: branchName });

@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { GitBranch, Plus, Trash2, Check, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -42,6 +43,23 @@ export function NewBranchSelector() {
     deleteBranch,
   } = useBranchManager();
 
+  // 🚨 ULTRA INTENSIVE DROPDOWN DEBUGGING
+  console.group('🔧 NEW BRANCH SELECTOR RENDER');
+  console.log('📊 HOOK DATA:', {
+    currentBranch: JSON.stringify(currentBranch),
+    currentBranchType: typeof currentBranch,
+    currentBranchLength: currentBranch?.length,
+    currentBranchCharCodes: currentBranch ? Array.from(currentBranch).map(c => `${c}(${c.charCodeAt(0)})`) : 'null',
+    branchesCount: branches.length,
+    branchesArray: branches.map(b => ({
+      name: JSON.stringify(b.name),
+      nameCharCodes: Array.from(b.name).map(c => `${c}(${c.charCodeAt(0)})`),
+      isDefault: b.isDefault
+    })),
+    loading
+  });
+  console.groupEnd();
+
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [newBranchName, setNewBranchName] = useState('');
   const [branchToDelete, setBranchToDelete] = useState<string | null>(null);
@@ -69,6 +87,20 @@ export function NewBranchSelector() {
 
   const currentBranchData = branches.find(b => b.name === currentBranch);
 
+  // 🚨 CURRENT BRANCH FINDING DEBUGGING
+  console.group('🔧 CURRENT BRANCH FINDING');
+  console.log('📊 SEARCH DETAILS:', {
+    searchingFor: JSON.stringify(currentBranch),
+    foundBranch: currentBranchData ? JSON.stringify(currentBranchData.name) : 'NOT FOUND',
+    comparison: branches.map(b => ({
+      branchName: JSON.stringify(b.name),
+      matches: b.name === currentBranch,
+      exactComparison: `"${b.name}" === "${currentBranch}"`,
+      charComparison: `[${Array.from(b.name).map(c => c.charCodeAt(0)).join(',')}] vs [${currentBranch ? Array.from(currentBranch).map(c => c.charCodeAt(0)).join(',') : 'null'}]`
+    }))
+  });
+  console.groupEnd();
+
   // Sort branches with default branch first, then alphabetically
   const sortedBranches = [...branches].sort((a, b) => {
     if (a.isDefault && !b.isDefault) return -1;
@@ -81,6 +113,19 @@ export function NewBranchSelector() {
     !branch.isDefault && branch.name !== currentBranch
   );
 
+  const handleSwitchBranch = async (branchName: string) => {
+    console.group('🔧 MANUAL BRANCH SWITCH');
+    console.log('📊 SWITCH REQUEST:', {
+      from: JSON.stringify(currentBranch),
+      to: JSON.stringify(branchName),
+      fromCharCodes: currentBranch ? Array.from(currentBranch).map(c => `${c}(${c.charCodeAt(0)})`) : 'null',
+      toCharCodes: Array.from(branchName).map(c => `${c}(${c.charCodeAt(0)})`)
+    });
+    console.groupEnd();
+    
+    await switchBranch(branchName);
+  };
+
   return (
     <>
       <DropdownMenu>
@@ -92,7 +137,7 @@ export function NewBranchSelector() {
             disabled={loading}
           >
             <GitBranch className="h-4 w-4" />
-            FORCED: {currentBranch || 'Loading...'}
+            {currentBranch || 'Loading...'}
             {currentBranchData?.isDefault && (
               <Badge variant="secondary" className="text-xs ml-1">
                 default
@@ -106,28 +151,42 @@ export function NewBranchSelector() {
           </div>
           <DropdownMenuSeparator />
           
-          {sortedBranches.map((branch) => (
-            <DropdownMenuItem
-              key={branch.name}
-              onClick={() => switchBranch(branch.name)}
-              className={`flex items-center justify-between ${
-                branch.name === currentBranch ? 'bg-blue-100 text-blue-900' : ''
-              }`}
-            >
-              <div className="flex items-center gap-2">
-                <GitBranch className="h-4 w-4" />
-                <span>{branch.name}</span>
-                {branch.isDefault && (
-                  <Badge variant="secondary" className="text-xs">
-                    default
-                  </Badge>
+          {sortedBranches.map((branch) => {
+            const isCurrentBranch = branch.name === currentBranch;
+            
+            // 🚨 PER-BRANCH DEBUGGING
+            console.log('🔧 BRANCH ITEM RENDER:', {
+              branchName: JSON.stringify(branch.name),
+              currentBranch: JSON.stringify(currentBranch),
+              isCurrentBranch,
+              exactMatch: `"${branch.name}" === "${currentBranch}"`,
+              branchCharCodes: Array.from(branch.name).map(c => `${c}(${c.charCodeAt(0)})`),
+              currentCharCodes: currentBranch ? Array.from(currentBranch).map(c => `${c}(${c.charCodeAt(0)})`) : 'null'
+            });
+            
+            return (
+              <DropdownMenuItem
+                key={branch.name}
+                onClick={() => handleSwitchBranch(branch.name)}
+                className={`flex items-center justify-between ${
+                  isCurrentBranch ? 'bg-blue-100 text-blue-900' : ''
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <GitBranch className="h-4 w-4" />
+                  <span>{branch.name}</span>
+                  {branch.isDefault && (
+                    <Badge variant="secondary" className="text-xs">
+                      default
+                    </Badge>
+                  )}
+                </div>
+                {isCurrentBranch && (
+                  <Check className="h-4 w-4 text-primary" />
                 )}
-              </div>
-              {branch.name === currentBranch && (
-                <Check className="h-4 w-4 text-primary" />
-              )}
-            </DropdownMenuItem>
-          ))}
+              </DropdownMenuItem>
+            );
+          })}
           
           <DropdownMenuSeparator />
           
