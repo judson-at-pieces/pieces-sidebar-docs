@@ -16,9 +16,15 @@ const DEBUG_MARKDOWN = false;
 
 export function EditorLayout() {
   const { fileStructure, isLoading, error, refetch } = useFileStructure();
-  // Only use useBranchManager - removed the old useBranches hook completely
-  const { currentBranch, initialized } = useBranchManager();
+  // Only use useBranchManager - completely removed useBranches hook
+  const { currentBranch, initialized, branches } = useBranchManager();
   const { sessions } = useBranchSessions(currentBranch);
+
+  console.log('🔵 EDITOR LAYOUT: Using useBranchManager only:', {
+    currentBranch: JSON.stringify(currentBranch),
+    initialized,
+    branchesCount: branches.length
+  });
 
   const [selectedFile, setSelectedFile] = useState<string>();
   const [content, setContent] = useState("");
@@ -272,6 +278,12 @@ Start editing to see the live preview!
             lockedBy={lockedBy}
             isAcquiringLock={isAcquiringLock}
             onAcquireLock={handleAcquireLock}
+            totalLiveFiles={totalLiveFiles}
+            currentBranch={currentBranch}
+            sessions={sessions}
+            hasChanges={hasChanges}
+            initialized={initialized}
+            branches={branches}
           />
           
           {/* Tab Content */}
