@@ -6,12 +6,12 @@ import { Card } from './Card';
 import { CardGroup } from './CardGroup';
 import { Steps } from './Steps';
 import { Tabs } from './Tabs';
-import { Accordion } from './Accordion';
-import { AccordionGroup } from './AccordionGroup';
-import { Table } from './Table';
+import Accordion from './Accordion';
+import AccordionGroup from './AccordionGroup';
+import Table from './Table';
 import { Image } from './Image';
-import { Button } from './Button';
-import { HorizontalRule } from './HorizontalRule';
+import Button from './Button';
+import HorizontalRule from './HorizontalRule';
 
 export function createComponentMappings() {
   return {
