@@ -23,22 +23,30 @@ export function useContentManager(lockManager: any) {
 
   const { currentUserId, isFileLockedByMe } = lockManager;
 
-  // Clear cache when branch changes
+  // Clear cache when branch changes and force reload from Supabase
   useEffect(() => {
     if (currentBranch) {
       if (DEBUG_CONTENT) {
-        console.log('📄 Branch changed to:', currentBranch, 'clearing content cache');
+        console.log('📄 Branch changed to:', currentBranch, 'clearing ALL caches and forcing reload');
       }
+      // CLEAR EVERYTHING when branch changes
       setLiveContent(new Map());
       lastSavedContentRef.current = new Map();
+      
+      // Force fresh fetch from database for this branch
+      fetchLiveContent();
     }
   }, [currentBranch]);
 
-  // Fetch live content for current branch
+  // Fetch live content for current branch DIRECTLY from Supabase
   const fetchLiveContent = useCallback(async () => {
     if (!currentBranch) return;
     
     try {
+      if (DEBUG_CONTENT) {
+        console.log('📄 FETCHING FRESH content from Supabase for branch:', currentBranch);
+      }
+
       const { data, error } = await supabase
         .from('live_editing_sessions')
         .select('file_path, content, user_id, branch_name, updated_at')
@@ -56,15 +64,20 @@ export function useContentManager(lockManager: any) {
         contentMap.set(session.file_path, session.content);
       });
 
-      // Cache the content for this branch
-      branchContentCacheRef.current.set(currentBranch, contentMap);
+      // Update both live content and cache
       setLiveContent(contentMap);
+      branchContentCacheRef.current.set(currentBranch, contentMap);
 
       if (DEBUG_CONTENT) {
-        console.log('📄 FETCHED BRANCH CONTENT:', {
+        console.log('📄 LOADED FRESH BRANCH CONTENT from Supabase:', {
           branch: currentBranch,
           filesWithContent: contentMap.size,
-          files: Array.from(contentMap.keys())
+          files: Array.from(contentMap.keys()),
+          sampleContent: Array.from(contentMap.entries()).slice(0, 2).map(([path, content]) => ({
+            path,
+            contentLength: content.length,
+            preview: content.substring(0, 100)
+          }))
         });
       }
     } catch (error) {
@@ -218,31 +231,16 @@ export function useContentManager(lockManager: any) {
     }
   }, [currentUserId, currentBranch, isFileLockedByMe]);
 
-  // Load content for a specific file with strict branch isolation
+  // Load content for a specific file with FORCED branch isolation
   const loadContent = useCallback(async (filePath: string): Promise<string | null> => {
     if (!currentBranch) return null;
     
-    // Check branch cache first
-    const branchCache = branchContentCacheRef.current.get(currentBranch);
-    if (branchCache?.has(filePath)) {
-      const cachedContent = branchCache.get(filePath);
-      if (DEBUG_CONTENT) {
-        console.log('📄 Using cached branch content for:', filePath, 'in branch:', currentBranch);
-      }
-      return cachedContent || null;
-    }
-
-    // Check if we have live content for this branch
-    const live = liveContent.get(filePath);
-    if (live) {
-      if (DEBUG_CONTENT) {
-        console.log('📄 Using live branch content for:', filePath, 'in branch:', currentBranch);
-      }
-      return live;
+    if (DEBUG_CONTENT) {
+      console.log('📄 LOADING content for file:', filePath, 'in branch:', currentBranch);
     }
 
     try {
-      // Try to load from database for this specific branch ONLY
+      // ALWAYS fetch from database first for this specific branch
       const { data, error } = await supabase
         .from('live_editing_sessions')
         .select('content')
@@ -257,19 +255,29 @@ export function useContentManager(lockManager: any) {
 
       if (data?.content) {
         if (DEBUG_CONTENT) {
-          console.log('📄 Loaded existing branch content from DB for:', filePath, 'in branch:', currentBranch);
+          console.log('📄 Found existing branch content in Supabase:', {
+            filePath,
+            branch: currentBranch,
+            contentLength: data.content.length,
+            preview: data.content.substring(0, 100)
+          });
         }
         
-        // Cache the content
+        // Update caches
         const branchCache = branchContentCacheRef.current.get(currentBranch) || new Map();
         branchCache.set(filePath, data.content);
         branchContentCacheRef.current.set(currentBranch, branchCache);
         
+        setLiveContent(prev => {
+          const newMap = new Map(prev);
+          newMap.set(filePath, data.content);
+          return newMap;
+        });
+        
         return data.content;
       }
 
-      // Only fall back to file system if no branch-specific content exists
-      // This ensures branch isolation - new branches start fresh from filesystem
+      // If no branch-specific content exists, try to load from filesystem
       let fetchPath = filePath;
       if (!fetchPath.endsWith('.md')) {
         fetchPath = `${fetchPath}.md`;
@@ -289,27 +297,40 @@ export function useContentManager(lockManager: any) {
       if (response.ok) {
         const content = await response.text();
         if (DEBUG_CONTENT) {
-          console.log('📄 Loaded fresh content from filesystem for new branch:', filePath, 'branch:', currentBranch);
+          console.log('📄 Loaded fresh content from filesystem for new branch:', {
+            filePath,
+            branch: currentBranch,
+            contentLength: content.length
+          });
         }
         return content;
       }
 
+      if (DEBUG_CONTENT) {
+        console.log('📄 No content found for:', filePath, 'in branch:', currentBranch);
+      }
       return null;
     } catch (error) {
       console.error('Error in loadContent:', error);
       return null;
     }
-  }, [currentBranch, liveContent]);
+  }, [currentBranch]);
 
   // Get content for a file (live or cached) with branch awareness
   const getContent = useCallback((filePath: string): string | null => {
-    // Check branch cache first
+    // Always check live content first (most current)
+    const liveContentForFile = liveContent.get(filePath);
+    if (liveContentForFile) {
+      return liveContentForFile;
+    }
+    
+    // Fall back to branch cache
     const branchCache = branchContentCacheRef.current.get(currentBranch);
     if (branchCache?.has(filePath)) {
       return branchCache.get(filePath) || null;
     }
     
-    return liveContent.get(filePath) || null;
+    return null;
   }, [liveContent, currentBranch]);
 
   // Check if file has unsaved changes with branch awareness

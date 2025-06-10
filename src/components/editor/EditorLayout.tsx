@@ -41,7 +41,7 @@ export function EditorLayout() {
     });
   }
 
-  // COMPLETE BRANCH ISOLATION - Handle branch changes with strict separation
+  // STRICT BRANCH ISOLATION - Handle branch changes
   useEffect(() => {
     if (currentBranch && currentBranch !== previousBranch && previousBranch !== null) {
       if (DEBUG_EDITOR) {
@@ -53,9 +53,9 @@ export function EditorLayout() {
         });
       }
 
-      const handleStrictBranchSwitch = async () => {
+      const handleBranchSwitch = async () => {
         try {
-          // Step 1: Save any changes to the PREVIOUS branch if we have unsaved work
+          // Step 1: Save any changes to the PREVIOUS branch
           if (selectedFile && localContent && lockManager.isFileLockedByMe(selectedFile)) {
             if (DEBUG_EDITOR) {
               console.log('💾 Saving content to PREVIOUS branch before switch:', previousBranch);
@@ -63,7 +63,7 @@ export function EditorLayout() {
             await contentManager.saveContent(selectedFile, localContent, true);
           }
 
-          // Step 2: Force release ALL locks - complete cleanup
+          // Step 2: Force release ALL locks
           if (lockManager.myCurrentLock) {
             if (DEBUG_EDITOR) {
               console.log('🔓 Force releasing lock before branch switch');
@@ -71,25 +71,25 @@ export function EditorLayout() {
             await lockManager.releaseLock(lockManager.myCurrentLock);
           }
 
-          // Step 3: CLEAR all local state to prevent contamination
+          // Step 3: CLEAR local state
           setLocalContent("");
           setLoadingContent(false);
 
-          // Step 4: Load fresh content from the NEW branch ONLY
+          // Step 4: If we have a selected file, load its content from the NEW branch
           if (selectedFile) {
             setLoadingContent(true);
             
             if (DEBUG_EDITOR) {
-              console.log('📄 Loading FRESH content for file:', selectedFile, 'from NEW branch:', currentBranch);
+              console.log('📄 Loading content for file:', selectedFile, 'from NEW branch:', currentBranch);
             }
             
-            // Force a completely fresh load from the new branch
-            const freshBranchContent = await contentManager.loadContent(selectedFile);
+            // Force fresh load from the new branch
+            const branchContent = await contentManager.loadContent(selectedFile);
             
-            if (freshBranchContent !== null) {
-              setLocalContent(freshBranchContent);
+            if (branchContent !== null) {
+              setLocalContent(branchContent);
               if (DEBUG_EDITOR) {
-                console.log('✅ Loaded fresh content from NEW branch:', currentBranch, 'Length:', freshBranchContent.length);
+                console.log('✅ Loaded content from NEW branch:', currentBranch, 'Length:', branchContent.length);
               }
             } else {
               // Create default content for this file in the new branch
@@ -105,7 +105,7 @@ description: "Add a description for this page"
 
 # ${fileName}
 
-This is a fresh start in the ${currentBranch} branch.
+This content is specific to the ${currentBranch} branch.
 
 Add your content here. You can use markdown and custom components:
 
@@ -125,7 +125,7 @@ Start editing to see the live preview!
           }
 
           if (DEBUG_EDITOR) {
-            console.log('✅ BRANCH SWITCH COMPLETED successfully from', previousBranch, 'to', currentBranch);
+            console.log('✅ BRANCH SWITCH COMPLETED from', previousBranch, 'to', currentBranch);
           }
 
         } catch (error) {
@@ -135,7 +135,7 @@ Start editing to see the live preview!
         }
       };
 
-      handleStrictBranchSwitch();
+      handleBranchSwitch();
       setPreviousBranch(currentBranch);
     } else if (currentBranch && previousBranch === null) {
       // Initial branch set
@@ -195,7 +195,7 @@ Start editing to see the live preview!
     setLoadingContent(true);
     
     try {
-      // Load content for the new file from the CURRENT branch only
+      // Load content for the new file from the CURRENT branch ONLY
       const content = await contentManager.loadContent(filePath);
       
       if (content !== null) {
