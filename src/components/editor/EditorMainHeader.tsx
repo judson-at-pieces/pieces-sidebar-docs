@@ -49,6 +49,14 @@ export function EditorMainHeader({ hasChanges, totalLiveFiles }: EditorMainHeade
       </div>
 
       <div className="flex items-center gap-3">
+        {/* PR Button - moved to be next to branch info */}
+        <CookieBasedPRButton
+          sessions={activeSessions}
+          hasChanges={hasChanges || activeSessions.length > 0}
+          initialized={true}
+          targetBranch="main"
+        />
+
         {/* Admin Button */}
         {hasRole('admin') && (
           <Button
@@ -61,14 +69,6 @@ export function EditorMainHeader({ hasChanges, totalLiveFiles }: EditorMainHeade
             Admin
           </Button>
         )}
-
-        {/* PR Button */}
-        <CookieBasedPRButton
-          sessions={activeSessions}
-          hasChanges={hasChanges || activeSessions.length > 0}
-          initialized={true}
-          targetBranch="main"
-        />
 
         {/* User Menu */}
         <UserMenu />
