@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { githubService } from '@/services/githubService';
 import { supabase } from '@/integrations/supabase/client';
@@ -60,45 +61,6 @@ export function useBranchManager() {
     console.groupEnd();
   }
 
-  const updateState = useCallback((updates: Partial<BranchManagerState>) => {
-    if (!mountedRef.current) return;
-    
-    if (DEBUG) {
-      console.group('🔥🔥🔥 BRANCH MANAGER STATE UPDATE');
-      console.log('📊 UPDATE DETAILS:', {
-        updateKeys: Object.keys(updates),
-        updates: Object.entries(updates).reduce((acc, [key, value]) => {
-          if (key === 'currentBranch') {
-            acc[key] = {
-              from: JSON.stringify(state.currentBranch),
-              to: JSON.stringify(value),
-              fromCharCodes: state.currentBranch ? Array.from(state.currentBranch).map(c => `${c}(${c.charCodeAt(0)})`) : 'empty',
-              toCharCodes: value ? Array.from(value as string).map(c => `${c}(${c.charCodeAt(0)})`) : 'empty'
-            };
-          } else {
-            acc[key] = value;
-          }
-          return acc;
-        }, {} as any),
-        timestamp: new Date().toISOString()
-      });
-      console.groupEnd();
-    }
-    
-    setState(prev => {
-      const newState = { ...prev, ...updates };
-      
-      if (DEBUG && updates.currentBranch !== undefined) {
-        console.log('🔥🔥🔥 BRANCH MANAGER: STATE ACTUALLY UPDATED TO:', {
-          newCurrentBranch: JSON.stringify(newState.currentBranch),
-          newCharCodes: newState.currentBranch ? Array.from(newState.currentBranch).map(c => `${c}(${c.charCodeAt(0)})`) : 'empty'
-        });
-      }
-      
-      return newState;
-    });
-  }, [state.currentBranch]);
-
   const getGitHubAppToken = useCallback(async () => {
     const { data: installations, error } = await supabase
       .from('github_installations')
@@ -125,7 +87,9 @@ export function useBranchManager() {
   const loadBranches = useCallback(async () => {
     if (DEBUG) console.log('🔥🔥🔥 LOADING BRANCHES...');
     
-    updateState({ loading: true, error: null });
+    if (!mountedRef.current) return;
+    
+    setState(prev => ({ ...prev, loading: true, error: null }));
 
     try {
       const repoConfig = await githubService.getRepoConfig();
@@ -133,12 +97,15 @@ export function useBranchManager() {
       if (!repoConfig) {
         if (DEBUG) console.log('🔥🔥🔥 No repo config - using default');
         const defaultBranch: Branch = { name: 'main', sha: '', isDefault: true };
-        updateState({
-          branches: [defaultBranch],
-          currentBranch: 'main',
-          initialized: true,
-          loading: false
-        });
+        if (mountedRef.current) {
+          setState({
+            branches: [defaultBranch],
+            currentBranch: 'main',
+            initialized: true,
+            loading: false,
+            error: null
+          });
+        }
         return;
       }
 
@@ -188,12 +155,15 @@ export function useBranchManager() {
         });
       }
 
-      updateState({
-        branches: formattedBranches,
-        currentBranch: defaultBranchName,
-        initialized: true,
-        loading: false
-      });
+      if (mountedRef.current) {
+        setState({
+          branches: formattedBranches,
+          currentBranch: defaultBranchName,
+          initialized: true,
+          loading: false,
+          error: null
+        });
+      }
 
     } catch (error) {
       console.error('Error loading branches:', error);
@@ -201,17 +171,19 @@ export function useBranchManager() {
       
       // Fallback to main branch
       const fallbackBranch: Branch = { name: 'main', sha: '', isDefault: true };
-      updateState({
-        branches: [fallbackBranch],
-        currentBranch: 'main',
-        initialized: true,
-        loading: false,
-        error: errorMessage
-      });
+      if (mountedRef.current) {
+        setState({
+          branches: [fallbackBranch],
+          currentBranch: 'main',
+          initialized: true,
+          loading: false,
+          error: errorMessage
+        });
+      }
       
       toast.error(errorMessage);
     }
-  }, [getGitHubAppToken, updateState]);
+  }, [getGitHubAppToken]);
 
   const switchBranch = useCallback(async (branchName: string) => {
     console.group('🚨🚨🚨 SWITCH BRANCH FUNCTION CALLED');
@@ -284,7 +256,17 @@ export function useBranchManager() {
         charCodes: Array.from(branchName).map(c => `${c}(${c.charCodeAt(0)})`)
       });
 
-      updateState({ currentBranch: branchName });
+      // Direct state update instead of using updateState function
+      if (mountedRef.current) {
+        setState(prev => {
+          const newState = { ...prev, currentBranch: branchName };
+          console.log('🚨 SWITCH BRANCH: STATE ACTUALLY UPDATED TO:', {
+            newCurrentBranch: JSON.stringify(newState.currentBranch),
+            newCharCodes: newState.currentBranch ? Array.from(newState.currentBranch).map(c => `${c}(${c.charCodeAt(0)})`) : 'empty'
+          });
+          return newState;
+        });
+      }
       
       console.log('🚨 SWITCH BRANCH: State update called, showing toast...');
       toast.success(`Switched to branch "${branchName}"`);
@@ -296,10 +278,11 @@ export function useBranchManager() {
     } finally {
       console.groupEnd();
     }
-  }, [state.currentBranch, updateState]);
+  }, [state.currentBranch]);
 
   const createBranch = useCallback(async (branchName: string, sourceBranch?: string) => {
-    updateState({ loading: true });
+    if (!mountedRef.current) return;
+    setState(prev => ({ ...prev, loading: true }));
     
     try {
       const repoConfig = await githubService.getRepoConfig();
@@ -360,9 +343,11 @@ export function useBranchManager() {
       console.error('Error creating branch:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to create branch');
     } finally {
-      updateState({ loading: false });
+      if (mountedRef.current) {
+        setState(prev => ({ ...prev, loading: false }));
+      }
     }
-  }, [state.currentBranch, getGitHubAppToken, updateState, loadBranches, switchBranch]);
+  }, [state.currentBranch, getGitHubAppToken, loadBranches, switchBranch]);
 
   const deleteBranch = useCallback(async (branchName: string) => {
     const branchToDelete = state.branches.find(b => b.name === branchName);
@@ -371,7 +356,8 @@ export function useBranchManager() {
       return;
     }
 
-    updateState({ loading: true });
+    if (!mountedRef.current) return;
+    setState(prev => ({ ...prev, loading: true }));
     
     try {
       const repoConfig = await githubService.getRepoConfig();
@@ -410,9 +396,11 @@ export function useBranchManager() {
       console.error('Error deleting branch:', error);
       toast.error(error instanceof Error ? error.message : 'Failed to delete branch');
     } finally {
-      updateState({ loading: false });
+      if (mountedRef.current) {
+        setState(prev => ({ ...prev, loading: false }));
+      }
     }
-  }, [state.branches, state.currentBranch, getGitHubAppToken, updateState, switchBranch, loadBranches]);
+  }, [state.branches, state.currentBranch, getGitHubAppToken, switchBranch, loadBranches]);
 
   // Initialize branches on mount
   useEffect(() => {
