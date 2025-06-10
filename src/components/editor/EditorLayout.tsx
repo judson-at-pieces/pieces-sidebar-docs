@@ -40,7 +40,7 @@ export function EditorLayout() {
     });
   }
 
-  // Handle branch changes - save current content and load new branch content
+  // Handle branch changes - THIS IS THE KEY FIX
   useEffect(() => {
     if (currentBranch && currentBranch !== previousBranch && previousBranch !== null) {
       if (DEBUG_EDITOR) {
@@ -61,15 +61,20 @@ export function EditorLayout() {
           await lockManager.releaseLock(lockManager.myCurrentLock);
         }
 
-        // Load content for current file from the new branch
+        // Load content for current file from the new branch - THIS IS THE CRITICAL PART
         if (selectedFile) {
           setLoadingContent(true);
           try {
+            if (DEBUG_EDITOR) {
+              console.log('📄 Loading content for file:', selectedFile, 'from new branch:', currentBranch);
+            }
+            
             const branchContent = await contentManager.loadContent(selectedFile);
+            
             if (branchContent !== null) {
               setLocalContent(branchContent);
               if (DEBUG_EDITOR) {
-                console.log('📄 Loaded content from new branch:', currentBranch, 'Length:', branchContent.length);
+                console.log('📄 Loaded existing content from new branch:', currentBranch, 'Length:', branchContent.length);
               }
             } else {
               // No content for this file in the new branch, create default
