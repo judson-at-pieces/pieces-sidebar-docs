@@ -47,11 +47,12 @@ export function EditorLayout() {
         // Force refresh content for the new branch
         contentManager.refreshContentForBranch(cookieBranch);
         
-        // Clear current file selection and content
-        setSelectedFile(undefined);
-        setLocalContent("");
+        // If we have a selected file, reload its content for the new branch
+        if (selectedFile) {
+          loadFileContent(selectedFile);
+        }
         
-        // Release any current locks
+        // Release any current locks (but keep the file selected)
         if (lockManager.myCurrentLock) {
           lockManager.releaseLock(lockManager.myCurrentLock);
         }
@@ -68,7 +69,7 @@ export function EditorLayout() {
     const interval = setInterval(checkBranchCookie, 500);
     
     return () => clearInterval(interval);
-  }, [lastCookieBranch, initialized, contentManager, lockManager]);
+  }, [lastCookieBranch, initialized, contentManager, lockManager, selectedFile]);
 
   const loadFileContent = async (filePath: string) => {
     setLoadingContent(true);
