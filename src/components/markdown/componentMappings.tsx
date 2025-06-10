@@ -1,5 +1,3 @@
-
-
 import React from 'react';
 import Accordion from './Accordion';
 import AccordionGroup from './AccordionGroup';
@@ -27,7 +25,7 @@ interface ComponentProps {
 }
 
 interface CardProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
   title: string;
 }
 
@@ -44,7 +42,7 @@ function Card({ children, title }: CardProps) {
 export const componentMap: Record<string, React.ComponentType<any>> = {
   // Layout Components
   Card: (props: ComponentProps & { title?: string; children?: React.ReactNode }) => (
-    <Card title={props.title || 'Untitled'} children={props.children || <div>No content provided</div>}>
+    <Card title={props.title || 'Untitled'} children={props.children}>
     </Card>
   ),
   CardGroup: (props: ComponentProps & { children: React.ReactNode }) => <CardGroup {...props} />,
@@ -94,4 +92,3 @@ export const availableComponents = Object.keys(componentMap);
 
 // Export function for creating component mappings
 export const createComponentMappings = () => componentMap;
-

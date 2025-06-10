@@ -8,7 +8,6 @@ import { useBranchSessions } from "@/hooks/useBranchSessions";
 import { CookieBasedPRButton } from "./CookieBasedPRButton";
 import { getBranchCookie } from "@/utils/branchCookies";
 import { useNavigate } from "react-router-dom";
-import { NewBranchSelector } from "./NewBranchSelector";
 
 interface EditorMainHeaderProps {
   hasChanges: boolean;
@@ -50,17 +49,6 @@ export function EditorMainHeader({ hasChanges, totalLiveFiles }: EditorMainHeade
       </div>
 
       <div className="flex items-center gap-3">
-        {/* Branch Selector */}
-        <NewBranchSelector />
-
-        {/* PR Button - positioned right after branch selector */}
-        <CookieBasedPRButton
-          sessions={activeSessions}
-          hasChanges={hasChanges || activeSessions.length > 0}
-          initialized={true}
-          targetBranch="main"
-        />
-
         {/* Admin Button */}
         {hasRole('admin') && (
           <Button
@@ -73,6 +61,14 @@ export function EditorMainHeader({ hasChanges, totalLiveFiles }: EditorMainHeade
             Admin
           </Button>
         )}
+
+        {/* PR Button */}
+        <CookieBasedPRButton
+          sessions={activeSessions}
+          hasChanges={hasChanges || activeSessions.length > 0}
+          initialized={true}
+          targetBranch="main"
+        />
 
         {/* User Menu */}
         <UserMenu />

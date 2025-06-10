@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Lock, Users, FileText, Navigation, Search } from 'lucide-react';
 import { NewBranchSelector } from './NewBranchSelector';
+import { CookieBasedPRButton } from './CookieBasedPRButton';
 
 interface Branch {
   name: string;
@@ -64,8 +65,8 @@ export function NewEditorTabNavigation({
                   size="sm"
                   className={`gap-2 transition-all duration-200 ${
                     activeTab === tab.id 
-                      ? 'bg-background shadow-sm border border-border/50 text-foreground' 
-                      : 'hover:bg-muted/50 text-muted-foreground'
+                      ? 'bg-background shadow-sm border border-border/50' 
+                      : 'hover:bg-muted/50'
                   }`}
                 >
                   <IconComponent className="h-4 w-4" />
@@ -121,6 +122,22 @@ export function NewEditorTabNavigation({
         <div className="flex items-center gap-3">
           {/* Branch Selector */}
           <NewBranchSelector />
+
+          {/* Live Files Indicator */}
+          {totalLiveFiles > 0 && (
+            <Badge variant="secondary" className="gap-1">
+              <div className="w-2 h-2 bg-orange-500 rounded-full animate-pulse"></div>
+              {totalLiveFiles} pending
+            </Badge>
+          )}
+
+          {/* Single PR Button */}
+          <CookieBasedPRButton
+            sessions={sessions}
+            hasChanges={hasChanges || totalLiveFiles > 0}
+            initialized={initialized}
+            targetBranch="main"
+          />
         </div>
       </div>
     </div>
