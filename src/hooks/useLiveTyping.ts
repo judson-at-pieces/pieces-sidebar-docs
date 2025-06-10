@@ -55,15 +55,35 @@ export function useLiveTyping(filePath?: string) {
     }
   }, [user?.id, filePath]);
 
-  // Clean up typing sessions for current user except the active file
-  const cleanupAllOtherTypingSessions = useCallback(async (exceptFilePath?: string) => {
+  // Clean up typing sessions for current user except files with active locks
+  const cleanupTypingSessionsSmartly = useCallback(async (activeFilePath?: string) => {
     if (!user?.id) return;
 
     try {
-      console.log('Cleaning up all typing sessions except:', exceptFilePath);
+      console.log('Smart cleanup: preserving sessions for files with locks, active file:', activeFilePath);
       
-      // First get all typing sessions for this user
-      const { data: sessions, error: fetchError } = await supabase
+      // Get all current live editing sessions where this user has a lock
+      const { data: lockedSessions, error: lockError } = await supabase
+        .from('live_editing_sessions')
+        .select('file_path')
+        .eq('locked_by', user.id);
+
+      if (lockError) {
+        console.error('Error fetching locked sessions:', lockError);
+        return;
+      }
+
+      const lockedFiles = new Set(lockedSessions?.map(s => s.file_path) || []);
+      
+      // Add the current active file to protected files
+      if (activeFilePath) {
+        lockedFiles.add(activeFilePath);
+      }
+
+      console.log('Protected files (locked or active):', Array.from(lockedFiles));
+
+      // Get all typing sessions for this user
+      const { data: typingSessions, error: fetchError } = await supabase
         .from('live_typing_sessions')
         .select('file_path')
         .eq('user_id', user.id);
@@ -73,10 +93,10 @@ export function useLiveTyping(filePath?: string) {
         return;
       }
 
-      // Delete all sessions except the current file
-      for (const session of sessions || []) {
-        if (session.file_path !== exceptFilePath) {
-          console.log('Deleting typing session for:', session.file_path);
+      // Delete typing sessions only for files that are NOT locked and NOT active
+      for (const session of typingSessions || []) {
+        if (!lockedFiles.has(session.file_path)) {
+          console.log('Deleting typing session for unprotected file:', session.file_path);
           
           const { error: deleteError } = await supabase.functions.invoke('live-typing', {
             body: {
@@ -89,12 +109,14 @@ export function useLiveTyping(filePath?: string) {
           if (deleteError) {
             console.error('Error deleting typing session:', deleteError);
           }
+        } else {
+          console.log('Preserving typing session for protected file:', session.file_path);
         }
       }
       
-      console.log('All other typing sessions cleaned up successfully');
+      console.log('Smart cleanup completed');
     } catch (error) {
-      console.error('Error cleaning up typing sessions:', error);
+      console.error('Error in smart cleanup:', error);
     }
   }, [user?.id]);
 
@@ -210,9 +232,9 @@ export function useLiveTyping(filePath?: string) {
     // Reset cleanup flag when file path changes
     cleanupExecutedRef.current = false;
 
-    // Clean up all other typing sessions when switching to a new file
+    // Clean up typing sessions smartly when switching to a new file
     if (filePath && user?.id) {
-      cleanupAllOtherTypingSessions(filePath);
+      cleanupTypingSessionsSmartly(filePath);
     }
 
     return () => {
@@ -221,18 +243,18 @@ export function useLiveTyping(filePath?: string) {
         clearTimeout(typingTimeoutRef.current);
       }
     };
-  }, [filePath, cleanupTypingSession, cleanupAllOtherTypingSessions, user?.id]);
+  }, [filePath, cleanupTypingSession, cleanupTypingSessionsSmartly, user?.id]);
 
-  // Add page visibility and beforeunload event listeners for immediate cleanup
+  // Add page visibility and beforeunload event listeners for cleanup
   useEffect(() => {
     const handlePageHide = () => {
-      console.log('Page hiding, cleaning up all typing sessions immediately');
-      cleanupAllOtherTypingSessions();
+      console.log('Page hiding, running smart cleanup');
+      cleanupTypingSessionsSmartly();
     };
 
     const handleBeforeUnload = () => {
-      console.log('Page unloading, cleaning up all typing sessions immediately');
-      cleanupAllOtherTypingSessions();
+      console.log('Page unloading, running smart cleanup');
+      cleanupTypingSessionsSmartly();
     };
 
     // Listen for page visibility changes
@@ -251,7 +273,7 @@ export function useLiveTyping(filePath?: string) {
       window.removeEventListener('beforeunload', handleBeforeUnload);
       window.removeEventListener('pagehide', handlePageHide);
     };
-  }, [cleanupAllOtherTypingSessions]);
+  }, [cleanupTypingSessionsSmartly]);
 
   // Get latest content from other users
   const getLatestTypingContent = useCallback(() => {
