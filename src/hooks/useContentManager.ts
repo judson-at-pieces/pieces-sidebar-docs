@@ -153,19 +153,84 @@ export function useContentManager(lockManager: any) {
     }
   }, [currentUserId]);
 
-  // Enhanced refresh for specific branch
+  // Enhanced refresh for specific branch - FORCE CLEAR CACHE
   const refreshContentForBranch = useCallback(async (branchName: string) => {
     if (DEBUG_CONTENT) {
-      console.log('🔄 Refreshing content for branch:', branchName);
+      console.log('🔄 Force refreshing content for branch (clearing cache):', branchName);
     }
+    
+    // Force clear the current cache
+    setLiveContent(new Map());
     
     const contentMap = await fetchContentForBranch(branchName);
     
     // Only update if this is still the current branch
     if (branchName === getBranchCookie()) {
       setLiveContent(contentMap);
+      if (DEBUG_CONTENT) {
+        console.log('🔄 Cache cleared and content refreshed for branch:', branchName);
+      }
     }
   }, [fetchContentForBranch]);
+
+  // Force load content bypassing cache
+  const loadContentForced = useCallback(async (filePath: string, branchName: string): Promise<string | null> => {
+    if (DEBUG_CONTENT) {
+      console.log('📄 FORCE loading content for file:', filePath, 'branch:', branchName, '(bypassing cache)');
+    }
+
+    try {
+      // Force fetch from database, bypassing cache completely
+      const { data, error } = await supabase
+        .from('live_editing_sessions')
+        .select('content')
+        .eq('file_path', filePath)
+        .eq('branch_name', branchName)
+        .maybeSingle();
+
+      if (error) {
+        console.error('Error force loading content:', error);
+        return null;
+      }
+
+      if (data?.content) {
+        if (DEBUG_CONTENT) {
+          console.log('📄 FORCE loaded from database for branch:', branchName);
+        }
+        return data.content;
+      }
+
+      // Fallback to file system
+      let fetchPath = filePath;
+      if (!fetchPath.endsWith('.md')) {
+        fetchPath = `${fetchPath}.md`;
+      }
+      
+      const cleanFetchPath = fetchPath.replace(/^\/+/, '');
+      const fetchUrl = `/content/${cleanFetchPath}`;
+      
+      const response = await fetch(fetchUrl, {
+        method: 'GET',
+        headers: {
+          'Accept': 'text/plain, text/markdown, */*',
+          'Cache-Control': 'no-cache'
+        }
+      });
+      
+      if (response.ok) {
+        const content = await response.text();
+        if (DEBUG_CONTENT) {
+          console.log('📄 FORCE loaded from filesystem');
+        }
+        return content;
+      }
+
+      return null;
+    } catch (error) {
+      console.error('Error in loadContentForced:', error);
+      return null;
+    }
+  }, []);
 
   // Save content
   const saveContent = useCallback(async (filePath: string, content: string, immediate = false) => {
@@ -313,6 +378,7 @@ export function useContentManager(lockManager: any) {
     saveContent,
     saveContentToBranch,
     loadContent,
+    loadContentForced,
     getContent,
     hasUnsavedChanges,
     refreshContent: () => fetchContentForBranch(currentBranch).then(setLiveContent),

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useLockManager } from "@/hooks/useLockManager";
@@ -73,29 +74,29 @@ export function EditorLayout() {
             await lockManager.releaseLock(lockManager.myCurrentLock);
           }
           
-          // Step 3: Force refresh content manager for new branch
+          // Step 3: Force clear local content and show loading
+          setLocalContent("");
+          setLoadingContent(true);
+          
+          // Step 4: Force refresh content manager for new branch (clear cache)
           await contentManager.refreshContentForBranch(currentBranch);
           
-          // Step 4: Clear local content temporarily to show loading state
-          setLocalContent("");
-          
-          // Step 5: If we have a selected file, reload its content for the new branch
+          // Step 5: Force reload the current file from the new branch
           if (selectedFile) {
             if (DEBUG_EDITOR) {
-              console.log('📄 Loading content for new branch:', currentBranch);
+              console.log('📄 Force loading content for new branch:', currentBranch, 'file:', selectedFile);
             }
             
-            setLoadingContent(true);
+            // Add delay to ensure content manager has refreshed
+            await new Promise(resolve => setTimeout(resolve, 1000));
             
-            // Add a small delay to ensure the content manager has refreshed
-            await new Promise(resolve => setTimeout(resolve, 500));
-            
-            const newContent = await contentManager.loadContent(selectedFile);
+            // Force reload content by bypassing cache
+            const newContent = await contentManager.loadContentForced(selectedFile, currentBranch);
             
             if (newContent !== null) {
               setLocalContent(newContent);
               if (DEBUG_EDITOR) {
-                console.log('✅ Loaded existing content from new branch, length:', newContent.length);
+                console.log('✅ Force loaded content from new branch, length:', newContent.length);
               }
             } else {
               // Create default content for new branch
@@ -136,6 +137,8 @@ Start editing to see the live preview!
                 console.log('🔒 Lock acquisition result:', lockAcquired);
               }
             }, 1000);
+          } else {
+            setLoadingContent(false);
           }
           
         } catch (error) {
