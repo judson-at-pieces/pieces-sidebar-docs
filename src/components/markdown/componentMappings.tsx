@@ -1,4 +1,5 @@
 
+
 import React from 'react';
 import Accordion from './Accordion';
 import AccordionGroup from './AccordionGroup';
@@ -93,3 +94,4 @@ export const availableComponents = Object.keys(componentMap);
 
 // Export function for creating component mappings
 export const createComponentMappings = () => componentMap;
+
