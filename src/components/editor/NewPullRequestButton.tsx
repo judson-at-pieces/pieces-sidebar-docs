@@ -29,50 +29,6 @@ export function NewPullRequestButton({
   // For other branches: create PR from current branch to target
   const isEnabled = initialized && currentBranch && hasChanges && currentBranch !== targetBranch;
 
-  // 🚨🚨🚨 ULTRA INTENSIVE PR BUTTON DEBUGGING
-  console.group('🚀🚀🚀 NEW PULL REQUEST BUTTON RENDER');
-  console.log('📊 PROPS RECEIVED:', {
-    currentBranch: JSON.stringify(currentBranch),
-    currentBranchType: typeof currentBranch,
-    currentBranchRaw: currentBranch,
-    targetBranch: JSON.stringify(targetBranch),
-    targetBranchType: typeof targetBranch,
-    hasChanges,
-    initialized,
-    sessionsCount: sessions.length,
-    activeSessionsCount: activeSessions.length
-  });
-  
-  console.log('📊 BUTTON STATE LOGIC:', {
-    isEnabled,
-    'initialized': initialized,
-    'currentBranch exists': !!currentBranch,
-    'hasChanges': hasChanges,
-    'currentBranch !== targetBranch': currentBranch !== targetBranch,
-    'exact comparison': `"${currentBranch}" !== "${targetBranch}"`,
-    'string lengths': { 
-      current: currentBranch?.length, 
-      target: targetBranch?.length 
-    }
-  });
-  
-  console.log('📊 STRING COMPARISON DEEP DIVE:', {
-    currentBranchRaw: currentBranch,
-    targetBranchRaw: targetBranch,
-    'currentBranch === "main"': currentBranch === 'main',
-    'currentBranch === targetBranch': currentBranch === targetBranch,
-    'currentBranch == targetBranch': currentBranch == targetBranch,
-    currentBranchCharCodes: currentBranch ? Array.from(currentBranch).map(c => `${c}(${c.charCodeAt(0)})`) : 'null',
-    targetBranchCharCodes: targetBranch ? Array.from(targetBranch).map(c => `${c}(${c.charCodeAt(0)})`) : 'null'
-  });
-  
-  console.log('📊 FINAL BUTTON STATE:', {
-    buttonEnabled: isEnabled,
-    buttonText: getButtonText(),
-    tooltip: getTooltip()
-  });
-  console.groupEnd();
-
   const getGitHubAppToken = async () => {
     const { data: installations, error } = await supabase
       .from('github_installations')
@@ -195,6 +151,50 @@ export function NewPullRequestButton({
     if (currentBranch === targetBranch) return `Cannot create PR to same branch (${targetBranch})`;
     return `Create pull request from ${currentBranch} to ${targetBranch}`;
   };
+
+  // 🚨🚨🚨 ULTRA INTENSIVE PR BUTTON DEBUGGING
+  console.group('🚀🚀🚀 NEW PULL REQUEST BUTTON RENDER');
+  console.log('📊 PROPS RECEIVED:', {
+    currentBranch: JSON.stringify(currentBranch),
+    currentBranchType: typeof currentBranch,
+    currentBranchRaw: currentBranch,
+    targetBranch: JSON.stringify(targetBranch),
+    targetBranchType: typeof targetBranch,
+    hasChanges,
+    initialized,
+    sessionsCount: sessions.length,
+    activeSessionsCount: activeSessions.length
+  });
+  
+  console.log('📊 BUTTON STATE LOGIC:', {
+    isEnabled,
+    'initialized': initialized,
+    'currentBranch exists': !!currentBranch,
+    'hasChanges': hasChanges,
+    'currentBranch !== targetBranch': currentBranch !== targetBranch,
+    'exact comparison': `"${currentBranch}" !== "${targetBranch}"`,
+    'string lengths': { 
+      current: currentBranch?.length, 
+      target: targetBranch?.length 
+    }
+  });
+  
+  console.log('📊 STRING COMPARISON DEEP DIVE:', {
+    currentBranchRaw: currentBranch,
+    targetBranchRaw: targetBranch,
+    'currentBranch === "main"': currentBranch === 'main',
+    'currentBranch === targetBranch': currentBranch === targetBranch,
+    'currentBranch == targetBranch': currentBranch == targetBranch,
+    currentBranchCharCodes: currentBranch ? Array.from(currentBranch).map(c => `${c}(${c.charCodeAt(0)})`) : 'null',
+    targetBranchCharCodes: targetBranch ? Array.from(targetBranch).map(c => `${c}(${c.charCodeAt(0)})`) : 'null'
+  });
+  
+  console.log('📊 FINAL BUTTON STATE:', {
+    buttonEnabled: isEnabled,
+    buttonText: getButtonText(),
+    tooltip: getTooltip()
+  });
+  console.groupEnd();
 
   return (
     <Button
