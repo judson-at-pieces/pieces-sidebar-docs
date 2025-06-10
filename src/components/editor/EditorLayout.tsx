@@ -29,19 +29,17 @@ export function EditorLayout() {
   const [activeTab, setActiveTab] = useState<'navigation' | 'content' | 'seo'>('content');
   const [loadingContent, setLoadingContent] = useState(false);
   const [lastBranch, setLastBranch] = useState<string | null>(null);
-  const [editorKey, setEditorKey] = useState(0); // Force re-render key
 
   if (DEBUG_EDITOR) {
     console.log('🎯 EDITOR STATE:', {
       selectedFile,
       currentBranch,
       lastBranch,
-      localContentLength: localContent.length,
-      editorKey
+      localContentLength: localContent.length
     });
   }
 
-  // Handle branch changes with COMPLETE reload
+  // FORCE COMPLETE PAGE RELOAD on branch changes
   useEffect(() => {
     if (!currentBranch) return;
     
@@ -51,109 +49,16 @@ export function EditorLayout() {
       return;
     }
     
-    // Actual branch change detected - FORCE COMPLETE RELOAD
+    // Branch change detected - FORCE COMPLETE PAGE RELOAD
     if (currentBranch !== lastBranch) {
       if (DEBUG_EDITOR) {
-        console.log('🔄 FORCING COMPLETE RELOAD - Branch switch:', lastBranch, '->', currentBranch);
+        console.log('🔄 FORCING COMPLETE PAGE RELOAD - Branch switch:', lastBranch, '->', currentBranch);
       }
       
-      const handleBranchSwitchWithCompleteReload = async () => {
-        try {
-          // Step 1: Save current content to old branch if we have it
-          if (selectedFile && localContent && lockManager.isFileLockedByMe(selectedFile)) {
-            if (DEBUG_EDITOR) {
-              console.log('💾 Saving current content to old branch:', lastBranch);
-            }
-            await contentManager.saveContentToBranch(selectedFile, localContent, lastBranch);
-          }
-          
-          // Step 2: Release ALL locks
-          if (lockManager.myCurrentLock) {
-            await lockManager.releaseLock(lockManager.myCurrentLock);
-          }
-          
-          // Step 3: FORCE COMPLETE STATE RESET
-          setLocalContent("");
-          setLoadingContent(true);
-          setEditorKey(prev => prev + 1); // Force complete re-render
-          
-          // Step 4: Force clear content manager cache
-          await contentManager.refreshContentForBranch(currentBranch);
-          
-          // Step 5: Add significant delay to ensure cache is cleared
-          await new Promise(resolve => setTimeout(resolve, 2000));
-          
-          // Step 6: If we have a selected file, force reload it completely
-          if (selectedFile) {
-            if (DEBUG_EDITOR) {
-              console.log('📄 FORCE loading content for new branch (complete reload):', currentBranch, 'file:', selectedFile);
-            }
-            
-            // Force reload content bypassing ALL caches
-            const newContent = await contentManager.loadContentForced(selectedFile, currentBranch);
-            
-            if (newContent !== null) {
-              setLocalContent(newContent);
-              if (DEBUG_EDITOR) {
-                console.log('✅ FORCE loaded content from new branch (complete reload), length:', newContent.length);
-              }
-            } else {
-              // Create default content for new branch
-              const fileName = selectedFile.split('/').pop()?.replace(/\.md$/, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
-              const pathForFrontmatter = selectedFile.replace(/\.md$/, '').replace(/^\//, '');
-              
-              const defaultContent = `---
-title: "${fileName}"
-path: "/${pathForFrontmatter}"
-visibility: "PUBLIC"
-description: "Add a description for this page"
----
-
-# ${fileName}
-
-This content is specific to the ${currentBranch} branch.
-
-Add your content here. You can use markdown and custom components:
-
-:::info
-This is an information callout. Type "/" to see more available components.
-:::
-
-Start editing to see the live preview!
-`;
-              setLocalContent(defaultContent);
-              if (DEBUG_EDITOR) {
-                console.log('📝 Created default content for new branch (complete reload)');
-              }
-            }
-          }
-          
-          setLoadingContent(false);
-          
-          // Step 7: Try to acquire lock after everything is loaded
-          if (selectedFile) {
-            setTimeout(async () => {
-              const lockAcquired = await lockManager.acquireLock(selectedFile);
-              if (DEBUG_EDITOR) {
-                console.log('🔒 Lock acquisition result after complete reload:', lockAcquired);
-              }
-            }, 1000);
-          }
-          
-        } catch (error) {
-          console.error('❌ Error during complete branch reload:', error);
-          setLoadingContent(false);
-        } finally {
-          setLastBranch(currentBranch);
-          if (DEBUG_EDITOR) {
-            console.log('✅ Complete branch reload completed');
-          }
-        }
-      };
-      
-      handleBranchSwitchWithCompleteReload();
+      // Force complete page reload to ensure ALL state is cleared
+      window.location.reload();
     }
-  }, [currentBranch, lastBranch, selectedFile, localContent, lockManager, contentManager]);
+  }, [currentBranch, lastBranch]);
 
   const loadFileContent = async (filePath: string) => {
     setLoadingContent(true);
@@ -359,8 +264,8 @@ Start editing to see the live preview!
             branches={branches}
           />
           
-          {/* Tab Content - Force re-render with key */}
-          <div key={editorKey} className="flex-1 overflow-hidden flex">
+          {/* Tab Content */}
+          <div className="flex-1 overflow-hidden flex">
             {activeTab === 'navigation' ? (
               <>
                 <FileTreeSidebar
