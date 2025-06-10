@@ -264,7 +264,7 @@ Please review the changes and merge when ready.
           <div className="h-full animate-in fade-in slide-in-from-top-2 duration-300">
             <WYSIWYGEditor 
               content={content} 
-              onContentChange={onContentChange}
+              onChange={(content) => onContentChange(content)}
             />
           </div>
         ) : (
