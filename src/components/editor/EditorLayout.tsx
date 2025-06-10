@@ -68,19 +68,27 @@ export function EditorLayout() {
             await contentManager.saveContentToBranch(selectedFile, localContent, lastBranch);
           }
           
-          // Step 2: Release current lock
-          if (selectedFile && lockManager.isFileLockedByMe(selectedFile)) {
-            await lockManager.releaseLock(selectedFile);
+          // Step 2: Release ALL locks from current user
+          if (lockManager.myCurrentLock) {
+            await lockManager.releaseLock(lockManager.myCurrentLock);
           }
           
           // Step 3: Force refresh content manager for new branch
           await contentManager.refreshContentForBranch(currentBranch);
           
-          // Step 4: If we have a selected file, reload its content for the new branch
+          // Step 4: Clear local content temporarily to show loading state
+          setLocalContent("");
+          
+          // Step 5: If we have a selected file, reload its content for the new branch
           if (selectedFile) {
             if (DEBUG_EDITOR) {
               console.log('📄 Loading content for new branch:', currentBranch);
             }
+            
+            setLoadingContent(true);
+            
+            // Add a small delay to ensure the content manager has refreshed
+            await new Promise(resolve => setTimeout(resolve, 500));
             
             const newContent = await contentManager.loadContent(selectedFile);
             
@@ -119,17 +127,20 @@ Start editing to see the live preview!
               }
             }
             
-            // Step 5: Try to acquire lock for the new branch
+            setLoadingContent(false);
+            
+            // Step 6: Try to acquire lock for the new branch after content is loaded
             setTimeout(async () => {
               const lockAcquired = await lockManager.acquireLock(selectedFile);
               if (DEBUG_EDITOR) {
                 console.log('🔒 Lock acquisition result:', lockAcquired);
               }
-            }, 200);
+            }, 1000);
           }
           
         } catch (error) {
           console.error('❌ Error during branch switch:', error);
+          setLoadingContent(false);
         } finally {
           setLastBranch(currentBranch);
           setIsSwitchingBranch(false);
@@ -238,10 +249,15 @@ Start editing to see the live preview!
       await contentManager.saveContent(selectedFile, localContent, true);
     }
     
+    // Release current lock before switching files
+    if (selectedFile && lockManager.isFileLockedByMe(selectedFile)) {
+      await lockManager.releaseLock(selectedFile);
+    }
+    
     setSelectedFile(filePath);
     await loadFileContent(filePath);
     
-    // Try to acquire lock
+    // Try to acquire lock for new file
     setTimeout(() => {
       lockManager.acquireLock(filePath);
     }, 100);
