@@ -218,7 +218,7 @@ export function useContentManager(lockManager: any) {
     }
   }, [currentUserId, currentBranch, isFileLockedByMe]);
 
-  // Load content for a specific file with branch awareness
+  // Load content for a specific file with strict branch isolation
   const loadContent = useCallback(async (filePath: string): Promise<string | null> => {
     if (!currentBranch) return null;
     
@@ -242,7 +242,7 @@ export function useContentManager(lockManager: any) {
     }
 
     try {
-      // Try to load from database for this specific branch
+      // Try to load from database for this specific branch ONLY
       const { data, error } = await supabase
         .from('live_editing_sessions')
         .select('content')
@@ -257,7 +257,7 @@ export function useContentManager(lockManager: any) {
 
       if (data?.content) {
         if (DEBUG_CONTENT) {
-          console.log('📄 Loaded branch content from DB for:', filePath, 'in branch:', currentBranch);
+          console.log('📄 Loaded existing branch content from DB for:', filePath, 'in branch:', currentBranch);
         }
         
         // Cache the content
@@ -268,7 +268,8 @@ export function useContentManager(lockManager: any) {
         return data.content;
       }
 
-      // Fall back to file system only if no branch-specific content exists
+      // Only fall back to file system if no branch-specific content exists
+      // This ensures branch isolation - new branches start fresh from filesystem
       let fetchPath = filePath;
       if (!fetchPath.endsWith('.md')) {
         fetchPath = `${fetchPath}.md`;
@@ -288,7 +289,7 @@ export function useContentManager(lockManager: any) {
       if (response.ok) {
         const content = await response.text();
         if (DEBUG_CONTENT) {
-          console.log('📄 Loaded content from filesystem for:', filePath, '(no branch-specific content)');
+          console.log('📄 Loaded fresh content from filesystem for new branch:', filePath, 'branch:', currentBranch);
         }
         return content;
       }

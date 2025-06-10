@@ -212,58 +212,12 @@ export function useBranchManager() {
     console.log('🚨 SWITCH BRANCH: Proceeding with branch switch...');
 
     try {
-      // Ensure sessions exist for the target branch
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        console.log('🚨 SWITCH BRANCH: User found, ensuring sessions...');
-        
-        // Get latest content for each file from any branch
-        const { data: allSessions } = await supabase
-          .from('live_editing_sessions')
-          .select('file_path, content, updated_at')
-          .eq('user_id', user.id)
-          .order('updated_at', { ascending: false });
-
-        if (allSessions && allSessions.length > 0) {
-          console.log('🚨 SWITCH BRANCH: Found existing sessions, creating for new branch...');
-          
-          // Group by file_path and get the most recent content
-          const latestByFile = new Map<string, string>();
-          
-          allSessions.forEach(session => {
-            if (!latestByFile.has(session.file_path) && session.content) {
-              latestByFile.set(session.file_path, session.content);
-            }
-          });
-
-          // Ensure each file has a session on the target branch
-          const upsertPromises = Array.from(latestByFile.entries()).map(async ([filePath, content]) => {
-            await supabase
-              .from('live_editing_sessions')
-              .upsert({
-                file_path: filePath,
-                content: content,
-                user_id: user.id,
-                branch_name: branchName,
-                locked_by: null,
-                locked_at: null,
-                updated_at: new Date().toISOString()
-              }, {
-                onConflict: 'file_path,branch_name'
-              });
-          });
-
-          await Promise.all(upsertPromises);
-          console.log('🚨 SWITCH BRANCH: Sessions created for new branch');
-        }
-      }
-
       console.log('🚨 SWITCH BRANCH: About to update state and cookie to:', {
         newBranch: JSON.stringify(branchName),
         charCodes: Array.from(branchName).map(c => `${c}(${c.charCodeAt(0)})`)
       });
 
-      // Update state and cookie
+      // Update state and cookie - no more automatic session creation
       if (mountedRef.current) {
         setState(prev => {
           const newState = { ...prev, currentBranch: branchName };
