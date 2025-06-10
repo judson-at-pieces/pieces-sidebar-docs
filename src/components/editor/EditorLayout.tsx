@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useLockManager } from "@/hooks/useLockManager";
@@ -157,11 +156,11 @@ Start editing to see the live preview!
     }
   };
 
-  // Derive lock status for selected file
+  // Derive lock status for selected file with proper name resolution
   const isLocked = selectedFile ? lockManager.isFileLocked(selectedFile) : false;
   const lockedByMe = selectedFile ? lockManager.isFileLockedByMe(selectedFile) : false;
   const lockedByOther = selectedFile ? lockManager.isFileLockedByOther(selectedFile) : false;
-  const lockedBy = lockedByMe ? 'You' : (lockedByOther ? 'Someone else' : null);
+  const lockedBy = selectedFile ? lockManager.getFileLockOwnerName(selectedFile) : null;
   const hasChanges = selectedFile ? contentManager.hasUnsavedChanges(selectedFile, localContent) : false;
   const liveContent = selectedFile ? contentManager.getContent(selectedFile) : null;
 

@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getBranchCookie } from '@/utils/branchCookies';
@@ -9,6 +8,8 @@ interface LockSession {
   locked_by: string;
   locked_at: string;
   branch_name: string;
+  locked_by_name?: string;
+  locked_by_email?: string;
 }
 
 const DEBUG_LOCK = true;
@@ -17,6 +18,7 @@ export function useLockManager() {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [activeLocks, setActiveLocks] = useState<Map<string, LockSession>>(new Map());
   const [myCurrentLock, setMyCurrentLock] = useState<string | null>(null);
+  const [userNames, setUserNames] = useState<Map<string, string>>(new Map());
   const currentBranch = getBranchCookie() || 'main';
   const heartbeatIntervalRef = useRef<NodeJS.Timeout>();
   const cleanupExecutedRef = useRef(false);
@@ -39,6 +41,33 @@ export function useLockManager() {
     getCurrentUser();
   }, []);
 
+  // Fetch user names for display
+  const fetchUserNames = useCallback(async (userIds: string[]) => {
+    if (userIds.length === 0) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('id, full_name, email')
+        .in('id', userIds);
+
+      if (error) {
+        console.error('Error fetching user names:', error);
+        return;
+      }
+
+      const nameMap = new Map(userNames);
+      (data || []).forEach(profile => {
+        const displayName = profile.full_name || profile.email || `User ${profile.id.slice(0, 8)}`;
+        nameMap.set(profile.id, displayName);
+      });
+      
+      setUserNames(nameMap);
+    } catch (error) {
+      console.error('Error in fetchUserNames:', error);
+    }
+  }, [userNames]);
+
   // Fetch all active locks for current branch
   const fetchActiveLocks = useCallback(async () => {
     if (!currentBranch) return;
@@ -58,16 +87,25 @@ export function useLockManager() {
 
       const lockMap = new Map<string, LockSession>();
       let myLock: string | null = null;
+      const userIdsToFetch: string[] = [];
 
       (data || []).forEach(session => {
         lockMap.set(session.file_path, session as LockSession);
         if (session.locked_by === currentUserId) {
           myLock = session.file_path;
         }
+        if (session.locked_by && !userNames.has(session.locked_by)) {
+          userIdsToFetch.push(session.locked_by);
+        }
       });
 
       setActiveLocks(lockMap);
       setMyCurrentLock(myLock);
+
+      // Fetch user names for any new users
+      if (userIdsToFetch.length > 0) {
+        fetchUserNames(userIdsToFetch);
+      }
 
       if (DEBUG_LOCK) {
         console.log('🔒 FETCHED LOCKS:', {
@@ -79,7 +117,7 @@ export function useLockManager() {
     } catch (error) {
       console.error('Error in fetchActiveLocks:', error);
     }
-  }, [currentBranch, currentUserId]);
+  }, [currentBranch, currentUserId, userNames, fetchUserNames]);
 
   // Setup real-time subscription for locks
   useEffect(() => {
@@ -293,7 +331,7 @@ export function useLockManager() {
     fetchActiveLocks();
   }, [fetchActiveLocks]);
 
-  // Helper functions
+  // Helper functions with name resolution
   const isFileLocked = useCallback((filePath: string): boolean => {
     return activeLocks.has(filePath);
   }, [activeLocks]);
@@ -312,6 +350,15 @@ export function useLockManager() {
     return activeLocks.get(filePath)?.locked_by || null;
   }, [activeLocks]);
 
+  const getFileLockOwnerName = useCallback((filePath: string): string => {
+    const lock = activeLocks.get(filePath);
+    if (!lock?.locked_by) return 'Unknown';
+    
+    if (lock.locked_by === currentUserId) return 'You';
+    
+    return userNames.get(lock.locked_by) || `User ${lock.locked_by.slice(0, 8)}`;
+  }, [activeLocks, currentUserId, userNames]);
+
   return {
     // State
     currentUserId,
@@ -328,6 +375,7 @@ export function useLockManager() {
     isFileLockedByMe,
     isFileLockedByOther,
     getFileLockOwner,
+    getFileLockOwnerName,
     
     // Utils
     refreshLocks: fetchActiveLocks
