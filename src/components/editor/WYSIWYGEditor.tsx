@@ -10,7 +10,7 @@ import { toast } from 'sonner';
 
 interface WYSIWYGEditorProps {
   content: string;
-  onChange: (content: string) => void;
+  onContentChange: (content: string) => void;
   onSave?: () => void;
   isLocked?: boolean;
   lockedBy?: string | null;
@@ -18,7 +18,7 @@ interface WYSIWYGEditorProps {
 
 export function WYSIWYGEditor({ 
   content, 
-  onChange, 
+  onContentChange, 
   onSave, 
   isLocked = false, 
   lockedBy 
@@ -89,7 +89,7 @@ export function WYSIWYGEditor({
       
       // Update content
       const newContent = (editorRef.current as HTMLElement).innerText || '';
-      onChange(newContent);
+      onContentChange(newContent);
     }
   };
 
