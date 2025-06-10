@@ -1,7 +1,8 @@
 
 import { useState, useEffect } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
-import { useLiveEditing } from "@/hooks/useLiveEditing";
+import { useLockManager } from "@/hooks/useLockManager";
+import { useContentManager } from "@/hooks/useContentManager";
 import { useBranchManager } from "@/hooks/useBranchManager";
 import { useBranchSessions } from "@/hooks/useBranchSessions";
 import { NavigationEditor } from "./NavigationEditor";
@@ -12,137 +13,75 @@ import { Button } from "@/components/ui/button";
 import { EditorMainHeader } from "./EditorMainHeader";
 import { NewEditorTabNavigation } from "./NewEditorTabNavigation";
 
-const DEBUG_MARKDOWN = false;
+const DEBUG_EDITOR = true;
 
 export function EditorLayout() {
   const { fileStructure, isLoading, error, refetch } = useFileStructure();
   const { currentBranch, initialized, branches } = useBranchManager();
   const { sessions } = useBranchSessions(currentBranch);
 
-  console.log('🔵 EDITOR LAYOUT: Using useBranchManager only:', {
-    currentBranch: JSON.stringify(currentBranch),
-    initialized,
-    branchesCount: branches.length
-  });
+  // Initialize the robust locking system
+  const lockManager = useLockManager();
+  const contentManager = useContentManager(lockManager);
 
   const [selectedFile, setSelectedFile] = useState<string>();
-  const [content, setContent] = useState("");
-  const [hasChanges, setHasChanges] = useState(false);
+  const [localContent, setLocalContent] = useState("");
   const [activeTab, setActiveTab] = useState<'navigation' | 'content' | 'seo'>('content');
   const [loadingContent, setLoadingContent] = useState(false);
 
-  // Live editing hook
-  const {
-    isLocked,
-    lockedBy,
-    liveContent,
-    isAcquiringLock,
-    acquireLock,
-    releaseLock,
-    takeLock,
-    saveLiveContent,
-    loadLiveContent,
-  } = useLiveEditing(selectedFile, currentBranch);
+  if (DEBUG_EDITOR) {
+    console.log('🎯 EDITOR STATE:', {
+      selectedFile,
+      currentBranch,
+      myCurrentLock: lockManager.myCurrentLock,
+      isFileLockedByMe: selectedFile ? lockManager.isFileLockedByMe(selectedFile) : false,
+      hasUnsavedChanges: selectedFile ? contentManager.hasUnsavedChanges(selectedFile, localContent) : false
+    });
+  }
 
   // Clear local state when branch changes
   useEffect(() => {
     if (currentBranch) {
-      if (DEBUG_MARKDOWN) {
+      if (DEBUG_EDITOR) {
         console.log('🔄 Branch changed, clearing local state for:', currentBranch);
       }
       setSelectedFile(undefined);
-      setContent("");
-      setHasChanges(false);
+      setLocalContent("");
     }
   }, [currentBranch]);
 
-  // Auto-save live content when user has the lock
+  // Auto-save when user has the lock and content changes
   useEffect(() => {
-    if (selectedFile && isLocked && lockedBy === 'You' && hasChanges && content && currentBranch) {
-      const timeoutId = setTimeout(() => {
-        if (DEBUG_MARKDOWN) {
-          console.log('Auto-saving live content for file:', selectedFile, 'on branch:', currentBranch);
-        }
-        saveLiveContent(selectedFile, content);
-      }, 500);
-
-      return () => clearTimeout(timeoutId);
+    if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && localContent) {
+      contentManager.saveContent(selectedFile, localContent, false);
     }
-  }, [selectedFile, isLocked, lockedBy, hasChanges, content, currentBranch, saveLiveContent]);
+  }, [selectedFile, localContent, lockManager, contentManager]);
 
   const handleFileSelect = async (filePath: string) => {
-    if (DEBUG_MARKDOWN) {
+    if (DEBUG_EDITOR) {
       console.log('=== FILE SELECTION ===');
       console.log('Selected file:', filePath);
       console.log('Current branch:', currentBranch);
       console.log('Previous file:', selectedFile);
-      console.log('Has lock on previous file:', isLocked && lockedBy === 'You');
+      console.log('Current lock:', lockManager.myCurrentLock);
     }
     
-    // IMPORTANT: Release lock on previous file if user owns it
-    if (selectedFile && selectedFile !== filePath && isLocked && lockedBy === 'You') {
-      if (DEBUG_MARKDOWN) {
-        console.log('🔒 Releasing lock on previous file:', selectedFile);
-      }
-      await releaseLock(selectedFile);
-    }
-    
-    setSelectedFile(filePath);
-    setHasChanges(false);
+    // If selecting the same file, do nothing
+    if (selectedFile === filePath) return;
+
     setLoadingContent(true);
-
+    
     try {
-      // Check if there's live content for this file first
-      const liveFileContent = await loadLiveContent(filePath);
+      // Load content for the new file
+      const content = await contentManager.loadContent(filePath);
       
-      if (liveFileContent) {
-        if (DEBUG_MARKDOWN) {
-          console.log('Found live content for:', filePath);
+      if (content !== null) {
+        setLocalContent(content);
+        if (DEBUG_EDITOR) {
+          console.log('📄 Loaded content for:', filePath, 'Length:', content.length);
         }
-        setContent(liveFileContent);
-        setLoadingContent(false);
-        // Try to acquire lock automatically
-        setTimeout(() => acquireLock(filePath), 100);
-        return;
-      }
-
-      // Load from file system
-      let fetchPath = filePath;
-      if (!fetchPath.endsWith('.md')) {
-        fetchPath = `${fetchPath}.md`;
-      }
-      
-      const cleanFetchPath = fetchPath.replace(/^\/+/, '');
-      const fetchUrl = `/content/${cleanFetchPath}`;
-      
-      if (DEBUG_MARKDOWN) {
-        console.log('Fetching from URL:', fetchUrl);
-      }
-      
-      const response = await fetch(fetchUrl, {
-        method: 'GET',
-        headers: {
-          'Accept': 'text/plain, text/markdown, */*',
-          'Cache-Control': 'no-cache'
-        }
-      });
-      
-      const responseText = await response.text();
-      
-      if (responseText.trim().startsWith('<!DOCTYPE html>') || responseText.trim().startsWith('<html')) {
-        console.error('ERROR: Received HTML instead of markdown for:', fetchUrl);
-        throw new Error('Server returned HTML instead of markdown file');
-      }
-      
-      if (response.ok && responseText.length > 0) {
-        if (DEBUG_MARKDOWN) {
-          console.log('Successfully loaded content for:', filePath);
-        }
-        setContent(responseText);
       } else {
-        if (DEBUG_MARKDOWN) {
-          console.log('File not found, creating default content for:', filePath);
-        }
+        // Create default content if file doesn't exist
         const fileName = filePath.split('/').pop()?.replace(/\.md$/, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
         const pathForFrontmatter = filePath.replace(/\.md$/, '').replace(/^\//, '');
         
@@ -163,78 +102,68 @@ This is an information callout. Type "/" to see more available components.
 
 Start editing to see the live preview!
 `;
-        setContent(defaultContent);
+        setLocalContent(defaultContent);
       }
+
+      setSelectedFile(filePath);
       
-      // Try to acquire lock automatically
-      setTimeout(() => acquireLock(filePath), 100);
+      // Try to acquire lock automatically after a short delay
+      setTimeout(() => {
+        lockManager.acquireLock(filePath);
+      }, 100);
       
     } catch (error) {
-      console.error('=== ERROR LOADING FILE ===');
-      console.error('File path:', filePath);
-      console.error('Error:', error);
-      
-      // Create default content on error
-      const fileName = filePath.split('/').pop()?.replace(/\.md$/, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
-      const pathForFrontmatter = filePath.replace(/\.md$/, '').replace(/^\//, '');
-      
-      const defaultContent = `---
-title: "${fileName}"
-path: "/${pathForFrontmatter}"
-visibility: "PUBLIC"
-description: "Add a description for this page"
----
-
-# ${fileName}
-
-Add your content here. You can use markdown and custom components:
-
-:::info
-This is an information callout. Type "/" to see more available components.
-:::
-
-Start editing to see the live preview!
-`;
-      setContent(defaultContent);
-      
-      // Try to acquire lock automatically even on error
-      setTimeout(() => acquireLock(filePath), 100);
+      console.error('Error loading file:', error);
+      setLocalContent("Error loading file content");
     } finally {
       setLoadingContent(false);
     }
   };
 
   const handleContentChange = (newContent: string) => {
-    // Allow content changes if user has the lock
-    if (isLocked && lockedBy === 'You') {
-      setContent(newContent);
-      setHasChanges(true);
+    // Only allow content changes if user has the lock
+    if (selectedFile && lockManager.isFileLockedByMe(selectedFile)) {
+      setLocalContent(newContent);
     }
   };
 
   const handleAcquireLock = async () => {
-    if (selectedFile && currentBranch) {
-      if (DEBUG_MARKDOWN) {
-        console.log('Manually acquiring lock for:', selectedFile, 'on branch:', currentBranch);
+    if (selectedFile) {
+      if (DEBUG_EDITOR) {
+        console.log('🔒 Manually acquiring lock for:', selectedFile);
       }
-      const success = await acquireLock(selectedFile);
-      if (success && DEBUG_MARKDOWN) {
-        console.log('Lock acquired for editing:', selectedFile);
+      const success = await lockManager.acquireLock(selectedFile);
+      if (success && DEBUG_EDITOR) {
+        console.log('✅ Lock acquired for:', selectedFile);
       }
     }
   };
 
   const handleTakeLock = async () => {
-    if (selectedFile && currentBranch) {
-      if (DEBUG_MARKDOWN) {
-        console.log('Force taking lock for:', selectedFile, 'on branch:', currentBranch);
+    if (selectedFile) {
+      if (DEBUG_EDITOR) {
+        console.log('🔒 Force taking lock for:', selectedFile);
       }
-      const success = await takeLock(selectedFile);
-      if (success && DEBUG_MARKDOWN) {
-        console.log('Lock force taken for editing:', selectedFile);
+      const success = await lockManager.forceTakeLock(selectedFile);
+      if (success && DEBUG_EDITOR) {
+        console.log('✅ Lock force taken for:', selectedFile);
       }
     }
   };
+
+  const handleSave = async () => {
+    if (selectedFile && lockManager.isFileLockedByMe(selectedFile)) {
+      await contentManager.saveContent(selectedFile, localContent, true);
+    }
+  };
+
+  // Derive lock status for selected file
+  const isLocked = selectedFile ? lockManager.isFileLocked(selectedFile) : false;
+  const lockedByMe = selectedFile ? lockManager.isFileLockedByMe(selectedFile) : false;
+  const lockedByOther = selectedFile ? lockManager.isFileLockedByOther(selectedFile) : false;
+  const lockedBy = lockedByMe ? 'You' : (lockedByOther ? 'Someone else' : null);
+  const hasChanges = selectedFile ? contentManager.hasUnsavedChanges(selectedFile, localContent) : false;
+  const liveContent = selectedFile ? contentManager.getContent(selectedFile) : null;
 
   if (isLoading) {
     return (
@@ -289,7 +218,7 @@ Start editing to see the live preview!
             selectedFile={selectedFile}
             isLocked={isLocked}
             lockedBy={lockedBy}
-            isAcquiringLock={isAcquiringLock}
+            isAcquiringLock={false}
             onAcquireLock={handleAcquireLock}
             currentBranch={currentBranch}
             sessions={sessions}
@@ -339,15 +268,15 @@ Start editing to see the live preview!
                 <div className="flex-1 animate-in fade-in-from-bottom-2 duration-300">
                   <EditorMain 
                     selectedFile={selectedFile}
-                    content={loadingContent ? "Loading content..." : content}
+                    content={loadingContent ? "Loading content..." : localContent}
                     onContentChange={handleContentChange}
-                    onSave={() => {}}
+                    onSave={handleSave}
                     hasChanges={hasChanges}
-                    saving={false}
+                    saving={contentManager.isAutoSaving}
                     isLocked={isLocked}
                     lockedBy={lockedBy}
                     liveContent={liveContent}
-                    isAcquiringLock={isAcquiringLock}
+                    isAcquiringLock={false}
                     onTakeLock={handleTakeLock}
                   />
                 </div>
