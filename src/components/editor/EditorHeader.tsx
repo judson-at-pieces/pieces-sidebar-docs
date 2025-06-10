@@ -1,8 +1,8 @@
 
 import React from "react";
-import { useBranchManager } from "@/hooks/useBranchManager";
 import { useBranchSessions } from "@/hooks/useBranchSessions";
-import { NewPullRequestButton } from "./NewPullRequestButton";
+import { CookieBasedPRButton } from "./CookieBasedPRButton";
+import { getBranchCookie } from "@/utils/branchCookies";
 
 interface EditorHeaderProps {
   activeTab: 'navigation' | 'content' | 'seo';
@@ -11,14 +11,11 @@ interface EditorHeaderProps {
 }
 
 export function EditorHeader({ activeTab, hasChanges, totalLiveFiles }: EditorHeaderProps) {
-  const { currentBranch, initialized } = useBranchManager();
+  const currentBranch = getBranchCookie() || 'main';
   const { sessions } = useBranchSessions(currentBranch);
 
-  // Debug logs to see what's happening
-  console.log('🔴 EDITOR HEADER RENDER:', {
-    currentBranch: JSON.stringify(currentBranch),
-    currentBranchType: typeof currentBranch,
-    initialized,
+  console.log('🔴 EDITOR HEADER RENDER (Cookie-based):', {
+    currentBranch,
     sessionsCount: sessions.length,
     hasChanges,
     totalLiveFiles
@@ -42,11 +39,10 @@ export function EditorHeader({ activeTab, hasChanges, totalLiveFiles }: EditorHe
       </div>
 
       <div className="flex items-center gap-3">
-        <NewPullRequestButton
-          currentBranch={currentBranch}
+        <CookieBasedPRButton
           sessions={activeSessions}
           hasChanges={hasChanges || activeSessions.length > 0}
-          initialized={initialized}
+          initialized={true}
           targetBranch="main"
         />
       </div>

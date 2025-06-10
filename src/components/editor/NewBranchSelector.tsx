@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { GitBranch, Plus, Trash2, Check, MoreVertical } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -32,6 +31,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { useBranchManager } from '@/hooks/useBranchManager';
+import { setBranchCookie } from '@/utils/branchCookies';
 
 export function NewBranchSelector() {
   const {
@@ -130,10 +130,13 @@ export function NewBranchSelector() {
       return;
     }
     
-    console.log('🚨 CLICK HANDLER: About to call switchBranch...');
-    console.groupEnd();
+    console.log('🚨 CLICK HANDLER: About to call switchBranch and set cookie...');
+    
+    // Set cookie immediately for faster UI updates
+    setBranchCookie(branchName);
     
     await switchBranch(branchName);
+    console.groupEnd();
   };
 
   return (

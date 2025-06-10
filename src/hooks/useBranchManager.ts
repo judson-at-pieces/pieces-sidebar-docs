@@ -1,8 +1,8 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { githubService } from '@/services/githubService';
 import { supabase } from '@/integrations/supabase/client';
 import { toast } from 'sonner';
+import { setBranchCookie, getBranchCookie } from '@/utils/branchCookies';
 
 export interface Branch {
   name: string;
@@ -105,6 +105,7 @@ export function useBranchManager() {
             loading: false,
             error: null
           });
+          setBranchCookie('main');
         }
         return;
       }
@@ -155,14 +156,19 @@ export function useBranchManager() {
         });
       }
 
+      // Get current branch from cookie or use default
+      const cookieBranch = getBranchCookie();
+      const initialBranch = cookieBranch || defaultBranchName;
+
       if (mountedRef.current) {
         setState({
           branches: formattedBranches,
-          currentBranch: defaultBranchName,
+          currentBranch: initialBranch,
           initialized: true,
           loading: false,
           error: null
         });
+        setBranchCookie(initialBranch);
       }
 
     } catch (error) {
@@ -179,6 +185,7 @@ export function useBranchManager() {
           loading: false,
           error: errorMessage
         });
+        setBranchCookie('main');
       }
       
       toast.error(errorMessage);
@@ -251,12 +258,12 @@ export function useBranchManager() {
         }
       }
 
-      console.log('🚨 SWITCH BRANCH: About to update state to:', {
+      console.log('🚨 SWITCH BRANCH: About to update state and cookie to:', {
         newBranch: JSON.stringify(branchName),
         charCodes: Array.from(branchName).map(c => `${c}(${c.charCodeAt(0)})`)
       });
 
-      // Direct state update instead of using updateState function
+      // Update state and cookie
       if (mountedRef.current) {
         setState(prev => {
           const newState = { ...prev, currentBranch: branchName };
@@ -266,9 +273,10 @@ export function useBranchManager() {
           });
           return newState;
         });
+        setBranchCookie(branchName);
       }
       
-      console.log('🚨 SWITCH BRANCH: State update called, showing toast...');
+      console.log('🚨 SWITCH BRANCH: State and cookie updated, showing toast...');
       toast.success(`Switched to branch "${branchName}"`);
 
       console.log('🚨 SWITCH BRANCH: Branch switch completed successfully');
