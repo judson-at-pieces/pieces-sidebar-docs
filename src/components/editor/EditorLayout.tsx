@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useLiveEditing } from "@/hooks/useLiveEditing";
@@ -38,6 +39,7 @@ export function EditorLayout() {
     isAcquiringLock,
     acquireLock,
     releaseLock,
+    takeLock,
     saveLiveContent,
     loadLiveContent,
   } = useLiveEditing(selectedFile, currentBranch);
@@ -73,12 +75,14 @@ export function EditorLayout() {
       console.log('=== FILE SELECTION ===');
       console.log('Selected file:', filePath);
       console.log('Current branch:', currentBranch);
+      console.log('Previous file:', selectedFile);
+      console.log('Has lock on previous file:', isLocked && lockedBy === 'You');
     }
     
-    // Release lock on previous file if user owns it
-    if (selectedFile && isLocked && lockedBy === 'You') {
+    // IMPORTANT: Release lock on previous file if user owns it
+    if (selectedFile && selectedFile !== filePath && isLocked && lockedBy === 'You') {
       if (DEBUG_MARKDOWN) {
-        console.log('Releasing lock on previous file:', selectedFile);
+        console.log('🔒 Releasing lock on previous file:', selectedFile);
       }
       await releaseLock(selectedFile);
     }
@@ -220,6 +224,18 @@ Start editing to see the live preview!
     }
   };
 
+  const handleTakeLock = async () => {
+    if (selectedFile && currentBranch) {
+      if (DEBUG_MARKDOWN) {
+        console.log('Force taking lock for:', selectedFile, 'on branch:', currentBranch);
+      }
+      const success = await takeLock(selectedFile);
+      if (success && DEBUG_MARKDOWN) {
+        console.log('Lock force taken for editing:', selectedFile);
+      }
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-background to-muted/20">
@@ -332,6 +348,7 @@ Start editing to see the live preview!
                     lockedBy={lockedBy}
                     liveContent={liveContent}
                     isAcquiringLock={isAcquiringLock}
+                    onTakeLock={handleTakeLock}
                   />
                 </div>
               </>
