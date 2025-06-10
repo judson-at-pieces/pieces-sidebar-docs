@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useLockManager } from "@/hooks/useLockManager";
@@ -29,46 +28,47 @@ export function EditorLayout() {
   const [localContent, setLocalContent] = useState("");
   const [activeTab, setActiveTab] = useState<'navigation' | 'content' | 'seo'>('content');
   const [loadingContent, setLoadingContent] = useState(false);
-  const [editorKey, setEditorKey] = useState(0); // Force re-render key
+  const [lastCookieBranch, setLastCookieBranch] = useState<string | null>(null);
 
-  // Watch for branch cookie changes and force content refresh
+  // Watch for branch cookie changes and only refresh content
   useEffect(() => {
     const checkBranchCookie = () => {
       const cookieBranch = getBranchCookie();
-      if (DEBUG_EDITOR) {
-        console.log('🍪 Cookie branch check:', cookieBranch, 'current:', currentBranch);
-      }
       
-      if (cookieBranch && cookieBranch !== currentBranch && initialized) {
+      // Only process if we have a valid cookie branch and it's different from what we last saw
+      if (cookieBranch && cookieBranch !== lastCookieBranch && initialized) {
         if (DEBUG_EDITOR) {
-          console.log('🔄 BRANCH COOKIE CHANGED - FORCING CONTENT REFRESH');
+          console.log('🔄 BRANCH COOKIE CHANGED - REFRESHING CONTENT ONLY:', lastCookieBranch, '->', cookieBranch);
         }
         
-        // Force complete content manager refresh for the new branch
+        // Update our tracking
+        setLastCookieBranch(cookieBranch);
+        
+        // Force refresh content for the new branch
         contentManager.refreshContentForBranch(cookieBranch);
         
         // Clear current file selection and content
         setSelectedFile(undefined);
         setLocalContent("");
         
-        // Force complete editor re-render
-        setEditorKey(prev => prev + 1);
-        
         // Release any current locks
         if (lockManager.myCurrentLock) {
           lockManager.releaseLock(lockManager.myCurrentLock);
         }
+      } else if (cookieBranch && lastCookieBranch === null) {
+        // Initial setup
+        setLastCookieBranch(cookieBranch);
       }
     };
 
     // Check immediately
     checkBranchCookie();
     
-    // Poll for cookie changes every 100ms
-    const interval = setInterval(checkBranchCookie, 100);
+    // Poll for cookie changes every 500ms (less aggressive)
+    const interval = setInterval(checkBranchCookie, 500);
     
     return () => clearInterval(interval);
-  }, [currentBranch, initialized, contentManager, lockManager]);
+  }, [lastCookieBranch, initialized, contentManager, lockManager]);
 
   const loadFileContent = async (filePath: string) => {
     setLoadingContent(true);
@@ -251,7 +251,7 @@ Start editing to see the live preview!
   const totalLiveFiles = sessions.filter(s => s.content && s.content.trim()).length;
 
   return (
-    <div key={editorKey} className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
       <EditorMainHeader 
         hasChanges={hasChanges}
         totalLiveFiles={totalLiveFiles}
