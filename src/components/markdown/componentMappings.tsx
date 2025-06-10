@@ -1,9 +1,9 @@
+
 import React from 'react';
 import Accordion from './Accordion';
 import AccordionGroup from './AccordionGroup';
 import Button from './Button';
 import { Callout } from './Callout';
-import { Card } from './Card';
 import { CardGroup } from './CardGroup';
 import { CodeBlock } from './CodeBlock';
 import { CustomTable } from './CustomTable';
