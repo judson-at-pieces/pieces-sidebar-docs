@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback } from 'react';
 import { githubService } from '@/services/githubService';
 import { supabase } from '@/integrations/supabase/client';
@@ -18,12 +17,14 @@ export function useBranches() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [initialized, setInitialized] = useState(false);
+  const [isInitializing, setIsInitializing] = useState(false);
 
   if (DEBUG_BRANCHES) {
     console.log('🌿 USEBRANCHES HOOK RENDER');
     console.log('  currentBranch state:', currentBranch);
     console.log('  initialized state:', initialized);
     console.log('  branches count:', branches.length);
+    console.log('  isInitializing:', isInitializing);
   }
 
   const getGitHubAppToken = async () => {
@@ -55,11 +56,20 @@ export function useBranches() {
   };
 
   const fetchBranches = useCallback(async (preserveCurrentBranch = false) => {
+    // Prevent multiple simultaneous calls
+    if (isInitializing) {
+      if (DEBUG_BRANCHES) {
+        console.log('🌿 FETCHBRANCHES BLOCKED - already initializing');
+      }
+      return;
+    }
+
     if (DEBUG_BRANCHES) {
       console.log('🌿 FETCHBRANCHES CALLED - preserveCurrentBranch:', preserveCurrentBranch);
       console.log('🌿 Current state before fetch - currentBranch:', currentBranch, 'initialized:', initialized);
     }
     
+    setIsInitializing(true);
     setLoading(true);
     setError(null);
     
@@ -74,6 +84,7 @@ export function useBranches() {
         setBranches([{ name: 'main', sha: '', isDefault: true }]);
         setInitialized(true);
         setLoading(false);
+        setIsInitializing(false);
         return;
       }
 
@@ -150,8 +161,9 @@ export function useBranches() {
       }
     } finally {
       setLoading(false);
+      setIsInitializing(false);
     }
-  }, [currentBranch, initialized]);
+  }, [currentBranch, initialized, isInitializing]);
 
   const ensureSessionsForBranch = async (branchName: string) => {
     try {
@@ -353,12 +365,14 @@ export function useBranches() {
   };
 
   useEffect(() => {
-    if (DEBUG_BRANCHES) {
-      console.log('🌿 USEBRANCHES: Initial useEffect triggered');
+    // Only fetch branches on initial mount and prevent multiple calls
+    if (!initialized && !isInitializing) {
+      if (DEBUG_BRANCHES) {
+        console.log('🌿 USEBRANCHES: Initial useEffect triggered');
+      }
+      fetchBranches(false);
     }
-    // Only fetch branches on initial mount
-    fetchBranches(false);
-  }, []);
+  }, [initialized, isInitializing, fetchBranches]);
 
   // Add effect to log currentBranch changes
   useEffect(() => {
