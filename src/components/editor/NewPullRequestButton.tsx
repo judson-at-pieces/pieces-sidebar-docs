@@ -68,17 +68,15 @@ export function NewPullRequestButton() {
         content: session.content
       }));
 
-      const timestamp = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-      const tempBranchName = `editor-changes-${currentBranch}-${timestamp}`;
-
+      // Use the current branch as the head branch and enable useExistingBranch
       const result = await githubService.createPullRequest(
         {
           title: `Update documentation from ${currentBranch} - ${files.length} file${files.length !== 1 ? 's' : ''} modified`,
           body: `Updated documentation files from branch "${currentBranch}" to main:\n${files.map(file => `- ${file.path}`).join('\n')}\n\nThis pull request was created from the collaborative editor.`,
           files,
           baseBranch: 'main',
-          headBranch: tempBranchName,
-          useExistingBranch: false
+          headBranch: currentBranch,
+          useExistingBranch: true
         },
         token,
         repoConfig
