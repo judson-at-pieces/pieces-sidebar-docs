@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useLockManager } from "@/hooks/useLockManager";
@@ -252,15 +251,12 @@ Start editing to see the live preview!
       await contentManager.saveContent(selectedFile, localContent, true);
     }
     
-    // Release current lock before switching files
-    if (selectedFile && lockManager.isFileLockedByMe(selectedFile)) {
-      await lockManager.releaseLock(selectedFile);
-    }
-    
+    // The enhanced acquireLock will automatically release other locks
+    // No need to manually release - just acquire the new lock
     setSelectedFile(filePath);
     await loadFileContent(filePath);
     
-    // Try to acquire lock for new file
+    // Try to acquire lock for new file (will auto-release others)
     setTimeout(() => {
       lockManager.acquireLock(filePath);
     }, 100);

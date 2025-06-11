@@ -195,20 +195,109 @@ export function useLockManager() {
     };
   }, [myCurrentLock, currentUserId, currentBranch]);
 
-  // Acquire lock for a file
-  const acquireLock = useCallback(async (filePath: string): Promise<boolean> => {
+  // Release ALL locks for current user in current branch
+  const releaseAllMyLocks = useCallback(async (): Promise<boolean> => {
     if (!currentUserId || !currentBranch) return false;
 
-    // If user already has a lock on a different file, release it first
-    if (myCurrentLock && myCurrentLock !== filePath) {
-      await releaseLock(myCurrentLock);
+    try {
+      // Find all locks by current user in current branch
+      const { data: myLocks, error: fetchError } = await supabase
+        .from('live_editing_sessions')
+        .select('file_path')
+        .eq('locked_by', currentUserId)
+        .eq('branch_name', currentBranch)
+        .not('locked_by', 'is', null);
+
+      if (fetchError) {
+        console.error('Error fetching my locks:', fetchError);
+        return false;
+      }
+
+      if (!myLocks || myLocks.length === 0) {
+        if (DEBUG_LOCK) {
+          console.log('🔒 No locks to release for user');
+        }
+        return true;
+      }
+
+      // Release all locks for this user in this branch
+      const { error: releaseError } = await supabase
+        .from('live_editing_sessions')
+        .update({
+          locked_by: null,
+          locked_at: null,
+          updated_at: new Date().toISOString()
+        })
+        .eq('locked_by', currentUserId)
+        .eq('branch_name', currentBranch);
+
+      if (releaseError) {
+        console.error('Error releasing all locks:', releaseError);
+        return false;
+      }
+
+      // Clear local state
+      setMyCurrentLock(null);
+
+      if (DEBUG_LOCK) {
+        console.log('🔒 Released all locks:', myLocks.map(l => l.file_path));
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Error in releaseAllMyLocks:', error);
+      return false;
     }
+  }, [currentUserId, currentBranch]);
+
+  // Enhanced acquire lock that automatically releases other locks
+  const acquireLock = useCallback(async (filePath: string): Promise<boolean> => {
+    if (!currentUserId || !currentBranch) return false;
 
     // Check if file is already locked by someone else
     const existingLock = activeLocks.get(filePath);
     if (existingLock && existingLock.locked_by !== currentUserId) {
       console.log('🔒 File already locked by someone else:', existingLock);
       return false;
+    }
+
+    // If user already has this lock, just refresh it
+    if (myCurrentLock === filePath) {
+      if (DEBUG_LOCK) {
+        console.log('🔒 Already have lock for this file, refreshing:', filePath);
+      }
+      
+      try {
+        const { error } = await supabase
+          .from('live_editing_sessions')
+          .update({
+            locked_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('file_path', filePath)
+          .eq('branch_name', currentBranch)
+          .eq('locked_by', currentUserId);
+
+        if (error) {
+          console.error('Error refreshing lock:', error);
+          return false;
+        }
+        return true;
+      } catch (error) {
+        console.error('Error in lock refresh:', error);
+        return false;
+      }
+    }
+
+    // Release ALL other locks first
+    if (DEBUG_LOCK) {
+      console.log('🔒 Releasing all existing locks before acquiring new one');
+    }
+    
+    const releaseSuccess = await releaseAllMyLocks();
+    if (!releaseSuccess) {
+      console.error('🔒 Failed to release existing locks');
+      // Continue anyway, but log the issue
     }
 
     try {
@@ -235,7 +324,7 @@ export function useLockManager() {
       console.error('Error in acquireLock:', error);
       return false;
     }
-  }, [currentUserId, currentBranch, myCurrentLock, activeLocks]);
+  }, [currentUserId, currentBranch, myCurrentLock, activeLocks, releaseAllMyLocks]);
 
   // Force take lock from another user
   const forceTakeLock = useCallback(async (filePath: string): Promise<boolean> => {
@@ -442,6 +531,7 @@ export function useLockManager() {
     acquireLock,
     forceTakeLock,
     releaseLock,
+    releaseAllMyLocks, // New function exposed
     
     // Helpers
     isFileLocked,
