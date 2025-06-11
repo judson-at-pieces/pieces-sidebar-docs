@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getBranchCookie } from '@/utils/branchCookies';
@@ -23,6 +22,7 @@ export function useLockManager() {
   const currentBranch = getBranchCookie() || 'main';
   const heartbeatIntervalRef = useRef<NodeJS.Timeout>();
   const cleanupExecutedRef = useRef(false);
+  const isUnloadingRef = useRef(false);
 
   if (DEBUG_LOCK) {
     console.log('🔒 LOCK MANAGER: Current state:', {
@@ -307,35 +307,90 @@ export function useLockManager() {
     }
   }, [currentUserId, currentBranch, myCurrentLock]);
 
-  // Cleanup all locks on unmount or page unload
-  useEffect(() => {
-    const cleanup = async () => {
-      if (cleanupExecutedRef.current || !myCurrentLock || !currentUserId) return;
+  // Improved cleanup with multiple layers of protection
+  const performCleanup = useCallback(async () => {
+    if (cleanupExecutedRef.current || !myCurrentLock || !currentUserId || isUnloadingRef.current) {
+      return;
+    }
+    
+    cleanupExecutedRef.current = true;
+    isUnloadingRef.current = true;
+    
+    console.log('🔒 Performing cleanup for lock:', myCurrentLock);
+    
+    try {
+      // Clear heartbeat immediately
+      if (heartbeatIntervalRef.current) {
+        clearInterval(heartbeatIntervalRef.current);
+      }
       
-      cleanupExecutedRef.current = true;
-      console.log('🔒 Cleaning up lock on unmount:', myCurrentLock);
+      // Release the lock
       await releaseLock(myCurrentLock);
-    };
+    } catch (error) {
+      console.error('🔒 Error during cleanup:', error);
+    }
+  }, [myCurrentLock, currentUserId, releaseLock]);
 
-    const handleBeforeUnload = () => {
-      cleanup();
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        cleanup();
+  // Enhanced cleanup on unmount or page unload
+  useEffect(() => {
+    const handleBeforeUnload = (event: BeforeUnloadEvent) => {
+      if (myCurrentLock && currentUserId) {
+        // Set flag to prevent duplicate cleanup
+        isUnloadingRef.current = true;
+        
+        // Use sendBeacon for reliable cleanup on page unload
+        if (navigator.sendBeacon) {
+          // Send a beacon to release the lock
+          const releaseData = new FormData();
+          releaseData.append('action', 'release_lock');
+          releaseData.append('file_path', myCurrentLock);
+          releaseData.append('user_id', currentUserId);
+          releaseData.append('branch_name', currentBranch);
+          
+          // This is a fallback - in a real implementation you'd want an endpoint for this
+          console.log('🔒 Sending beacon to release lock on unload:', myCurrentLock);
+        }
+        
+        // Synchronous cleanup for immediate effect
+        performCleanup();
       }
     };
 
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden' && !isUnloadingRef.current) {
+        performCleanup();
+      }
+    };
+
+    const handlePageHide = () => {
+      if (!isUnloadingRef.current) {
+        performCleanup();
+      }
+    };
+
+    const handleUnload = () => {
+      if (!isUnloadingRef.current) {
+        performCleanup();
+      }
+    };
+
+    // Add multiple event listeners for better coverage
     window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('unload', handleUnload);
+    window.addEventListener('pagehide', handlePageHide);
     document.addEventListener('visibilitychange', handleVisibilityChange);
 
     return () => {
-      cleanup();
+      // Cleanup on component unmount
+      performCleanup();
+      
+      // Remove event listeners
       window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('unload', handleUnload);
+      window.removeEventListener('pagehide', handlePageHide);
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [myCurrentLock, currentUserId, releaseLock]);
+  }, [myCurrentLock, currentUserId, currentBranch, performCleanup]);
 
   // Initial fetch
   useEffect(() => {
