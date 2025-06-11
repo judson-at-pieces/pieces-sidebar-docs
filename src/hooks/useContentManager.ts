@@ -15,11 +15,8 @@ const DEBUG_CONTENT = true;
 
 export function useContentManager(lockManager: any) {
   const [liveContent, setLiveContent] = useState<Map<string, string>>(new Map());
-  const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [currentBranch, setCurrentBranch] = useState<string>(getBranchCookie() || 'main');
-  const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
   const isBranchSwitching = useRef(false);
-  const saveInProgress = useRef(false);
 
   const { currentUserId, isFileLockedByMe } = lockManager;
 
@@ -36,12 +33,12 @@ export function useContentManager(lockManager: any) {
         
         setTimeout(() => {
           isBranchSwitching.current = false;
-        }, 2000);
+        }, 1000);
       }
     };
 
     checkBranchCookie();
-    const interval = setInterval(checkBranchCookie, 100);
+    const interval = setInterval(checkBranchCookie, 200);
     return () => clearInterval(interval);
   }, [currentBranch]);
 
@@ -138,108 +135,15 @@ export function useContentManager(lockManager: any) {
     };
   }, [currentBranch]);
 
-  // FIXED: Simplified save content with proper error handling
-  const saveContent = useCallback(async (filePath: string, content: string, immediate = false) => {
-    // Prevent saves if conditions aren't met
-    if (!currentUserId || !currentBranch || !isFileLockedByMe(filePath) || isBranchSwitching.current || saveInProgress.current) {
-      if (DEBUG_CONTENT) {
-        console.log('📄 SKIPPING save - conditions not met:', {
-          currentUserId: !!currentUserId,
-          currentBranch,
-          locked: isFileLockedByMe(filePath),
-          branchSwitching: isBranchSwitching.current,
-          saveInProgress: saveInProgress.current
-        });
-      }
-      return false;
-    }
-
-    const performSave = async () => {
-      if (saveInProgress.current) {
-        console.log('📄 Save already in progress, skipping');
-        return false;
-      }
-
-      try {
-        saveInProgress.current = true;
-        setIsAutoSaving(true);
-        
-        if (DEBUG_CONTENT) {
-          console.log('📄 STARTING save for:', filePath, 'branch:', currentBranch);
-        }
-
-        const { error } = await supabase
-          .from('live_editing_sessions')
-          .upsert({
-            file_path: filePath,
-            content,
-            user_id: currentUserId,
-            branch_name: currentBranch,
-            locked_by: currentUserId,
-            updated_at: new Date().toISOString()
-          }, {
-            onConflict: 'file_path,branch_name'
-          });
-
-        if (error) {
-          console.error('📄 Save ERROR:', error);
-          return false;
-        }
-
-        if (DEBUG_CONTENT) {
-          console.log('📄 Save COMPLETED successfully for:', filePath);
-        }
-        return true;
-
-      } catch (error) {
-        console.error('📄 Save EXCEPTION:', error);
-        return false;
-      } finally {
-        // CRITICAL: Always clear the saving state
-        saveInProgress.current = false;
-        setIsAutoSaving(false);
-        if (DEBUG_CONTENT) {
-          console.log('📄 Save state CLEARED');
-        }
-      }
-    };
-
-    if (immediate) {
-      return await performSave();
-    } else {
-      // Clear any existing timeout
-      if (autoSaveTimeoutRef.current) {
-        clearTimeout(autoSaveTimeoutRef.current);
-      }
-      
-      // Set new timeout
-      autoSaveTimeoutRef.current = setTimeout(async () => {
-        if (!isBranchSwitching.current) {
-          await performSave();
-        }
-      }, 1500);
-      
-      return true;
-    }
-  }, [currentUserId, currentBranch, isFileLockedByMe]);
-
-  // Enhanced save content to branch with better async handling
+  // Simple immediate save function
   const saveContentToBranch = useCallback(async (filePath: string, content: string, branchName: string) => {
-    if (!currentUserId || !branchName || isBranchSwitching.current || saveInProgress.current) {
-      return false;
-    }
-
-    if (branchName !== currentBranch) {
-      console.warn('📄 WARNING: Attempted to save to different branch than current:', branchName, 'vs', currentBranch);
+    if (!currentUserId || !branchName) {
       return false;
     }
 
     try {
-      saveInProgress.current = true;
-      setIsAutoSaving(true);
-
       if (DEBUG_CONTENT) {
-        console.log('📄 Starting branch save for:', filePath, 'branch:', branchName);
+        console.log('📄 Saving content for:', filePath, 'branch:', branchName);
       }
 
       const { error } = await supabase
@@ -261,97 +165,29 @@ export function useContentManager(lockManager: any) {
       }
 
       if (DEBUG_CONTENT) {
-        console.log('📄 Content saved to branch successfully:', branchName, 'file:', filePath);
+        console.log('📄 Content saved successfully');
       }
 
       return true;
     } catch (error) {
       console.error('Error in saveContentToBranch:', error);
       return false;
-    } finally {
-      saveInProgress.current = false;
-      setIsAutoSaving(false);
     }
-  }, [currentUserId, currentBranch]);
+  }, [currentUserId]);
 
-  // Enhanced refresh for specific branch - FORCE CLEAR CACHE
+  // Force refresh for specific branch
   const refreshContentForBranch = useCallback(async (branchName: string) => {
     if (DEBUG_CONTENT) {
-      console.log('🔄 Force refreshing content for branch (clearing cache):', branchName);
+      console.log('🔄 Force refreshing content for branch:', branchName);
     }
     
-    // Force clear the current cache
     setLiveContent(new Map());
-    
     const contentMap = await fetchContentForBranch(branchName);
     
-    // Only update if this is still the current branch
     if (branchName === currentBranch) {
       setLiveContent(contentMap);
-      if (DEBUG_CONTENT) {
-        console.log('🔄 Cache cleared and content refreshed for branch:', branchName);
-      }
     }
   }, [fetchContentForBranch, currentBranch]);
-
-  // Force load content bypassing cache
-  const loadContentForced = useCallback(async (filePath: string, branchName: string): Promise<string | null> => {
-    if (DEBUG_CONTENT) {
-      console.log('📄 FORCE loading content for file:', filePath, 'branch:', branchName, '(bypassing cache)');
-    }
-
-    try {
-      // Force fetch from database, bypassing cache completely
-      const { data, error } = await supabase
-        .from('live_editing_sessions')
-        .select('content')
-        .eq('file_path', filePath)
-        .eq('branch_name', branchName)
-        .maybeSingle();
-
-      if (error) {
-        console.error('Error force loading content:', error);
-        return null;
-      }
-
-      if (data?.content) {
-        if (DEBUG_CONTENT) {
-          console.log('📄 FORCE loaded from database for branch:', branchName);
-        }
-        return data.content;
-      }
-
-      // Fallback to file system
-      let fetchPath = filePath;
-      if (!fetchPath.endsWith('.md')) {
-        fetchPath = `${fetchPath}.md`;
-      }
-      
-      const cleanFetchPath = fetchPath.replace(/^\/+/, '');
-      const fetchUrl = `/content/${cleanFetchPath}`;
-      
-      const response = await fetch(fetchUrl, {
-        method: 'GET',
-        headers: {
-          'Accept': 'text/plain, text/markdown, */*',
-          'Cache-Control': 'no-cache'
-        }
-      });
-      
-      if (response.ok) {
-        const content = await response.text();
-        if (DEBUG_CONTENT) {
-          console.log('📄 FORCE loaded from filesystem');
-        }
-        return content;
-      }
-
-      return null;
-    } catch (error) {
-      console.error('Error in loadContentForced:', error);
-      return null;
-    }
-  }, []);
 
   // Load content for a specific file
   const loadContent = useCallback(async (filePath: string): Promise<string | null> => {
@@ -432,47 +268,27 @@ export function useContentManager(lockManager: any) {
     return currentContent !== savedContent;
   }, [liveContent]);
 
-  // Enhanced cleanup with proper state clearing
-  useEffect(() => {
-    return () => {
-      if (autoSaveTimeoutRef.current) {
-        clearTimeout(autoSaveTimeoutRef.current);
-      }
-      saveInProgress.current = false;
-      setIsAutoSaving(false);
-      isBranchSwitching.current = false;
-    };
-  }, []);
-
-  // Enhanced pause auto-save with state clearing
   const pauseAutoSave = useCallback(() => {
     isBranchSwitching.current = true;
-    if (autoSaveTimeoutRef.current) {
-      clearTimeout(autoSaveTimeoutRef.current);
-    }
-    saveInProgress.current = false;
-    setIsAutoSaving(false);
   }, []);
 
   const resumeAutoSave = useCallback(() => {
     setTimeout(() => {
       isBranchSwitching.current = false;
-    }, 1000);
+    }, 500);
   }, []);
 
   return {
     liveContent,
-    isAutoSaving,
     currentBranch,
-    saveContent,
     saveContentToBranch,
     loadContent,
-    loadContentForced,
     getContent,
     hasUnsavedChanges,
     refreshContent: () => fetchContentForBranch(currentBranch).then(setLiveContent),
     refreshContentForBranch,
     pauseAutoSave,
-    resumeAutoSave
+    resumeAutoSave,
+    isBranchSwitching: () => isBranchSwitching.current
   };
 }
