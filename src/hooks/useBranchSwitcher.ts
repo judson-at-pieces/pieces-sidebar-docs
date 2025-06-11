@@ -59,7 +59,7 @@ export function useBranchSwitcher() {
         }
         await lockManager.releaseAllMyLocks();
         // Wait for lock release to propagate
-        await new Promise(resolve => setTimeout(resolve, 300));
+        await new Promise(resolve => setTimeout(resolve, 200));
       }
 
       // Step 3: Force refresh content manager for new branch
@@ -67,38 +67,6 @@ export function useBranchSwitcher() {
         console.log('🔄 Refreshing content for new branch:', toBranch);
       }
       await contentManager.refreshContentForBranch(toBranch);
-
-      // Step 4: Force refresh lock manager to clear any stale lock state
-      if (DEBUG_BRANCH_SWITCH) {
-        console.log('🔓 Refreshing lock state for new branch');
-      }
-      await lockManager.refreshLocks();
-
-      // Step 5: Try to acquire lock for the selected file in new branch (with retry)
-      if (selectedFile) {
-        if (DEBUG_BRANCH_SWITCH) {
-          console.log('🔒 Attempting to acquire lock for file in new branch:', selectedFile);
-        }
-        
-        let lockAcquired = false;
-        let retries = 3;
-        
-        while (!lockAcquired && retries > 0) {
-          await new Promise(resolve => setTimeout(resolve, 200));
-          lockAcquired = await lockManager.acquireLock(selectedFile);
-          
-          if (!lockAcquired) {
-            if (DEBUG_BRANCH_SWITCH) {
-              console.log(`🔒 Lock acquisition failed, retrying... (${retries} attempts left)`);
-            }
-            retries--;
-          }
-        }
-        
-        if (!lockAcquired) {
-          console.warn('⚠️ Could not acquire lock after branch switch, but continuing...');
-        }
-      }
 
       if (DEBUG_BRANCH_SWITCH) {
         console.log('✅ Branch switch completed successfully');
