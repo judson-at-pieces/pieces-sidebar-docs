@@ -1,5 +1,4 @@
-
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useLockManager } from "@/hooks/useLockManager";
 import { useContentManager } from "@/hooks/useContentManager";
@@ -36,6 +35,10 @@ export function EditorLayout() {
   const [activeTab, setActiveTab] = useState<'navigation' | 'content' | 'seo'>('content');
   const [loadingContent, setLoadingContent] = useState(false);
   const [lastBranch, setLastBranch] = useState<string | null>(null);
+  
+  // Add guards to prevent race conditions
+  const currentlyLoadingFile = useRef<string | null>(null);
+  const loadingTimeout = useRef<NodeJS.Timeout>();
 
   if (DEBUG_EDITOR) {
     console.log('🎯 EDITOR STATE:', {
@@ -44,7 +47,8 @@ export function EditorLayout() {
       effectiveBranch,
       lastBranch,
       localContentLength: localContent.length,
-      isSwitching
+      isSwitching,
+      currentlyLoadingFile: currentlyLoadingFile.current
     });
   }
 
@@ -80,6 +84,14 @@ export function EditorLayout() {
           }
           
           setLastBranch(effectiveBranch);
+          
+          // IMPORTANT: Ensure we're unlocked after branch switch
+          setTimeout(() => {
+            lockManager.releaseAllMyLocks();
+            if (DEBUG_EDITOR) {
+              console.log('🔓 Branch switch complete - locks released');
+            }
+          }, 500);
         } else {
           console.error('❌ Branch switch failed');
           setLoadingContent(false);
@@ -88,14 +100,36 @@ export function EditorLayout() {
       
       handleBranchSwitch();
     }
-  }, [effectiveBranch, lastBranch, selectedFile, localContent, isSwitching, switchBranch]);
+  }, [effectiveBranch, lastBranch, selectedFile, localContent, isSwitching, switchBranch, lockManager]);
 
   const loadFileContent = async (filePath: string) => {
+    // Prevent race conditions - cancel if different file is being loaded
+    if (currentlyLoadingFile.current && currentlyLoadingFile.current !== filePath) {
+      if (DEBUG_EDITOR) {
+        console.log('🚫 Cancelling load for:', currentlyLoadingFile.current, 'new request:', filePath);
+      }
+      return;
+    }
+    
+    currentlyLoadingFile.current = filePath;
     setLoadingContent(true);
+    
+    // Clear any existing timeout
+    if (loadingTimeout.current) {
+      clearTimeout(loadingTimeout.current);
+    }
     
     try {
       // Force load content from current branch - bypassing cache
       const content = await contentManager.loadContentForced(filePath, effectiveBranch);
+      
+      // Double-check we're still loading the same file
+      if (currentlyLoadingFile.current !== filePath) {
+        if (DEBUG_EDITOR) {
+          console.log('🚫 File changed during load, ignoring result for:', filePath);
+        }
+        return;
+      }
       
       if (content !== null) {
         setLocalContent(content);
@@ -133,9 +167,19 @@ Start editing to see the live preview!
       }
     } catch (error) {
       console.error('Error loading file:', error);
-      setLocalContent("Error loading file content");
+      if (currentlyLoadingFile.current === filePath) {
+        setLocalContent("Error loading file content");
+      }
     } finally {
-      setLoadingContent(false);
+      // Only update loading state if we're still the current file
+      if (currentlyLoadingFile.current === filePath) {
+        setLoadingContent(false);
+        currentlyLoadingFile.current = null;
+        
+        if (DEBUG_EDITOR) {
+          console.log('✅ File loading complete and UI unfrozen for:', filePath);
+        }
+      }
     }
   };
 
@@ -188,6 +232,11 @@ Start editing to see the live preview!
       console.log('=== FILE SELECTION ===', filePath, 'in branch:', effectiveBranch);
     }
     
+    // Cancel any ongoing file load
+    if (currentlyLoadingFile.current) {
+      currentlyLoadingFile.current = null;
+    }
+    
     // Save current file content to branch store before switching
     if (selectedFile && localContent) {
       branchContentStore.captureCurrentContent(effectiveBranch, selectedFile, localContent);
@@ -202,20 +251,17 @@ Start editing to see the live preview!
     setSelectedFile(filePath);
     await loadFileContent(filePath);
     
-    // Acquire lock for new file
-    if (DEBUG_EDITOR) {
-      console.log('🔒 Acquiring lock for new file:', filePath);
-    }
-    
-    const lockAcquired = await lockManager.acquireLock(filePath);
-    
-    if (DEBUG_EDITOR) {
-      console.log('🔒 Lock acquisition result:', lockAcquired);
-    }
+    // Try to acquire lock AFTER loading is complete (non-blocking)
+    setTimeout(() => {
+      if (DEBUG_EDITOR) {
+        console.log('🔒 Attempting to acquire lock for:', filePath);
+      }
+      lockManager.acquireLock(filePath);
+    }, 100);
   };
 
   const handleContentChange = (newContent: string) => {
-    if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && !isSwitching) {
+    if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && !isSwitching && !currentlyLoadingFile.current) {
       setLocalContent(newContent);
       // Immediately save to branch store for isolation
       branchContentStore.setContent(effectiveBranch, selectedFile, newContent);
@@ -301,7 +347,7 @@ Start editing to see the live preview!
             selectedFile={selectedFile}
             isLocked={isLocked}
             lockedBy={lockedByName}
-            isAcquiringLock={isSwitching}
+            isAcquiringLock={isSwitching || !!currentlyLoadingFile.current}
             onAcquireLock={handleAcquireLock}
             currentBranch={effectiveBranch}
             sessions={sessions}
@@ -310,12 +356,14 @@ Start editing to see the live preview!
             branches={branches}
           />
           
-          {/* Show loading overlay when switching branches */}
-          {isSwitching && (
+          {/* Show loading overlay when switching branches or loading files */}
+          {(isSwitching || !!currentlyLoadingFile.current) && (
             <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
               <div className="text-center space-y-4">
                 <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto"></div>
-                <p className="text-sm text-muted-foreground">Switching branches...</p>
+                <p className="text-sm text-muted-foreground">
+                  {isSwitching ? 'Switching branches...' : 'Loading file...'}
+                </p>
               </div>
             </div>
           )}

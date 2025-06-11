@@ -49,7 +49,7 @@ export function useBranchSwitcher() {
         branchContentStore.captureCurrentContent(fromBranch, selectedFile, currentContent);
         
         // Wait a moment for the save to complete
-        await new Promise(resolve => setTimeout(resolve, 500));
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
 
       // Step 2: Release ALL locks to prevent conflicts
@@ -78,6 +78,14 @@ export function useBranchSwitcher() {
       return false;
     } finally {
       setIsSwitching(false);
+      
+      // Additional safety: ensure we're unlocked after a brief delay
+      setTimeout(() => {
+        lockManager.releaseAllMyLocks();
+        if (DEBUG_BRANCH_SWITCH) {
+          console.log('🔓 Final unlock after branch switch complete');
+        }
+      }, 1000);
     }
   }, [isSwitching, lockManager, contentManager, branchContentStore]);
 
