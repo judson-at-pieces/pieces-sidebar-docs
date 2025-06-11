@@ -38,6 +38,7 @@ export function EditorLayout() {
   
   // Add guards to prevent race conditions
   const currentlyLoadingFile = useRef<string | null>(null);
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
 
   if (DEBUG_EDITOR) {
     console.log('🎯 EDITOR STATE:', {
@@ -47,7 +48,8 @@ export function EditorLayout() {
       lastBranch,
       localContentLength: localContent.length,
       isSwitching,
-      currentlyLoadingFile: currentlyLoadingFile.current
+      currentlyLoadingFile: currentlyLoadingFile.current,
+      isAutoSaving: contentManager.isAutoSaving
     });
   }
 
@@ -173,15 +175,30 @@ Start editing to see the live preview!
     }
   };
 
-  // Simplified auto-save with better branch awareness
+  // Improved auto-save with proper debouncing and state management
   useEffect(() => {
     if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && localContent && !isSwitching && !currentlyLoadingFile.current) {
       // Save to branch store immediately for isolation
       branchContentStore.setContent(effectiveBranch, selectedFile, localContent);
       
-      // Auto-save to database (this now has built-in branch switch protection)
-      contentManager.saveContent(selectedFile, localContent);
+      // Clear existing timeout
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+      
+      // Set new auto-save timeout
+      autoSaveTimeoutRef.current = setTimeout(() => {
+        if (!isSwitching && !currentlyLoadingFile.current) {
+          contentManager.saveContent(selectedFile, localContent, false);
+        }
+      }, 1000);
     }
+    
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
   }, [selectedFile, localContent, lockManager, contentManager, branchContentStore, effectiveBranch, isSwitching]);
 
   // Release lock when navigating away from the page
@@ -227,13 +244,18 @@ Start editing to see the live preview!
       currentlyLoadingFile.current = null;
     }
     
+    // Clear any pending auto-save
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+    
     // Save current file content to branch store before switching
     if (selectedFile && localContent) {
       branchContentStore.captureCurrentContent(effectiveBranch, selectedFile, localContent);
       
-      // Force immediate save if we have lock
+      // Force immediate save if we have lock (but don't wait for it)
       if (lockManager.isFileLockedByMe(selectedFile)) {
-        await contentManager.saveContentToBranch(selectedFile, localContent, effectiveBranch);
+        contentManager.saveContentToBranch(selectedFile, localContent, effectiveBranch);
       }
     }
     
@@ -252,7 +274,8 @@ Start editing to see the live preview!
   const handleContentChange = (newContent: string) => {
     if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && !isSwitching && !currentlyLoadingFile.current) {
       setLocalContent(newContent);
-      // Immediately save to branch store for isolation
+      // Immediately save to branch store for isolation - but don't trigger auto-save here
+      // The auto-save will be triggered by the useEffect above
       branchContentStore.setContent(effectiveBranch, selectedFile, newContent);
     }
   };

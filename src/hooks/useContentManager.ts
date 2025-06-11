@@ -18,6 +18,7 @@ export function useContentManager(lockManager: any) {
   const [currentBranch, setCurrentBranch] = useState<string>(getBranchCookie() || 'main');
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
   const isBranchSwitching = useRef(false);
+  const currentSaveOperation = useRef<Promise<boolean> | null>(null);
 
   const { currentUserId, isFileLockedByMe } = lockManager;
 
@@ -142,7 +143,88 @@ export function useContentManager(lockManager: any) {
     };
   }, [currentBranch]);
 
-  // Enhanced save content with branch parameter and better guards
+  // Fixed save content with proper state management
+  const saveContent = useCallback(async (filePath: string, content: string, immediate = false) => {
+    if (!currentUserId || !currentBranch || !isFileLockedByMe(filePath) || isBranchSwitching.current) {
+      if (DEBUG_CONTENT && isBranchSwitching.current) {
+        console.log('📄 SKIPPING auto-save during branch switch');
+      }
+      return false;
+    }
+
+    const doSave = async (): Promise<boolean> => {
+      if (isBranchSwitching.current) {
+        console.log('📄 ABORTING save - branch switch detected');
+        return false;
+      }
+
+      // Prevent multiple simultaneous saves
+      if (currentSaveOperation.current) {
+        console.log('📄 Save already in progress, skipping');
+        return false;
+      }
+
+      try {
+        setIsAutoSaving(true);
+        
+        // Create save promise and store it
+        const savePromise = supabase
+          .from('live_editing_sessions')
+          .upsert({
+            file_path: filePath,
+            content,
+            user_id: currentUserId,
+            branch_name: currentBranch,
+            locked_by: currentUserId,
+            updated_at: new Date().toISOString()
+          }, {
+            onConflict: 'file_path,branch_name'
+          });
+
+        currentSaveOperation.current = savePromise.then(({ error }) => {
+          if (error) {
+            console.error('Error saving content:', error);
+            return false;
+          }
+          return true;
+        });
+
+        const result = await currentSaveOperation.current;
+
+        if (result && DEBUG_CONTENT) {
+          console.log('📄 Auto-save completed for branch:', currentBranch, 'file:', filePath);
+        }
+
+        return result;
+      } catch (error) {
+        console.error('Error in saveContent:', error);
+        return false;
+      } finally {
+        currentSaveOperation.current = null;
+        setIsAutoSaving(false);
+      }
+    };
+
+    if (immediate) {
+      return await doSave();
+    } else {
+      // Clear any existing timeout
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+      
+      // Set new timeout with branch switch protection
+      autoSaveTimeoutRef.current = setTimeout(async () => {
+        if (!isBranchSwitching.current) {
+          await doSave();
+        }
+      }, 1500); // Reduced timeout for faster saves
+      
+      return true;
+    }
+  }, [currentUserId, currentBranch, isFileLockedByMe]);
+
+  // Enhanced save content to branch with better state management
   const saveContentToBranch = useCallback(async (filePath: string, content: string, branchName: string) => {
     if (!currentUserId || !branchName || isBranchSwitching.current) {
       if (DEBUG_CONTENT && isBranchSwitching.current) {
@@ -157,10 +239,16 @@ export function useContentManager(lockManager: any) {
       return false;
     }
 
+    // Prevent multiple simultaneous saves
+    if (currentSaveOperation.current) {
+      console.log('📄 Save already in progress, skipping branch save');
+      return false;
+    }
+
     try {
       setIsAutoSaving(true);
 
-      const { error } = await supabase
+      const savePromise = supabase
         .from('live_editing_sessions')
         .upsert({
           file_path: filePath,
@@ -173,20 +261,26 @@ export function useContentManager(lockManager: any) {
           onConflict: 'file_path,branch_name'
         });
 
-      if (error) {
-        console.error('Error saving content to branch:', error);
-        return false;
-      }
+      currentSaveOperation.current = savePromise.then(({ error }) => {
+        if (error) {
+          console.error('Error saving content to branch:', error);
+          return false;
+        }
+        return true;
+      });
 
-      if (DEBUG_CONTENT) {
+      const result = await currentSaveOperation.current;
+
+      if (result && DEBUG_CONTENT) {
         console.log('📄 Content saved to branch:', branchName, 'file:', filePath);
       }
 
-      return true;
+      return result;
     } catch (error) {
       console.error('Error in saveContentToBranch:', error);
       return false;
     } finally {
+      currentSaveOperation.current = null;
       setIsAutoSaving(false);
     }
   }, [currentUserId, currentBranch]);
@@ -270,74 +364,6 @@ export function useContentManager(lockManager: any) {
     }
   }, []);
 
-  // Save content
-  const saveContent = useCallback(async (filePath: string, content: string, immediate = false) => {
-    if (!currentUserId || !currentBranch || !isFileLockedByMe(filePath) || isBranchSwitching.current) {
-      if (DEBUG_CONTENT && isBranchSwitching.current) {
-        console.log('📄 SKIPPING auto-save during branch switch');
-      }
-      return false;
-    }
-
-    const doSave = async () => {
-      if (isBranchSwitching.current) {
-        console.log('📄 ABORTING save - branch switch detected');
-        return false;
-      }
-
-      try {
-        setIsAutoSaving(true);
-
-        const { error } = await supabase
-          .from('live_editing_sessions')
-          .upsert({
-            file_path: filePath,
-            content,
-            user_id: currentUserId,
-            branch_name: currentBranch,
-            locked_by: currentUserId,
-            updated_at: new Date().toISOString()
-          }, {
-            onConflict: 'file_path,branch_name'
-          });
-
-        if (error) {
-          console.error('Error saving content:', error);
-          return false;
-        }
-
-        if (DEBUG_CONTENT) {
-          console.log('📄 Auto-save completed for branch:', currentBranch, 'file:', filePath);
-        }
-
-        return true;
-      } catch (error) {
-        console.error('Error in saveContent:', error);
-        return false;
-      } finally {
-        setIsAutoSaving(false);
-      }
-    };
-
-    if (immediate) {
-      return await doSave();
-    } else {
-      // Clear any existing timeout
-      if (autoSaveTimeoutRef.current) {
-        clearTimeout(autoSaveTimeoutRef.current);
-      }
-      
-      // Set new timeout with branch switch protection
-      autoSaveTimeoutRef.current = setTimeout(() => {
-        if (!isBranchSwitching.current) {
-          doSave();
-        }
-      }, 2000); // Increased delay to reduce conflicts
-      
-      return true;
-    }
-  }, [currentUserId, currentBranch, isFileLockedByMe]);
-
   // Load content for a specific file
   const loadContent = useCallback(async (filePath: string): Promise<string | null> => {
     if (!currentBranch) return null;
@@ -417,23 +443,28 @@ export function useContentManager(lockManager: any) {
     return currentContent !== savedContent;
   }, [liveContent]);
 
-  // Enhanced cleanup with branch switch awareness
+  // Enhanced cleanup with proper state clearing
   useEffect(() => {
     return () => {
       if (autoSaveTimeoutRef.current) {
         clearTimeout(autoSaveTimeoutRef.current);
       }
-      // Clear branch switching flag on unmount
+      // Clear any pending save operations
+      currentSaveOperation.current = null;
+      setIsAutoSaving(false);
       isBranchSwitching.current = false;
     };
   }, []);
 
-  // Add method to pause auto-save during critical operations
+  // Enhanced pause auto-save with state clearing
   const pauseAutoSave = useCallback(() => {
     isBranchSwitching.current = true;
     if (autoSaveTimeoutRef.current) {
       clearTimeout(autoSaveTimeoutRef.current);
     }
+    // Clear any pending save operations and reset state
+    currentSaveOperation.current = null;
+    setIsAutoSaving(false);
   }, []);
 
   const resumeAutoSave = useCallback(() => {
