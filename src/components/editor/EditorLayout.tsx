@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useLockManager } from "@/hooks/useLockManager";
@@ -71,6 +70,9 @@ export function EditorLayout() {
           // Clear editor content immediately
           setLocalContent("");
           setLoadingContent(true);
+          
+          // Wait a moment for branch switch to complete
+          await new Promise(resolve => setTimeout(resolve, 200));
           
           // Load content for the new branch
           if (selectedFile) {
@@ -202,15 +204,28 @@ Start editing to see the live preview!
     setSelectedFile(filePath);
     await loadFileContent(filePath);
     
-    // Acquire lock for new file
+    // Acquire lock for new file with retry logic
     if (DEBUG_EDITOR) {
       console.log('🔒 Acquiring lock for new file:', filePath);
     }
     
-    const lockAcquired = await lockManager.acquireLock(filePath);
+    let lockAcquired = false;
+    let retries = 3;
+    
+    while (!lockAcquired && retries > 0) {
+      lockAcquired = await lockManager.acquireLock(filePath);
+      
+      if (!lockAcquired) {
+        if (DEBUG_EDITOR) {
+          console.log(`🔒 Lock acquisition failed for ${filePath}, retrying... (${retries} attempts left)`);
+        }
+        await new Promise(resolve => setTimeout(resolve, 200));
+        retries--;
+      }
+    }
     
     if (DEBUG_EDITOR) {
-      console.log('🔒 Lock acquisition result:', lockAcquired);
+      console.log('🔒 Lock acquisition result for', filePath, ':', lockAcquired);
     }
   };
 
