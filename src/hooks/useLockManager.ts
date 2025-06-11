@@ -242,9 +242,43 @@ export function useLockManager() {
       console.log('🔒 Attempting to acquire lock for:', filePath);
     }
 
+    // Check if file is already locked by someone else
+    const existingLock = activeLocks.get(filePath);
+    if (existingLock && existingLock.locked_by !== currentUserId) {
+      console.log('🔒 File already locked by someone else:', existingLock);
+      return false;
+    }
+
+    // If user already has this lock, just refresh it
+    if (myCurrentLock === filePath) {
+      if (DEBUG_LOCK) {
+        console.log('🔒 Already have lock for this file, refreshing:', filePath);
+      }
+      
+      try {
+        const { error } = await supabase
+          .from('live_editing_sessions')
+          .update({
+            locked_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          })
+          .eq('file_path', filePath)
+          .eq('branch_name', currentBranch)
+          .eq('locked_by', currentUserId);
+
+        if (error) {
+          console.error('Error refreshing lock:', error);
+          return false;
+        }
+        return true;
+      } catch (error) {
+        console.error('Error in lock refresh:', error);
+        return false;
+      }
+    }
+
     try {
-      // Step 1: ALWAYS release ALL other locks first - this is the key fix
-      // Don't check if we already have this lock, just release everything first
+      // Step 1: Release ALL other locks first - this is the key fix
       if (DEBUG_LOCK) {
         console.log('🔒 Releasing ALL existing locks before acquiring new one');
       }
@@ -257,14 +291,7 @@ export function useLockManager() {
       // Step 2: Wait a moment for the release to propagate
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Step 3: Check if file is locked by someone else (not us, since we just cleared all our locks)
-      const existingLock = activeLocks.get(filePath);
-      if (existingLock && existingLock.locked_by !== currentUserId) {
-        console.log('🔒 File already locked by someone else:', existingLock);
-        return false;
-      }
-
-      // Step 4: Acquire the new lock
+      // Step 3: Acquire the new lock
       const { data, error } = await supabase.rpc('acquire_file_lock_by_branch', {
         p_file_path: filePath,
         p_user_id: currentUserId,
@@ -288,7 +315,7 @@ export function useLockManager() {
       console.error('Error in acquireLock:', error);
       return false;
     }
-  }, [currentUserId, currentBranch, activeLocks, releaseAllMyLocks]);
+  }, [currentUserId, currentBranch, myCurrentLock, activeLocks, releaseAllMyLocks]);
 
   // Force take lock from another user
   const forceTakeLock = useCallback(async (filePath: string): Promise<boolean> => {

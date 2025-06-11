@@ -113,8 +113,8 @@ export function useContentManager(lockManager: any) {
     };
   }, [currentBranch]);
 
-  // Enhanced save content with branch parameter - FIXED TO PREVENT OVERWRITE
-  const saveContentToBranch = useCallback(async (filePath: string, content: string, branchName: string): Promise<boolean> => {
+  // Enhanced save content with branch parameter
+  const saveContentToBranch = useCallback(async (filePath: string, content: string, branchName: string) => {
     if (!currentUserId || !branchName) {
       return false;
     }
@@ -122,22 +122,13 @@ export function useContentManager(lockManager: any) {
     try {
       setIsAutoSaving(true);
 
-      if (DEBUG_CONTENT) {
-        console.log('📄 Saving content to specific branch:', {
-          filePath,
-          branchName,
-          contentLength: content.length,
-          contentPreview: content.substring(0, 100) + '...'
-        });
-      }
-
       const { error } = await supabase
         .from('live_editing_sessions')
         .upsert({
           file_path: filePath,
           content,
           user_id: currentUserId,
-          branch_name: branchName, // Use the specific branch parameter
+          branch_name: branchName,
           locked_by: currentUserId,
           updated_at: new Date().toISOString()
         }, {
@@ -150,7 +141,7 @@ export function useContentManager(lockManager: any) {
       }
 
       if (DEBUG_CONTENT) {
-        console.log('📄 Content successfully saved to branch:', branchName, 'file:', filePath);
+        console.log('📄 Content saved to branch:', branchName, 'file:', filePath);
       }
 
       return true;
@@ -182,7 +173,7 @@ export function useContentManager(lockManager: any) {
     }
   }, [fetchContentForBranch]);
 
-  // Force load content bypassing cache - ENHANCED WITH BETTER DEBUGGING
+  // Force load content bypassing cache
   const loadContentForced = useCallback(async (filePath: string, branchName: string): Promise<string | null> => {
     if (DEBUG_CONTENT) {
       console.log('📄 FORCE loading content for file:', filePath, 'branch:', branchName, '(bypassing cache)');
@@ -204,7 +195,7 @@ export function useContentManager(lockManager: any) {
 
       if (data?.content) {
         if (DEBUG_CONTENT) {
-          console.log('📄 FORCE loaded from database for branch:', branchName, 'content length:', data.content.length);
+          console.log('📄 FORCE loaded from database for branch:', branchName);
         }
         return data.content;
       }
@@ -229,7 +220,7 @@ export function useContentManager(lockManager: any) {
       if (response.ok) {
         const content = await response.text();
         if (DEBUG_CONTENT) {
-          console.log('📄 FORCE loaded from filesystem, length:', content.length);
+          console.log('📄 FORCE loaded from filesystem');
         }
         return content;
       }
@@ -241,7 +232,7 @@ export function useContentManager(lockManager: any) {
     }
   }, []);
 
-  // Save content to current branch
+  // Save content
   const saveContent = useCallback(async (filePath: string, content: string, immediate = false) => {
     if (!currentUserId || !currentBranch || !isFileLockedByMe(filePath)) {
       return false;
