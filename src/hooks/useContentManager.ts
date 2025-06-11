@@ -31,23 +31,17 @@ export function useContentManager(lockManager: any) {
         if (DEBUG_CONTENT) {
           console.log('📄 Branch cookie changed from:', currentBranch, 'to:', cookieBranch);
         }
-        // Set flag to prevent auto-saves during branch switch
         isBranchSwitching.current = true;
         setCurrentBranch(cookieBranch);
         
-        // Clear the flag after a brief delay
         setTimeout(() => {
           isBranchSwitching.current = false;
         }, 2000);
       }
     };
 
-    // Check immediately
     checkBranchCookie();
-
-    // Set up polling for cookie changes (since there's no cookie change event)
     const interval = setInterval(checkBranchCookie, 100);
-
     return () => clearInterval(interval);
   }, [currentBranch]);
 
@@ -144,24 +138,25 @@ export function useContentManager(lockManager: any) {
     };
   }, [currentBranch]);
 
-  // Fixed save content with proper async handling
+  // FIXED: Simplified save content with proper error handling
   const saveContent = useCallback(async (filePath: string, content: string, immediate = false) => {
-    if (!currentUserId || !currentBranch || !isFileLockedByMe(filePath) || isBranchSwitching.current) {
-      if (DEBUG_CONTENT && isBranchSwitching.current) {
-        console.log('📄 SKIPPING auto-save during branch switch');
+    // Prevent saves if conditions aren't met
+    if (!currentUserId || !currentBranch || !isFileLockedByMe(filePath) || isBranchSwitching.current || saveInProgress.current) {
+      if (DEBUG_CONTENT) {
+        console.log('📄 SKIPPING save - conditions not met:', {
+          currentUserId: !!currentUserId,
+          currentBranch,
+          locked: isFileLockedByMe(filePath),
+          branchSwitching: isBranchSwitching.current,
+          saveInProgress: saveInProgress.current
+        });
       }
       return false;
     }
 
-    // Prevent multiple simultaneous saves
-    if (saveInProgress.current) {
-      console.log('📄 Save already in progress, skipping');
-      return false;
-    }
-
-    const doSave = async (): Promise<boolean> => {
-      if (isBranchSwitching.current || saveInProgress.current) {
-        console.log('📄 ABORTING save - branch switch detected or save in progress');
+    const performSave = async () => {
+      if (saveInProgress.current) {
+        console.log('📄 Save already in progress, skipping');
         return false;
       }
 
@@ -170,7 +165,7 @@ export function useContentManager(lockManager: any) {
         setIsAutoSaving(true);
         
         if (DEBUG_CONTENT) {
-          console.log('📄 Starting save for:', filePath, 'branch:', currentBranch);
+          console.log('📄 STARTING save for:', filePath, 'branch:', currentBranch);
         }
 
         const { error } = await supabase
@@ -187,36 +182,40 @@ export function useContentManager(lockManager: any) {
           });
 
         if (error) {
-          console.error('Error saving content:', error);
+          console.error('📄 Save ERROR:', error);
           return false;
         }
 
         if (DEBUG_CONTENT) {
-          console.log('📄 Auto-save completed successfully for branch:', currentBranch, 'file:', filePath);
+          console.log('📄 Save COMPLETED successfully for:', filePath);
         }
-
         return true;
+
       } catch (error) {
-        console.error('Error in saveContent:', error);
+        console.error('📄 Save EXCEPTION:', error);
         return false;
       } finally {
+        // CRITICAL: Always clear the saving state
         saveInProgress.current = false;
         setIsAutoSaving(false);
+        if (DEBUG_CONTENT) {
+          console.log('📄 Save state CLEARED');
+        }
       }
     };
 
     if (immediate) {
-      return await doSave();
+      return await performSave();
     } else {
       // Clear any existing timeout
       if (autoSaveTimeoutRef.current) {
         clearTimeout(autoSaveTimeoutRef.current);
       }
       
-      // Set new timeout with branch switch protection
+      // Set new timeout
       autoSaveTimeoutRef.current = setTimeout(async () => {
         if (!isBranchSwitching.current) {
-          await doSave();
+          await performSave();
         }
       }, 1500);
       
@@ -226,22 +225,12 @@ export function useContentManager(lockManager: any) {
 
   // Enhanced save content to branch with better async handling
   const saveContentToBranch = useCallback(async (filePath: string, content: string, branchName: string) => {
-    if (!currentUserId || !branchName || isBranchSwitching.current) {
-      if (DEBUG_CONTENT && isBranchSwitching.current) {
-        console.log('📄 SKIPPING save during branch switch');
-      }
+    if (!currentUserId || !branchName || isBranchSwitching.current || saveInProgress.current) {
       return false;
     }
 
-    // Extra safety: ensure we're not saving to wrong branch
     if (branchName !== currentBranch) {
       console.warn('📄 WARNING: Attempted to save to different branch than current:', branchName, 'vs', currentBranch);
-      return false;
-    }
-
-    // Prevent multiple simultaneous saves
-    if (saveInProgress.current) {
-      console.log('📄 Save already in progress, skipping branch save');
       return false;
     }
 
@@ -449,7 +438,6 @@ export function useContentManager(lockManager: any) {
       if (autoSaveTimeoutRef.current) {
         clearTimeout(autoSaveTimeoutRef.current);
       }
-      // Clear any pending save operations
       saveInProgress.current = false;
       setIsAutoSaving(false);
       isBranchSwitching.current = false;
@@ -462,7 +450,6 @@ export function useContentManager(lockManager: any) {
     if (autoSaveTimeoutRef.current) {
       clearTimeout(autoSaveTimeoutRef.current);
     }
-    // Clear any pending save operations and reset state
     saveInProgress.current = false;
     setIsAutoSaving(false);
   }, []);
