@@ -35,22 +35,21 @@ export function ImageModal({ src, alt, isOpen, onClose }: ImageModalProps) {
     <DialogPrimitive.Root open={isOpen} onOpenChange={onClose}>
       <DialogPrimitive.Portal>
         <DialogPrimitive.Overlay 
-          className="fixed inset-0 z-50 bg-black/40 backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
+          className="fixed inset-0 z-50 bg-black/60 backdrop-blur-md data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0"
           onClick={onClose}
         />
         <DialogPrimitive.Content className="fixed left-[50%] top-[50%] z-50 translate-x-[-50%] translate-y-[-50%] p-4 border-0 bg-transparent shadow-none focus:outline-none max-w-[95vw] max-h-[95vh] w-fit h-fit">
           <div className="relative flex items-center justify-center">
             <DialogPrimitive.Close asChild>
               <button
-                className="fixed top-4 right-4 sm:top-8 sm:right-8 rounded-full bg-background/90 backdrop-blur-md p-3 text-foreground hover:bg-background transition-all duration-200 z-50 focus:outline-none focus:ring-2 focus:ring-foreground/50 shadow-lg"
+                className="absolute top-2 right-2 z-50 rounded-full bg-black/80 backdrop-blur-sm p-2.5 text-white hover:bg-black/90 transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-white/50 shadow-xl border border-white/20"
                 aria-label="Close"
-                style={{ paddingTop: 'env(safe-area-inset-top, 1rem)' }}
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </DialogPrimitive.Close>
             
-            <div className="relative rounded-lg overflow-hidden bg-white/5 backdrop-blur-sm border border-white/10 cursor-pointer max-w-full max-h-full">
+            <div className="relative rounded-lg overflow-hidden bg-white/5 backdrop-blur-sm border border-white/10 cursor-pointer max-w-full max-h-full shadow-2xl">
               <img
                 src={src}
                 alt={alt}
@@ -62,8 +61,8 @@ export function ImageModal({ src, alt, isOpen, onClose }: ImageModalProps) {
                 }}
               />
               {alt && (
-                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 via-black/40 to-transparent text-white p-4 pointer-events-none">
-                  <p className="text-sm text-center font-medium">{alt}</p>
+                <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent text-white p-4 pointer-events-none">
+                  <p className="text-sm text-center font-medium drop-shadow-lg">{alt}</p>
                 </div>
               )}
             </div>
