@@ -36,7 +36,7 @@ export function useBranchContentStore() {
 
   // Set content for specific branch/file
   const setContent = useCallback((branchName: string, filePath: string, content: string) => {
-    console.log('🗂️ Setting content for branch:', branchName, 'file:', filePath, 'length:', content.length);
+    console.log('📦 [ContentStore] 💾 Set content:', `${branchName}/${filePath}`, { length: content.length });
     
     setContentCache(prev => {
       const newCache = {
@@ -58,7 +58,7 @@ export function useBranchContentStore() {
   // Get content for specific branch/file
   const getContent = useCallback((branchName: string, filePath: string): string | null => {
     const content = contentCache[branchName]?.[filePath] || null;
-    console.log('🗂️ Getting content for branch:', branchName, 'file:', filePath, 'found:', !!content);
+    console.log('📦 [ContentStore] 📖 Get content:', `${branchName}/${filePath}`, { found: !!content, length: content?.length || 0 });
     return content;
   }, [contentCache]);
 
@@ -66,7 +66,7 @@ export function useBranchContentStore() {
   const captureCurrentContent = useCallback((currentBranch: string, filePath: string, editorContent: string) => {
     if (!editorContent.trim()) return;
     
-    console.log('📸 Capturing content for branch switch:', currentBranch, filePath);
+    console.log('📦 [ContentStore] 📸 Capture content:', `${currentBranch}/${filePath}`, { length: editorContent.length });
     setContent(currentBranch, filePath, editorContent);
   }, [setContent]);
 

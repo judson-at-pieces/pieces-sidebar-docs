@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getBranchCookie } from '@/utils/branchCookies';
@@ -15,10 +16,31 @@ const DEBUG_CONTENT = true;
 export function useContentManager(lockManager: any) {
   const [liveContent, setLiveContent] = useState<Map<string, string>>(new Map());
   const [isAutoSaving, setIsAutoSaving] = useState(false);
-  const currentBranch = getBranchCookie() || 'main';
+  const [currentBranch, setCurrentBranch] = useState<string>(getBranchCookie() || 'main');
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
 
   const { currentUserId, isFileLockedByMe } = lockManager;
+
+  // Listen for branch cookie changes
+  useEffect(() => {
+    const checkBranchCookie = () => {
+      const cookieBranch = getBranchCookie() || 'main';
+      if (cookieBranch !== currentBranch) {
+        if (DEBUG_CONTENT) {
+          console.log('📄 Branch cookie changed from:', currentBranch, 'to:', cookieBranch);
+        }
+        setCurrentBranch(cookieBranch);
+      }
+    };
+
+    // Check immediately
+    checkBranchCookie();
+
+    // Set up polling for cookie changes (since there's no cookie change event)
+    const interval = setInterval(checkBranchCookie, 100);
+
+    return () => clearInterval(interval);
+  }, [currentBranch]);
 
   // Simple branch-aware content fetching
   const fetchContentForBranch = useCallback(async (branch: string) => {
@@ -59,7 +81,7 @@ export function useContentManager(lockManager: any) {
   useEffect(() => {
     if (currentBranch) {
       if (DEBUG_CONTENT) {
-        console.log('📄 Branch changed to:', currentBranch);
+        console.log('📄 Branch changed to:', currentBranch, '- fetching content');
       }
       
       fetchContentForBranch(currentBranch).then(contentMap => {
@@ -165,13 +187,13 @@ export function useContentManager(lockManager: any) {
     const contentMap = await fetchContentForBranch(branchName);
     
     // Only update if this is still the current branch
-    if (branchName === getBranchCookie()) {
+    if (branchName === currentBranch) {
       setLiveContent(contentMap);
       if (DEBUG_CONTENT) {
         console.log('🔄 Cache cleared and content refreshed for branch:', branchName);
       }
     }
-  }, [fetchContentForBranch]);
+  }, [fetchContentForBranch, currentBranch]);
 
   // Force load content bypassing cache
   const loadContentForced = useCallback(async (filePath: string, branchName: string): Promise<string | null> => {
@@ -375,6 +397,7 @@ export function useContentManager(lockManager: any) {
   return {
     liveContent,
     isAutoSaving,
+    currentBranch, // Expose the reactive current branch
     saveContent,
     saveContentToBranch,
     loadContent,

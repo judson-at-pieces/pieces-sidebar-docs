@@ -18,12 +18,15 @@ const DEBUG_EDITOR = true;
 export function EditorLayout() {
   const { fileStructure, isLoading, error, refetch } = useFileStructure();
   const { currentBranch, initialized, branches } = useBranchManager();
-  const { sessions } = useBranchSessions(currentBranch);
 
   // Initialize systems
   const lockManager = useLockManager();
   const contentManager = useContentManager(lockManager);
   const branchContentStore = useBranchContentStore();
+
+  // Use the reactive branch from contentManager instead of getBranchCookie
+  const effectiveBranch = contentManager.currentBranch;
+  const { sessions } = useBranchSessions(effectiveBranch);
 
   const [selectedFile, setSelectedFile] = useState<string>();
   const [localContent, setLocalContent] = useState("");
@@ -36,26 +39,27 @@ export function EditorLayout() {
     console.log('🎯 EDITOR STATE:', {
       selectedFile,
       currentBranch,
+      effectiveBranch,
       lastBranch,
       localContentLength: localContent.length,
       isSwitchingBranch
     });
   }
 
-  // Handle branch changes with proper content isolation
+  // Handle branch changes with proper content isolation - using effectiveBranch
   useEffect(() => {
-    if (!currentBranch) return;
+    if (!effectiveBranch) return;
     
     // First time initialization
     if (lastBranch === null) {
-      setLastBranch(currentBranch);
+      setLastBranch(effectiveBranch);
       return;
     }
     
     // Actual branch change detected
-    if (currentBranch !== lastBranch) {
+    if (effectiveBranch !== lastBranch) {
       if (DEBUG_EDITOR) {
-        console.log('🔄 Branch switch detected:', lastBranch, '->', currentBranch);
+        console.log('🔄 Branch switch detected:', lastBranch, '->', effectiveBranch);
       }
       
       setIsSwitchingBranch(true);
@@ -86,14 +90,17 @@ export function EditorLayout() {
           setLocalContent("");
           setLoadingContent(true);
           
-          // Step 4: Load content FROM new branch
+          // Step 4: Force refresh content for the new branch
+          await contentManager.refreshContentForBranch(effectiveBranch);
+          
+          // Step 5: Load content FROM new branch
           if (selectedFile) {
             if (DEBUG_EDITOR) {
-              console.log('📄 Loading content FROM new branch:', currentBranch, 'file:', selectedFile);
+              console.log('📄 Loading content FROM new branch:', effectiveBranch, 'file:', selectedFile);
             }
             
             // First check our branch content store
-            let newContent = branchContentStore.getContent(currentBranch, selectedFile);
+            let newContent = branchContentStore.getContent(effectiveBranch, selectedFile);
             
             if (newContent) {
               if (DEBUG_EDITOR) {
@@ -102,7 +109,7 @@ export function EditorLayout() {
               setLocalContent(newContent);
             } else {
               // Load from database for this specific branch
-              newContent = await contentManager.loadContentForced(selectedFile, currentBranch);
+              newContent = await contentManager.loadContentForced(selectedFile, effectiveBranch);
               
               if (newContent !== null) {
                 if (DEBUG_EDITOR) {
@@ -110,7 +117,7 @@ export function EditorLayout() {
                 }
                 setLocalContent(newContent);
                 // Cache it in branch store
-                branchContentStore.setContent(currentBranch, selectedFile, newContent);
+                branchContentStore.setContent(effectiveBranch, selectedFile, newContent);
               } else {
                 // Create default content for new branch
                 const fileName = selectedFile.split('/').pop()?.replace(/\.md$/, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
@@ -125,7 +132,7 @@ description: "Add a description for this page"
 
 # ${fileName}
 
-This content is specific to the ${currentBranch} branch.
+This content is specific to the ${effectiveBranch} branch.
 
 Add your content here. You can use markdown and custom components:
 
@@ -136,7 +143,7 @@ This is an information callout. Type "/" to see more available components.
 Start editing to see the live preview!
 `;
                 setLocalContent(defaultContent);
-                branchContentStore.setContent(currentBranch, selectedFile, defaultContent);
+                branchContentStore.setContent(effectiveBranch, selectedFile, defaultContent);
                 
                 if (DEBUG_EDITOR) {
                   console.log('📝 Created default content for new branch');
@@ -146,7 +153,7 @@ Start editing to see the live preview!
             
             setLoadingContent(false);
             
-            // Step 5: Try to acquire lock for the new branch
+            // Step 6: Try to acquire lock for the new branch
             setTimeout(async () => {
               const lockAcquired = await lockManager.acquireLock(selectedFile);
               if (DEBUG_EDITOR) {
@@ -161,7 +168,7 @@ Start editing to see the live preview!
           console.error('❌ Error during branch switch:', error);
           setLoadingContent(false);
         } finally {
-          setLastBranch(currentBranch);
+          setLastBranch(effectiveBranch);
           setIsSwitchingBranch(false);
           if (DEBUG_EDITOR) {
             console.log('✅ Branch switch completed');
@@ -171,14 +178,14 @@ Start editing to see the live preview!
       
       handleBranchSwitch();
     }
-  }, [currentBranch, lastBranch, selectedFile, localContent, lockManager, contentManager, branchContentStore]);
+  }, [effectiveBranch, lastBranch, selectedFile, localContent, lockManager, contentManager, branchContentStore]);
 
   const loadFileContent = async (filePath: string) => {
     setLoadingContent(true);
     
     try {
       // First check branch content store
-      let content = branchContentStore.getContent(currentBranch, filePath);
+      let content = branchContentStore.getContent(effectiveBranch, filePath);
       
       if (content !== null) {
         if (DEBUG_EDITOR) {
@@ -192,9 +199,9 @@ Start editing to see the live preview!
         if (content !== null) {
           setLocalContent(content);
           // Cache in branch store
-          branchContentStore.setContent(currentBranch, filePath, content);
+          branchContentStore.setContent(effectiveBranch, filePath, content);
           if (DEBUG_EDITOR) {
-            console.log('📄 Loaded and cached content for:', filePath, 'in branch:', currentBranch);
+            console.log('📄 Loaded and cached content for:', filePath, 'in branch:', effectiveBranch);
           }
         } else {
           // Create default content
@@ -210,7 +217,7 @@ description: "Add a description for this page"
 
 # ${fileName}
 
-This content is specific to the ${currentBranch} branch.
+This content is specific to the ${effectiveBranch} branch.
 
 Add your content here. You can use markdown and custom components:
 
@@ -221,7 +228,7 @@ This is an information callout. Type "/" to see more available components.
 Start editing to see the live preview!
 `;
           setLocalContent(defaultContent);
-          branchContentStore.setContent(currentBranch, filePath, defaultContent);
+          branchContentStore.setContent(effectiveBranch, filePath, defaultContent);
         }
       }
     } catch (error) {
@@ -236,11 +243,11 @@ Start editing to see the live preview!
   useEffect(() => {
     if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && localContent && !isSwitchingBranch) {
       // Save to branch store immediately for isolation
-      branchContentStore.setContent(currentBranch, selectedFile, localContent);
+      branchContentStore.setContent(effectiveBranch, selectedFile, localContent);
       // Also save to database
       contentManager.saveContent(selectedFile, localContent, false);
     }
-  }, [selectedFile, localContent, lockManager, contentManager, branchContentStore, currentBranch, isSwitchingBranch]);
+  }, [selectedFile, localContent, lockManager, contentManager, branchContentStore, effectiveBranch, isSwitchingBranch]);
 
   // Release lock when navigating away from the page
   useEffect(() => {
@@ -277,12 +284,12 @@ Start editing to see the live preview!
     if (selectedFile === filePath) return;
 
     if (DEBUG_EDITOR) {
-      console.log('=== FILE SELECTION ===', filePath, 'in branch:', currentBranch);
+      console.log('=== FILE SELECTION ===', filePath, 'in branch:', effectiveBranch);
     }
     
     // Save current file content to branch store before switching
     if (selectedFile && localContent) {
-      branchContentStore.captureCurrentContent(currentBranch, selectedFile, localContent);
+      branchContentStore.captureCurrentContent(effectiveBranch, selectedFile, localContent);
       
       // Also save to database if we have lock
       if (lockManager.isFileLockedByMe(selectedFile)) {
@@ -310,7 +317,7 @@ Start editing to see the live preview!
     if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && !isSwitchingBranch) {
       setLocalContent(newContent);
       // Immediately save to branch store for isolation
-      branchContentStore.setContent(currentBranch, selectedFile, newContent);
+      branchContentStore.setContent(effectiveBranch, selectedFile, newContent);
     }
   };
 
@@ -395,7 +402,7 @@ Start editing to see the live preview!
             lockedBy={lockedByName}
             isAcquiringLock={false}
             onAcquireLock={handleAcquireLock}
-            currentBranch={currentBranch}
+            currentBranch={effectiveBranch}
             sessions={sessions}
             hasChanges={hasChanges}
             initialized={initialized}
@@ -432,8 +439,8 @@ Start editing to see the live preview!
             ) : (
               <>
                 <FileTreeSidebar
-                  title={`Content Files (${currentBranch})`}
-                  description={`Select a file to edit its content in the ${currentBranch} branch`}
+                  title={`Content Files (${effectiveBranch})`}
+                  description={`Select a file to edit its content in the ${effectiveBranch} branch`}
                   selectedFile={selectedFile}
                   onFileSelect={handleFileSelect}
                   fileStructure={fileStructure}
