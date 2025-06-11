@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useLockManager } from "@/hooks/useLockManager";
@@ -213,6 +212,7 @@ Start editing to see the live preview!
           }
         }
         
+        // IMMEDIATELY update the editor content - this was missing!
         setLocalContent(content || "");
         return content;
       }
@@ -242,11 +242,18 @@ Start editing to see the live preview!
     }
     
     setSelectedFile(filePath);
-    await loadFileContent(filePath);
     
-    // Acquire lock
-    const lockAcquired = await lockManager.acquireLock(filePath);
-    log('🔒 Lock acquisition', { filePath, success: lockAcquired });
+    // Load content and wait for it to complete
+    try {
+      await loadFileContent(filePath);
+      
+      // Acquire lock after content is loaded
+      const lockAcquired = await lockManager.acquireLock(filePath);
+      log('🔒 Lock acquisition', { filePath, success: lockAcquired });
+    } catch (error) {
+      log('❌ Error loading file', error);
+      setLocalContent("Error loading file content");
+    }
   };
 
   const handleAcquireLock = async () => {

@@ -119,7 +119,7 @@ export function useEditorStateMachine() {
       processingOperation.current = false;
       
       // Process next operation if any
-      setTimeout(processNextOperation, 0);
+      setTimeout(processNextOperation, 10); // Reduced delay for faster processing
     }
   }, [state, transitionTo, log]);
 
