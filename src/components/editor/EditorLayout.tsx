@@ -1,11 +1,9 @@
-import { useState, useEffect, useRef } from "react";
+
+import { useState } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
-import { useLockManager } from "@/hooks/useLockManager";
-import { useContentManager } from "@/hooks/useContentManager";
 import { useBranchManager } from "@/hooks/useBranchManager";
 import { useBranchSessions } from "@/hooks/useBranchSessions";
-import { useBranchContentStore } from "@/hooks/useBranchContentStore";
-import { useBranchSwitcher } from "@/hooks/useBranchSwitcher";
+import { useBranchEditor } from "@/hooks/useBranchEditor";
 import { NavigationEditor } from "./NavigationEditor";
 import { EditorMain } from "./EditorMain";
 import { SeoEditor } from "./SeoEditor";
@@ -19,292 +17,23 @@ const DEBUG_EDITOR = true;
 export function EditorLayout() {
   const { fileStructure, isLoading, error, refetch } = useFileStructure();
   const { currentBranch, initialized, branches } = useBranchManager();
-
-  // Initialize systems
-  const lockManager = useLockManager();
-  const contentManager = useContentManager(lockManager);
-  const branchContentStore = useBranchContentStore();
-  const { switchBranch, isSwitching } = useBranchSwitcher();
-
-  // Use the reactive branch from contentManager
-  const effectiveBranch = contentManager.currentBranch;
-  const { sessions } = useBranchSessions(effectiveBranch);
-
-  const [selectedFile, setSelectedFile] = useState<string>();
-  const [localContent, setLocalContent] = useState("");
-  const [activeTab, setActiveTab] = useState<'navigation' | 'content' | 'seo'>('content');
-  const [loadingContent, setLoadingContent] = useState(false);
-  const [lastBranch, setLastBranch] = useState<string | null>(null);
+  const { sessions } = useBranchSessions(currentBranch);
   
-  // Add guards to prevent race conditions
-  const currentlyLoadingFile = useRef<string | null>(null);
-  const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
+  // Use the new simplified branch editor
+  const editor = useBranchEditor();
+  
+  const [activeTab, setActiveTab] = useState<'navigation' | 'content' | 'seo'>('content');
 
   if (DEBUG_EDITOR) {
-    console.log('🎯 EDITOR STATE:', {
-      selectedFile,
-      currentBranch,
-      effectiveBranch,
-      lastBranch,
-      localContentLength: localContent.length,
-      isSwitching,
-      currentlyLoadingFile: currentlyLoadingFile.current,
-      isAutoSaving: contentManager.isAutoSaving
+    console.log('🎯 EDITOR LAYOUT STATE:', {
+      selectedFile: editor.selectedFile,
+      currentBranch: editor.currentBranch,
+      isLoading: editor.isLoading,
+      isAutoSaving: editor.isAutoSaving,
+      isFileLocked: editor.isFileLocked,
+      lockOwnerName: editor.lockOwnerName
     });
   }
-
-  // Handle branch changes with proper auto-save pausing
-  useEffect(() => {
-    if (!effectiveBranch) return;
-    
-    if (lastBranch === null) {
-      setLastBranch(effectiveBranch);
-      return;
-    }
-    
-    if (effectiveBranch !== lastBranch && !isSwitching) {
-      if (DEBUG_EDITOR) {
-        console.log('🔄 Branch switch detected:', lastBranch, '->', effectiveBranch);
-      }
-      
-      const handleBranchSwitch = async () => {
-        // PAUSE auto-save during branch switch
-        contentManager.pauseAutoSave();
-        
-        const success = await switchBranch(lastBranch, effectiveBranch, selectedFile, localContent);
-        
-        if (success) {
-          setLocalContent("");
-          setLoadingContent(true);
-          
-          if (selectedFile) {
-            await loadFileContent(selectedFile);
-          } else {
-            setLoadingContent(false);
-          }
-          
-          setLastBranch(effectiveBranch);
-          
-          // Ensure we're unlocked and resume auto-save
-          setTimeout(() => {
-            lockManager.releaseAllMyLocks();
-            contentManager.resumeAutoSave();
-            if (DEBUG_EDITOR) {
-              console.log('🔓 Branch switch complete - locks released, auto-save resumed');
-            }
-          }, 500);
-        } else {
-          console.error('❌ Branch switch failed');
-          setLoadingContent(false);
-          contentManager.resumeAutoSave();
-        }
-      };
-      
-      handleBranchSwitch();
-    }
-  }, [effectiveBranch, lastBranch, selectedFile, localContent, isSwitching, switchBranch, lockManager, contentManager]);
-
-  const loadFileContent = async (filePath: string) => {
-    if (currentlyLoadingFile.current && currentlyLoadingFile.current !== filePath) {
-      if (DEBUG_EDITOR) {
-        console.log('🚫 Cancelling load for:', currentlyLoadingFile.current, 'new request:', filePath);
-      }
-      return;
-    }
-    
-    currentlyLoadingFile.current = filePath;
-    setLoadingContent(true);
-    
-    try {
-      const content = await contentManager.loadContentForced(filePath, effectiveBranch);
-      
-      if (currentlyLoadingFile.current !== filePath) {
-        if (DEBUG_EDITOR) {
-          console.log('🚫 File changed during load, ignoring result for:', filePath);
-        }
-        return;
-      }
-      
-      if (content !== null) {
-        setLocalContent(content);
-        branchContentStore.setContent(effectiveBranch, filePath, content);
-        if (DEBUG_EDITOR) {
-          console.log('📄 Force loaded and cached content for:', filePath, 'in branch:', effectiveBranch);
-        }
-      } else {
-        // Create default content
-        const fileName = filePath.split('/').pop()?.replace(/\.md$/, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
-        const pathForFrontmatter = filePath.replace(/\.md$/, '').replace(/^\//, '');
-        
-        const defaultContent = `---
-title: "${fileName}"
-path: "/${pathForFrontmatter}"
-visibility: "PUBLIC"
-description: "Add a description for this page"
----
-
-# ${fileName}
-
-This content is specific to the ${effectiveBranch} branch.
-
-Add your content here. You can use markdown and custom components:
-
-:::info
-This is an information callout. Type "/" to see more available components.
-:::
-
-Start editing to see the live preview!
-`;
-        setLocalContent(defaultContent);
-        branchContentStore.setContent(effectiveBranch, filePath, defaultContent);
-      }
-    } catch (error) {
-      console.error('Error loading file:', error);
-      if (currentlyLoadingFile.current === filePath) {
-        setLocalContent("Error loading file content");
-      }
-    } finally {
-      if (currentlyLoadingFile.current === filePath) {
-        setLoadingContent(false);
-        currentlyLoadingFile.current = null;
-        
-        if (DEBUG_EDITOR) {
-          console.log('✅ File loading complete and UI unfrozen for:', filePath);
-        }
-      }
-    }
-  };
-
-  // Improved auto-save with proper debouncing and state management
-  useEffect(() => {
-    if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && localContent && !isSwitching && !currentlyLoadingFile.current) {
-      // Save to branch store immediately for isolation
-      branchContentStore.setContent(effectiveBranch, selectedFile, localContent);
-      
-      // Clear existing timeout
-      if (autoSaveTimeoutRef.current) {
-        clearTimeout(autoSaveTimeoutRef.current);
-      }
-      
-      // Set new auto-save timeout
-      autoSaveTimeoutRef.current = setTimeout(() => {
-        if (!isSwitching && !currentlyLoadingFile.current) {
-          contentManager.saveContent(selectedFile, localContent, false);
-        }
-      }, 1000);
-    }
-    
-    return () => {
-      if (autoSaveTimeoutRef.current) {
-        clearTimeout(autoSaveTimeoutRef.current);
-      }
-    };
-  }, [selectedFile, localContent, lockManager, contentManager, branchContentStore, effectiveBranch, isSwitching]);
-
-  // Release lock when navigating away from the page
-  useEffect(() => {
-    const handleBeforeUnload = () => {
-      if (lockManager.myCurrentLock) {
-        lockManager.releaseLock(lockManager.myCurrentLock);
-      }
-    };
-
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden' && lockManager.myCurrentLock) {
-        lockManager.releaseLock(lockManager.myCurrentLock);
-      }
-    };
-
-    const handlePopState = () => {
-      if (lockManager.myCurrentLock) {
-        lockManager.releaseLock(lockManager.myCurrentLock);
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    window.addEventListener('popstate', handlePopState);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
-      window.removeEventListener('popstate', handlePopState);
-    };
-  }, [lockManager]);
-
-  const handleFileSelect = async (filePath: string) => {
-    if (selectedFile === filePath || isSwitching) return;
-
-    if (DEBUG_EDITOR) {
-      console.log('=== FILE SELECTION ===', filePath, 'in branch:', effectiveBranch);
-    }
-    
-    // Cancel any ongoing file load
-    if (currentlyLoadingFile.current) {
-      currentlyLoadingFile.current = null;
-    }
-    
-    // Clear any pending auto-save
-    if (autoSaveTimeoutRef.current) {
-      clearTimeout(autoSaveTimeoutRef.current);
-    }
-    
-    // Save current file content to branch store before switching
-    if (selectedFile && localContent) {
-      branchContentStore.captureCurrentContent(effectiveBranch, selectedFile, localContent);
-      
-      // Force immediate save if we have lock (but don't wait for it)
-      if (lockManager.isFileLockedByMe(selectedFile)) {
-        contentManager.saveContentToBranch(selectedFile, localContent, effectiveBranch);
-      }
-    }
-    
-    setSelectedFile(filePath);
-    await loadFileContent(filePath);
-    
-    // Try to acquire lock AFTER loading is complete
-    setTimeout(() => {
-      if (DEBUG_EDITOR) {
-        console.log('🔒 Attempting to acquire lock for:', filePath);
-      }
-      lockManager.acquireLock(filePath);
-    }, 100);
-  };
-
-  const handleContentChange = (newContent: string) => {
-    if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && !isSwitching && !currentlyLoadingFile.current) {
-      setLocalContent(newContent);
-      // Immediately save to branch store for isolation - but don't trigger auto-save here
-      // The auto-save will be triggered by the useEffect above
-      branchContentStore.setContent(effectiveBranch, selectedFile, newContent);
-    }
-  };
-
-  const handleAcquireLock = async () => {
-    if (selectedFile && !isSwitching) {
-      await lockManager.acquireLock(selectedFile);
-    }
-  };
-
-  const handleTakeLock = async () => {
-    if (selectedFile && !isSwitching) {
-      await lockManager.forceTakeLock(selectedFile);
-    }
-  };
-
-  const handleSave = async () => {
-    if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && !isSwitching) {
-      await contentManager.saveContentToBranch(selectedFile, localContent, effectiveBranch);
-    }
-  };
-
-  // Derive lock status
-  const isLocked = selectedFile ? lockManager.isFileLocked(selectedFile) : false;
-  const lockedByMe = selectedFile ? lockManager.isFileLockedByMe(selectedFile) : false;
-  const lockedByOther = selectedFile ? lockManager.isFileLockedByOther(selectedFile) : false;
-  const lockedByName = selectedFile ? lockManager.getFileLockOwnerName(selectedFile) : null;
-  const hasChanges = selectedFile ? contentManager.hasUnsavedChanges(selectedFile, localContent) : false;
-  const liveContent = selectedFile ? contentManager.getContent(selectedFile) : null;
 
   if (isLoading) {
     return (
@@ -343,6 +72,7 @@ Start editing to see the live preview!
   }
 
   const totalLiveFiles = sessions.filter(s => s.content && s.content.trim()).length;
+  const hasChanges = editor.selectedFile ? editor.localContent !== "" : false;
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
@@ -356,26 +86,24 @@ Start editing to see the live preview!
           <NewEditorTabNavigation
             activeTab={activeTab}
             setActiveTab={setActiveTab}
-            selectedFile={selectedFile}
-            isLocked={isLocked}
-            lockedBy={lockedByName}
-            isAcquiringLock={isSwitching || !!currentlyLoadingFile.current}
-            onAcquireLock={handleAcquireLock}
-            currentBranch={effectiveBranch}
+            selectedFile={editor.selectedFile}
+            isLocked={editor.isFileLocked}
+            lockedBy={editor.lockOwnerName}
+            isAcquiringLock={editor.isLoading}
+            onAcquireLock={editor.acquireLock}
+            currentBranch={editor.currentBranch}
             sessions={sessions}
             hasChanges={hasChanges}
             initialized={initialized}
             branches={branches}
           />
           
-          {/* Show loading overlay when switching branches or loading files */}
-          {(isSwitching || !!currentlyLoadingFile.current) && (
+          {/* Show loading overlay when loading files */}
+          {editor.isLoading && (
             <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
               <div className="text-center space-y-4">
                 <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto"></div>
-                <p className="text-sm text-muted-foreground">
-                  {isSwitching ? 'Switching branches...' : 'Loading file...'}
-                </p>
+                <p className="text-sm text-muted-foreground">Loading content...</p>
               </div>
             </div>
           )}
@@ -387,8 +115,8 @@ Start editing to see the live preview!
                 <FileTreeSidebar
                   title="Navigation Structure"
                   description="Manage the navigation hierarchy"
-                  selectedFile={selectedFile}
-                  onFileSelect={handleFileSelect}
+                  selectedFile={editor.selectedFile}
+                  onFileSelect={editor.selectFile}
                   fileStructure={fileStructure}
                 />
                 <div className="flex-1 animate-in fade-in slide-in-from-top-2 duration-300">
@@ -401,36 +129,36 @@ Start editing to see the live preview!
             ) : activeTab === 'seo' ? (
               <div className="flex-1">
                 <SeoEditor
-                  selectedFile={selectedFile}
+                  selectedFile={editor.selectedFile}
                   onSeoDataChange={() => {}}
                   fileStructure={fileStructure}
-                  onFileSelect={handleFileSelect}
+                  onFileSelect={editor.selectFile}
                 />
               </div>
             ) : (
               <>
                 <FileTreeSidebar
-                  title={`Content Files (${effectiveBranch})`}
-                  description={`Select a file to edit its content in the ${effectiveBranch} branch`}
-                  selectedFile={selectedFile}
-                  onFileSelect={handleFileSelect}
+                  title={`Content Files (${editor.currentBranch})`}
+                  description={`Select a file to edit its content in the ${editor.currentBranch} branch`}
+                  selectedFile={editor.selectedFile}
+                  onFileSelect={editor.selectFile}
                   fileStructure={fileStructure}
                   pendingChanges={sessions.map(s => s.file_path)}
                   liveSessions={sessions}
                 />
                 <div className="flex-1 animate-in fade-in-from-bottom-2 duration-300">
                   <EditorMain 
-                    selectedFile={selectedFile}
-                    content={loadingContent ? "Loading content..." : localContent}
-                    onContentChange={handleContentChange}
-                    onSave={handleSave}
+                    selectedFile={editor.selectedFile}
+                    content={editor.localContent}
+                    onContentChange={editor.updateContent}
+                    onSave={async () => {}} // Auto-save handles this
                     hasChanges={hasChanges}
-                    saving={contentManager.isAutoSaving}
-                    isLocked={isLocked}
-                    lockedBy={lockedByName}
-                    liveContent={liveContent}
-                    isAcquiringLock={isSwitching}
-                    onTakeLock={handleTakeLock}
+                    saving={editor.isAutoSaving}
+                    isLocked={editor.isFileLocked}
+                    lockedBy={editor.lockOwnerName}
+                    liveContent={null} // Not needed with new system
+                    isAcquiringLock={editor.isLoading}
+                    onTakeLock={editor.acquireLock}
                   />
                 </div>
               </>
