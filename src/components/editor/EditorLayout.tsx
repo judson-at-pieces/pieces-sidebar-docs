@@ -2,7 +2,6 @@ import { useState, useEffect, useRef } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useLockManager } from "@/hooks/useLockManager";
 import { useContentManager } from "@/hooks/useContentManager";
-import { useAutoSave } from "@/hooks/useAutoSave";
 import { useBranchManager } from "@/hooks/useBranchManager";
 import { useBranchSessions } from "@/hooks/useBranchSessions";
 import { useBranchContentStore } from "@/hooks/useBranchContentStore";
@@ -27,20 +26,6 @@ export function EditorLayout() {
   const branchContentStore = useBranchContentStore();
   const { switchBranch, isSwitching } = useBranchSwitcher();
 
-  // Auto-save state
-  const [isAutoSaving, setIsAutoSaving] = useState(false);
-
-  // Auto-save hook
-  const autoSave = useAutoSave({
-    delay: 1500,
-    onSaveStart: () => setIsAutoSaving(true),
-    onSaveComplete: () => setIsAutoSaving(false),
-    onSaveError: (error) => {
-      setIsAutoSaving(false);
-      console.error('Auto-save failed:', error);
-    }
-  });
-
   // Use the reactive branch from contentManager
   const effectiveBranch = contentManager.currentBranch;
   const { sessions } = useBranchSessions(effectiveBranch);
@@ -53,6 +38,7 @@ export function EditorLayout() {
   
   // Add guards to prevent race conditions
   const currentlyLoadingFile = useRef<string | null>(null);
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
 
   if (DEBUG_EDITOR) {
     console.log('🎯 EDITOR STATE:', {
@@ -63,7 +49,7 @@ export function EditorLayout() {
       localContentLength: localContent.length,
       isSwitching,
       currentlyLoadingFile: currentlyLoadingFile.current,
-      isAutoSaving
+      isAutoSaving: contentManager.isAutoSaving
     });
   }
 
@@ -82,8 +68,7 @@ export function EditorLayout() {
       }
       
       const handleBranchSwitch = async () => {
-        // Cancel any pending auto-saves
-        autoSave.cancelAutoSave();
+        // PAUSE auto-save during branch switch
         contentManager.pauseAutoSave();
         
         const success = await switchBranch(lastBranch, effectiveBranch, selectedFile, localContent);
@@ -100,7 +85,7 @@ export function EditorLayout() {
           
           setLastBranch(effectiveBranch);
           
-          // Resume auto-save after branch switch
+          // Ensure we're unlocked and resume auto-save
           setTimeout(() => {
             lockManager.releaseAllMyLocks();
             contentManager.resumeAutoSave();
@@ -117,7 +102,7 @@ export function EditorLayout() {
       
       handleBranchSwitch();
     }
-  }, [effectiveBranch, lastBranch, selectedFile, localContent, isSwitching, switchBranch, lockManager, contentManager, autoSave]);
+  }, [effectiveBranch, lastBranch, selectedFile, localContent, isSwitching, switchBranch, lockManager, contentManager]);
 
   const loadFileContent = async (filePath: string) => {
     if (currentlyLoadingFile.current && currentlyLoadingFile.current !== filePath) {
@@ -131,7 +116,7 @@ export function EditorLayout() {
     setLoadingContent(true);
     
     try {
-      const content = await contentManager.loadContent(filePath);
+      const content = await contentManager.loadContentForced(filePath, effectiveBranch);
       
       if (currentlyLoadingFile.current !== filePath) {
         if (DEBUG_EDITOR) {
@@ -144,7 +129,7 @@ export function EditorLayout() {
         setLocalContent(content);
         branchContentStore.setContent(effectiveBranch, filePath, content);
         if (DEBUG_EDITOR) {
-          console.log('📄 Loaded and cached content for:', filePath, 'in branch:', effectiveBranch);
+          console.log('📄 Force loaded and cached content for:', filePath, 'in branch:', effectiveBranch);
         }
       } else {
         // Create default content
@@ -190,23 +175,31 @@ Start editing to see the live preview!
     }
   };
 
-  // Simplified auto-save with new hook
+  // Improved auto-save with proper debouncing and state management
   useEffect(() => {
-    if (selectedFile && 
-        lockManager.isFileLockedByMe(selectedFile) && 
-        localContent && 
-        !isSwitching && 
-        !currentlyLoadingFile.current &&
-        !contentManager.isBranchSwitching() &&
-        lockManager.currentUserId) {
-      
+    if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && localContent && !isSwitching && !currentlyLoadingFile.current) {
       // Save to branch store immediately for isolation
       branchContentStore.setContent(effectiveBranch, selectedFile, localContent);
       
-      // Schedule auto-save
-      autoSave.scheduleAutoSave(selectedFile, localContent, lockManager.currentUserId, effectiveBranch);
+      // Clear existing timeout
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+      
+      // Set new auto-save timeout
+      autoSaveTimeoutRef.current = setTimeout(() => {
+        if (!isSwitching && !currentlyLoadingFile.current) {
+          contentManager.saveContent(selectedFile, localContent, false);
+        }
+      }, 1000);
     }
-  }, [selectedFile, localContent, lockManager, autoSave, branchContentStore, effectiveBranch, isSwitching, contentManager]);
+    
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [selectedFile, localContent, lockManager, contentManager, branchContentStore, effectiveBranch, isSwitching]);
 
   // Release lock when navigating away from the page
   useEffect(() => {
@@ -246,19 +239,23 @@ Start editing to see the live preview!
       console.log('=== FILE SELECTION ===', filePath, 'in branch:', effectiveBranch);
     }
     
-    // Cancel any ongoing file load and auto-save
+    // Cancel any ongoing file load
     if (currentlyLoadingFile.current) {
       currentlyLoadingFile.current = null;
     }
-    autoSave.cancelAutoSave();
+    
+    // Clear any pending auto-save
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
     
     // Save current file content to branch store before switching
     if (selectedFile && localContent) {
       branchContentStore.captureCurrentContent(effectiveBranch, selectedFile, localContent);
       
-      // Force immediate save if we have lock
-      if (lockManager.isFileLockedByMe(selectedFile) && lockManager.currentUserId) {
-        autoSave.saveImmediately(selectedFile, localContent, lockManager.currentUserId, effectiveBranch);
+      // Force immediate save if we have lock (but don't wait for it)
+      if (lockManager.isFileLockedByMe(selectedFile)) {
+        contentManager.saveContentToBranch(selectedFile, localContent, effectiveBranch);
       }
     }
     
@@ -277,7 +274,8 @@ Start editing to see the live preview!
   const handleContentChange = (newContent: string) => {
     if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && !isSwitching && !currentlyLoadingFile.current) {
       setLocalContent(newContent);
-      // Immediately save to branch store for isolation
+      // Immediately save to branch store for isolation - but don't trigger auto-save here
+      // The auto-save will be triggered by the useEffect above
       branchContentStore.setContent(effectiveBranch, selectedFile, newContent);
     }
   };
@@ -295,8 +293,8 @@ Start editing to see the live preview!
   };
 
   const handleSave = async () => {
-    if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && !isSwitching && lockManager.currentUserId) {
-      await autoSave.saveImmediately(selectedFile, localContent, lockManager.currentUserId, effectiveBranch);
+    if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && !isSwitching) {
+      await contentManager.saveContentToBranch(selectedFile, localContent, effectiveBranch);
     }
   };
 
@@ -427,7 +425,7 @@ Start editing to see the live preview!
                     onContentChange={handleContentChange}
                     onSave={handleSave}
                     hasChanges={hasChanges}
-                    saving={isAutoSaving}
+                    saving={contentManager.isAutoSaving}
                     isLocked={isLocked}
                     lockedBy={lockedByName}
                     liveContent={liveContent}
