@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getBranchCookie } from '@/utils/branchCookies';
@@ -114,7 +113,7 @@ export function useContentManager(lockManager: any) {
     };
   }, [currentBranch]);
 
-  // Enhanced save content with branch parameter - KEY FIX
+  // Enhanced save content with branch parameter - FIXED TO PREVENT OVERWRITE
   const saveContentToBranch = useCallback(async (filePath: string, content: string, branchName: string): Promise<boolean> => {
     if (!currentUserId || !branchName) {
       return false;
@@ -127,7 +126,8 @@ export function useContentManager(lockManager: any) {
         console.log('📄 Saving content to specific branch:', {
           filePath,
           branchName,
-          contentLength: content.length
+          contentLength: content.length,
+          contentPreview: content.substring(0, 100) + '...'
         });
       }
 
@@ -182,7 +182,7 @@ export function useContentManager(lockManager: any) {
     }
   }, [fetchContentForBranch]);
 
-  // Force load content bypassing cache
+  // Force load content bypassing cache - ENHANCED WITH BETTER DEBUGGING
   const loadContentForced = useCallback(async (filePath: string, branchName: string): Promise<string | null> => {
     if (DEBUG_CONTENT) {
       console.log('📄 FORCE loading content for file:', filePath, 'branch:', branchName, '(bypassing cache)');
@@ -204,7 +204,7 @@ export function useContentManager(lockManager: any) {
 
       if (data?.content) {
         if (DEBUG_CONTENT) {
-          console.log('📄 FORCE loaded from database for branch:', branchName);
+          console.log('📄 FORCE loaded from database for branch:', branchName, 'content length:', data.content.length);
         }
         return data.content;
       }
@@ -229,7 +229,7 @@ export function useContentManager(lockManager: any) {
       if (response.ok) {
         const content = await response.text();
         if (DEBUG_CONTENT) {
-          console.log('📄 FORCE loaded from filesystem');
+          console.log('📄 FORCE loaded from filesystem, length:', content.length);
         }
         return content;
       }

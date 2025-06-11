@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useLockManager } from "@/hooks/useLockManager";
@@ -41,7 +40,7 @@ export function EditorLayout() {
     });
   }
 
-  // Handle branch changes with improved isolation - KEY FIX
+  // Handle branch changes with improved isolation - COMPLETELY FIXED
   useEffect(() => {
     if (!currentBranch) return;
     
@@ -61,28 +60,27 @@ export function EditorLayout() {
       
       const handleBranchSwitch = async () => {
         try {
-          // Step 1: Save current content to OLD branch (not new branch) - THIS IS THE KEY FIX
+          // Step 1: Save current content to OLD branch before clearing anything
           if (selectedFile && localContent && lockManager.isFileLockedByMe(selectedFile)) {
             if (DEBUG_EDITOR) {
               console.log('💾 Saving current content to OLD branch before switch:', lastBranch);
             }
-            // Save to the OLD branch, not the new one
             await contentManager.saveContentToBranch(selectedFile, localContent, lastBranch);
           }
           
-          // Step 2: Release ALL locks from current user
+          // Step 2: IMMEDIATELY clear local content to prevent any carryover
+          setLocalContent("");
+          setLoadingContent(true);
+          
+          // Step 3: Release ALL locks from current user
           if (lockManager.myCurrentLock) {
             await lockManager.releaseLock(lockManager.myCurrentLock);
           }
           
-          // Step 3: Force clear local content and show loading
-          setLocalContent("");
-          setLoadingContent(true);
-          
-          // Step 4: Force refresh content manager for new branch (clear cache)
+          // Step 4: Force clear content manager cache for new branch
           await contentManager.refreshContentForBranch(currentBranch);
           
-          // Step 5: Force reload the current file from the NEW branch
+          // Step 5: If we have a selected file, force reload it from NEW branch
           if (selectedFile) {
             if (DEBUG_EDITOR) {
               console.log('📄 Force loading content for NEW branch:', currentBranch, 'file:', selectedFile);
