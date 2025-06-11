@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useRef, useCallback } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useLockManager } from "@/hooks/useLockManager";
@@ -35,12 +36,36 @@ export function EditorLayout() {
 
   // Refs for tracking
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
+  const emergencyResetTimeoutRef = useRef<NodeJS.Timeout>();
 
   const log = useCallback((message: string, data?: any) => {
     if (DEBUG_EDITOR) {
       console.log(`🎯 [Editor] ${message}`, data || '');
     }
   }, []);
+
+  // Emergency reset if stuck for too long
+  useEffect(() => {
+    if (stateMachine.state !== 'IDLE') {
+      log(`⏰ Starting emergency reset timer for state: ${stateMachine.state}`);
+      
+      emergencyResetTimeoutRef.current = setTimeout(() => {
+        log('🚨 Emergency reset triggered - state machine stuck for 20 seconds');
+        stateMachine.forceReset();
+      }, 20000); // 20 second emergency reset
+    } else {
+      if (emergencyResetTimeoutRef.current) {
+        clearTimeout(emergencyResetTimeoutRef.current);
+        emergencyResetTimeoutRef.current = undefined;
+      }
+    }
+
+    return () => {
+      if (emergencyResetTimeoutRef.current) {
+        clearTimeout(emergencyResetTimeoutRef.current);
+      }
+    };
+  }, [stateMachine.state, stateMachine.forceReset, log]);
 
   // Auto-save with state machine protection
   useEffect(() => {
@@ -171,25 +196,28 @@ Start editing to see the live preview!
   }, [currentBranch, lastBranch, selectedFile, localContent, lockManager, contentManager, contentStore, stateMachine, log]);
 
   const loadFileContent = async (filePath: string) => {
+    log('📂 Starting file load', { filePath, branch: currentBranch });
+    
     return stateMachine.queueOperation('load_file', {
       loadFunction: async () => {
         log('📂 Loading file content', { filePath, branch: currentBranch });
         
-        // Check content store first
-        let content = contentStore.getContent(currentBranch, filePath);
-        
-        if (!content) {
-          // Load from database/filesystem
-          content = await contentManager.loadContent(filePath);
+        try {
+          // Check content store first
+          let content = contentStore.getContent(currentBranch, filePath);
           
-          if (content) {
-            contentStore.setContent(currentBranch, filePath, content);
-          } else {
-            // Create default content
-            const fileName = filePath.split('/').pop()?.replace(/\.md$/, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
-            const pathForFrontmatter = filePath.replace(/\.md$/, '').replace(/^\//, '');
+          if (!content) {
+            // Load from database/filesystem
+            content = await contentManager.loadContent(filePath);
             
-            content = `---
+            if (content) {
+              contentStore.setContent(currentBranch, filePath, content);
+            } else {
+              // Create default content
+              const fileName = filePath.split('/').pop()?.replace(/\.md$/, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
+              const pathForFrontmatter = filePath.replace(/\.md$/, '').replace(/^\//, '');
+              
+              content = `---
 title: "${fileName}"
 path: "/${pathForFrontmatter}"
 visibility: "PUBLIC"
@@ -208,13 +236,20 @@ This is an information callout. Type "/" to see more available components.
 
 Start editing to see the live preview!
 `;
-            contentStore.setContent(currentBranch, filePath, content);
+              contentStore.setContent(currentBranch, filePath, content);
+            }
           }
+          
+          log('📂 Content loaded successfully', { length: content?.length });
+          
+          // IMMEDIATELY update the editor content
+          setLocalContent(content || "");
+          return content;
+        } catch (error) {
+          log('❌ Error loading file content', error);
+          setLocalContent("Error loading file content");
+          throw error;
         }
-        
-        // IMMEDIATELY update the editor content - this was missing!
-        setLocalContent(content || "");
-        return content;
       }
     });
   };
@@ -302,6 +337,9 @@ Start editing to see the live preview!
       if (autoSaveTimeoutRef.current) {
         clearTimeout(autoSaveTimeoutRef.current);
       }
+      if (emergencyResetTimeoutRef.current) {
+        clearTimeout(emergencyResetTimeoutRef.current);
+      }
     };
   }, [lockManager]);
 
@@ -375,7 +413,7 @@ Start editing to see the live preview!
             branches={branches}
           />
           
-          {/* Show state machine status */}
+          {/* Show state machine status with force reset option */}
           {stateMachine.state !== 'IDLE' && (
             <div className="absolute inset-0 bg-background/90 backdrop-blur-sm z-50 flex items-center justify-center">
               <div className="text-center space-y-4 p-6 bg-card border rounded-lg shadow-lg">
@@ -391,6 +429,14 @@ Start editing to see the live preview!
                     Content operations are protected during this process
                   </p>
                 </div>
+                <Button 
+                  onClick={stateMachine.forceReset}
+                  variant="outline" 
+                  size="sm"
+                  className="mt-4"
+                >
+                  Force Reset (if stuck)
+                </Button>
               </div>
             </div>
           )}

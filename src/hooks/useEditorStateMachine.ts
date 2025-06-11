@@ -17,18 +17,38 @@ export interface EditorOperation {
 }
 
 const DEBUG_STATE = true;
+const MAX_OPERATION_TIMEOUT = 15000; // 15 seconds max per operation
 
 export function useEditorStateMachine() {
   const [state, setState] = useState<EditorState>('IDLE');
   const operationQueue = useRef<EditorOperation[]>([]);
   const processingOperation = useRef<boolean>(false);
   const operationIdCounter = useRef(0);
+  const currentOperationTimeout = useRef<NodeJS.Timeout>();
 
   const log = useCallback((message: string, data?: any) => {
     if (DEBUG_STATE) {
       console.log(`🎛️ [StateMachine] ${message}`, data || '');
     }
   }, []);
+
+  const forceReset = useCallback(() => {
+    log('🚨 Force resetting state machine to IDLE');
+    setState('IDLE');
+    processingOperation.current = false;
+    
+    // Clear timeout
+    if (currentOperationTimeout.current) {
+      clearTimeout(currentOperationTimeout.current);
+      currentOperationTimeout.current = undefined;
+    }
+    
+    // Reject all pending operations
+    operationQueue.current.forEach(op => {
+      op.reject(new Error('Operation cancelled due to force reset'));
+    });
+    operationQueue.current = [];
+  }, [log]);
 
   const canTransitionTo = useCallback((newState: EditorState): boolean => {
     const validTransitions: Record<EditorState, EditorState[]> = {
@@ -83,6 +103,13 @@ export function useEditorStateMachine() {
     
     log(`🔧 Processing operation: ${operation.type} (${operation.id})`);
 
+    // Set timeout for operation
+    currentOperationTimeout.current = setTimeout(() => {
+      log(`⏰ Operation timeout: ${operation.type} (${operation.id})`);
+      operation.reject(new Error(`Operation ${operation.type} timed out after ${MAX_OPERATION_TIMEOUT}ms`));
+      forceReset();
+    }, MAX_OPERATION_TIMEOUT);
+
     try {
       let result;
       
@@ -108,20 +135,33 @@ export function useEditorStateMachine() {
           break;
       }
       
+      // Clear timeout on success
+      if (currentOperationTimeout.current) {
+        clearTimeout(currentOperationTimeout.current);
+        currentOperationTimeout.current = undefined;
+      }
+      
       operation.resolve(result);
       log(`✅ Completed operation: ${operation.type} (${operation.id})`);
       
     } catch (error) {
       log(`❌ Failed operation: ${operation.type} (${operation.id})`, error);
+      
+      // Clear timeout on error
+      if (currentOperationTimeout.current) {
+        clearTimeout(currentOperationTimeout.current);
+        currentOperationTimeout.current = undefined;
+      }
+      
       operation.reject(error);
       setState('IDLE'); // Reset to idle on error
     } finally {
       processingOperation.current = false;
       
       // Process next operation if any
-      setTimeout(processNextOperation, 10); // Reduced delay for faster processing
+      setTimeout(processNextOperation, 100);
     }
-  }, [state, transitionTo, log]);
+  }, [state, transitionTo, log, forceReset]);
 
   const isBlocked = useCallback(() => {
     return state !== 'IDLE';
@@ -137,6 +177,7 @@ export function useEditorStateMachine() {
     state,
     isBlocked,
     queueOperation,
-    clearQueue
+    clearQueue,
+    forceReset
   };
 }
