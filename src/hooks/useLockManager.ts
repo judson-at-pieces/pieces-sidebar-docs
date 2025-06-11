@@ -1,6 +1,13 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getBranchCookie } from '@/utils/branchCookies';
+import { 
+  getCurrentLockFromCookie, 
+  setCurrentLockCookie, 
+  setLockOperation,
+  lockQueue,
+  type LockInfo 
+} from '@/utils/lockCoordination';
 
 interface LockSession {
   file_path: string;
@@ -21,18 +28,28 @@ export function useLockManager() {
   const [userNames, setUserNames] = useState<Map<string, string>>(new Map());
   const currentBranch = getBranchCookie() || 'main';
   const heartbeatIntervalRef = useRef<NodeJS.Timeout>();
-  const cleanupExecutedRef = useRef(false);
   const isUnloadingRef = useRef(false);
 
   if (DEBUG_LOCK) {
-    console.log('🔒 LOCK MANAGER: Current state:', {
+    console.log('🔒 LOCK MANAGER STATE:', {
       currentUserId,
       myCurrentLock,
       activeLocksCount: activeLocks.size,
       branch: currentBranch,
-      userNamesCount: userNames.size
+      cookieLock: getCurrentLockFromCookie()
     });
   }
+
+  // Sync with cookie on initialization
+  useEffect(() => {
+    const cookieLock = getCurrentLockFromCookie();
+    if (cookieLock && cookieLock.branchName === currentBranch) {
+      setMyCurrentLock(cookieLock.filePath);
+      if (DEBUG_LOCK) {
+        console.log('🔒 RESTORED LOCK FROM COOKIE:', cookieLock);
+      }
+    }
+  }, [currentBranch]);
 
   // Get current user ID
   useEffect(() => {
@@ -195,127 +212,192 @@ export function useLockManager() {
     };
   }, [myCurrentLock, currentUserId, currentBranch]);
 
-  // Release ALL locks for current user in current branch
-  const releaseAllMyLocks = useCallback(async (): Promise<boolean> => {
+  // ATOMIC lock release - force release ALL locks for user in current branch
+  const forceReleaseAllMyLocks = useCallback(async (): Promise<boolean> => {
     if (!currentUserId || !currentBranch) return false;
 
-    try {
-      if (DEBUG_LOCK) {
-        console.log('🔒 Releasing ALL locks for user:', currentUserId, 'in branch:', currentBranch);
-      }
-
-      // Release all locks for this user in this branch by setting locked_by to null
-      const { error: releaseError } = await supabase
-        .from('live_editing_sessions')
-        .update({
-          locked_by: null,
-          locked_at: null,
-          updated_at: new Date().toISOString()
-        })
-        .eq('locked_by', currentUserId)
-        .eq('branch_name', currentBranch);
-
-      if (releaseError) {
-        console.error('Error releasing all locks:', releaseError);
-        return false;
-      }
-
-      // Clear local state
-      setMyCurrentLock(null);
-
-      if (DEBUG_LOCK) {
-        console.log('🔒 Successfully released all locks for user in branch:', currentBranch);
-      }
-
-      return true;
-    } catch (error) {
-      console.error('Error in releaseAllMyLocks:', error);
-      return false;
-    }
-  }, [currentUserId, currentBranch]);
-
-  // Enhanced acquire lock that automatically releases other locks
-  const acquireLock = useCallback(async (filePath: string): Promise<boolean> => {
-    if (!currentUserId || !currentBranch) return false;
-
-    if (DEBUG_LOCK) {
-      console.log('🔒 Attempting to acquire lock for:', filePath);
-    }
-
-    // Check if file is already locked by someone else
-    const existingLock = activeLocks.get(filePath);
-    if (existingLock && existingLock.locked_by !== currentUserId) {
-      console.log('🔒 File already locked by someone else:', existingLock);
-      return false;
-    }
-
-    // If user already has this lock, just refresh it
-    if (myCurrentLock === filePath) {
-      if (DEBUG_LOCK) {
-        console.log('🔒 Already have lock for this file, refreshing:', filePath);
-      }
-      
+    return lockQueue.add(async () => {
       try {
+        if (DEBUG_LOCK) {
+          console.log('🔒 FORCE RELEASING ALL LOCKS - ATOMIC OPERATION');
+        }
+
+        setLockOperation({
+          type: 'releasing',
+          timestamp: Date.now()
+        });
+
+        // Step 1: Clear heartbeat immediately
+        if (heartbeatIntervalRef.current) {
+          clearInterval(heartbeatIntervalRef.current);
+        }
+
+        // Step 2: Database operation - release ALL locks for this user in this branch
         const { error } = await supabase
           .from('live_editing_sessions')
           .update({
-            locked_at: new Date().toISOString(),
+            locked_by: null,
+            locked_at: null,
             updated_at: new Date().toISOString()
           })
-          .eq('file_path', filePath)
-          .eq('branch_name', currentBranch)
-          .eq('locked_by', currentUserId);
+          .eq('locked_by', currentUserId)
+          .eq('branch_name', currentBranch);
 
         if (error) {
-          console.error('Error refreshing lock:', error);
+          console.error('🔒 Database error releasing locks:', error);
           return false;
         }
+
+        // Step 3: Clear local state immediately
+        setMyCurrentLock(null);
+        setCurrentLockCookie(null);
+        setLockOperation(null);
+
+        if (DEBUG_LOCK) {
+          console.log('🔒 ✅ ALL LOCKS FORCE RELEASED');
+        }
+
         return true;
       } catch (error) {
-        console.error('Error in lock refresh:', error);
+        console.error('🔒 Error in forceReleaseAllMyLocks:', error);
         return false;
       }
-    }
+    });
+  }, [currentUserId, currentBranch]);
 
-    try {
-      // Step 1: Release ALL other locks first - this is the key fix
-      if (DEBUG_LOCK) {
-        console.log('🔒 Releasing ALL existing locks before acquiring new one');
-      }
-      
-      const releaseSuccess = await releaseAllMyLocks();
-      if (!releaseSuccess) {
-        console.error('🔒 Failed to release existing locks, but continuing...');
-      }
+  // ATOMIC lock acquisition with guaranteed cleanup
+  const acquireLock = useCallback(async (filePath: string): Promise<boolean> => {
+    if (!currentUserId || !currentBranch) return false;
 
-      // Step 2: Wait a moment for the release to propagate
-      await new Promise(resolve => setTimeout(resolve, 100));
-
-      // Step 3: Acquire the new lock
-      const { data, error } = await supabase.rpc('acquire_file_lock_by_branch', {
-        p_file_path: filePath,
-        p_user_id: currentUserId,
-        p_branch_name: currentBranch
-      });
-
-      if (error) {
-        console.error('Error acquiring lock:', error);
-        return false;
-      }
-
-      if (data) {
-        setMyCurrentLock(filePath);
+    return lockQueue.add(async () => {
+      try {
         if (DEBUG_LOCK) {
-          console.log('🔒 Lock acquired successfully for:', filePath);
+          console.log('🔒 ATOMIC LOCK ACQUISITION STARTING:', { filePath, branch: currentBranch });
         }
-        return true;
+
+        setLockOperation({
+          type: 'acquiring',
+          toFile: filePath,
+          timestamp: Date.now()
+        });
+
+        // Step 1: FORCE release ALL existing locks first - no exceptions
+        const releaseSuccess = await forceReleaseAllMyLocks();
+        if (DEBUG_LOCK) {
+          console.log('🔒 Pre-acquire cleanup result:', releaseSuccess);
+        }
+
+        // Step 2: Wait a moment for database propagation
+        await new Promise(resolve => setTimeout(resolve, 200));
+
+        // Step 3: Check if someone else has this file locked
+        const { data: existingLock } = await supabase
+          .from('live_editing_sessions')
+          .select('locked_by, locked_at')
+          .eq('file_path', filePath)
+          .eq('branch_name', currentBranch)
+          .not('locked_by', 'is', null)
+          .gte('locked_at', new Date(Date.now() - 30 * 60 * 1000).toISOString())
+          .maybeSingle();
+
+        if (existingLock && existingLock.locked_by !== currentUserId) {
+          if (DEBUG_LOCK) {
+            console.log('🔒 ❌ File locked by someone else:', existingLock);
+          }
+          setLockOperation(null);
+          return false;
+        }
+
+        // Step 4: Acquire the lock using the database function
+        const { data: lockAcquired, error } = await supabase.rpc('acquire_file_lock_by_branch', {
+          p_file_path: filePath,
+          p_user_id: currentUserId,
+          p_branch_name: currentBranch
+        });
+
+        if (error) {
+          console.error('🔒 Lock acquisition error:', error);
+          setLockOperation(null);
+          return false;
+        }
+
+        if (lockAcquired) {
+          // Step 5: Update local state and cookie
+          setMyCurrentLock(filePath);
+          
+          const lockInfo: LockInfo = {
+            filePath,
+            branchName: currentBranch,
+            userId: currentUserId,
+            acquiredAt: Date.now()
+          };
+          
+          setCurrentLockCookie(lockInfo);
+          setLockOperation(null);
+
+          if (DEBUG_LOCK) {
+            console.log('🔒 ✅ LOCK ACQUIRED SUCCESSFULLY:', lockInfo);
+          }
+
+          return true;
+        }
+
+        setLockOperation(null);
+        return false;
+      } catch (error) {
+        console.error('🔒 Error in acquireLock:', error);
+        setLockOperation(null);
+        return false;
       }
-      return false;
-    } catch (error) {
-      console.error('Error in acquireLock:', error);
-      return false;
-    }
-  }, [currentUserId, currentBranch, myCurrentLock, activeLocks, releaseAllMyLocks]);
+    });
+  }, [currentUserId, currentBranch, forceReleaseAllMyLocks]);
+
+  // Enhanced file switching - handles the specific dual lock scenario
+  const switchToFile = useCallback(async (newFilePath: string): Promise<boolean> => {
+    if (!currentUserId || !currentBranch) return false;
+
+    return lockQueue.add(async () => {
+      try {
+        const currentLockFile = myCurrentLock;
+        
+        if (DEBUG_LOCK) {
+          console.log('🔒 FILE SWITCH OPERATION:', {
+            from: currentLockFile,
+            to: newFilePath,
+            branch: currentBranch
+          });
+        }
+
+        setLockOperation({
+          type: 'switching',
+          fromFile: currentLockFile || undefined,
+          toFile: newFilePath,
+          timestamp: Date.now()
+        });
+
+        // Step 1: Always force release ALL locks first
+        await forceReleaseAllMyLocks();
+
+        // Step 2: Wait for propagation
+        await new Promise(resolve => setTimeout(resolve, 300));
+
+        // Step 3: Acquire new lock
+        const success = await acquireLock(newFilePath);
+        
+        setLockOperation(null);
+        
+        if (DEBUG_LOCK) {
+          console.log('🔒 FILE SWITCH RESULT:', success);
+        }
+
+        return success;
+      } catch (error) {
+        console.error('🔒 Error in switchToFile:', error);
+        setLockOperation(null);
+        return false;
+      }
+    });
+  }, [currentUserId, currentBranch, myCurrentLock, forceReleaseAllMyLocks, acquireLock]);
 
   // Force take lock from another user
   const forceTakeLock = useCallback(async (filePath: string): Promise<boolean> => {
@@ -355,45 +437,34 @@ export function useLockManager() {
       console.error('Error in forceTakeLock:', error);
       return false;
     }
-  }, [currentUserId, currentBranch, myCurrentLock]);
+  }, [currentUserId, currentBranch, myCurrentLock, acquireLock, forceReleaseAllMyLocks]);
 
   // Release lock for a file
   const releaseLock = useCallback(async (filePath: string): Promise<boolean> => {
     if (!currentUserId || !currentBranch) return false;
 
-    try {
-      const { data, error } = await supabase.rpc('release_file_lock_by_branch', {
+    return lockQueue.add(async () => {
+      const success = await supabase.rpc('release_file_lock_by_branch', {
         p_file_path: filePath,
         p_user_id: currentUserId,
         p_branch_name: currentBranch
       });
-
-      if (error) {
-        console.error('Error releasing lock:', error);
-        return false;
-      }
-
-      if (myCurrentLock === filePath) {
+      
+      if (success) {
         setMyCurrentLock(null);
+        setCurrentLockCookie(null);
       }
-
-      if (DEBUG_LOCK) {
-        console.log('🔒 Lock released successfully for:', filePath);
-      }
-      return true;
-    } catch (error) {
-      console.error('Error in releaseLock:', error);
-      return false;
-    }
-  }, [currentUserId, currentBranch, myCurrentLock]);
+      
+      return success;
+    });
+  }, [currentUserId, currentBranch]);
 
   // Improved cleanup with multiple layers of protection
   const performCleanup = useCallback(async () => {
-    if (cleanupExecutedRef.current || !myCurrentLock || !currentUserId || isUnloadingRef.current) {
+    if (isUnloadingRef.current) {
       return;
     }
     
-    cleanupExecutedRef.current = true;
     isUnloadingRef.current = true;
     
     console.log('🔒 Performing cleanup for lock:', myCurrentLock);
@@ -405,7 +476,9 @@ export function useLockManager() {
       }
       
       // Release the lock
-      await releaseLock(myCurrentLock);
+      if (myCurrentLock) {
+        await releaseLock(myCurrentLock);
+      }
     } catch (error) {
       console.error('🔒 Error during cleanup:', error);
     }
@@ -512,6 +585,8 @@ export function useLockManager() {
     return `User ${lock.locked_by.slice(0, 8)}`;
   }, [activeLocks, currentUserId, userNames, fetchUserNames]);
 
+  const refreshLocks = fetchActiveLocks;
+
   return {
     // State
     currentUserId,
@@ -520,9 +595,30 @@ export function useLockManager() {
     
     // Actions
     acquireLock,
-    forceTakeLock,
-    releaseLock,
-    releaseAllMyLocks,
+    switchToFile, // New method for file switching
+    forceTakeLock: async (filePath: string) => {
+      // Force take always clears everything first
+      await forceReleaseAllMyLocks();
+      await new Promise(resolve => setTimeout(resolve, 200));
+      return acquireLock(filePath);
+    },
+    releaseLock: async (filePath: string) => {
+      return lockQueue.add(async () => {
+        const success = await supabase.rpc('release_file_lock_by_branch', {
+          p_file_path: filePath,
+          p_user_id: currentUserId,
+          p_branch_name: currentBranch
+        });
+        
+        if (success) {
+          setMyCurrentLock(null);
+          setCurrentLockCookie(null);
+        }
+        
+        return success;
+      });
+    },
+    releaseAllMyLocks: forceReleaseAllMyLocks,
     
     // Helpers
     isFileLocked,
@@ -532,6 +628,6 @@ export function useLockManager() {
     getFileLockOwnerName,
     
     // Utils
-    refreshLocks: fetchActiveLocks
+    refreshLocks
   };
 }
