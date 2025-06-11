@@ -1,4 +1,5 @@
-import { useState, useEffect } from "react";
+
+import { useState, useEffect, useRef } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useLockManager } from "@/hooks/useLockManager";
 import { useContentManager } from "@/hooks/useContentManager";
@@ -29,7 +30,9 @@ export function EditorLayout() {
   const [loadingContent, setLoadingContent] = useState(false);
   const [lastBranch, setLastBranch] = useState<string | null>(null);
   const [isSwitchingBranch, setIsSwitchingBranch] = useState(false);
-  const [branchSwitchInProgress, setBranchSwitchInProgress] = useState(false);
+  const [autoSaveDisabled, setAutoSaveDisabled] = useState(false);
+  
+  const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
 
   if (DEBUG_EDITOR) {
     console.log('🎯 EDITOR STATE:', {
@@ -38,11 +41,11 @@ export function EditorLayout() {
       lastBranch,
       localContentLength: localContent.length,
       isSwitchingBranch,
-      branchSwitchInProgress
+      autoSaveDisabled
     });
   }
 
-  // Enhanced branch switching with proper content clearing
+  // Enhanced branch switching with controlled save/load sequence
   useEffect(() => {
     if (!currentBranch) return;
     
@@ -58,52 +61,49 @@ export function EditorLayout() {
         console.log('🔄 Branch switch detected:', lastBranch, '->', currentBranch);
       }
       
+      // STEP 1: Immediately disable auto-save and set switching state
       setIsSwitchingBranch(true);
-      setBranchSwitchInProgress(true);
+      setAutoSaveDisabled(true);
+      setLoadingContent(true);
       
       const handleBranchSwitch = async () => {
         try {
-          // Step 1: Save current content to OLD branch if we have a lock
-          if (selectedFile && localContent && lockManager.isFileLockedByMe(selectedFile)) {
+          // STEP 2: Save current content to OLD branch (explicit save)
+          if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && localContent.trim()) {
             if (DEBUG_EDITOR) {
-              console.log('💾 Saving content to OLD branch:', lastBranch);
+              console.log('💾 EXPLICIT save to OLD branch:', lastBranch, 'Content length:', localContent.length);
             }
             await contentManager.saveContentToBranch(selectedFile, localContent, lastBranch);
+            
+            // Wait for save to complete
+            await new Promise(resolve => setTimeout(resolve, 200));
           }
           
-          // Step 2: Release ALL locks to prevent interference
+          // STEP 3: Release ALL locks to prevent interference
           if (lockManager.myCurrentLock) {
             await lockManager.releaseLock(lockManager.myCurrentLock);
+            await new Promise(resolve => setTimeout(resolve, 200));
           }
           
-          // Step 3: IMMEDIATELY clear editor content (this prevents carryover)
+          // STEP 4: Clear editor content immediately (visual feedback)
           setLocalContent("");
-          setLoadingContent(true);
           
-          if (DEBUG_EDITOR) {
-            console.log('🔄 Editor content cleared, switching to branch:', currentBranch);
-          }
-          
-          // Step 4: Force refresh content manager for new branch
+          // STEP 5: Force refresh content manager for new branch
           await contentManager.refreshContentForBranch(currentBranch);
           
-          // Step 5: Small delay to ensure everything is cleared
-          await new Promise(resolve => setTimeout(resolve, 100));
-          
-          // Step 6: If we have a selected file, load content from NEW branch
+          // STEP 6: Load content from NEW branch (explicit load)
           if (selectedFile) {
             if (DEBUG_EDITOR) {
-              console.log('📄 Loading content from NEW branch:', currentBranch);
+              console.log('📄 EXPLICIT load from NEW branch:', currentBranch);
             }
             
-            // Force load content from the new branch (bypassing any cache)
             const newBranchContent = await contentManager.loadContentForced(selectedFile, currentBranch);
             
             if (newBranchContent !== null) {
-              setLocalContent(newBranchContent);
               if (DEBUG_EDITOR) {
-                console.log('✅ Loaded content from NEW branch, length:', newBranchContent.length);
+                console.log('✅ Loaded existing content from NEW branch, length:', newBranchContent.length);
               }
+              setLocalContent(newBranchContent);
             } else {
               // Create default content for new branch
               const fileName = selectedFile.split('/').pop()?.replace(/\.md$/, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
@@ -130,31 +130,37 @@ Start editing to see the live preview!
 `;
               setLocalContent(defaultContent);
               if (DEBUG_EDITOR) {
-                console.log('📝 Created default content for new branch');
+                console.log('📝 Created default content for NEW branch');
               }
             }
             
-            // Step 7: Try to acquire lock for the new branch after content is loaded
+            // STEP 7: Try to acquire lock for the new branch after content is loaded
             setTimeout(async () => {
               const lockAcquired = await lockManager.acquireLock(selectedFile);
               if (DEBUG_EDITOR) {
-                console.log('🔒 Lock acquisition result for new branch:', lockAcquired);
+                console.log('🔒 Lock acquisition result for NEW branch:', lockAcquired);
               }
-            }, 200);
+            }, 300);
           }
-          
-          setLoadingContent(false);
           
         } catch (error) {
           console.error('❌ Error during branch switch:', error);
-          setLoadingContent(false);
         } finally {
+          setLoadingContent(false);
           setLastBranch(currentBranch);
           setIsSwitchingBranch(false);
-          setBranchSwitchInProgress(false);
+          
+          // STEP 8: Re-enable auto-save after 5 seconds delay
           if (DEBUG_EDITOR) {
-            console.log('✅ Branch switch completed to:', currentBranch);
+            console.log('⏱️ Branch switch completed, auto-save will re-enable in 5 seconds');
           }
+          
+          setTimeout(() => {
+            setAutoSaveDisabled(false);
+            if (DEBUG_EDITOR) {
+              console.log('✅ Auto-save re-enabled after branch switch cooldown');
+            }
+          }, 5000); // 5 second delay before auto-save re-enables
         }
       };
       
@@ -207,26 +213,40 @@ Start editing to see the live preview!
     }
   };
 
-  // Auto-save only when NOT switching branches
+  // Controlled auto-save with race condition protection
   useEffect(() => {
-    if (branchSwitchInProgress || isSwitchingBranch) {
-      if (DEBUG_EDITOR) {
-        console.log('🚫 Auto-save blocked - branch switch in progress');
+    // Clear any existing timeout
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+    
+    // Skip auto-save if disabled, switching branches, or no conditions met
+    if (autoSaveDisabled || isSwitchingBranch || !selectedFile || !lockManager.isFileLockedByMe(selectedFile) || !localContent) {
+      if (DEBUG_EDITOR && (autoSaveDisabled || isSwitchingBranch)) {
+        console.log('🚫 Auto-save blocked:', { autoSaveDisabled, isSwitchingBranch });
       }
       return;
     }
     
-    if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && localContent) {
+    // Set a new timeout for auto-save
+    autoSaveTimeoutRef.current = setTimeout(() => {
       if (DEBUG_EDITOR) {
         console.log('💾 Auto-saving to current branch:', currentBranch);
       }
       contentManager.saveContent(selectedFile, localContent, false);
-    }
-  }, [selectedFile, localContent, lockManager, contentManager, isSwitchingBranch, currentBranch, branchSwitchInProgress]);
+    }, 1000); // 1 second delay for auto-save
+    
+    // Cleanup function
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, [selectedFile, localContent, lockManager, contentManager, currentBranch, autoSaveDisabled, isSwitchingBranch]);
 
   // Block content changes during branch switching
   const handleContentChange = (newContent: string) => {
-    if (branchSwitchInProgress || isSwitchingBranch) {
+    if (isSwitchingBranch) {
       if (DEBUG_EDITOR) {
         console.log('🚫 Content change blocked - branch switch in progress');
       }
@@ -315,6 +335,15 @@ Start editing to see the live preview!
     };
   }, [lockManager]);
 
+  // Cleanup timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimeoutRef.current) {
+        clearTimeout(autoSaveTimeoutRef.current);
+      }
+    };
+  }, []);
+
   // Derive lock status
   const isLocked = selectedFile ? lockManager.isFileLocked(selectedFile) : false;
   const lockedByMe = selectedFile ? lockManager.isFileLockedByMe(selectedFile) : false;
@@ -384,6 +413,19 @@ Start editing to see the live preview!
             initialized={initialized}
             branches={branches}
           />
+          
+          {/* Show branch switching overlay */}
+          {isSwitchingBranch && (
+            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+              <div className="text-center space-y-4">
+                <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto"></div>
+                <div className="space-y-2">
+                  <p className="text-lg font-medium">Switching to {currentBranch} branch</p>
+                  <p className="text-sm text-muted-foreground">Saving current content and loading branch content...</p>
+                </div>
+              </div>
+            </div>
+          )}
           
           {/* Tab Content */}
           <div className="flex-1 overflow-hidden flex">
