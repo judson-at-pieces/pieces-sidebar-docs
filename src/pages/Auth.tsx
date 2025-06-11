@@ -4,22 +4,66 @@ import { Navigate } from 'react-router-dom';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { AccessCodeForm } from '@/components/auth/AccessCodeForm';
 import { GitHubAuthButton } from '@/components/auth/GitHubAuthButton';
 import { useAuth } from '@/contexts/AuthContext';
 import { AuthErrorBoundary } from '@/components/auth/AuthErrorBoundary';
 import { Link } from 'react-router-dom';
+import { supabase } from '@/integrations/supabase/client';
 
 function AuthContent() {
   const { user, loading, hasRole, signOut, isSupabaseConfigured } = useAuth();
   const [hasValidCode, setHasValidCode] = useState(false);
+  const [password, setPassword] = useState('');
+  const [passwordValid, setPasswordValid] = useState(false);
+  const [passwordError, setPasswordError] = useState('');
+  const [checkingPassword, setCheckingPassword] = useState(false);
 
   console.log('Auth page state:', { 
     user: !!user, 
     loading, 
     isSupabaseConfigured,
-    userEmail: user?.email 
+    userEmail: user?.email,
+    passwordValid
   });
+
+  // Check password against PIECES_PASSWORD environment variable
+  const checkPassword = async () => {
+    if (!password.trim()) {
+      setPasswordError('Password is required');
+      return;
+    }
+
+    setCheckingPassword(true);
+    setPasswordError('');
+
+    try {
+      const { data, error } = await supabase.functions.invoke('check-password', {
+        body: { password }
+      });
+
+      if (error) {
+        console.error('Password check error:', error);
+        setPasswordError('Unable to verify password. Please try again.');
+        return;
+      }
+
+      if (data?.valid) {
+        setPasswordValid(true);
+        setPasswordError('');
+      } else {
+        setPasswordError('Invalid password. Access denied.');
+      }
+    } catch (error) {
+      console.error('Password check exception:', error);
+      setPasswordError('Unable to verify password. Please try again.');
+    } finally {
+      setCheckingPassword(false);
+    }
+  };
 
   // Show loading state
   if (loading) {
@@ -141,7 +185,68 @@ function AuthContent() {
     );
   }
 
-  // If user is not signed in, show the auth forms
+  // Show password gate if password hasn't been validated yet
+  if (!passwordValid) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4">
+        <div className="w-full max-w-md space-y-6">
+          <div className="text-center">
+            <h1 className="text-3xl font-bold">Documentation Editor</h1>
+            <p className="text-muted-foreground mt-2">
+              Enter the access password to continue
+            </p>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Access Password Required</CardTitle>
+              <CardDescription>
+                Please enter the password to access the authentication system.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="password">Password</Label>
+                <Input
+                  id="password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && checkPassword()}
+                  placeholder="Enter password"
+                  disabled={checkingPassword}
+                />
+              </div>
+              
+              {passwordError && (
+                <Alert variant="destructive">
+                  <AlertDescription>{passwordError}</AlertDescription>
+                </Alert>
+              )}
+
+              <Button 
+                onClick={checkPassword}
+                disabled={checkingPassword || !password.trim()}
+                className="w-full"
+              >
+                {checkingPassword ? 'Verifying...' : 'Continue'}
+              </Button>
+            </CardContent>
+          </Card>
+
+          <div className="text-center">
+            <Link to="/">
+              <Button variant="ghost" className="text-sm">
+                Return to Home
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // If user is not signed in and password is valid, show the auth forms
   return (
     <div className="min-h-screen flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
