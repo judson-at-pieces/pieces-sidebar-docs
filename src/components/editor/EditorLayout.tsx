@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useLockManager } from "@/hooks/useLockManager";
@@ -40,7 +41,7 @@ export function EditorLayout() {
     });
   }
 
-  // Handle branch changes with improved isolation
+  // Handle branch changes with improved isolation - KEY FIX
   useEffect(() => {
     if (!currentBranch) return;
     
@@ -60,11 +61,12 @@ export function EditorLayout() {
       
       const handleBranchSwitch = async () => {
         try {
-          // Step 1: Save current content to old branch if we have unsaved changes
+          // Step 1: Save current content to OLD branch (not new branch) - THIS IS THE KEY FIX
           if (selectedFile && localContent && lockManager.isFileLockedByMe(selectedFile)) {
             if (DEBUG_EDITOR) {
-              console.log('💾 Saving current content to old branch:', lastBranch);
+              console.log('💾 Saving current content to OLD branch before switch:', lastBranch);
             }
+            // Save to the OLD branch, not the new one
             await contentManager.saveContentToBranch(selectedFile, localContent, lastBranch);
           }
           
@@ -80,22 +82,22 @@ export function EditorLayout() {
           // Step 4: Force refresh content manager for new branch (clear cache)
           await contentManager.refreshContentForBranch(currentBranch);
           
-          // Step 5: Force reload the current file from the new branch
+          // Step 5: Force reload the current file from the NEW branch
           if (selectedFile) {
             if (DEBUG_EDITOR) {
-              console.log('📄 Force loading content for new branch:', currentBranch, 'file:', selectedFile);
+              console.log('📄 Force loading content for NEW branch:', currentBranch, 'file:', selectedFile);
             }
             
             // Add delay to ensure content manager has refreshed
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            await new Promise(resolve => setTimeout(resolve, 500));
             
-            // Force reload content by bypassing cache
+            // Force reload content by bypassing cache from NEW branch
             const newContent = await contentManager.loadContentForced(selectedFile, currentBranch);
             
             if (newContent !== null) {
               setLocalContent(newContent);
               if (DEBUG_EDITOR) {
-                console.log('✅ Force loaded content from new branch, length:', newContent.length);
+                console.log('✅ Force loaded content from NEW branch, length:', newContent.length);
               }
             } else {
               // Create default content for new branch

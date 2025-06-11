@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getBranchCookie } from '@/utils/branchCookies';
@@ -113,8 +114,8 @@ export function useContentManager(lockManager: any) {
     };
   }, [currentBranch]);
 
-  // Enhanced save content with branch parameter
-  const saveContentToBranch = useCallback(async (filePath: string, content: string, branchName: string) => {
+  // Enhanced save content with branch parameter - KEY FIX
+  const saveContentToBranch = useCallback(async (filePath: string, content: string, branchName: string): Promise<boolean> => {
     if (!currentUserId || !branchName) {
       return false;
     }
@@ -122,13 +123,21 @@ export function useContentManager(lockManager: any) {
     try {
       setIsAutoSaving(true);
 
+      if (DEBUG_CONTENT) {
+        console.log('📄 Saving content to specific branch:', {
+          filePath,
+          branchName,
+          contentLength: content.length
+        });
+      }
+
       const { error } = await supabase
         .from('live_editing_sessions')
         .upsert({
           file_path: filePath,
           content,
           user_id: currentUserId,
-          branch_name: branchName,
+          branch_name: branchName, // Use the specific branch parameter
           locked_by: currentUserId,
           updated_at: new Date().toISOString()
         }, {
@@ -141,7 +150,7 @@ export function useContentManager(lockManager: any) {
       }
 
       if (DEBUG_CONTENT) {
-        console.log('📄 Content saved to branch:', branchName, 'file:', filePath);
+        console.log('📄 Content successfully saved to branch:', branchName, 'file:', filePath);
       }
 
       return true;
@@ -232,7 +241,7 @@ export function useContentManager(lockManager: any) {
     }
   }, []);
 
-  // Save content
+  // Save content to current branch
   const saveContent = useCallback(async (filePath: string, content: string, immediate = false) => {
     if (!currentUserId || !currentBranch || !isFileLockedByMe(filePath)) {
       return false;
