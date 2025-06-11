@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getBranchCookie } from '@/utils/branchCookies';
@@ -18,6 +17,7 @@ export function useContentManager(lockManager: any) {
   const [isAutoSaving, setIsAutoSaving] = useState(false);
   const [currentBranch, setCurrentBranch] = useState<string>(getBranchCookie() || 'main');
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
+  const isBranchSwitching = useRef(false);
 
   const { currentUserId, isFileLockedByMe } = lockManager;
 
@@ -29,7 +29,14 @@ export function useContentManager(lockManager: any) {
         if (DEBUG_CONTENT) {
           console.log('📄 Branch cookie changed from:', currentBranch, 'to:', cookieBranch);
         }
+        // Set flag to prevent auto-saves during branch switch
+        isBranchSwitching.current = true;
         setCurrentBranch(cookieBranch);
+        
+        // Clear the flag after a brief delay
+        setTimeout(() => {
+          isBranchSwitching.current = false;
+        }, 2000);
       }
     };
 
@@ -135,9 +142,18 @@ export function useContentManager(lockManager: any) {
     };
   }, [currentBranch]);
 
-  // Enhanced save content with branch parameter
+  // Enhanced save content with branch parameter and better guards
   const saveContentToBranch = useCallback(async (filePath: string, content: string, branchName: string) => {
-    if (!currentUserId || !branchName) {
+    if (!currentUserId || !branchName || isBranchSwitching.current) {
+      if (DEBUG_CONTENT && isBranchSwitching.current) {
+        console.log('📄 SKIPPING save during branch switch');
+      }
+      return false;
+    }
+
+    // Extra safety: ensure we're not saving to wrong branch
+    if (branchName !== currentBranch) {
+      console.warn('📄 WARNING: Attempted to save to different branch than current:', branchName, 'vs', currentBranch);
       return false;
     }
 
@@ -173,7 +189,7 @@ export function useContentManager(lockManager: any) {
     } finally {
       setIsAutoSaving(false);
     }
-  }, [currentUserId]);
+  }, [currentUserId, currentBranch]);
 
   // Enhanced refresh for specific branch - FORCE CLEAR CACHE
   const refreshContentForBranch = useCallback(async (branchName: string) => {
@@ -256,11 +272,19 @@ export function useContentManager(lockManager: any) {
 
   // Save content
   const saveContent = useCallback(async (filePath: string, content: string, immediate = false) => {
-    if (!currentUserId || !currentBranch || !isFileLockedByMe(filePath)) {
+    if (!currentUserId || !currentBranch || !isFileLockedByMe(filePath) || isBranchSwitching.current) {
+      if (DEBUG_CONTENT && isBranchSwitching.current) {
+        console.log('📄 SKIPPING auto-save during branch switch');
+      }
       return false;
     }
 
     const doSave = async () => {
+      if (isBranchSwitching.current) {
+        console.log('📄 ABORTING save - branch switch detected');
+        return false;
+      }
+
       try {
         setIsAutoSaving(true);
 
@@ -283,7 +307,7 @@ export function useContentManager(lockManager: any) {
         }
 
         if (DEBUG_CONTENT) {
-          console.log('📄 Content saved for branch:', currentBranch, 'file:', filePath);
+          console.log('📄 Auto-save completed for branch:', currentBranch, 'file:', filePath);
         }
 
         return true;
@@ -298,10 +322,18 @@ export function useContentManager(lockManager: any) {
     if (immediate) {
       return await doSave();
     } else {
+      // Clear any existing timeout
       if (autoSaveTimeoutRef.current) {
         clearTimeout(autoSaveTimeoutRef.current);
       }
-      autoSaveTimeoutRef.current = setTimeout(doSave, 1000);
+      
+      // Set new timeout with branch switch protection
+      autoSaveTimeoutRef.current = setTimeout(() => {
+        if (!isBranchSwitching.current) {
+          doSave();
+        }
+      }, 2000); // Increased delay to reduce conflicts
+      
       return true;
     }
   }, [currentUserId, currentBranch, isFileLockedByMe]);
@@ -385,19 +417,35 @@ export function useContentManager(lockManager: any) {
     return currentContent !== savedContent;
   }, [liveContent]);
 
-  // Cleanup
+  // Enhanced cleanup with branch switch awareness
   useEffect(() => {
     return () => {
       if (autoSaveTimeoutRef.current) {
         clearTimeout(autoSaveTimeoutRef.current);
       }
+      // Clear branch switching flag on unmount
+      isBranchSwitching.current = false;
     };
+  }, []);
+
+  // Add method to pause auto-save during critical operations
+  const pauseAutoSave = useCallback(() => {
+    isBranchSwitching.current = true;
+    if (autoSaveTimeoutRef.current) {
+      clearTimeout(autoSaveTimeoutRef.current);
+    }
+  }, []);
+
+  const resumeAutoSave = useCallback(() => {
+    setTimeout(() => {
+      isBranchSwitching.current = false;
+    }, 1000);
   }, []);
 
   return {
     liveContent,
     isAutoSaving,
-    currentBranch, // Expose the reactive current branch
+    currentBranch,
     saveContent,
     saveContentToBranch,
     loadContent,
@@ -405,6 +453,8 @@ export function useContentManager(lockManager: any) {
     getContent,
     hasUnsavedChanges,
     refreshContent: () => fetchContentForBranch(currentBranch).then(setLiveContent),
-    refreshContentForBranch
+    refreshContentForBranch,
+    pauseAutoSave,
+    resumeAutoSave
   };
 }

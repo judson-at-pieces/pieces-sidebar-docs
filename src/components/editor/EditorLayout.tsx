@@ -38,7 +38,6 @@ export function EditorLayout() {
   
   // Add guards to prevent race conditions
   const currentlyLoadingFile = useRef<string | null>(null);
-  const loadingTimeout = useRef<NodeJS.Timeout>();
 
   if (DEBUG_EDITOR) {
     console.log('🎯 EDITOR STATE:', {
@@ -52,31 +51,30 @@ export function EditorLayout() {
     });
   }
 
-  // Handle branch changes with proper data locking
+  // Handle branch changes with proper auto-save pausing
   useEffect(() => {
     if (!effectiveBranch) return;
     
-    // First time initialization
     if (lastBranch === null) {
       setLastBranch(effectiveBranch);
       return;
     }
     
-    // Actual branch change detected
     if (effectiveBranch !== lastBranch && !isSwitching) {
       if (DEBUG_EDITOR) {
         console.log('🔄 Branch switch detected:', lastBranch, '->', effectiveBranch);
       }
       
       const handleBranchSwitch = async () => {
+        // PAUSE auto-save during branch switch
+        contentManager.pauseAutoSave();
+        
         const success = await switchBranch(lastBranch, effectiveBranch, selectedFile, localContent);
         
         if (success) {
-          // Clear editor content immediately
           setLocalContent("");
           setLoadingContent(true);
           
-          // Load content for the new branch
           if (selectedFile) {
             await loadFileContent(selectedFile);
           } else {
@@ -85,25 +83,26 @@ export function EditorLayout() {
           
           setLastBranch(effectiveBranch);
           
-          // IMPORTANT: Ensure we're unlocked after branch switch
+          // Ensure we're unlocked and resume auto-save
           setTimeout(() => {
             lockManager.releaseAllMyLocks();
+            contentManager.resumeAutoSave();
             if (DEBUG_EDITOR) {
-              console.log('🔓 Branch switch complete - locks released');
+              console.log('🔓 Branch switch complete - locks released, auto-save resumed');
             }
           }, 500);
         } else {
           console.error('❌ Branch switch failed');
           setLoadingContent(false);
+          contentManager.resumeAutoSave();
         }
       };
       
       handleBranchSwitch();
     }
-  }, [effectiveBranch, lastBranch, selectedFile, localContent, isSwitching, switchBranch, lockManager]);
+  }, [effectiveBranch, lastBranch, selectedFile, localContent, isSwitching, switchBranch, lockManager, contentManager]);
 
   const loadFileContent = async (filePath: string) => {
-    // Prevent race conditions - cancel if different file is being loaded
     if (currentlyLoadingFile.current && currentlyLoadingFile.current !== filePath) {
       if (DEBUG_EDITOR) {
         console.log('🚫 Cancelling load for:', currentlyLoadingFile.current, 'new request:', filePath);
@@ -114,16 +113,9 @@ export function EditorLayout() {
     currentlyLoadingFile.current = filePath;
     setLoadingContent(true);
     
-    // Clear any existing timeout
-    if (loadingTimeout.current) {
-      clearTimeout(loadingTimeout.current);
-    }
-    
     try {
-      // Force load content from current branch - bypassing cache
       const content = await contentManager.loadContentForced(filePath, effectiveBranch);
       
-      // Double-check we're still loading the same file
       if (currentlyLoadingFile.current !== filePath) {
         if (DEBUG_EDITOR) {
           console.log('🚫 File changed during load, ignoring result for:', filePath);
@@ -133,7 +125,6 @@ export function EditorLayout() {
       
       if (content !== null) {
         setLocalContent(content);
-        // Cache in branch store
         branchContentStore.setContent(effectiveBranch, filePath, content);
         if (DEBUG_EDITOR) {
           console.log('📄 Force loaded and cached content for:', filePath, 'in branch:', effectiveBranch);
@@ -171,7 +162,6 @@ Start editing to see the live preview!
         setLocalContent("Error loading file content");
       }
     } finally {
-      // Only update loading state if we're still the current file
       if (currentlyLoadingFile.current === filePath) {
         setLoadingContent(false);
         currentlyLoadingFile.current = null;
@@ -183,14 +173,14 @@ Start editing to see the live preview!
     }
   };
 
-  // Auto-save with proper branch isolation
+  // Simplified auto-save with better branch awareness
   useEffect(() => {
-    if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && localContent && !isSwitching) {
+    if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && localContent && !isSwitching && !currentlyLoadingFile.current) {
       // Save to branch store immediately for isolation
       branchContentStore.setContent(effectiveBranch, selectedFile, localContent);
       
-      // Save to database with SPECIFIC branch
-      contentManager.saveContentToBranch(selectedFile, localContent, effectiveBranch);
+      // Auto-save to database (this now has built-in branch switch protection)
+      contentManager.saveContent(selectedFile, localContent);
     }
   }, [selectedFile, localContent, lockManager, contentManager, branchContentStore, effectiveBranch, isSwitching]);
 
@@ -241,17 +231,16 @@ Start editing to see the live preview!
     if (selectedFile && localContent) {
       branchContentStore.captureCurrentContent(effectiveBranch, selectedFile, localContent);
       
-      // Also save to database if we have lock
+      // Force immediate save if we have lock
       if (lockManager.isFileLockedByMe(selectedFile)) {
         await contentManager.saveContentToBranch(selectedFile, localContent, effectiveBranch);
       }
     }
     
-    // Set the new file first
     setSelectedFile(filePath);
     await loadFileContent(filePath);
     
-    // Try to acquire lock AFTER loading is complete (non-blocking)
+    // Try to acquire lock AFTER loading is complete
     setTimeout(() => {
       if (DEBUG_EDITOR) {
         console.log('🔒 Attempting to acquire lock for:', filePath);
