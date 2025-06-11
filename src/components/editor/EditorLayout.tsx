@@ -4,6 +4,7 @@ import { useLockManager } from "@/hooks/useLockManager";
 import { useContentManager } from "@/hooks/useContentManager";
 import { useBranchManager } from "@/hooks/useBranchManager";
 import { useBranchSessions } from "@/hooks/useBranchSessions";
+import { useBranchContentStore } from "@/hooks/useBranchContentStore";
 import { NavigationEditor } from "./NavigationEditor";
 import { EditorMain } from "./EditorMain";
 import { SeoEditor } from "./SeoEditor";
@@ -19,9 +20,10 @@ export function EditorLayout() {
   const { currentBranch, initialized, branches } = useBranchManager();
   const { sessions } = useBranchSessions(currentBranch);
 
-  // Initialize the robust locking system
+  // Initialize systems
   const lockManager = useLockManager();
   const contentManager = useContentManager(lockManager);
+  const branchContentStore = useBranchContentStore();
 
   const [selectedFile, setSelectedFile] = useState<string>();
   const [localContent, setLocalContent] = useState("");
@@ -40,7 +42,7 @@ export function EditorLayout() {
     });
   }
 
-  // Handle branch changes with improved isolation
+  // Handle branch changes with proper content isolation
   useEffect(() => {
     if (!currentBranch) return;
     
@@ -60,49 +62,61 @@ export function EditorLayout() {
       
       const handleBranchSwitch = async () => {
         try {
-          // Step 1: Save current content to old branch if we have unsaved changes
-          if (selectedFile && localContent && lockManager.isFileLockedByMe(selectedFile)) {
+          // Step 1: CRITICAL - Capture current editor content to OLD branch
+          if (selectedFile && localContent && lastBranch) {
             if (DEBUG_EDITOR) {
-              console.log('💾 Saving current content to old branch:', lastBranch);
+              console.log('📸 Capturing current content to OLD branch:', lastBranch);
             }
-            await contentManager.saveContentToBranch(selectedFile, localContent, lastBranch);
+            
+            // Save to branch content store
+            branchContentStore.captureCurrentContent(lastBranch, selectedFile, localContent);
+            
+            // Also save to database if we have lock
+            if (lockManager.isFileLockedByMe(selectedFile)) {
+              await contentManager.saveContentToBranch(selectedFile, localContent, lastBranch);
+            }
           }
           
-          // Step 2: Release ALL locks from current user
+          // Step 2: Release locks
           if (lockManager.myCurrentLock) {
             await lockManager.releaseLock(lockManager.myCurrentLock);
           }
           
-          // Step 3: Force clear local content and show loading
+          // Step 3: Clear editor content immediately
           setLocalContent("");
           setLoadingContent(true);
           
-          // Step 4: Force refresh content manager for new branch (clear cache)
-          await contentManager.refreshContentForBranch(currentBranch);
-          
-          // Step 5: Force reload the current file from the new branch
+          // Step 4: Load content FROM new branch
           if (selectedFile) {
             if (DEBUG_EDITOR) {
-              console.log('📄 Force loading content for new branch:', currentBranch, 'file:', selectedFile);
+              console.log('📄 Loading content FROM new branch:', currentBranch, 'file:', selectedFile);
             }
             
-            // Add delay to ensure content manager has refreshed
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            // First check our branch content store
+            let newContent = branchContentStore.getContent(currentBranch, selectedFile);
             
-            // Force reload content by bypassing cache
-            const newContent = await contentManager.loadContentForced(selectedFile, currentBranch);
-            
-            if (newContent !== null) {
-              setLocalContent(newContent);
+            if (newContent) {
               if (DEBUG_EDITOR) {
-                console.log('✅ Force loaded content from new branch, length:', newContent.length);
+                console.log('✅ Found content in branch store, length:', newContent.length);
               }
+              setLocalContent(newContent);
             } else {
-              // Create default content for new branch
-              const fileName = selectedFile.split('/').pop()?.replace(/\.md$/, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
-              const pathForFrontmatter = selectedFile.replace(/\.md$/, '').replace(/^\//, '');
+              // Load from database for this specific branch
+              newContent = await contentManager.loadContentForced(selectedFile, currentBranch);
               
-              const defaultContent = `---
+              if (newContent !== null) {
+                if (DEBUG_EDITOR) {
+                  console.log('✅ Loaded content from database, length:', newContent.length);
+                }
+                setLocalContent(newContent);
+                // Cache it in branch store
+                branchContentStore.setContent(currentBranch, selectedFile, newContent);
+              } else {
+                // Create default content for new branch
+                const fileName = selectedFile.split('/').pop()?.replace(/\.md$/, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
+                const pathForFrontmatter = selectedFile.replace(/\.md$/, '').replace(/^\//, '');
+                
+                const defaultContent = `---
 title: "${fileName}"
 path: "/${pathForFrontmatter}"
 visibility: "PUBLIC"
@@ -121,15 +135,18 @@ This is an information callout. Type "/" to see more available components.
 
 Start editing to see the live preview!
 `;
-              setLocalContent(defaultContent);
-              if (DEBUG_EDITOR) {
-                console.log('📝 Created default content for new branch');
+                setLocalContent(defaultContent);
+                branchContentStore.setContent(currentBranch, selectedFile, defaultContent);
+                
+                if (DEBUG_EDITOR) {
+                  console.log('📝 Created default content for new branch');
+                }
               }
             }
             
             setLoadingContent(false);
             
-            // Step 6: Try to acquire lock for the new branch after content is loaded
+            // Step 5: Try to acquire lock for the new branch
             setTimeout(async () => {
               const lockAcquired = await lockManager.acquireLock(selectedFile);
               if (DEBUG_EDITOR) {
@@ -154,25 +171,37 @@ Start editing to see the live preview!
       
       handleBranchSwitch();
     }
-  }, [currentBranch, lastBranch, selectedFile, localContent, lockManager, contentManager]);
+  }, [currentBranch, lastBranch, selectedFile, localContent, lockManager, contentManager, branchContentStore]);
 
   const loadFileContent = async (filePath: string) => {
     setLoadingContent(true);
     
     try {
-      const content = await contentManager.loadContent(filePath);
+      // First check branch content store
+      let content = branchContentStore.getContent(currentBranch, filePath);
       
       if (content !== null) {
-        setLocalContent(content);
         if (DEBUG_EDITOR) {
-          console.log('📄 Loaded content for:', filePath, 'in branch:', currentBranch);
+          console.log('📄 Found content in branch store for:', filePath);
         }
+        setLocalContent(content);
       } else {
-        // Create default content
-        const fileName = filePath.split('/').pop()?.replace(/\.md$/, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
-        const pathForFrontmatter = filePath.replace(/\.md$/, '').replace(/^\//, '');
+        // Load from database/filesystem
+        content = await contentManager.loadContent(filePath);
         
-        const defaultContent = `---
+        if (content !== null) {
+          setLocalContent(content);
+          // Cache in branch store
+          branchContentStore.setContent(currentBranch, filePath, content);
+          if (DEBUG_EDITOR) {
+            console.log('📄 Loaded and cached content for:', filePath, 'in branch:', currentBranch);
+          }
+        } else {
+          // Create default content
+          const fileName = filePath.split('/').pop()?.replace(/\.md$/, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
+          const pathForFrontmatter = filePath.replace(/\.md$/, '').replace(/^\//, '');
+          
+          const defaultContent = `---
 title: "${fileName}"
 path: "/${pathForFrontmatter}"
 visibility: "PUBLIC"
@@ -191,7 +220,9 @@ This is an information callout. Type "/" to see more available components.
 
 Start editing to see the live preview!
 `;
-        setLocalContent(defaultContent);
+          setLocalContent(defaultContent);
+          branchContentStore.setContent(currentBranch, filePath, defaultContent);
+        }
       }
     } catch (error) {
       console.error('Error loading file:', error);
@@ -201,12 +232,15 @@ Start editing to see the live preview!
     }
   };
 
-  // Auto-save when user has the lock and content changes (but not during branch switches)
+  // Auto-save with branch isolation
   useEffect(() => {
     if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && localContent && !isSwitchingBranch) {
+      // Save to branch store immediately for isolation
+      branchContentStore.setContent(currentBranch, selectedFile, localContent);
+      // Also save to database
       contentManager.saveContent(selectedFile, localContent, false);
     }
-  }, [selectedFile, localContent, lockManager, contentManager, isSwitchingBranch]);
+  }, [selectedFile, localContent, lockManager, contentManager, branchContentStore, currentBranch, isSwitchingBranch]);
 
   // Release lock when navigating away from the page
   useEffect(() => {
@@ -246,18 +280,23 @@ Start editing to see the live preview!
       console.log('=== FILE SELECTION ===', filePath, 'in branch:', currentBranch);
     }
     
-    // Save current file content before switching
-    if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && localContent) {
-      await contentManager.saveContent(selectedFile, localContent, true);
+    // Save current file content to branch store before switching
+    if (selectedFile && localContent) {
+      branchContentStore.captureCurrentContent(currentBranch, selectedFile, localContent);
+      
+      // Also save to database if we have lock
+      if (lockManager.isFileLockedByMe(selectedFile)) {
+        await contentManager.saveContent(selectedFile, localContent, true);
+      }
     }
     
     // Set the new file first
     setSelectedFile(filePath);
     await loadFileContent(filePath);
     
-    // The enhanced acquireLock will automatically release ALL other locks first
+    // Acquire lock for new file
     if (DEBUG_EDITOR) {
-      console.log('🔒 Acquiring lock for new file (will auto-release others):', filePath);
+      console.log('🔒 Acquiring lock for new file:', filePath);
     }
     
     const lockAcquired = await lockManager.acquireLock(filePath);
@@ -270,6 +309,8 @@ Start editing to see the live preview!
   const handleContentChange = (newContent: string) => {
     if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && !isSwitchingBranch) {
       setLocalContent(newContent);
+      // Immediately save to branch store for isolation
+      branchContentStore.setContent(currentBranch, selectedFile, newContent);
     }
   };
 
