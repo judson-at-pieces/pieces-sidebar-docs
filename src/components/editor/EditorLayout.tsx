@@ -75,7 +75,7 @@ export function EditorLayout() {
             // Save to branch content store
             branchContentStore.captureCurrentContent(lastBranch, selectedFile, localContent);
             
-            // Also save to database if we have lock
+            // Also save to database with specific branch - THIS IS THE KEY FIX
             if (lockManager.isFileLockedByMe(selectedFile)) {
               await contentManager.saveContentToBranch(selectedFile, localContent, lastBranch);
             }
@@ -239,13 +239,14 @@ Start editing to see the live preview!
     }
   };
 
-  // Auto-save with branch isolation
+  // Auto-save with PROPER branch isolation - FIXED
   useEffect(() => {
     if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && localContent && !isSwitchingBranch) {
       // Save to branch store immediately for isolation
       branchContentStore.setContent(effectiveBranch, selectedFile, localContent);
-      // Also save to database
-      contentManager.saveContent(selectedFile, localContent, false);
+      
+      // CRITICAL FIX: Save to database with SPECIFIC branch, not current branch
+      contentManager.saveContentToBranch(selectedFile, localContent, effectiveBranch);
     }
   }, [selectedFile, localContent, lockManager, contentManager, branchContentStore, effectiveBranch, isSwitchingBranch]);
 
@@ -291,9 +292,9 @@ Start editing to see the live preview!
     if (selectedFile && localContent) {
       branchContentStore.captureCurrentContent(effectiveBranch, selectedFile, localContent);
       
-      // Also save to database if we have lock
+      // Also save to database if we have lock - with SPECIFIC branch
       if (lockManager.isFileLockedByMe(selectedFile)) {
-        await contentManager.saveContent(selectedFile, localContent, true);
+        await contentManager.saveContentToBranch(selectedFile, localContent, effectiveBranch);
       }
     }
     
@@ -335,7 +336,8 @@ Start editing to see the live preview!
 
   const handleSave = async () => {
     if (selectedFile && lockManager.isFileLockedByMe(selectedFile)) {
-      await contentManager.saveContent(selectedFile, localContent, true);
+      // FIXED: Save to specific branch, not current branch
+      await contentManager.saveContentToBranch(selectedFile, localContent, effectiveBranch);
     }
   };
 
