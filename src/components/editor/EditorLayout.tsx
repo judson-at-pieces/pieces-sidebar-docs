@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useLockManager } from "@/hooks/useLockManager";
@@ -99,31 +100,22 @@ export function EditorLayout() {
               console.log('📄 Loading content FROM new branch:', effectiveBranch, 'file:', selectedFile);
             }
             
-            // First check our branch content store
-            let newContent = branchContentStore.getContent(effectiveBranch, selectedFile);
+            // Force load content from new branch - bypassing cache completely
+            const newContent = await contentManager.loadContentForced(selectedFile, effectiveBranch);
             
-            if (newContent) {
+            if (newContent !== null) {
               if (DEBUG_EDITOR) {
-                console.log('✅ Found content in branch store, length:', newContent.length);
+                console.log('✅ Loaded content from database for new branch, length:', newContent.length);
               }
               setLocalContent(newContent);
+              // Cache it in branch store
+              branchContentStore.setContent(effectiveBranch, selectedFile, newContent);
             } else {
-              // Load from database for this specific branch
-              newContent = await contentManager.loadContentForced(selectedFile, effectiveBranch);
+              // Create default content for new branch
+              const fileName = selectedFile.split('/').pop()?.replace(/\.md$/, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
+              const pathForFrontmatter = selectedFile.replace(/\.md$/, '').replace(/^\//, '');
               
-              if (newContent !== null) {
-                if (DEBUG_EDITOR) {
-                  console.log('✅ Loaded content from database, length:', newContent.length);
-                }
-                setLocalContent(newContent);
-                // Cache it in branch store
-                branchContentStore.setContent(effectiveBranch, selectedFile, newContent);
-              } else {
-                // Create default content for new branch
-                const fileName = selectedFile.split('/').pop()?.replace(/\.md$/, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
-                const pathForFrontmatter = selectedFile.replace(/\.md$/, '').replace(/^\//, '');
-                
-                const defaultContent = `---
+              const defaultContent = `---
 title: "${fileName}"
 path: "/${pathForFrontmatter}"
 visibility: "PUBLIC"
@@ -142,12 +134,11 @@ This is an information callout. Type "/" to see more available components.
 
 Start editing to see the live preview!
 `;
-                setLocalContent(defaultContent);
-                branchContentStore.setContent(effectiveBranch, selectedFile, defaultContent);
-                
-                if (DEBUG_EDITOR) {
-                  console.log('📝 Created default content for new branch');
-                }
+              setLocalContent(defaultContent);
+              branchContentStore.setContent(effectiveBranch, selectedFile, defaultContent);
+              
+              if (DEBUG_EDITOR) {
+                console.log('📝 Created default content for new branch');
               }
             }
             
@@ -184,31 +175,22 @@ Start editing to see the live preview!
     setLoadingContent(true);
     
     try {
-      // First check branch content store
-      let content = branchContentStore.getContent(effectiveBranch, filePath);
+      // Force load content from current branch - bypassing cache
+      const content = await contentManager.loadContentForced(filePath, effectiveBranch);
       
       if (content !== null) {
-        if (DEBUG_EDITOR) {
-          console.log('📄 Found content in branch store for:', filePath);
-        }
         setLocalContent(content);
+        // Cache in branch store
+        branchContentStore.setContent(effectiveBranch, filePath, content);
+        if (DEBUG_EDITOR) {
+          console.log('📄 Force loaded and cached content for:', filePath, 'in branch:', effectiveBranch);
+        }
       } else {
-        // Load from database/filesystem
-        content = await contentManager.loadContent(filePath);
+        // Create default content
+        const fileName = filePath.split('/').pop()?.replace(/\.md$/, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
+        const pathForFrontmatter = filePath.replace(/\.md$/, '').replace(/^\//, '');
         
-        if (content !== null) {
-          setLocalContent(content);
-          // Cache in branch store
-          branchContentStore.setContent(effectiveBranch, filePath, content);
-          if (DEBUG_EDITOR) {
-            console.log('📄 Loaded and cached content for:', filePath, 'in branch:', effectiveBranch);
-          }
-        } else {
-          // Create default content
-          const fileName = filePath.split('/').pop()?.replace(/\.md$/, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
-          const pathForFrontmatter = filePath.replace(/\.md$/, '').replace(/^\//, '');
-          
-          const defaultContent = `---
+        const defaultContent = `---
 title: "${fileName}"
 path: "/${pathForFrontmatter}"
 visibility: "PUBLIC"
@@ -227,9 +209,8 @@ This is an information callout. Type "/" to see more available components.
 
 Start editing to see the live preview!
 `;
-          setLocalContent(defaultContent);
-          branchContentStore.setContent(effectiveBranch, filePath, defaultContent);
-        }
+        setLocalContent(defaultContent);
+        branchContentStore.setContent(effectiveBranch, filePath, defaultContent);
       }
     } catch (error) {
       console.error('Error loading file:', error);
