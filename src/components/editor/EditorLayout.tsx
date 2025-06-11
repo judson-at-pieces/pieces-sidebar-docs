@@ -36,36 +36,12 @@ export function EditorLayout() {
 
   // Refs for tracking
   const autoSaveTimeoutRef = useRef<NodeJS.Timeout>();
-  const emergencyResetTimeoutRef = useRef<NodeJS.Timeout>();
 
   const log = useCallback((message: string, data?: any) => {
     if (DEBUG_EDITOR) {
       console.log(`🎯 [Editor] ${message}`, data || '');
     }
   }, []);
-
-  // Emergency reset if stuck for too long
-  useEffect(() => {
-    if (stateMachine.state !== 'IDLE') {
-      log(`⏰ Starting emergency reset timer for state: ${stateMachine.state}`);
-      
-      emergencyResetTimeoutRef.current = setTimeout(() => {
-        log('🚨 Emergency reset triggered - state machine stuck for 20 seconds');
-        stateMachine.forceReset();
-      }, 20000); // 20 second emergency reset
-    } else {
-      if (emergencyResetTimeoutRef.current) {
-        clearTimeout(emergencyResetTimeoutRef.current);
-        emergencyResetTimeoutRef.current = undefined;
-      }
-    }
-
-    return () => {
-      if (emergencyResetTimeoutRef.current) {
-        clearTimeout(emergencyResetTimeoutRef.current);
-      }
-    };
-  }, [stateMachine.state, stateMachine.forceReset, log]);
 
   // Auto-save with state machine protection
   useEffect(() => {
@@ -89,6 +65,8 @@ export function EditorLayout() {
             // Save to database
             return contentManager.saveContentToBranch(selectedFile, localContent, currentBranch);
           }
+        }).catch(error => {
+          log('❌ Auto-save failed', error);
         });
       }
     }, 1000);
@@ -191,6 +169,9 @@ Start editing to see the live preview!
           setLastBranch(currentBranch);
           return true;
         }
+      }).catch(error => {
+        log('❌ Branch switch failed', error);
+        stateMachine.forceReset();
       });
     }
   }, [currentBranch, lastBranch, selectedFile, localContent, lockManager, contentManager, contentStore, stateMachine, log]);
@@ -251,6 +232,9 @@ Start editing to see the live preview!
           throw error;
         }
       }
+    }).catch(error => {
+      log('❌ File load operation failed', error);
+      setLocalContent("Error loading file content");
     });
   };
 
@@ -310,6 +294,8 @@ Start editing to see the live preview!
           contentStore.setContent(currentBranch, selectedFile, localContent);
           return contentManager.saveContent(selectedFile, localContent, true);
         }
+      }).catch(error => {
+        log('❌ Manual save failed', error);
       });
     }
   };
@@ -336,9 +322,6 @@ Start editing to see the live preview!
       document.removeEventListener('visibilitychange', handleVisibilityChange);
       if (autoSaveTimeoutRef.current) {
         clearTimeout(autoSaveTimeoutRef.current);
-      }
-      if (emergencyResetTimeoutRef.current) {
-        clearTimeout(emergencyResetTimeoutRef.current);
       }
     };
   }, [lockManager]);
@@ -413,10 +396,10 @@ Start editing to see the live preview!
             branches={branches}
           />
           
-          {/* Show state machine status with force reset option */}
+          {/* Show state machine status with force reset option - IMPROVED */}
           {stateMachine.state !== 'IDLE' && (
-            <div className="absolute inset-0 bg-background/90 backdrop-blur-sm z-50 flex items-center justify-center">
-              <div className="text-center space-y-4 p-6 bg-card border rounded-lg shadow-lg">
+            <div className="fixed inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+              <div className="text-center space-y-4 p-6 bg-card border rounded-lg shadow-lg max-w-md">
                 <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto"></div>
                 <div className="space-y-2">
                   <p className="text-lg font-medium">
@@ -429,14 +412,22 @@ Start editing to see the live preview!
                     Content operations are protected during this process
                   </p>
                 </div>
-                <Button 
-                  onClick={stateMachine.forceReset}
-                  variant="outline" 
-                  size="sm"
-                  className="mt-4"
-                >
-                  Force Reset (if stuck)
-                </Button>
+                <div className="flex gap-2 justify-center">
+                  <Button 
+                    onClick={stateMachine.forceReset}
+                    variant="outline" 
+                    size="sm"
+                  >
+                    Force Reset
+                  </Button>
+                  <Button 
+                    onClick={() => window.location.reload()}
+                    variant="destructive" 
+                    size="sm"
+                  >
+                    Reload Page
+                  </Button>
+                </div>
               </div>
             </div>
           )}

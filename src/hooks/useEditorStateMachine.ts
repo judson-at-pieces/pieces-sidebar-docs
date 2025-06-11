@@ -17,7 +17,8 @@ export interface EditorOperation {
 }
 
 const DEBUG_STATE = true;
-const MAX_OPERATION_TIMEOUT = 15000; // 15 seconds max per operation
+const MAX_OPERATION_TIMEOUT = 10000; // Reduced to 10 seconds
+const MAX_STATE_DURATION = 15000; // Maximum time in any non-IDLE state
 
 export function useEditorStateMachine() {
   const [state, setState] = useState<EditorState>('IDLE');
@@ -25,6 +26,8 @@ export function useEditorStateMachine() {
   const processingOperation = useRef<boolean>(false);
   const operationIdCounter = useRef(0);
   const currentOperationTimeout = useRef<NodeJS.Timeout>();
+  const stateTimeout = useRef<NodeJS.Timeout>();
+  const lastStateChange = useRef<number>(Date.now());
 
   const log = useCallback((message: string, data?: any) => {
     if (DEBUG_STATE) {
@@ -37,10 +40,14 @@ export function useEditorStateMachine() {
     setState('IDLE');
     processingOperation.current = false;
     
-    // Clear timeout
+    // Clear all timeouts
     if (currentOperationTimeout.current) {
       clearTimeout(currentOperationTimeout.current);
       currentOperationTimeout.current = undefined;
+    }
+    if (stateTimeout.current) {
+      clearTimeout(stateTimeout.current);
+      stateTimeout.current = undefined;
     }
     
     // Reject all pending operations
@@ -48,6 +55,7 @@ export function useEditorStateMachine() {
       op.reject(new Error('Operation cancelled due to force reset'));
     });
     operationQueue.current = [];
+    lastStateChange.current = Date.now();
   }, [log]);
 
   const canTransitionTo = useCallback((newState: EditorState): boolean => {
@@ -70,8 +78,22 @@ export function useEditorStateMachine() {
     if (canTransitionTo(newState)) {
       log(`🔄 State transition: ${state} → ${newState}`);
       setState(newState);
+      lastStateChange.current = Date.now();
+      
+      // Clear existing state timeout
+      if (stateTimeout.current) {
+        clearTimeout(stateTimeout.current);
+      }
+      
+      // Set new state timeout if not IDLE
+      if (newState !== 'IDLE') {
+        stateTimeout.current = setTimeout(() => {
+          log(`⏰ State timeout: ${newState} exceeded ${MAX_STATE_DURATION}ms`);
+          forceReset();
+        }, MAX_STATE_DURATION);
+      }
     }
-  }, [state, canTransitionTo, log]);
+  }, [state, canTransitionTo, log, forceReset]);
 
   const queueOperation = useCallback((
     type: EditorOperation['type'], 
@@ -89,7 +111,8 @@ export function useEditorStateMachine() {
       operationQueue.current.push(operation);
       log(`➕ Queued operation: ${operation.type} (${operation.id})`);
       
-      processNextOperation();
+      // Start processing immediately
+      setTimeout(processNextOperation, 10);
     });
   }, []);
 
@@ -154,12 +177,12 @@ export function useEditorStateMachine() {
       }
       
       operation.reject(error);
-      setState('IDLE'); // Reset to idle on error
+      transitionTo('IDLE'); // Always reset to idle on error
     } finally {
       processingOperation.current = false;
       
       // Process next operation if any
-      setTimeout(processNextOperation, 100);
+      setTimeout(processNextOperation, 50);
     }
   }, [state, transitionTo, log, forceReset]);
 
