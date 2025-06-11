@@ -200,27 +200,11 @@ export function useLockManager() {
     if (!currentUserId || !currentBranch) return false;
 
     try {
-      // Find all locks by current user in current branch
-      const { data: myLocks, error: fetchError } = await supabase
-        .from('live_editing_sessions')
-        .select('file_path')
-        .eq('locked_by', currentUserId)
-        .eq('branch_name', currentBranch)
-        .not('locked_by', 'is', null);
-
-      if (fetchError) {
-        console.error('Error fetching my locks:', fetchError);
-        return false;
+      if (DEBUG_LOCK) {
+        console.log('🔒 Releasing ALL locks for user:', currentUserId, 'in branch:', currentBranch);
       }
 
-      if (!myLocks || myLocks.length === 0) {
-        if (DEBUG_LOCK) {
-          console.log('🔒 No locks to release for user');
-        }
-        return true;
-      }
-
-      // Release all locks for this user in this branch
+      // Release all locks for this user in this branch by setting locked_by to null
       const { error: releaseError } = await supabase
         .from('live_editing_sessions')
         .update({
@@ -240,7 +224,7 @@ export function useLockManager() {
       setMyCurrentLock(null);
 
       if (DEBUG_LOCK) {
-        console.log('🔒 Released all locks:', myLocks.map(l => l.file_path));
+        console.log('🔒 Successfully released all locks for user in branch:', currentBranch);
       }
 
       return true;
@@ -253,6 +237,10 @@ export function useLockManager() {
   // Enhanced acquire lock that automatically releases other locks
   const acquireLock = useCallback(async (filePath: string): Promise<boolean> => {
     if (!currentUserId || !currentBranch) return false;
+
+    if (DEBUG_LOCK) {
+      console.log('🔒 Attempting to acquire lock for:', filePath);
+    }
 
     // Check if file is already locked by someone else
     const existingLock = activeLocks.get(filePath);
@@ -289,18 +277,21 @@ export function useLockManager() {
       }
     }
 
-    // Release ALL other locks first
-    if (DEBUG_LOCK) {
-      console.log('🔒 Releasing all existing locks before acquiring new one');
-    }
-    
-    const releaseSuccess = await releaseAllMyLocks();
-    if (!releaseSuccess) {
-      console.error('🔒 Failed to release existing locks');
-      // Continue anyway, but log the issue
-    }
-
     try {
+      // Step 1: Release ALL other locks first - this is the key fix
+      if (DEBUG_LOCK) {
+        console.log('🔒 Releasing ALL existing locks before acquiring new one');
+      }
+      
+      const releaseSuccess = await releaseAllMyLocks();
+      if (!releaseSuccess) {
+        console.error('🔒 Failed to release existing locks, but continuing...');
+      }
+
+      // Step 2: Wait a moment for the release to propagate
+      await new Promise(resolve => setTimeout(resolve, 100));
+
+      // Step 3: Acquire the new lock
       const { data, error } = await supabase.rpc('acquire_file_lock_by_branch', {
         p_file_path: filePath,
         p_user_id: currentUserId,
@@ -531,7 +522,7 @@ export function useLockManager() {
     acquireLock,
     forceTakeLock,
     releaseLock,
-    releaseAllMyLocks, // New function exposed
+    releaseAllMyLocks,
     
     // Helpers
     isFileLocked,

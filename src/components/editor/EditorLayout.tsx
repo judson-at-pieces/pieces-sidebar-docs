@@ -251,15 +251,20 @@ Start editing to see the live preview!
       await contentManager.saveContent(selectedFile, localContent, true);
     }
     
-    // The enhanced acquireLock will automatically release other locks
-    // No need to manually release - just acquire the new lock
+    // Set the new file first
     setSelectedFile(filePath);
     await loadFileContent(filePath);
     
-    // Try to acquire lock for new file (will auto-release others)
-    setTimeout(() => {
-      lockManager.acquireLock(filePath);
-    }, 100);
+    // The enhanced acquireLock will automatically release ALL other locks first
+    if (DEBUG_EDITOR) {
+      console.log('🔒 Acquiring lock for new file (will auto-release others):', filePath);
+    }
+    
+    const lockAcquired = await lockManager.acquireLock(filePath);
+    
+    if (DEBUG_EDITOR) {
+      console.log('🔒 Lock acquisition result:', lockAcquired);
+    }
   };
 
   const handleContentChange = (newContent: string) => {
