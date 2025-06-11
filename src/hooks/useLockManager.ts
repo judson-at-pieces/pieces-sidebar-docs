@@ -220,8 +220,18 @@ export function useLockManager() {
         return false;
       }
 
-      // Clear local state
+      // IMMEDIATELY clear local state to prevent stale data
       setMyCurrentLock(null);
+      setActiveLocks(prev => {
+        const newMap = new Map(prev);
+        // Remove all locks owned by current user
+        for (const [filePath, lock] of newMap.entries()) {
+          if (lock.locked_by === currentUserId) {
+            newMap.delete(filePath);
+          }
+        }
+        return newMap;
+      });
 
       if (DEBUG_LOCK) {
         console.log('🔒 Successfully released all locks for user in branch:', currentBranch);
@@ -234,7 +244,7 @@ export function useLockManager() {
     }
   }, [currentUserId, currentBranch]);
 
-  // Enhanced acquire lock that automatically releases other locks
+  // Enhanced acquire lock that FORCES clear state first
   const acquireLock = useCallback(async (filePath: string): Promise<boolean> => {
     if (!currentUserId || !currentBranch) return false;
 
@@ -243,10 +253,9 @@ export function useLockManager() {
     }
 
     try {
-      // Step 1: ALWAYS release ALL other locks first - this is the key fix
-      // Don't check if we already have this lock, just release everything first
+      // Step 1: FORCE clear all my locks first and update local state immediately
       if (DEBUG_LOCK) {
-        console.log('🔒 Releasing ALL existing locks before acquiring new one');
+        console.log('🔒 Force clearing ALL existing locks before acquiring new one');
       }
       
       const releaseSuccess = await releaseAllMyLocks();
@@ -254,17 +263,31 @@ export function useLockManager() {
         console.error('🔒 Failed to release existing locks, but continuing...');
       }
 
-      // Step 2: Wait a moment for the release to propagate
+      // Step 2: Wait for the release to propagate
+      await new Promise(resolve => setTimeout(resolve, 200));
+
+      // Step 3: Fresh fetch of lock state to ensure we have current data
+      await fetchActiveLocks();
+      
+      // Step 4: Wait a bit more for fresh data to settle
       await new Promise(resolve => setTimeout(resolve, 100));
 
-      // Step 3: Check if file is locked by someone else (not us, since we just cleared all our locks)
-      const existingLock = activeLocks.get(filePath);
-      if (existingLock && existingLock.locked_by !== currentUserId) {
-        console.log('🔒 File already locked by someone else:', existingLock);
+      // Step 5: Check if file is STILL locked by someone else (after fresh fetch)
+      const currentLocks = await supabase
+        .from('live_editing_sessions')
+        .select('file_path, locked_by')
+        .eq('branch_name', currentBranch)
+        .eq('file_path', filePath)
+        .not('locked_by', 'is', null)
+        .gte('locked_at', new Date(Date.now() - 30 * 60 * 1000).toISOString())
+        .maybeSingle();
+
+      if (currentLocks.data && currentLocks.data.locked_by !== currentUserId) {
+        console.log('🔒 File is currently locked by someone else:', currentLocks.data);
         return false;
       }
 
-      // Step 4: Acquire the new lock
+      // Step 6: Acquire the new lock
       const { data, error } = await supabase.rpc('acquire_file_lock_by_branch', {
         p_file_path: filePath,
         p_user_id: currentUserId,
@@ -277,7 +300,20 @@ export function useLockManager() {
       }
 
       if (data) {
+        // Update local state immediately
         setMyCurrentLock(filePath);
+        setActiveLocks(prev => {
+          const newMap = new Map(prev);
+          newMap.set(filePath, {
+            file_path: filePath,
+            user_id: currentUserId,
+            locked_by: currentUserId,
+            locked_at: new Date().toISOString(),
+            branch_name: currentBranch
+          });
+          return newMap;
+        });
+
         if (DEBUG_LOCK) {
           console.log('🔒 Lock acquired successfully for:', filePath);
         }
@@ -288,7 +324,7 @@ export function useLockManager() {
       console.error('Error in acquireLock:', error);
       return false;
     }
-  }, [currentUserId, currentBranch, activeLocks, releaseAllMyLocks]);
+  }, [currentUserId, currentBranch, releaseAllMyLocks, fetchActiveLocks]);
 
   // Force take lock from another user
   const forceTakeLock = useCallback(async (filePath: string): Promise<boolean> => {
@@ -349,6 +385,13 @@ export function useLockManager() {
       if (myCurrentLock === filePath) {
         setMyCurrentLock(null);
       }
+
+      // Update local state immediately
+      setActiveLocks(prev => {
+        const newMap = new Map(prev);
+        newMap.delete(filePath);
+        return newMap;
+      });
 
       if (DEBUG_LOCK) {
         console.log('🔒 Lock released successfully for:', filePath);
