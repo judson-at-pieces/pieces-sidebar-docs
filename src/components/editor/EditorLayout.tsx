@@ -6,6 +6,7 @@ import { useContentManager } from "@/hooks/useContentManager";
 import { useBranchManager } from "@/hooks/useBranchManager";
 import { useBranchSessions } from "@/hooks/useBranchSessions";
 import { useBranchContentStore } from "@/hooks/useBranchContentStore";
+import { useBranchSwitcher } from "@/hooks/useBranchSwitcher";
 import { NavigationEditor } from "./NavigationEditor";
 import { EditorMain } from "./EditorMain";
 import { SeoEditor } from "./SeoEditor";
@@ -24,8 +25,9 @@ export function EditorLayout() {
   const lockManager = useLockManager();
   const contentManager = useContentManager(lockManager);
   const branchContentStore = useBranchContentStore();
+  const { switchBranch, isSwitching } = useBranchSwitcher();
 
-  // Use the reactive branch from contentManager instead of getBranchCookie
+  // Use the reactive branch from contentManager
   const effectiveBranch = contentManager.currentBranch;
   const { sessions } = useBranchSessions(effectiveBranch);
 
@@ -34,7 +36,6 @@ export function EditorLayout() {
   const [activeTab, setActiveTab] = useState<'navigation' | 'content' | 'seo'>('content');
   const [loadingContent, setLoadingContent] = useState(false);
   const [lastBranch, setLastBranch] = useState<string | null>(null);
-  const [isSwitchingBranch, setIsSwitchingBranch] = useState(false);
 
   if (DEBUG_EDITOR) {
     console.log('🎯 EDITOR STATE:', {
@@ -43,11 +44,11 @@ export function EditorLayout() {
       effectiveBranch,
       lastBranch,
       localContentLength: localContent.length,
-      isSwitchingBranch
+      isSwitching
     });
   }
 
-  // Handle branch changes with proper content isolation - using effectiveBranch
+  // Handle branch changes with proper data locking
   useEffect(() => {
     if (!effectiveBranch) return;
     
@@ -58,118 +59,36 @@ export function EditorLayout() {
     }
     
     // Actual branch change detected
-    if (effectiveBranch !== lastBranch) {
+    if (effectiveBranch !== lastBranch && !isSwitching) {
       if (DEBUG_EDITOR) {
         console.log('🔄 Branch switch detected:', lastBranch, '->', effectiveBranch);
       }
       
-      setIsSwitchingBranch(true);
-      
       const handleBranchSwitch = async () => {
-        try {
-          // Step 1: CRITICAL - Capture current editor content to OLD branch
-          if (selectedFile && localContent && lastBranch) {
-            if (DEBUG_EDITOR) {
-              console.log('📸 Capturing current content to OLD branch:', lastBranch);
-            }
-            
-            // Save to branch content store
-            branchContentStore.captureCurrentContent(lastBranch, selectedFile, localContent);
-            
-            // Also save to database with specific branch - THIS IS THE KEY FIX
-            if (lockManager.isFileLockedByMe(selectedFile)) {
-              await contentManager.saveContentToBranch(selectedFile, localContent, lastBranch);
-            }
-          }
-          
-          // Step 2: Release locks
-          if (lockManager.myCurrentLock) {
-            await lockManager.releaseLock(lockManager.myCurrentLock);
-          }
-          
-          // Step 3: Clear editor content immediately
+        const success = await switchBranch(lastBranch, effectiveBranch, selectedFile, localContent);
+        
+        if (success) {
+          // Clear editor content immediately
           setLocalContent("");
           setLoadingContent(true);
           
-          // Step 4: Force refresh content for the new branch
-          await contentManager.refreshContentForBranch(effectiveBranch);
-          
-          // Step 5: Load content FROM new branch
+          // Load content for the new branch
           if (selectedFile) {
-            if (DEBUG_EDITOR) {
-              console.log('📄 Loading content FROM new branch:', effectiveBranch, 'file:', selectedFile);
-            }
-            
-            // Force load content from new branch - bypassing cache completely
-            const newContent = await contentManager.loadContentForced(selectedFile, effectiveBranch);
-            
-            if (newContent !== null) {
-              if (DEBUG_EDITOR) {
-                console.log('✅ Loaded content from database for new branch, length:', newContent.length);
-              }
-              setLocalContent(newContent);
-              // Cache it in branch store
-              branchContentStore.setContent(effectiveBranch, selectedFile, newContent);
-            } else {
-              // Create default content for new branch
-              const fileName = selectedFile.split('/').pop()?.replace(/\.md$/, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
-              const pathForFrontmatter = selectedFile.replace(/\.md$/, '').replace(/^\//, '');
-              
-              const defaultContent = `---
-title: "${fileName}"
-path: "/${pathForFrontmatter}"
-visibility: "PUBLIC"
-description: "Add a description for this page"
----
-
-# ${fileName}
-
-This content is specific to the ${effectiveBranch} branch.
-
-Add your content here. You can use markdown and custom components:
-
-:::info
-This is an information callout. Type "/" to see more available components.
-:::
-
-Start editing to see the live preview!
-`;
-              setLocalContent(defaultContent);
-              branchContentStore.setContent(effectiveBranch, selectedFile, defaultContent);
-              
-              if (DEBUG_EDITOR) {
-                console.log('📝 Created default content for new branch');
-              }
-            }
-            
-            setLoadingContent(false);
-            
-            // Step 6: Try to acquire lock for the new branch
-            setTimeout(async () => {
-              const lockAcquired = await lockManager.acquireLock(selectedFile);
-              if (DEBUG_EDITOR) {
-                console.log('🔒 Lock acquisition result:', lockAcquired);
-              }
-            }, 1000);
+            await loadFileContent(selectedFile);
           } else {
             setLoadingContent(false);
           }
           
-        } catch (error) {
-          console.error('❌ Error during branch switch:', error);
-          setLoadingContent(false);
-        } finally {
           setLastBranch(effectiveBranch);
-          setIsSwitchingBranch(false);
-          if (DEBUG_EDITOR) {
-            console.log('✅ Branch switch completed');
-          }
+        } else {
+          console.error('❌ Branch switch failed');
+          setLoadingContent(false);
         }
       };
       
       handleBranchSwitch();
     }
-  }, [effectiveBranch, lastBranch, selectedFile, localContent, lockManager, contentManager, branchContentStore]);
+  }, [effectiveBranch, lastBranch, selectedFile, localContent, isSwitching, switchBranch]);
 
   const loadFileContent = async (filePath: string) => {
     setLoadingContent(true);
@@ -220,16 +139,16 @@ Start editing to see the live preview!
     }
   };
 
-  // Auto-save with PROPER branch isolation - FIXED
+  // Auto-save with proper branch isolation
   useEffect(() => {
-    if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && localContent && !isSwitchingBranch) {
+    if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && localContent && !isSwitching) {
       // Save to branch store immediately for isolation
       branchContentStore.setContent(effectiveBranch, selectedFile, localContent);
       
-      // CRITICAL FIX: Save to database with SPECIFIC branch, not current branch
+      // Save to database with SPECIFIC branch
       contentManager.saveContentToBranch(selectedFile, localContent, effectiveBranch);
     }
-  }, [selectedFile, localContent, lockManager, contentManager, branchContentStore, effectiveBranch, isSwitchingBranch]);
+  }, [selectedFile, localContent, lockManager, contentManager, branchContentStore, effectiveBranch, isSwitching]);
 
   // Release lock when navigating away from the page
   useEffect(() => {
@@ -263,7 +182,7 @@ Start editing to see the live preview!
   }, [lockManager]);
 
   const handleFileSelect = async (filePath: string) => {
-    if (selectedFile === filePath) return;
+    if (selectedFile === filePath || isSwitching) return;
 
     if (DEBUG_EDITOR) {
       console.log('=== FILE SELECTION ===', filePath, 'in branch:', effectiveBranch);
@@ -273,7 +192,7 @@ Start editing to see the live preview!
     if (selectedFile && localContent) {
       branchContentStore.captureCurrentContent(effectiveBranch, selectedFile, localContent);
       
-      // Also save to database if we have lock - with SPECIFIC branch
+      // Also save to database if we have lock
       if (lockManager.isFileLockedByMe(selectedFile)) {
         await contentManager.saveContentToBranch(selectedFile, localContent, effectiveBranch);
       }
@@ -296,7 +215,7 @@ Start editing to see the live preview!
   };
 
   const handleContentChange = (newContent: string) => {
-    if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && !isSwitchingBranch) {
+    if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && !isSwitching) {
       setLocalContent(newContent);
       // Immediately save to branch store for isolation
       branchContentStore.setContent(effectiveBranch, selectedFile, newContent);
@@ -304,20 +223,19 @@ Start editing to see the live preview!
   };
 
   const handleAcquireLock = async () => {
-    if (selectedFile) {
+    if (selectedFile && !isSwitching) {
       await lockManager.acquireLock(selectedFile);
     }
   };
 
   const handleTakeLock = async () => {
-    if (selectedFile) {
+    if (selectedFile && !isSwitching) {
       await lockManager.forceTakeLock(selectedFile);
     }
   };
 
   const handleSave = async () => {
-    if (selectedFile && lockManager.isFileLockedByMe(selectedFile)) {
-      // FIXED: Save to specific branch, not current branch
+    if (selectedFile && lockManager.isFileLockedByMe(selectedFile) && !isSwitching) {
       await contentManager.saveContentToBranch(selectedFile, localContent, effectiveBranch);
     }
   };
@@ -383,7 +301,7 @@ Start editing to see the live preview!
             selectedFile={selectedFile}
             isLocked={isLocked}
             lockedBy={lockedByName}
-            isAcquiringLock={false}
+            isAcquiringLock={isSwitching}
             onAcquireLock={handleAcquireLock}
             currentBranch={effectiveBranch}
             sessions={sessions}
@@ -391,6 +309,16 @@ Start editing to see the live preview!
             initialized={initialized}
             branches={branches}
           />
+          
+          {/* Show loading overlay when switching branches */}
+          {isSwitching && (
+            <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-50 flex items-center justify-center">
+              <div className="text-center space-y-4">
+                <div className="w-8 h-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin mx-auto"></div>
+                <p className="text-sm text-muted-foreground">Switching branches...</p>
+              </div>
+            </div>
+          )}
           
           {/* Tab Content */}
           <div className="flex-1 overflow-hidden flex">
@@ -441,7 +369,7 @@ Start editing to see the live preview!
                     isLocked={isLocked}
                     lockedBy={lockedByName}
                     liveContent={liveContent}
-                    isAcquiringLock={false}
+                    isAcquiringLock={isSwitching}
                     onTakeLock={handleTakeLock}
                   />
                 </div>
