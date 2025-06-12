@@ -3,6 +3,8 @@ import { Callout } from './Callout';
 import { MarkdownCard } from './MarkdownCard';
 import { CardGroup } from './CardGroup';
 import { Steps, Step } from './Steps';
+import { SecureInlineMarkdown } from './SecureInlineMarkdown';
+import { sanitizeText } from '@/utils/secureMarkdownProcessor';
 import { X } from 'lucide-react';
 
 // Constants
@@ -348,22 +350,9 @@ const parseSteps = (content: string): StepData[] => {
 };
 
 const processInlineMarkdown = (text: string): React.ReactNode => {
-  console.log('🔄 processInlineMarkdown: Processing text:', text);
-  
-  // Handle inline code
-  text = text.replace(/`([^`]+)`/g, '<code class="hn-inline-code">$1</code>');
-  
-  // Handle bold with **
-  text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  
-  // Handle italic with *
-  text = text.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
-  
-  // Handle links
-  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="hn-link">$1</a>');
-  
-  console.log('🔄 processInlineMarkdown: Result:', text);
-  return <span dangerouslySetInnerHTML={{ __html: text }} />;
+  console.log('🔄 processInlineMarkdown: Processing text with secure renderer');
+  const sanitizedText = sanitizeText(text);
+  return <SecureInlineMarkdown content={sanitizedText} />;
 };
 
 // Components
@@ -749,7 +738,6 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
 // Parse Markdown
 const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
   console.log('📝 MarkdownSection: Starting with content length:', content.length);
-  console.log('📝 MarkdownSection: Full content:', content);
   
   const processContent = (text: string): React.ReactNode[] => {
     console.log('📝 processContent: Starting with text:', text);
@@ -800,7 +788,7 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
               <tr>
                 {headerRow.map((cell, i) => (
                   <th key={i} className="hn-table-header">
-                    {processInlineMarkdown(cell.trim())}
+                    <SecureInlineMarkdown content={sanitizeText(cell.trim())} />
                   </th>
                 ))}
               </tr>
@@ -810,7 +798,7 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
                 <tr key={rowIndex}>
                   {row.split('|').filter(cell => cell.trim()).map((cell, cellIndex) => (
                     <td key={cellIndex} className="hn-table-cell">
-                      {processInlineMarkdown(cell.trim())}
+                      <SecureInlineMarkdown content={sanitizeText(cell.trim())} />
                     </td>
                   ))}
                 </tr>
@@ -833,7 +821,7 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
           flushList();
           flushTable();
           inCodeBlock = true;
-          codeLanguage = line.slice(3).trim();
+          codeLanguage = sanitizeText(line.slice(3).trim());
         } else {
           console.log(`📝 Ending code block at line ${index}, language:`, codeLanguage);
           elements.push(
@@ -876,7 +864,7 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
         flushTable();
         elements.push(
           <h1 key={`h1-${index}`} className="hn-h1">
-            {line.slice(2)}
+            {sanitizeText(line.slice(2))}
           </h1>
         );
         return;
@@ -887,7 +875,7 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
         flushTable();
         elements.push(
           <h2 key={`h2-${index}`} className="hn-h2">
-            {line.slice(3)}
+            {sanitizeText(line.slice(3))}
           </h2>
         );
         return;
@@ -898,7 +886,7 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
         flushTable();
         elements.push(
           <h3 key={`h3-${index}`} className="hn-h3">
-            {line.slice(4)}
+            {sanitizeText(line.slice(4))}
           </h3>
         );
         return;
@@ -914,7 +902,7 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
         }
         currentList.push(
           <li key={`li-${index}`} className="hn-list-item">
-            {processInlineMarkdown(line.replace(/^\d+\./, '').trim())}
+            <SecureInlineMarkdown content={sanitizeText(line.replace(/^\d+\./, '').trim())} />
           </li>
         );
         return;
@@ -929,7 +917,7 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
         }
         currentList.push(
           <li key={`li-${index}`} className="hn-list-item">
-            {processInlineMarkdown(line.slice(2))}
+            <SecureInlineMarkdown content={sanitizeText(line.slice(2))} />
           </li>
         );
         return;
@@ -942,7 +930,7 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
         flushTable();
         elements.push(
           <blockquote key={`quote-${index}`} className="hn-blockquote">
-            {processInlineMarkdown(line.slice(2))}
+            <SecureInlineMarkdown content={sanitizeText(line.slice(2))} />
           </blockquote>
         );
         return;
@@ -955,7 +943,7 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
         flushTable();
         elements.push(
           <p key={`p-${index}`} className="hn-paragraph">
-            {processInlineMarkdown(line)}
+            <SecureInlineMarkdown content={sanitizeText(line)} />
           </p>
         );
       } else {

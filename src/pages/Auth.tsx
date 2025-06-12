@@ -13,6 +13,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { AuthErrorBoundary } from '@/components/auth/AuthErrorBoundary';
 import { Link } from 'react-router-dom';
 import { supabase } from '@/integrations/supabase/client';
+import { sanitizeInput, passwordRateLimiter, auditLog, getClientIP, getErrorMessage } from '@/utils/security';
 
 function AuthContent() {
   const { user, loading, hasRole, signOut, isSupabaseConfigured } = useAuth();
@@ -30,10 +31,19 @@ function AuthContent() {
     passwordValid
   });
 
-  // Check password against PIECES_PASSWORD environment variable
+  // Enhanced password check with security measures
   const checkPassword = async () => {
-    if (!password.trim()) {
+    const trimmedPassword = password.trim();
+    if (!trimmedPassword) {
       setPasswordError('Password is required');
+      return;
+    }
+
+    // Rate limiting check
+    const clientIP = await getClientIP();
+    if (passwordRateLimiter.isRateLimited(clientIP)) {
+      setPasswordError('Too many password attempts. Please wait before trying again.');
+      auditLog.passwordAttempt(false, clientIP);
       return;
     }
 
@@ -41,25 +51,33 @@ function AuthContent() {
     setPasswordError('');
 
     try {
+      // Sanitize password input
+      const sanitizedPassword = sanitizeInput(trimmedPassword, 100);
+      
       const { data, error } = await supabase.functions.invoke('check-password', {
-        body: { password }
+        body: { password: sanitizedPassword }
       });
 
       if (error) {
         console.error('Password check error:', error);
-        setPasswordError('Unable to verify password. Please try again.');
+        setPasswordError(getErrorMessage(error, 'password'));
+        auditLog.passwordAttempt(false, clientIP);
         return;
       }
 
       if (data?.valid) {
         setPasswordValid(true);
         setPasswordError('');
+        passwordRateLimiter.reset(clientIP); // Reset rate limit on success
+        auditLog.passwordAttempt(true, clientIP);
       } else {
         setPasswordError('Invalid password. Access denied.');
+        auditLog.passwordAttempt(false, clientIP);
       }
     } catch (error) {
       console.error('Password check exception:', error);
-      setPasswordError('Unable to verify password. Please try again.');
+      setPasswordError(getErrorMessage(error, 'password'));
+      auditLog.passwordAttempt(false, clientIP);
     } finally {
       setCheckingPassword(false);
     }
@@ -212,9 +230,11 @@ function AuthContent() {
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && checkPassword()}
+                  onKeyDown={(e) => e.key === 'Enter' && !checkingPassword && password.trim() && checkPassword()}
                   placeholder="Enter password"
                   disabled={checkingPassword}
+                  maxLength={100}
+                  autoComplete="off"
                 />
               </div>
               
