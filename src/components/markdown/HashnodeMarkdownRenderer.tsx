@@ -530,7 +530,7 @@ const ButtonSection: React.FC<{ button: ButtonData }> = ({ button }) => {
   );
 };
 
-// Updated Steps Section to remove dangerouslySetInnerHTML and use secure rendering
+// Updated Steps Section to add click functionality to images
 const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => {
   const [modalImage, setModalImage] = useState<{ src: string; alt: string } | null>(null);
   
@@ -551,10 +551,9 @@ const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => {
           <Step key={index} title={step.title}>
             <div 
               className="[&_img]:rounded-lg [&_img]:my-4 [&_img]:cursor-pointer [&_img]:transition-transform [&_img]:duration-200 [&_img:hover]:-translate-y-1" 
+              dangerouslySetInnerHTML={{ __html: step.content }}
               onClick={handleImageClick}
-            >
-              <SecureInlineMarkdown content={sanitizeText(step.content)} />
-            </div>
+            />
           </Step>
         ))}
       </Steps>
