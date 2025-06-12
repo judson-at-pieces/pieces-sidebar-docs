@@ -3,21 +3,28 @@ import { logger } from './logger';
 
 // Enhanced rate limiting for sensitive operations
 class RateLimiter {
-  private attempts: Map<string, { count: number; resetTime: number }> = new Map();
+  private attempts: Map<string, { count: number; resetTime: number; firstAttempt: number }> = new Map();
   private maxAttempts: number;
   private windowMs: number;
+  private maxEntries: number;
 
-  constructor(maxAttempts: number = 5, windowMs: number = 15 * 60 * 1000) {
+  constructor(maxAttempts: number = 5, windowMs: number = 15 * 60 * 1000, maxEntries: number = 1000) {
     this.maxAttempts = maxAttempts;
     this.windowMs = windowMs;
+    this.maxEntries = maxEntries;
   }
 
   isRateLimited(identifier: string): boolean {
     const now = Date.now();
     const record = this.attempts.get(identifier);
 
+    // Clean up old entries periodically
+    if (this.attempts.size > this.maxEntries) {
+      this.cleanup();
+    }
+
     if (!record || now > record.resetTime) {
-      this.attempts.set(identifier, { count: 1, resetTime: now + this.windowMs });
+      this.attempts.set(identifier, { count: 1, resetTime: now + this.windowMs, firstAttempt: now });
       return false;
     }
 
@@ -32,6 +39,17 @@ class RateLimiter {
 
   reset(identifier: string): void {
     this.attempts.delete(identifier);
+  }
+
+  private cleanup(): void {
+    const now = Date.now();
+    const cutoff = now - this.windowMs;
+    
+    for (const [key, value] of this.attempts.entries()) {
+      if (value.resetTime < cutoff) {
+        this.attempts.delete(key);
+      }
+    }
   }
 }
 
@@ -107,6 +125,7 @@ export const sanitizeInput = (input: string, maxLength: number = 1000): string =
     .replace(/javascript:/gi, '') // Remove javascript protocols
     .replace(/on\w+=/gi, '') // Remove event handlers
     .replace(/data:/gi, '') // Remove data URLs
+    .replace(/[\x00-\x1f\x7f-\x9f]/g, '') // Remove control characters
     .substring(0, maxLength); // Limit length
 };
 
@@ -117,13 +136,27 @@ export const validateUrl = (url: string): boolean => {
   try {
     // Allow relative URLs
     if (url.startsWith('/') || url.startsWith('#') || url.startsWith('?')) {
-      return true;
+      // Check for potential path traversal
+      return !url.includes('../') && !url.includes('..\\');
     }
     
     const parsedUrl = new URL(url);
     const allowedProtocols = ['http:', 'https:', 'mailto:', 'tel:'];
     
-    return allowedProtocols.includes(parsedUrl.protocol);
+    // Check for valid protocol
+    if (!allowedProtocols.includes(parsedUrl.protocol)) {
+      return false;
+    }
+    
+    // Prevent localhost and private IP access in production
+    const hostname = parsedUrl.hostname.toLowerCase();
+    const privateRanges = ['localhost', '127.', '10.', '172.', '192.168.', '169.254.'];
+    
+    if (import.meta.env.PROD && privateRanges.some(range => hostname.includes(range))) {
+      return false;
+    }
+    
+    return true;
   } catch {
     return false;
   }
@@ -133,7 +166,7 @@ export const validateUrl = (url: string): boolean => {
 export const getCSPHeader = (): string => {
   return [
     "default-src 'self'",
-    "script-src 'self' 'unsafe-inline' 'unsafe-eval'", // Note: unsafe-eval needed for some development tools
+    "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",
     "font-src 'self' data:",
@@ -154,7 +187,7 @@ export const getErrorMessage = (error: any, context: string): string => {
     return error?.message || `An error occurred in ${context}`;
   }
   
-  // Generic messages for production to avoid information disclosure
+  // Generic messages for production to prevent information disclosure
   const genericMessages: Record<string, string> = {
     auth: 'Authentication failed. Please check your credentials.',
     access_code: 'Invalid or expired access code.',
@@ -162,6 +195,7 @@ export const getErrorMessage = (error: any, context: string): string => {
     github: 'GitHub integration error. Please try again.',
     upload: 'File upload failed. Please try again.',
     network: 'Network error. Please check your connection.',
+    validation: 'Please check your input and try again.',
     default: 'An unexpected error occurred. Please try again.'
   };
   
