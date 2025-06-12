@@ -355,6 +355,14 @@ const processInlineMarkdown = (text: string): React.ReactNode => {
   return <SecureInlineMarkdown content={sanitizedText} />;
 };
 
+const processSimpleMarkdown = (text: string): React.ReactNode => {
+  if (!text) return null;
+  
+  // Use secure inline markdown instead of dangerouslySetInnerHTML
+  const sanitizedText = sanitizeText(text);
+  return <SecureInlineMarkdown content={sanitizedText} />;
+};
+
 // Components
 const ImageModal: React.FC<{ src: string; alt: string; isOpen: boolean; onClose: () => void }> = ({ src, alt, isOpen, onClose }) => {
   if (!isOpen) return null;
@@ -530,7 +538,7 @@ const ButtonSection: React.FC<{ button: ButtonData }> = ({ button }) => {
   );
 };
 
-// Updated Steps Section to add click functionality to images
+// Updated Steps Section to use secure markdown rendering
 const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => {
   const [modalImage, setModalImage] = useState<{ src: string; alt: string } | null>(null);
   
@@ -551,9 +559,10 @@ const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => {
           <Step key={index} title={step.title}>
             <div 
               className="[&_img]:rounded-lg [&_img]:my-4 [&_img]:cursor-pointer [&_img]:transition-transform [&_img]:duration-200 [&_img:hover]:-translate-y-1" 
-              dangerouslySetInnerHTML={{ __html: step.content }}
               onClick={handleImageClick}
-            />
+            >
+              {processInlineMarkdown(step.content)}
+            </div>
           </Step>
         ))}
       </Steps>

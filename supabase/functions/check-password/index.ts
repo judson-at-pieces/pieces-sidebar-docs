@@ -1,47 +1,30 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { sanitizeInput, isRateLimited, getCorsHeaders } from '../_shared/security.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'X-Content-Type-Options': 'nosniff',
-  'X-Frame-Options': 'DENY',
-  'X-XSS-Protection': '1; mode=block',
-  'Referrer-Policy': 'strict-origin-when-cross-origin'
-}
+const corsHeaders = getCorsHeaders();
 
-// Rate limiting storage
-const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
+// Rate limiting storage with enhanced security
+const rateLimitMap = new Map<string, { count: number; resetTime: number; suspicious: boolean }>();
 const MAX_ATTEMPTS = 3;
 const WINDOW_MS = 5 * 60 * 1000; // 5 minutes
 
-function isRateLimited(identifier: string): boolean {
+function checkRateLimit(identifier: string): { limited: boolean; suspicious: boolean } {
   const now = Date.now();
   const record = rateLimitMap.get(identifier);
 
   if (!record || now > record.resetTime) {
-    rateLimitMap.set(identifier, { count: 1, resetTime: now + WINDOW_MS });
-    return false;
+    rateLimitMap.set(identifier, { count: 1, resetTime: now + WINDOW_MS, suspicious: false });
+    return { limited: false, suspicious: false };
   }
 
   if (record.count >= MAX_ATTEMPTS) {
-    return true;
+    record.suspicious = true;
+    return { limited: true, suspicious: true };
   }
 
   record.count++;
-  return false;
-}
-
-function sanitizeInput(input: string): string {
-  if (!input || typeof input !== 'string') return '';
-  
-  return input
-    .trim()
-    .replace(/[<>]/g, '')
-    .replace(/javascript:/gi, '')
-    .replace(/on\w+=/gi, '')
-    .substring(0, 100);
+  return { limited: false, suspicious: record.count > 1 };
 }
 
 serve(async (req) => {
@@ -51,14 +34,18 @@ serve(async (req) => {
   }
 
   try {
-    // Get client identifier for rate limiting
+    // Get client identifier for rate limiting with enhanced tracking
     const clientIP = req.headers.get('x-forwarded-for') || 
                     req.headers.get('x-real-ip') || 
                     'unknown';
     
-    // Check rate limiting
-    if (isRateLimited(clientIP)) {
-      console.log('Rate limited request from:', clientIP);
+    const userAgent = req.headers.get('user-agent')?.substring(0, 100) || 'unknown';
+    
+    // Check rate limiting with suspicious activity detection
+    const { limited, suspicious } = checkRateLimit(clientIP);
+    
+    if (limited) {
+      console.log('Rate limited request from:', clientIP, 'suspicious:', suspicious);
       return new Response(
         JSON.stringify({ 
           valid: false, 
@@ -72,9 +59,9 @@ serve(async (req) => {
     }
 
     const body = await req.json();
-    const password = sanitizeInput(body?.password || '');
+    const password = sanitizeInput(body?.password || '', 100);
     
-    console.log('Password check request received from:', clientIP);
+    console.log('Password check request received from:', clientIP, 'suspicious:', suspicious);
     
     if (!password) {
       return new Response(
@@ -106,14 +93,17 @@ serve(async (req) => {
       );
     }
     
-    // Check if password matches
+    // Check if password matches with timing attack protection
     const isValid = password === expectedPassword;
     
-    console.log('Password validation result:', isValid, 'for IP:', clientIP);
+    // Add artificial delay to prevent timing attacks
+    await new Promise(resolve => setTimeout(resolve, Math.random() * 100 + 50));
     
-    // Log security event
+    console.log('Password validation result:', isValid, 'for IP:', clientIP, 'userAgent:', userAgent);
+    
+    // Enhanced security logging
     if (!isValid) {
-      console.warn('Invalid password attempt from:', clientIP);
+      console.warn('Invalid password attempt from:', clientIP, 'suspicious:', suspicious, 'userAgent:', userAgent);
     }
     
     return new Response(

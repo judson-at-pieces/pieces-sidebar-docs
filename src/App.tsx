@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@/components/ThemeProvider';
@@ -6,6 +5,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { Toaster as SonnerToaster } from '@/components/ui/sonner';
 import { AuthProvider } from '@/contexts/AuthContext';
 import { ProtectedRoute } from '@/components/ProtectedRoute';
+import { SecurityProvider } from '@/components/SecurityProvider';
 import Index from '@/pages/Index';
 import DocsLayout from '@/components/DocsLayout';
 import GettingStarted from '@/pages/docs/GettingStarted';
@@ -146,13 +146,15 @@ function AppContent() {
 function App() {
   return (
     <ErrorBoundary>
-      <QueryClientProvider client={queryClient}>
-        <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
-          <AuthProvider>
-            <AppContent />
-          </AuthProvider>
-        </ThemeProvider>
-      </QueryClientProvider>
+      <SecurityProvider>
+        <QueryClientProvider client={queryClient}>
+          <ThemeProvider defaultTheme="dark" storageKey="vite-ui-theme">
+            <AuthProvider>
+              <AppContent />
+            </AuthProvider>
+          </ThemeProvider>
+        </QueryClientProvider>
+      </SecurityProvider>
     </ErrorBoundary>
   );
 }
