@@ -1,17 +1,9 @@
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts"
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
+import { getSecurityHeaders } from '../_shared/security.ts'
 
-const corsHeaders = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
-  'X-Content-Type-Options': 'nosniff',
-  'X-Frame-Options': 'DENY',
-  'X-XSS-Protection': '1; mode=block',
-  'Referrer-Policy': 'strict-origin-when-cross-origin'
-}
-
-// Rate limiting storage
+// Enhanced rate limiting storage
 const rateLimitMap = new Map<string, { count: number; resetTime: number }>();
 const MAX_ATTEMPTS = 3;
 const WINDOW_MS = 5 * 60 * 1000; // 5 minutes
@@ -45,6 +37,8 @@ function sanitizeInput(input: string): string {
 }
 
 serve(async (req) => {
+  const corsHeaders = getSecurityHeaders();
+  
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
