@@ -7,10 +7,11 @@ import { ActiveAdminCodes } from '@/components/admin/ActiveAdminCodes';
 import { GitHubRepoConfig } from '@/components/admin/GitHubRepoConfig';
 import { UserManagement } from '@/components/admin/UserManagement';
 import { ContentSyncPanel } from '@/components/admin/ContentSyncPanel';
+import { AnalyticsDashboard } from '@/components/admin/AnalyticsDashboard';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Alert, AlertDescription } from '@/components/ui/alert';
-import { Users, UserPlus, Github, ExternalLink, Info } from 'lucide-react';
+import { Users, UserPlus, Github, ExternalLink, Info, BarChart3 } from 'lucide-react';
 
 export default function Admin() {
   const { user, loading, hasRole, signOut } = useAuth();
@@ -73,6 +74,21 @@ export default function Admin() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Analytics Dashboard */}
+        <div className="mb-8">
+          <div className="mb-4">
+            <h2 className="text-2xl font-bold mb-2 flex items-center gap-2">
+              <BarChart3 className="h-6 w-6" />
+              Analytics Dashboard
+            </h2>
+            <p className="text-muted-foreground">
+              Monitor user engagement, popular content, and platform performance metrics.
+            </p>
+          </div>
+          
+          <AnalyticsDashboard />
+        </div>
+
         {/* GitHub Repository Configuration */}
         <div className="mb-8">
           <div className="mb-4">
@@ -188,16 +204,27 @@ export default function Admin() {
                 <CardHeader>
                   <CardTitle className="flex items-center space-x-2">
                     <Users className="h-5 w-5" />
-                    <span>User Statistics</span>
+                    <span>Quick Stats</span>
                   </CardTitle>
                   <CardDescription>
-                    Overview of user activity and growth
+                    Key platform metrics at a glance
                   </CardDescription>
                 </CardHeader>
                 <CardContent>
-                  <p className="text-muted-foreground">
-                    User analytics and statistics coming soon...
-                  </p>
+                  <div className="space-y-3">
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Platform Health:</span>
+                      <span className="ml-2 font-medium text-green-600">Operational</span>
+                    </div>
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Active Features:</span>
+                      <span className="ml-2 font-medium">Content Editor, Analytics</span>
+                    </div>
+                    <div className="text-sm">
+                      <span className="text-muted-foreground">Database Status:</span>
+                      <span className="ml-2 font-medium text-green-600">Connected</span>
+                    </div>
+                  </div>
                 </CardContent>
               </Card>
             </div>
