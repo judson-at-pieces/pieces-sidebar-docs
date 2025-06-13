@@ -10,7 +10,7 @@ export const getCSPHeader = (): string => {
     "style-src 'self' 'unsafe-inline'",
     "img-src 'self' data: https:",
     "font-src 'self' data:",
-    "connect-src 'self' https:",
+    "connect-src 'self' https: wss://yqchxlpigndrmjbtyvhu.supabase.co",
     "media-src 'self'",
     "object-src 'none'",
     "frame-ancestors 'none'",
