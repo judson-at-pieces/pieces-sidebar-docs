@@ -10,6 +10,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import HashnodeMarkdownRenderer from '@/components/HashnodeMarkdownRenderer';
 import { useLiveTyping } from '@/hooks/useLiveTyping';
 import { TypingIndicator } from './TypingIndicator';
+import { VisibilitySwitch } from './VisibilitySwitch';
 
 interface EditorMainProps {
   selectedFile?: string;
@@ -22,7 +23,9 @@ interface EditorMainProps {
   lockedBy?: string | null;
   liveContent?: string;
   isAcquiringLock?: boolean;
-  onTakeLock?: () => void;
+  onTakeLock?: () => Promise<boolean>;
+  isPublic?: boolean;
+  onVisibilityChange?: (isPublic: boolean) => void;
 }
 
 export function EditorMain({
@@ -36,7 +39,9 @@ export function EditorMain({
   lockedBy = null,
   liveContent,
   isAcquiringLock = false,
-  onTakeLock
+  onTakeLock,
+  isPublic = true,
+  onVisibilityChange
 }: EditorMainProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   
@@ -185,31 +190,42 @@ export function EditorMain({
           <TypingIndicator typingSessions={typingSessions} />
         </div>
 
-        <div className="flex items-center gap-2">
-          {hasChanges && canEdit && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
-              <span>Auto-saving...</span>
-            </div>
+        <div className="flex items-center gap-4">
+          {/* Visibility Switch */}
+          {canEdit && onVisibilityChange && (
+            <VisibilitySwitch
+              isPublic={isPublic}
+              onToggle={onVisibilityChange}
+              disabled={!canEdit}
+            />
           )}
-          
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" disabled={isLockedByOther}>
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => {/* TODO: Implement file operations */}}>
-                <Copy className="h-4 w-4 mr-2" />
-                Copy Path
-              </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => {/* TODO: Implement file operations */}}>
-                <Trash2 className="h-4 w-4 mr-2" />
-                Delete File
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+
+          <div className="flex items-center gap-2">
+            {hasChanges && canEdit && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <div className="w-2 h-2 rounded-full bg-amber-500 animate-pulse"></div>
+                <span>Auto-saving...</span>
+              </div>
+            )}
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="ghost" size="sm" disabled={isLockedByOther}>
+                  <MoreHorizontal className="h-4 w-4" />
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => {/* TODO: Implement file operations */}}>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Copy Path
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {/* TODO: Implement file operations */}}>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Delete File
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </div>
       </div>
 

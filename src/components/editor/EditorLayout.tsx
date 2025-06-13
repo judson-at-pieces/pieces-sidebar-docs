@@ -11,6 +11,7 @@ import { FileTreeSidebar } from "./FileTreeSidebar";
 import { Button } from "@/components/ui/button";
 import { EditorMainHeader } from "./EditorMainHeader";
 import { NewEditorTabNavigation } from "./NewEditorTabNavigation";
+import { supabase } from "@/integrations/supabase/client";
 
 const DEBUG_EDITOR = true;
 
@@ -23,6 +24,44 @@ export function EditorLayout() {
   const editor = useBranchEditor();
   
   const [activeTab, setActiveTab] = useState<'navigation' | 'content' | 'seo'>('content');
+  const [fileVisibility, setFileVisibility] = useState<{[filePath: string]: boolean}>({});
+
+  // Get current file's visibility state
+  const currentFileVisibility = editor.selectedFile ? 
+    fileVisibility[editor.selectedFile] ?? true : true;
+
+  // Handle visibility change
+  const handleVisibilityChange = async (isPublic: boolean) => {
+    if (!editor.selectedFile) return;
+
+    try {
+      // Update local state immediately
+      setFileVisibility(prev => ({
+        ...prev,
+        [editor.selectedFile!]: isPublic
+      }));
+
+      // Save to database
+      await supabase
+        .from('live_editing_sessions')
+        .upsert({
+          file_path: editor.selectedFile,
+          branch_name: currentBranch || 'main',
+          content: editor.localContent || '',
+          user_id: 'temp-user', // This should be replaced with actual user ID
+          publicity: isPublic ? 'PUBLIC' : 'PRIVATE'
+        });
+
+      console.log(`File ${editor.selectedFile} visibility updated to ${isPublic ? 'PUBLIC' : 'PRIVATE'}`);
+    } catch (error) {
+      console.error('Failed to update file visibility:', error);
+      // Revert local state on error
+      setFileVisibility(prev => ({
+        ...prev,
+        [editor.selectedFile!]: !isPublic
+      }));
+    }
+  };
 
   if (DEBUG_EDITOR) {
     console.log('🎯 EDITOR LAYOUT STATE:', {
@@ -159,6 +198,8 @@ export function EditorLayout() {
                     liveContent={null} // Not needed with new system
                     isAcquiringLock={editor.isLoading}
                     onTakeLock={editor.acquireLock}
+                    isPublic={currentFileVisibility}
+                    onVisibilityChange={handleVisibilityChange}
                   />
                 </div>
               </>
