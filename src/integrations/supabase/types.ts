@@ -164,6 +164,7 @@ export type Database = {
           id: string
           locked_at: string | null
           locked_by: string | null
+          publicity: string | null
           updated_at: string
           user_id: string
         }
@@ -175,6 +176,7 @@ export type Database = {
           id?: string
           locked_at?: string | null
           locked_by?: string | null
+          publicity?: string | null
           updated_at?: string
           user_id: string
         }
@@ -186,6 +188,7 @@ export type Database = {
           id?: string
           locked_at?: string | null
           locked_by?: string | null
+          publicity?: string | null
           updated_at?: string
           user_id?: string
         }
@@ -412,6 +415,13 @@ export type Database = {
       get_navigation_structure: {
         Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      get_public_documents: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          file_path: string
+          publicity: string
+        }[]
       }
       has_role: {
         Args: {
