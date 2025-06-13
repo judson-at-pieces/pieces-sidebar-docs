@@ -27,10 +27,15 @@ export function EditorTabs({
   onNavigationChange
 }: EditorTabsProps) {
   const [activeTab, setActiveTab] = useState("content");
+  const [seoSelectedFile, setSeoSelectedFile] = useState<string | undefined>(selectedFile);
 
   const handleSeoDataChange = (seoData: any) => {
-    console.log('SEO data updated for:', selectedFile, seoData);
+    console.log('SEO data updated for:', seoSelectedFile, seoData);
     // Here you would typically save the SEO data to your backend or local storage
+  };
+
+  const handleSeoFileSelect = (filePath: string) => {
+    setSeoSelectedFile(filePath);
   };
 
   return (
@@ -74,8 +79,10 @@ export function EditorTabs({
       
       <TabsContent value="seo" className="flex-1 m-0">
         <SeoEditor
-          selectedFile={selectedFile}
+          selectedFile={seoSelectedFile}
           onSeoDataChange={handleSeoDataChange}
+          fileStructure={fileStructure}
+          onFileSelect={handleSeoFileSelect}
         />
       </TabsContent>
       
