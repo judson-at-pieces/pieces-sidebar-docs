@@ -11,7 +11,7 @@ import { FileTreeSidebar } from "./FileTreeSidebar";
 import { Button } from "@/components/ui/button";
 import { EditorMainHeader } from "./EditorMainHeader";
 import { NewEditorTabNavigation } from "./NewEditorTabNavigation";
-import { supabase } from "@/integrations/supabase/client";
+import { navigationService } from "@/services/navigationService";
 
 const DEBUG_EDITOR = true;
 
@@ -41,18 +41,10 @@ export function EditorLayout() {
         [editor.selectedFile!]: isPublic
       }));
 
-      // Save to database
-      await supabase
-        .from('live_editing_sessions')
-        .upsert({
-          file_path: editor.selectedFile,
-          branch_name: currentBranch || 'main',
-          content: editor.localContent || '',
-          user_id: 'temp-user', // This should be replaced with actual user ID
-          publicity: isPublic ? 'PUBLIC' : 'PRIVATE'
-        });
+      // Update the navigation item's is_active status
+      await navigationService.updateNavigationItemByFilePath(editor.selectedFile, isPublic);
 
-      console.log(`File ${editor.selectedFile} visibility updated to ${isPublic ? 'PUBLIC' : 'PRIVATE'}`);
+      console.log(`File ${editor.selectedFile} visibility updated to ${isPublic ? 'visible' : 'hidden'} in navigation`);
     } catch (error) {
       console.error('Failed to update file visibility:', error);
       // Revert local state on error

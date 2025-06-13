@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { staticNavigation } from './staticNavigation';
 
@@ -282,6 +283,17 @@ export class NavigationService {
       .eq('id', id)
       .select()
       .single();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  async updateNavigationItemByFilePath(filePath: string, isActive: boolean) {
+    const { data, error } = await supabase
+      .from('navigation_items')
+      .update({ is_active: isActive })
+      .eq('file_path', filePath)
+      .select();
     
     if (error) throw error;
     return data;
