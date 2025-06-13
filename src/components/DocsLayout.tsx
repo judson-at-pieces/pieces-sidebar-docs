@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
@@ -9,6 +8,7 @@ import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./ThemeToggle";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
 import { useNavigation } from "@/hooks/useNavigation";
+import { useAnalytics } from "@/hooks/useAnalytics";
 import Footer from "./Footer";
 import type { NavigationItem, NavigationSection } from "@/services/navigationService";
 import { PiecesLogo } from "./PiecesLogo";
@@ -18,6 +18,7 @@ function DocsSidebar({ className, onNavigate }: { className?: string; onNavigate
   const [openSections, setOpenSections] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const { navigation, isLoading, error } = useNavigation();
+  const { trackSearch } = useAnalytics();
 
   // Auto-expand sections and items based on current path
   useEffect(() => {
@@ -95,6 +96,39 @@ function DocsSidebar({ className, onNavigate }: { className?: string; onNavigate
         (section.items && section.items.length > 0)
       )
     : navigation.sections;
+
+  // Track search when user types
+  const handleSearchChange = async (value: string) => {
+    setSearchTerm(value);
+    
+    // Only track non-empty searches
+    if (value.trim() && value.length > 2) {
+      // Count results by flattening all filtered items
+      let resultsCount = 0;
+      filteredNavigation.forEach(section => {
+        if (section.title.toLowerCase().includes(value.toLowerCase())) {
+          resultsCount++;
+        }
+        if (section.items) {
+          const countItemsRecursively = (items: NavigationItem[]): number => {
+            return items.reduce((count, item) => {
+              let itemCount = item.title.toLowerCase().includes(value.toLowerCase()) ? 1 : 0;
+              if (item.items) {
+                itemCount += countItemsRecursively(item.items);
+              }
+              return count + itemCount;
+            }, 0);
+          };
+          resultsCount += countItemsRecursively(section.items);
+        }
+      });
+      
+      // Track the search with a small delay to avoid tracking every keystroke
+      setTimeout(() => {
+        trackSearch(value.trim(), resultsCount);
+      }, 500);
+    }
+  };
 
   const renderNavItem = (item: NavigationItem, depth = 0) => {
     const hasSubItems = item.items && item.items.length > 0;
@@ -216,7 +250,7 @@ function DocsSidebar({ className, onNavigate }: { className?: string; onNavigate
                 type="text"
                 placeholder="Search docs..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => handleSearchChange(e.target.value)}
                 className="w-full pl-10 pr-4 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring text-left"
               />
             </div>
