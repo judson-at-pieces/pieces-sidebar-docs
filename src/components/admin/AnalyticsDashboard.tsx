@@ -305,14 +305,14 @@ export function AnalyticsDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border">
+            <div className="rounded-md border max-h-96 overflow-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Page</TableHead>
-                    <TableHead className="text-right">Views</TableHead>
-                    <TableHead className="text-right">Visitors</TableHead>
-                    <TableHead className="text-right">Daily Avg</TableHead>
+                    <TableHead className="w-[50%]">Page</TableHead>
+                    <TableHead className="text-right w-[15%]">Views</TableHead>
+                    <TableHead className="text-right w-[15%]">Visitors</TableHead>
+                    <TableHead className="text-right w-[20%]">Daily Avg</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -325,21 +325,23 @@ export function AnalyticsDashboard() {
                   ) : (
                     popularPages.map((page, index) => (
                       <TableRow key={index}>
-                        <TableCell>
-                          <div className="max-w-xs truncate font-medium">
-                            {formatPagePath(page.page_path)}
-                          </div>
-                          <div className="text-xs text-muted-foreground font-mono">
-                            {page.page_path}
+                        <TableCell className="py-2">
+                          <div className="min-w-0 flex-1">
+                            <div className="text-sm font-medium truncate max-w-[200px]" title={formatPagePath(page.page_path)}>
+                              {formatPagePath(page.page_path)}
+                            </div>
+                            <div className="text-xs text-muted-foreground font-mono truncate max-w-[200px]" title={page.page_path}>
+                              {page.page_path}
+                            </div>
                           </div>
                         </TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell className="text-right font-mono text-sm py-2">
                           {page.view_count.toLocaleString()}
                         </TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell className="text-right font-mono text-sm py-2">
                           {page.unique_visitors.toLocaleString()}
                         </TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell className="text-right font-mono text-sm py-2">
                           {Number(page.avg_daily_views).toFixed(1)}
                         </TableCell>
                       </TableRow>
@@ -363,14 +365,14 @@ export function AnalyticsDashboard() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="rounded-md border">
+            <div className="rounded-md border max-h-96 overflow-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Domain</TableHead>
-                    <TableHead className="text-right">References</TableHead>
-                    <TableHead className="text-right">Pages</TableHead>
-                    <TableHead className="text-right">Last Seen</TableHead>
+                    <TableHead className="w-[40%]">Domain</TableHead>
+                    <TableHead className="text-right w-[20%]">References</TableHead>
+                    <TableHead className="text-right w-[15%]">Pages</TableHead>
+                    <TableHead className="text-right w-[25%]">Last Seen</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -383,19 +385,21 @@ export function AnalyticsDashboard() {
                   ) : (
                     topReferrers.map((referrer, index) => (
                       <TableRow key={index}>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Globe className="h-3 w-3 text-muted-foreground" />
-                            <span className="font-medium">{referrer.referrer_domain}</span>
+                        <TableCell className="py-2">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <Globe className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                            <span className="font-medium truncate" title={referrer.referrer_domain}>
+                              {referrer.referrer_domain}
+                            </span>
                           </div>
                         </TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell className="text-right font-mono text-sm py-2">
                           {referrer.total_references.toLocaleString()}
                         </TableCell>
-                        <TableCell className="text-right font-mono">
+                        <TableCell className="text-right font-mono text-sm py-2">
                           {referrer.unique_pages.toLocaleString()}
                         </TableCell>
-                        <TableCell className="text-right text-sm">
+                        <TableCell className="text-right text-sm py-2">
                           {new Date(referrer.last_activity).toLocaleDateString()}
                         </TableCell>
                       </TableRow>
@@ -420,14 +424,14 @@ export function AnalyticsDashboard() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
+          <div className="rounded-md border max-h-96 overflow-auto">
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Search Query</TableHead>
-                  <TableHead className="text-right">Count</TableHead>
-                  <TableHead className="text-right">Avg Results</TableHead>
-                  <TableHead className="text-right">Last Searched</TableHead>
+                  <TableHead className="w-[40%]">Search Query</TableHead>
+                  <TableHead className="text-right w-[15%]">Count</TableHead>
+                  <TableHead className="text-right w-[20%]">Avg Results</TableHead>
+                  <TableHead className="text-right w-[25%]">Last Searched</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -440,18 +444,18 @@ export function AnalyticsDashboard() {
                 ) : (
                   searchQueries.map((query, index) => (
                     <TableRow key={index}>
-                      <TableCell>
-                        <Badge variant="outline" className="font-mono">
+                      <TableCell className="py-2">
+                        <Badge variant="outline" className="font-mono text-xs max-w-full truncate" title={`"${query.query}"`}>
                           "{query.query}"
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right font-mono">
+                      <TableCell className="text-right font-mono text-sm py-2">
                         {query.search_count.toLocaleString()}
                       </TableCell>
-                      <TableCell className="text-right font-mono">
+                      <TableCell className="text-right font-mono text-sm py-2">
                         {Number(query.avg_results).toFixed(1)}
                       </TableCell>
-                      <TableCell className="text-right text-sm">
+                      <TableCell className="text-right text-sm py-2">
                         {new Date(query.last_searched).toLocaleDateString()}
                       </TableCell>
                     </TableRow>
