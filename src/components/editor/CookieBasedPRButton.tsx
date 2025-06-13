@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { GitPullRequest, ExternalLink, ChevronDown } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -198,7 +197,13 @@ export function CookieBasedPRButton({
       const currentBranchSessions = await getCurrentBranchContent();
       
       if (currentBranchSessions.length === 0) {
-        toast.error('No content changes found for this branch');
+        toast('No changes to create PR for', {
+          description: `There are no edited files on the "${currentBranch}" branch. Make some changes first, then create a pull request.`,
+          action: {
+            label: 'Got it',
+            onClick: () => {}
+          }
+        });
         return;
       }
 
