@@ -4,7 +4,7 @@ path: "/cli/copilot/chat"
 visibility: "PUBLIC"
 ---
 ***
-tesesssssss sdasdasdasdasdasdasdasd s
+tesesssssss main still working I think? branch is this saving?
 ## Accessing Copilot Chat in your Terminal
 s
 There are two ways to manage your Copilot chats in the Pieces CLI.
