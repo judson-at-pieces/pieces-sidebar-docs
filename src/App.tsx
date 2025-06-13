@@ -39,15 +39,19 @@ const queryClient = new QueryClient({
   },
 });
 
+function AnalyticsWrapper() {
+  // Initialize analytics tracking within Router context
+  useAnalytics();
+  return null;
+}
+
 function AppContent() {
   // Preload content when app starts
   useContentPreloader();
-  
-  // Initialize analytics tracking
-  useAnalytics();
 
   return (
     <Router>
+      <AnalyticsWrapper />
       <div className="min-h-screen bg-background font-sans antialiased">
         <Toaster />
         <SonnerToaster />
