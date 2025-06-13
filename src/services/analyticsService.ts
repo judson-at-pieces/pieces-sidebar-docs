@@ -44,8 +44,19 @@ class AnalyticsService {
     return supabase.auth.getUser().then(({ data }) => data.user?.id);
   }
 
+  private shouldTrackPath(path: string): boolean {
+    // Don't track admin or edit routes
+    const excludedPaths = ['/admin', '/edit'];
+    return !excludedPaths.some(excludedPath => path.startsWith(excludedPath));
+  }
+
   async trackPageView(path: string) {
     try {
+      // Skip tracking for admin and edit routes
+      if (!this.shouldTrackPath(path)) {
+        return;
+      }
+
       const { data: { user } } = await supabase.auth.getUser();
       
       const pageViewData: PageViewData = {
@@ -104,6 +115,11 @@ class AnalyticsService {
 
   private async trackReferrer(pagePath: string, referrerUrl: string) {
     try {
+      // Don't track referrers for admin/edit pages
+      if (!this.shouldTrackPath(pagePath)) {
+        return;
+      }
+
       const referrerDomain = new URL(referrerUrl).hostname;
       
       const referrerData: ReferrerData = {
