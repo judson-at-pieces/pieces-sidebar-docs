@@ -18,7 +18,7 @@ interface EditorMainProps {
   lockedBy?: string;
   liveContent?: any;
   isAcquiringLock?: boolean;
-  onTakeLock?: () => Promise<void>;
+  onTakeLock?: () => Promise<boolean>;
 }
 
 export function EditorMain({
@@ -97,7 +97,7 @@ export function EditorMain({
           
           {isLocked && onTakeLock && (
             <Button 
-              onClick={onTakeLock}
+              onClick={() => onTakeLock()}
               disabled={isAcquiringLock}
               variant="outline"
               className="gap-2"
