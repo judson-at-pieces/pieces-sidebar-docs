@@ -89,6 +89,38 @@ export function CookieBasedPRButton({
     checkExistingPRs();
   }, [currentBranch, initialized]);
 
+  // Get current branch content from live editing sessions
+  const getCurrentBranchContent = async () => {
+    console.log('🍪 Getting content for current branch:', currentBranch);
+    
+    try {
+      // Get all live editing sessions for the current branch
+      const { data: branchSessions, error } = await supabase
+        .from('live_editing_sessions')
+        .select('file_path, content')
+        .eq('branch_name', currentBranch)
+        .not('content', 'is', null)
+        .neq('content', '');
+
+      if (error) {
+        console.error('Error fetching branch content:', error);
+        // Fallback to the sessions passed as props
+        return sessions.filter(s => s.content && s.content.trim());
+      }
+
+      if (branchSessions && branchSessions.length > 0) {
+        console.log(`🍪 Found ${branchSessions.length} sessions for branch ${currentBranch}`);
+        return branchSessions;
+      } else {
+        console.log('🍪 No sessions found in database, using prop sessions');
+        return sessions.filter(s => s.content && s.content.trim());
+      }
+    } catch (error) {
+      console.error('Error in getCurrentBranchContent:', error);
+      return sessions.filter(s => s.content && s.content.trim());
+    }
+  };
+
   const activeSessions = sessions.filter(s => s.content && s.content.trim());
   const isEnabled = initialized && currentBranch && hasChanges && currentBranch !== targetBranch;
 
@@ -162,12 +194,20 @@ export function CookieBasedPRButton({
         }
       }
 
-      const files = activeSessions.map(session => ({
+      // Get current branch content instead of using prop sessions
+      const currentBranchSessions = await getCurrentBranchContent();
+      
+      if (currentBranchSessions.length === 0) {
+        toast.error('No content changes found for this branch');
+        return;
+      }
+
+      const files = currentBranchSessions.map(session => ({
         path: getOriginalFilePath(session.file_path),
         content: session.content
       }));
 
-      console.log('🍪 Creating PR from cookie branch:', currentBranch, 'to:', targetBranch);
+      console.log('🍪 Creating PR from branch:', currentBranch, 'with', files.length, 'files');
 
       const useExistingBranch = currentBranch !== 'main';
       const headBranch = currentBranch === 'main' ? undefined : currentBranch;
@@ -198,7 +238,7 @@ export function CookieBasedPRButton({
           .from('live_editing_sessions')
           .delete()
           .eq('branch_name', currentBranch)
-          .in('file_path', activeSessions.map(s => s.file_path));
+          .in('file_path', currentBranchSessions.map(s => s.file_path));
         
         if (!error) {
           toast.success('Live editing sessions cleared');
