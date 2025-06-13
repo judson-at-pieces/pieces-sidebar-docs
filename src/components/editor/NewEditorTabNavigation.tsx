@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -47,6 +48,9 @@ export function NewEditorTabNavigation({
     { id: 'content' as const, label: 'Content', icon: FileText },
     { id: 'seo' as const, label: 'SEO', icon: Search },
   ];
+
+  // Only show branch selector and PR button for content tab
+  const showBranchControls = activeTab === 'content';
 
   return (
     <div className="border-b border-border/40 bg-gradient-to-r from-background via-background/95 to-muted/10 backdrop-blur-sm">
@@ -117,19 +121,21 @@ export function NewEditorTabNavigation({
           )}
         </div>
 
-        {/* Right Side Actions */}
-        <div className="flex items-center gap-3">
-          {/* Branch Selector */}
-          <NewBranchSelector />
+        {/* Right Side Actions - Only show for content tab */}
+        {showBranchControls && (
+          <div className="flex items-center gap-3">
+            {/* Branch Selector */}
+            <NewBranchSelector />
 
-          {/* Single PR Button */}
-          <CookieBasedPRButton
-            sessions={sessions}
-            hasChanges={hasChanges || totalLiveFiles > 0}
-            initialized={initialized}
-            targetBranch="main"
-          />
-        </div>
+            {/* Single PR Button */}
+            <CookieBasedPRButton
+              sessions={sessions}
+              hasChanges={hasChanges || totalLiveFiles > 0}
+              initialized={initialized}
+              targetBranch="main"
+            />
+          </div>
+        )}
       </div>
     </div>
   );
