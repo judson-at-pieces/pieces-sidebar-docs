@@ -1,6 +1,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { useBranchContentManager } from './useBranchContentManager';
 import { useBranchLockManager } from './useBranchLockManager';
+import { logger } from '@/utils/logger';
 
 const DEBUG_EDITOR = true;
 
@@ -25,8 +26,12 @@ export function useBranchEditor() {
 
     // Save current content if we have a lock
     if (selectedFile && lockManager.myCurrentLock?.filePath === selectedFile) {
-      await contentManager.saveContent(selectedFile, localContent, contentManager.currentBranch, true);
-      await lockManager.releaseLock(selectedFile, contentManager.currentBranch);
+      try {
+        await contentManager.saveContent(selectedFile, localContent, contentManager.currentBranch, true);
+        await lockManager.releaseLock(selectedFile, contentManager.currentBranch);
+      } catch (error) {
+        logger.error('Error saving/releasing lock during file switch', { error, selectedFile });
+      }
     }
 
     loadingFile.current = filePath;
@@ -69,11 +74,14 @@ Start editing to see the live preview!
 
         // Try to acquire lock
         setTimeout(() => {
-          lockManager.acquireLock(filePath, contentManager.currentBranch);
+          lockManager.acquireLock(filePath, contentManager.currentBranch).catch(error => {
+            logger.error('Error acquiring lock', { error, filePath, branch: contentManager.currentBranch });
+          });
         }, 100);
       }
     } catch (error) {
       console.error('Error loading file:', error);
+      logger.error('Error loading file content', { error, filePath, branch: contentManager.currentBranch });
       if (loadingFile.current === filePath) {
         setLocalContent("Error loading file content");
       }
@@ -95,7 +103,9 @@ Start editing to see the live preview!
     setLocalContent(newContent);
     
     // Auto-save to current branch
-    contentManager.saveContent(selectedFile, newContent, contentManager.currentBranch, false);
+    contentManager.saveContent(selectedFile, newContent, contentManager.currentBranch, false).catch(error => {
+      logger.error('Error auto-saving content', { error, selectedFile, branch: contentManager.currentBranch });
+    });
     
     if (DEBUG_EDITOR) {
       console.log('📝 Content updated, auto-saving to branch:', contentManager.currentBranch);
@@ -110,42 +120,49 @@ Start editing to see the live preview!
       console.log('🌿 Branch changing from:', lastBranch.current, 'to:', newBranch);
     }
 
-    // Save current content to old branch if we have a lock
-    if (selectedFile && lockManager.myCurrentLock?.filePath === selectedFile && lastBranch.current) {
-      await contentManager.saveContent(selectedFile, localContent, lastBranch.current, true);
-    }
-
-    // Release current lock
-    if (lockManager.myCurrentLock) {
-      await lockManager.releaseLock(
-        lockManager.myCurrentLock.filePath, 
-        lockManager.myCurrentLock.branch
-      );
-    }
-
-    lastBranch.current = newBranch;
-
-    // Reload content for new branch if we have a selected file
-    if (selectedFile) {
-      setIsLoading(true);
-      try {
-        const content = await contentManager.loadContent(selectedFile, newBranch);
-        if (content !== null) {
-          setLocalContent(content);
-        } else {
-          // Keep current content if no branch-specific content exists
-          setLocalContent(localContent);
-        }
-
-        // Try to acquire lock on new branch
-        setTimeout(() => {
-          lockManager.acquireLock(selectedFile, newBranch);
-        }, 200);
-      } catch (error) {
-        console.error('Error loading content for new branch:', error);
-      } finally {
-        setIsLoading(false);
+    try {
+      // Save current content to old branch if we have a lock
+      if (selectedFile && lockManager.myCurrentLock?.filePath === selectedFile && lastBranch.current) {
+        await contentManager.saveContent(selectedFile, localContent, lastBranch.current, true);
       }
+
+      // Release current lock
+      if (lockManager.myCurrentLock) {
+        await lockManager.releaseLock(
+          lockManager.myCurrentLock.filePath, 
+          lockManager.myCurrentLock.branch
+        );
+      }
+
+      lastBranch.current = newBranch;
+
+      // Reload content for new branch if we have a selected file
+      if (selectedFile) {
+        setIsLoading(true);
+        try {
+          const content = await contentManager.loadContent(selectedFile, newBranch);
+          if (content !== null) {
+            setLocalContent(content);
+          } else {
+            // Keep current content if no branch-specific content exists
+            setLocalContent(localContent);
+          }
+
+          // Try to acquire lock on new branch
+          setTimeout(() => {
+            lockManager.acquireLock(selectedFile, newBranch).catch(error => {
+              logger.error('Error acquiring lock on new branch', { error, selectedFile, newBranch });
+            });
+          }, 200);
+        } catch (error) {
+          console.error('Error loading content for new branch:', error);
+          logger.error('Error loading content for branch change', { error, selectedFile, newBranch });
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    } catch (error) {
+      logger.error('Error during branch change', { error, newBranch, selectedFile });
     }
   }, [selectedFile, localContent, contentManager, lockManager]);
 

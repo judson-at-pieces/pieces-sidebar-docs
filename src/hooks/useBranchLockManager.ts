@@ -1,6 +1,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
+import { logger } from '@/utils/logger';
 
 interface BranchLock {
   file_path: string;
@@ -22,8 +23,13 @@ export function useBranchLockManager() {
   // Get current user
   useEffect(() => {
     const getCurrentUser = async () => {
-      const { data: { user } } = await supabase.auth.getUser();
-      setCurrentUserId(user?.id || null);
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        setCurrentUserId(user?.id || null);
+      } catch (error) {
+        logger.error('Error getting current user', { error });
+        setCurrentUserId(null);
+      }
     };
     getCurrentUser();
   }, []);
@@ -45,6 +51,7 @@ export function useBranchLockManager() {
 
       if (error) {
         console.error('Error fetching user names:', error);
+        logger.error('Error fetching user names', { error, userIds });
         return;
       }
 
@@ -57,6 +64,7 @@ export function useBranchLockManager() {
       setUserNames(nameMap);
     } catch (error) {
       console.error('Error in fetchUserNames:', error);
+      logger.error('Exception in fetchUserNames', { error, userIds });
     }
   }, [userNames]);
 
@@ -72,6 +80,7 @@ export function useBranchLockManager() {
 
       if (error) {
         console.error('Error fetching locks:', error);
+        logger.error('Error fetching active locks', { error, branchName });
         return;
       }
 
@@ -110,12 +119,16 @@ export function useBranchLockManager() {
       }
     } catch (error) {
       console.error('Error in fetchActiveLocksForBranch:', error);
+      logger.error('Exception in fetchActiveLocksForBranch', { error, branchName });
     }
   }, [currentUserId, userNames, fetchUserNames, getLockKey]);
 
   // Acquire lock for a file on a specific branch
   const acquireLock = useCallback(async (filePath: string, branchName: string): Promise<boolean> => {
-    if (!currentUserId) return false;
+    if (!currentUserId) {
+      logger.warn('Attempted to acquire lock without user authentication', { filePath, branchName });
+      return false;
+    }
 
     try {
       const { data, error } = await supabase.rpc('acquire_file_lock_by_branch', {
@@ -126,6 +139,7 @@ export function useBranchLockManager() {
 
       if (error) {
         console.error('Error acquiring lock:', error);
+        logger.error('Error acquiring file lock', { error, filePath, branchName, userId: currentUserId });
         return false;
       }
 
@@ -153,13 +167,17 @@ export function useBranchLockManager() {
       return false;
     } catch (error) {
       console.error('Error in acquireLock:', error);
+      logger.error('Exception in acquireLock', { error, filePath, branchName, userId: currentUserId });
       return false;
     }
   }, [currentUserId, getLockKey]);
 
   // Release lock
   const releaseLock = useCallback(async (filePath: string, branchName: string): Promise<boolean> => {
-    if (!currentUserId) return false;
+    if (!currentUserId) {
+      logger.warn('Attempted to release lock without user authentication', { filePath, branchName });
+      return false;
+    }
 
     try {
       const { error } = await supabase.rpc('release_file_lock_by_branch', {
@@ -170,6 +188,7 @@ export function useBranchLockManager() {
 
       if (error) {
         console.error('Error releasing lock:', error);
+        logger.error('Error releasing file lock', { error, filePath, branchName, userId: currentUserId });
         return false;
       }
 
@@ -191,6 +210,7 @@ export function useBranchLockManager() {
       return true;
     } catch (error) {
       console.error('Error in releaseLock:', error);
+      logger.error('Exception in releaseLock', { error, filePath, branchName, userId: currentUserId });
       return false;
     }
   }, [currentUserId, myCurrentLock, getLockKey]);
@@ -213,11 +233,21 @@ export function useBranchLockManager() {
 
         if (error) {
           console.error('Error sending heartbeat:', error);
+          logger.error('Error sending lock heartbeat', { 
+            error, 
+            filePath: myCurrentLock.filePath, 
+            branch: myCurrentLock.branch 
+          });
         } else if (DEBUG_LOCK) {
           console.log('🔒 Heartbeat sent for:', myCurrentLock.filePath, 'on', myCurrentLock.branch);
         }
       } catch (error) {
         console.error('Error in heartbeat:', error);
+        logger.error('Exception in lock heartbeat', { 
+          error, 
+          filePath: myCurrentLock.filePath, 
+          branch: myCurrentLock.branch 
+        });
       }
     };
 

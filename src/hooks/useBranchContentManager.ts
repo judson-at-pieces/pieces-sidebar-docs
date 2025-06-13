@@ -2,6 +2,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { getBranchCookie } from '@/utils/branchCookies';
+import { logger } from '@/utils/logger';
 
 interface BranchContent {
   file_path: string;
@@ -56,6 +57,7 @@ export function useBranchContentManager() {
 
       if (error) {
         console.error('Error loading from database:', error);
+        logger.error('Database error loading content', { error, filePath, branchName });
       } else if (data?.content) {
         if (DEBUG_BRANCH_CONTENT) {
           console.log('🌿 Found content in database for branch:', branchName);
@@ -91,73 +93,84 @@ export function useBranchContentManager() {
       return null;
     } catch (error) {
       console.error('Error in loadContent:', error);
+      logger.error('Error loading content', { error, filePath, branchName });
       return null;
     }
   }, []);
 
   // Save content to a specific branch
   const saveContent = useCallback(async (filePath: string, content: string, branchName: string, immediate = false): Promise<boolean> => {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return false;
-
-    if (saveInProgress.current) {
-      if (DEBUG_BRANCH_CONTENT) {
-        console.log('🌿 Save already in progress, skipping');
-      }
-      return false;
-    }
-
-    const performSave = async () => {
-      try {
-        saveInProgress.current = true;
-        setIsAutoSaving(true);
-        
-        if (DEBUG_BRANCH_CONTENT) {
-          console.log('🌿 Saving content for:', filePath, 'to branch:', branchName);
-        }
-
-        const { error } = await supabase
-          .from('live_editing_sessions')
-          .upsert({
-            file_path: filePath,
-            content,
-            user_id: user.id,
-            branch_name: branchName,
-            updated_at: new Date().toISOString()
-          }, {
-            onConflict: 'file_path,branch_name'
-          });
-
-        if (error) {
-          console.error('🌿 Save error:', error);
-          return false;
-        }
-
-        if (DEBUG_BRANCH_CONTENT) {
-          console.log('🌿 Save completed for branch:', branchName);
-        }
-        return true;
-
-      } catch (error) {
-        console.error('🌿 Save exception:', error);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        logger.warn('Attempted to save content without user authentication', { filePath, branchName });
         return false;
-      } finally {
-        saveInProgress.current = false;
-        setIsAutoSaving(false);
       }
-    };
 
-    if (immediate) {
-      return await performSave();
-    } else {
-      // Clear existing timeout
-      if (autoSaveTimeoutRef.current) {
-        clearTimeout(autoSaveTimeoutRef.current);
+      if (saveInProgress.current) {
+        if (DEBUG_BRANCH_CONTENT) {
+          console.log('🌿 Save already in progress, skipping');
+        }
+        return false;
       }
-      
-      // Set new timeout for auto-save
-      autoSaveTimeoutRef.current = setTimeout(performSave, 1500);
-      return true;
+
+      const performSave = async () => {
+        try {
+          saveInProgress.current = true;
+          setIsAutoSaving(true);
+          
+          if (DEBUG_BRANCH_CONTENT) {
+            console.log('🌿 Saving content for:', filePath, 'to branch:', branchName);
+          }
+
+          const { error } = await supabase
+            .from('live_editing_sessions')
+            .upsert({
+              file_path: filePath,
+              content,
+              user_id: user.id,
+              branch_name: branchName,
+              updated_at: new Date().toISOString()
+            }, {
+              onConflict: 'file_path,branch_name'
+            });
+
+          if (error) {
+            console.error('🌿 Save error:', error);
+            logger.error('Error saving content to database', { error, filePath, branchName });
+            return false;
+          }
+
+          if (DEBUG_BRANCH_CONTENT) {
+            console.log('🌿 Save completed for branch:', branchName);
+          }
+          return true;
+
+        } catch (error) {
+          console.error('🌿 Save exception:', error);
+          logger.error('Exception during content save', { error, filePath, branchName });
+          return false;
+        } finally {
+          saveInProgress.current = false;
+          setIsAutoSaving(false);
+        }
+      };
+
+      if (immediate) {
+        return await performSave();
+      } else {
+        // Clear existing timeout
+        if (autoSaveTimeoutRef.current) {
+          clearTimeout(autoSaveTimeoutRef.current);
+        }
+        
+        // Set new timeout for auto-save
+        autoSaveTimeoutRef.current = setTimeout(performSave, 1500);
+        return true;
+      }
+    } catch (error) {
+      logger.error('Error in saveContent function', { error, filePath, branchName });
+      return false;
     }
   }, []);
 
@@ -173,6 +186,7 @@ export function useBranchContentManager() {
 
       if (error) {
         console.error('Error fetching branch content:', error);
+        logger.error('Error fetching branch content from database', { error, branchName });
         return new Map();
       }
 
@@ -188,6 +202,7 @@ export function useBranchContentManager() {
       return contentMap;
     } catch (error) {
       console.error('Error in getBranchContent:', error);
+      logger.error('Exception in getBranchContent', { error, branchName });
       return new Map();
     }
   }, []);
