@@ -14,6 +14,11 @@ interface EditorMainProps {
   onSave: () => void;
   hasChanges: boolean;
   saving: boolean;
+  isLocked?: boolean;
+  lockedBy?: string;
+  liveContent?: any;
+  isAcquiringLock?: boolean;
+  onTakeLock?: () => Promise<void>;
 }
 
 export function EditorMain({
@@ -22,7 +27,12 @@ export function EditorMain({
   onContentChange,
   onSave,
   hasChanges,
-  saving
+  saving,
+  isLocked = false,
+  lockedBy,
+  liveContent,
+  isAcquiringLock = false,
+  onTakeLock
 }: EditorMainProps) {
   const { user } = useAuth();
   const { updateDocumentPublicity, getDocumentPublicity, isUpdating } = useDocumentPublicity();
@@ -68,6 +78,12 @@ export function EditorMain({
                   Unsaved changes
                 </Badge>
               )}
+              {isLocked && lockedBy && (
+                <Badge variant="destructive" className="text-xs flex items-center gap-1">
+                  <Lock className="h-3 w-3" />
+                  Locked by {lockedBy}
+                </Badge>
+              )}
             </div>
           </div>
         </div>
@@ -79,9 +95,30 @@ export function EditorMain({
             disabled={isUpdating || !user}
           />
           
+          {isLocked && onTakeLock && (
+            <Button 
+              onClick={onTakeLock}
+              disabled={isAcquiringLock}
+              variant="outline"
+              className="gap-2"
+            >
+              {isAcquiringLock ? (
+                <>
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Acquiring...
+                </>
+              ) : (
+                <>
+                  <Users className="h-4 w-4" />
+                  Take Lock
+                </>
+              )}
+            </Button>
+          )}
+          
           <Button 
             onClick={onSave}
-            disabled={!hasChanges || saving}
+            disabled={!hasChanges || saving || isLocked}
             className="gap-2"
           >
             {saving ? (
@@ -104,8 +141,9 @@ export function EditorMain({
         <textarea
           value={content}
           onChange={(e) => onContentChange(e.target.value)}
-          className="w-full h-full p-4 border rounded-lg resize-none font-mono text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent"
-          placeholder="Start typing your content here..."
+          disabled={isLocked}
+          className="w-full h-full p-4 border rounded-lg resize-none font-mono text-sm focus:outline-none focus:ring-2 focus:ring-ring focus:border-transparent disabled:opacity-50 disabled:cursor-not-allowed"
+          placeholder={isLocked ? "This file is locked by another user" : "Start typing your content here..."}
         />
       </div>
     </div>
