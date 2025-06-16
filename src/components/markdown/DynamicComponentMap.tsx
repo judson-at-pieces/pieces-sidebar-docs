@@ -6,7 +6,7 @@ import { Image } from './Image';
 import { Callout } from './Callout';
 import { Steps, Step } from './Steps';
 import { MarkdownCard as Card } from './MarkdownCard';
-import { CardGroup } from './CardGroup';
+import { DynamicCardGroup as CardGroup } from './DynamicCardGroup';
 
 export const createDynamicComponentMap = () => ({
   // Basic HTML elements
@@ -35,9 +35,9 @@ export const createDynamicComponentMap = () => ({
   Callout,
   Steps,
   Step,
-  Card: ({ title, image, href, external, icon, children, ...props }: any) => {
-    console.log('🎯 Dynamic Card component rendering:', { title, image, href, external, icon, hasChildren: !!children });
-    return <Card title={title} image={image} href={href} external={external} icon={icon} {...props}>{children}</Card>;
+  Card: ({ title, image, children, ...props }: any) => {
+    console.log('🎯 Dynamic Card component rendering:', { title, image, hasChildren: !!children });
+    return <Card title={title} image={image} {...props}>{children}</Card>;
   },
   CardGroup: ({ cols, children, ...props }: any) => {
     console.log('🎯 Dynamic CardGroup component rendering:', { cols, childrenCount: React.Children.count(children) });

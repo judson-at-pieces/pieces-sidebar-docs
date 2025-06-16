@@ -1,3 +1,4 @@
+
 // Client-side processor for custom markdown syntax
 
 // Security utilities for safe HTML attribute handling
@@ -46,8 +47,6 @@ export function processCustomSyntax(content: string): string {
   try {
     let processedContent = content;
 
-    console.log('🔧 processCustomSyntax: Starting with content length:', content.length);
-
     // Transform callout syntax: :::info[Title] or :::warning{title="Warning"}
     processedContent = processedContent.replace(
       /:::(\w+)(?:\[([^\]]*)\]|\{title="([^"]*)"\})?\n([\s\S]*?):::/g,
@@ -62,7 +61,7 @@ export function processCustomSyntax(content: string): string {
           return match; // Return original if invalid type
         }
         
-        return `<Callout type="${safeType}" title="${safeTitle}">\n\n${safeContent}\n\n</Callout>`;
+        return `<div data-callout="${safeType}" data-title="${safeTitle}">\n\n${safeContent}\n\n</div>`;
       }
     );
 
@@ -79,7 +78,7 @@ export function processCustomSyntax(content: string): string {
           return match; // Return original if invalid type
         }
         
-        return `<Callout type="${safeType}">\n\n${safeContent}\n\n</Callout>`;
+        return `<div data-callout="${safeType}">\n\n${safeContent}\n\n</div>`;
       }
     );
 
@@ -87,18 +86,21 @@ export function processCustomSyntax(content: string): string {
     processedContent = processedContent.replace(/<CardGroup\s+cols=\{(\d+)\}>/gi, (match, cols) => {
       const numCols = parseInt(cols, 10);
       if (isNaN(numCols) || numCols < 1 || numCols > 6) {
-        return '<CardGroup cols={2}>'; // Default fallback
+        return '<div data-cardgroup="true" data-cols="2">'; // Default fallback
       }
-      return `<CardGroup cols={${numCols}}>`;
+      return `<div data-cardgroup="true" data-cols="${numCols}">`;
     });
     
     processedContent = processedContent.replace(/<CardGroup>/gi, () => {
-      return '<CardGroup cols={2}>';
+      return '<div data-cardgroup="true" data-cols="2">';
     });
     
-    // Don't replace </CardGroup> - keep it as is
+    processedContent = processedContent.replace(/<\/CardGroup>/gi, () => {
+      return '</div>';
+    });
 
-    // Transform Card components - preserve original JSX syntax
+    // Transform Card components - Use direct HTML instead of special syntax
+    // First handle self-closing cards
     processedContent = processedContent.replace(/<Card\s+([^>]*?)\/>/gi, (match, attributes) => {
       try {
         const titleMatch = attributes.match(/title="([^"]*)"/);
@@ -107,30 +109,23 @@ export function processCustomSyntax(content: string): string {
         const externalMatch = attributes.match(/external=["']([^"']*)["']/);
         const iconMatch = attributes.match(/icon="([^"]*)"/);
         
-        const title = titleMatch ? titleMatch[1] : '';
-        const image = imageMatch ? imageMatch[1] : '';
-        const href = hrefMatch ? hrefMatch[1] : '';
-        const external = externalMatch ? externalMatch[1] : '';
-        const icon = iconMatch ? iconMatch[1] : '';
+        const title = sanitizeAttribute(titleMatch ? titleMatch[1] : '');
+        const image = validateUrl(imageMatch ? imageMatch[1] : '');
+        const href = validateUrl(hrefMatch ? hrefMatch[1] : '');
+        const external = sanitizeAttribute(externalMatch ? externalMatch[1] : '');
+        const icon = sanitizeAttribute(iconMatch ? iconMatch[1] : '');
         
-        let cardProps = '';
-        if (title) cardProps += ` title="${title}"`;
-        if (image) cardProps += ` image="${image}"`;
-        if (href) cardProps += ` href="${href}"`;
-        if (external) cardProps += ` external="${external}"`;
-        if (icon) cardProps += ` icon="${icon}"`;
-        
-        return `<Card${cardProps} />`;
+        return `<div data-card="true" data-title="${title}" data-image="${image}" data-href="${href}" data-external="${external}" data-icon="${icon}"></div>`;
       } catch (error) {
         console.warn('Error parsing Card attributes:', error);
-        return '<Card />';
+        return '<div data-card="true"></div>';
       }
     });
 
-    // Transform Card components with content - preserve JSX
+    // Then handle Card components with content - Use direct HTML
     processedContent = processedContent.replace(/<Card\s+([^>]*?)>([\s\S]*?)<\/Card>/gi, (match, attributes, innerContent) => {
       try {
-        console.log('🔧 Processing Card with content:', { attributes, innerContent: innerContent.substring(0, 100) });
+        console.log('Processing Card with content:', { attributes, innerContent: innerContent.substring(0, 100) });
         
         const titleMatch = attributes.match(/title="([^"]*)"/);
         const imageMatch = attributes.match(/image="([^"]*)"/);
@@ -138,116 +133,95 @@ export function processCustomSyntax(content: string): string {
         const externalMatch = attributes.match(/external=["']([^"']*)["']/);
         const iconMatch = attributes.match(/icon="([^"]*)"/);
         
-        const title = titleMatch ? titleMatch[1] : '';
-        const image = imageMatch ? imageMatch[1] : '';
-        const href = hrefMatch ? hrefMatch[1] : '';
-        const external = externalMatch ? externalMatch[1] : '';
-        const icon = iconMatch ? iconMatch[1] : '';
+        const title = sanitizeAttribute(titleMatch ? titleMatch[1] : '');
+        const image = validateUrl(imageMatch ? imageMatch[1] : '');
+        const href = validateUrl(hrefMatch ? hrefMatch[1] : '');
+        const external = sanitizeAttribute(externalMatch ? externalMatch[1] : '');
+        const icon = sanitizeAttribute(iconMatch ? iconMatch[1] : '');
         
-        let cardProps = '';
-        if (title) cardProps += ` title="${title}"`;
-        if (image) cardProps += ` image="${image}"`;
-        if (href) cardProps += ` href="${href}"`;
-        if (external) cardProps += ` external="${external}"`;
-        if (icon) cardProps += ` icon="${icon}"`;
-        
-        // PRESERVE the inner content exactly as is
+        // PRESERVE the inner content exactly as is - this is crucial for markdown processing
         const preservedContent = innerContent || '';
         
-        console.log('🔧 Card transformation result:', { title, image, href, external, icon, contentLength: preservedContent.length });
+        console.log('Card transformation result:', { title, image, href, external, icon, contentLength: preservedContent.length });
         
-        return `<Card${cardProps}>\n\n${preservedContent}\n\n</Card>`;
+        // Use direct HTML that will be processed by ReactMarkdown
+        return `<div data-card="true" data-title="${title}" data-image="${image}" data-href="${href}" data-external="${external}" data-icon="${icon}">\n\n${preservedContent}\n\n</div>`;
       } catch (error) {
         console.warn('Error parsing Card attributes:', error);
-        return `<Card>\n\n${innerContent || ''}\n\n</Card>`;
+        return `<div data-card="true">\n\n${innerContent || ''}\n\n</div>`;
       }
     });
 
-    // Transform Steps and Step components to JSX
+    // Transform Steps and Step components to HTML
     processedContent = processedContent.replace(/<Steps>/gi, () => {
-      return '<Steps>';
+      return '<div data-steps="true">';
     });
     
-    // Don't replace </Steps> - keep it as is
+    processedContent = processedContent.replace(/<\/Steps>/gi, () => {
+      return '</div>';
+    });
     
     processedContent = processedContent.replace(/<Step\s+([^>]*)>([\s\S]*?)<\/Step>/gi, (match, attributes, innerContent) => {
+      const numberMatch = attributes.match(/number="(\d+)"/);
       const titleMatch = attributes.match(/title="([^"]*)"/);
-      const title = titleMatch ? titleMatch[1] : '';
+      
+      const stepNum = parseInt(numberMatch ? numberMatch[1] : '1', 10);
+      if (isNaN(stepNum) || stepNum < 1 || stepNum > 999) {
+        return match; // Return original if invalid number
+      }
+      
+      const safeTitle = sanitizeAttribute(titleMatch ? titleMatch[1] : '');
       const safeContent = innerContent ? innerContent.trim() : '';
       
-      return `<Step title="${title}">\n\n${safeContent}\n\n</Step>`;
+      return `<div data-step="${stepNum}" data-step-title="${safeTitle}">\n\n${safeContent}\n\n</div>`;
     });
 
-    // Transform Image components - ENSURE they have proper opening brackets and preserve as JSX
-    processedContent = processedContent.replace(
-      /(?<!<)Image\s+([^>]*?)\/>/gi,
-      '<Image $1/>'
-    );
-    
-    // Transform Image components - keep as JSX
+    // Transform Image components - PRESERVE them as standard img tags
     processedContent = processedContent.replace(
       /<Image\s+([^>]*?)\/>/gi,
       (match, attributes) => {
         try {
-          console.log('🔧 Processing Image component:', attributes);
-          
           const srcMatch = attributes.match(/src="([^"]*)"/);
           const altMatch = attributes.match(/alt="([^"]*)"/);
           const alignMatch = attributes.match(/align="([^"]*)"/);
           const fullwidthMatch = attributes.match(/fullwidth="([^"]*)"/);
           
-          const src = srcMatch ? srcMatch[1] : '';
-          const alt = altMatch ? altMatch[1] : '';
-          const align = alignMatch ? alignMatch[1] : 'center';
-          const fullwidth = fullwidthMatch ? fullwidthMatch[1] : 'false';
-          
+          const src = validateUrl(srcMatch ? srcMatch[1] : '');
           if (!src) {
-            console.warn('Image missing src:', attributes);
-            return '';
+            console.warn('Invalid or unsafe image URL:', srcMatch ? srcMatch[1] : 'no src');
+            return ''; // Remove invalid images
           }
           
-          console.log('🔧 Image transformation result:', { src, alt, align, fullwidth });
+          const alt = sanitizeAttribute(altMatch ? altMatch[1] : '');
+          const align = sanitizeAttribute(alignMatch ? alignMatch[1] : 'center');
+          const fullwidth = sanitizeAttribute(fullwidthMatch ? fullwidthMatch[1] : 'false');
           
-          return `<Image src="${src}" alt="${alt}" align="${align}" fullwidth="${fullwidth}" />`;
+          return `<img src="${src}" alt="${alt}" data-align="${align}" data-fullwidth="${fullwidth}" />`;
         } catch (error) {
           console.warn('Error parsing Image attributes:', error);
-          return match;
+          return match; // Return original on error
         }
       }
     );
 
-    // Transform ExpandableImage components to JSX
+    // Transform ExpandableImage components to HTML
     processedContent = processedContent.replace(
       /<ExpandableImage\s+src="([^"]*)"(?:\s+alt="([^"]*)")?(?:\s+caption="([^"]*)")?\/>/gi, 
       (match, src, alt, caption) => {
-        if (!src) {
-          console.warn('ExpandableImage missing src');
-          return '';
+        const safeSrc = validateUrl(src);
+        if (!safeSrc) {
+          console.warn('Invalid or unsafe image URL:', src);
+          return ''; // Remove invalid images
         }
         
-        const safeAlt = alt || '';
-        const safeCaption = caption || '';
+        const safeAlt = sanitizeAttribute(alt || '');
+        const safeCaption = sanitizeAttribute(caption || '');
         
-        return `<ExpandableImage src="${src}" alt="${safeAlt}" caption="${safeCaption}" />`;
+        return `<img src="${safeSrc}" alt="${safeAlt}" data-caption="${safeCaption}" />`;
       }
     );
 
-    // Transform Embed components to JSX (for YouTube)
-    processedContent = processedContent.replace(
-      /<Embed\s+src="([^"]*)"(?:\s+title="([^"]*)")?\/>/gi,
-      (match, src, title) => {
-        if (!src) {
-          console.warn('Embed missing src');
-          return '';
-        }
-        
-        const safeTitle = title || '';
-        
-        return `<Embed src="${src}" title="${safeTitle}" />`;
-      }
-    );
-
-    console.log('🔧 Custom syntax processing complete. Sample output:', processedContent.substring(0, 500));
+    console.log('Custom syntax processing complete. Sample output:', processedContent.substring(0, 500));
     return processedContent;
   } catch (error) {
     console.error('Error processing custom syntax:', error);

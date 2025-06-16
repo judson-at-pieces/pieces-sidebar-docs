@@ -1,96 +1,51 @@
 
 import React from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { ExternalLink } from 'lucide-react';
 
 interface MarkdownCardProps {
-  title?: string;
-  description?: string;
+  title: string;
   image?: string;
-  href?: string;
-  external?: string | boolean;
-  icon?: string;
-  children?: React.ReactNode;
-  className?: string;
+  children: React.ReactNode;
 }
 
-export function MarkdownCard({ 
-  title, 
-  description, 
-  image, 
-  href, 
-  external, 
-  icon, 
-  children, 
-  className 
-}: MarkdownCardProps) {
-  console.log('🎯 MarkdownCard rendering:', { title, description, image, href, external, icon, hasChildren: !!children });
-  
-  const isExternal = external === true || external === 'true' || external === '1';
-  
-  const cardContent = (
-    <Card className={`transition-all duration-200 hover:shadow-md border border-border/50 ${className || ''}`}>
-      {(title || image) && (
-        <CardHeader className="pb-3">
-          {image && (
-            <div className="w-full h-32 mb-3 rounded-md overflow-hidden bg-muted">
-              <img 
-                src={image} 
-                alt={title || ''} 
-                className="w-full h-full object-cover"
-                loading="lazy"
-              />
-            </div>
-          )}
-          {title && (
-            <CardTitle className="text-lg font-semibold leading-tight">
-              {title}
-              {href && isExternal && (
-                <ExternalLink className="inline ml-2 w-4 h-4" />
-              )}
-            </CardTitle>
-          )}
-          {description && (
-            <CardDescription className="text-sm text-muted-foreground">
-              {description}
-            </CardDescription>
-          )}
-        </CardHeader>
+const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, children }) => {
+  console.log('🎯 MarkdownCard rendering:', { 
+    title, 
+    image, 
+    hasChildren: !!children,
+    childrenType: typeof children 
+  });
+
+  return (
+    <div className="p-6 my-4 border rounded-xl bg-white dark:bg-[#2a2b2b] dark:border-gray-700 hover:border-slate-300 dark:hover:border-gray-600 transition-colors shadow-sm">
+      {image && (
+        <div className="w-10 h-10 mb-6 relative rounded-lg">
+          <img
+            src={image}
+            alt={title}
+            loading="lazy"
+            decoding="async"
+            className="rounded-lg object-cover"
+            style={{
+              position: 'absolute',
+              height: '100%',
+              width: '100%',
+              left: 0,
+              top: 0,
+            }}
+          />
+        </div>
       )}
-      
-      {children && (
-        <CardContent className="pt-0">
-          <div className="text-sm text-muted-foreground">
-            {children}
-          </div>
-        </CardContent>
-      )}
-    </Card>
+      <span className="block text-base font-semibold text-slate-700 dark:text-slate-200">
+        {title}
+      </span>
+      <div className="mt-3 text-base text-slate-600 dark:text-slate-300">
+        {children}
+      </div>
+    </div>
   );
-  
-  if (href) {
-    if (isExternal) {
-      return (
-        <a 
-          href={href} 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="block no-underline"
-        >
-          {cardContent}
-        </a>
-      );
-    } else {
-      return (
-        <a 
-          href={href}
-          className="block no-underline"
-        >
-          {cardContent}
-        </a>
-      );
-    }
-  }
-  
-  return cardContent;
-}
+};
+
+export default MarkdownCard;
+
+// Export named export for compatibility
+export { MarkdownCard };
