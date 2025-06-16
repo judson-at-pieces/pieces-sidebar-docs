@@ -1,4 +1,3 @@
-
 ---
 title: "Understanding PiecesOS"
 path: "/core-dependencies/pieces-os"
@@ -20,7 +19,7 @@ These components make up the Pieces experience and are essential to the modern A
 
 PiecesOS provides the intelligence and power behind Pieces software in two key ways: by (1) supplying the essential components of the Pieces infrastructure and supporting various processes, and (2) powering standalone Pieces plugins and extensions when used without the Pieces Desktop App.
 
-This 'brain' is required to enable the 3 fundamental features of the Pieces development experience.
+This ‘brain’ is required to enable the 3 fundamental features of the Pieces development experience.
 
 <Image src="https://storage.googleapis.com/hashnode_product_documentation_assets/core_dependencies_assets/figma_mockups/piecesos_bridging_all_products.png" alt="" align="center" fullwidth="true" />
 
@@ -41,10 +40,10 @@ Using the Pieces Desktop App or a Pieces plugin or extension for your favorite I
 The **Long-Term Memory (LTM-2) Engine** is a powerful evolution of the original LTM system, designed to store and surface workflow context from up to **nine months** in the past.
 
 <Card title="Want a Sneak Peak?" image="https://cdn.hashnode.com/res/hashnode/image/upload/v1745425239243/516a20d3-2664-4f22-9b32-f0f14924a87a.webp">
-  Here's a <a target="_blank" href="https://tsavo.hashnode.dev/temporal-nano-model-breakthrough">quick read on some of the nano-models</a> we develop that layer into the data retrieval pipeline for LTM-2 and the coming *LTM-2.5*
+  Here’s a <a target="_blank" href="https://tsavo.hashnode.dev/temporal-nano-model-breakthrough">quick read on some of the nano-models</a> we develop that layer into the data retrieval pipeline for LTM-2 and the coming *LTM-2.5*
 </Card>
 
-By combining automatic "roll-ups" with flexible "memories" browsing, LTM-2 ensures you don't lose track of code, discussions, or references—even if you return to a project weeks or months later.
+By combining automatic “roll-ups” with flexible “memories” browsing, LTM-2 ensures you don’t lose track of code, discussions, or references—even if you return to a project weeks or months later.
 
 These workflow summaries can be found within the [Workstream Activities](https://docs.pieces.app/products/desktop/workstream-activity) view in the [Pieces Desktop App](https://docs.pieces.app/products/desktop).
 
@@ -58,7 +57,7 @@ These workflow summaries can be found within the [Workstream Activities](https:/
 
 ### Grounded Assistance
 
-Long-Term Memory is designed to boost developer productivity by providing assistance that's temporally grounded within the concrete context of your actual workflow, allowing the Pieces Copilot to better understand your development process over time.
+Long-Term Memory is designed to boost developer productivity by providing assistance that’s temporally grounded within the concrete context of your actual workflow, allowing the Pieces Copilot to better understand your development process over time.
 
 This helps it offer more relevant and timely responses to queries, as it has a *local database* of information to work from.
 
@@ -81,20 +80,20 @@ Under the hood, LTM monitors your workflow at the operating system level, captur
 LTM (through PiecesOS) extends your ability to [enable or disable specific sources](https://docs.pieces.app/products/core-dependencies/pieces-os/quick-menu#quick-menu-actions) for data capture—this way, you can decide exactly what gets tracked and stored, providing flexibility if you have sensitive or personal workflows.
 
 <Callout type="tip">
-  The data captured by LTM is processed and stored entirely on your device, so you don't need to worry about privacy and security—[which you can read more about here.](https://docs.pieces.app/products/privacy-security-your-data)
+  The data captured by LTM is processed and stored entirely on your device, so you don’t need to worry about privacy and security—[which you can read more about here.](https://docs.pieces.app/products/privacy-security-your-data)
 </Callout>
 
 ### Less Context Switching
 
-Traditionally, AI tools require you to restate your environment—what project you're working on, the code you just wrote, or the documentation you've referenced.
+Traditionally, AI tools require you to restate your environment—what project you’re working on, the code you just wrote, or the documentation you’ve referenced.
 
-However, with LTM-2's temporal grounding, you have:
+However, with LTM-2’s temporal grounding, you have:
 
 * **Reduced Manual Input**: No more duplicating the same context or re-pasting large code blocks.
 
 * **Enhanced Continuity**: Your interactions flow seamlessly from one coding session to the next, letting you pick up exactly where you left off.
 
-* **Intuitive Interactions**: Ask questions like "What was I working on with John last week?" or "How do I fix that same CocoaPods issue from last Tuesday?"
+* **Intuitive Interactions**: Ask questions like “What was I working on with John last week?” or “How do I fix that same CocoaPods issue from last Tuesday?”
 
 Pieces Copilot can reference stored LTM data to give you real-time, **context-aware** answers.
 
@@ -102,18 +101,18 @@ Pieces Copilot can reference stored LTM data to give you real-time, **context-aw
 
 Learn [how to use Pieces Long-Term Memory](https://docs.pieces.app/products/quick-guides/ltm-context) to capture information from your browser and retrieve it later with a simple prompt to the Pieces Copilot:
 
-1. **Capture Website Content for Later Reference:** Automatically store information from webpages or browser tabs you're viewing, without needing to copy-paste anything.
+1. **Capture Website Content for Later Reference:** Automatically store information from webpages or browser tabs you’re viewing, without needing to copy-paste anything.
 
 2. **Recall Important Details with a Single Prompt:** [Ask the Pieces Copilot to retrieve content it previously saw](https://docs.pieces.app/products/quick-guides/copilot-with-context#prompt-pieces-copilot)—like secret messages, documentation, or key details from web apps.
 
-3. **Track and Summarize Research Across Multiple Sites:** Let Pieces Long-Term Memory log what you've read across different websites and use that context to generate summaries or next steps.
+3. **Track and Summarize Research Across Multiple Sites:** Let Pieces Long-Term Memory log what you’ve read across different websites and use that context to generate summaries or next steps.
 
 4. **Simplify Context Sharing with Teammates:** Capture context once, then have the Pieces Copilot summarize it or export it for others—great for asynchronous collaboration or hand-offs.
 
 5. **Bridge Gaps Between Tools:** Pull in information from any browser-based tool or document viewer, and make it accessible directly inside Pieces Copilot chats.
 
 <Card title="Pieces + MCP" image="https://cdn.hashnode.com/res/hashnode/image/upload/v1744828766164/e0d722d2-f173-48e4-8de1-ec13d00769a3.png">
-  Here's another use case for you—try combining the power of Pieces Long-Term Memory with Model Context Protocol (MCP) servers with the brand new [Pieces MCP.](https://docs.pieces.app/products/mcp/get-started)
+  Here’s another use case for you—try combining the power of Pieces Long-Term Memory with Model Context Protocol (MCP) servers with the brand new [Pieces MCP.](https://docs.pieces.app/products/mcp/get-started)
 </Card>
 
 ## MCP Support
@@ -178,13 +177,13 @@ All data captured by the LTM is stored locally on your device. It never leaves y
 
 LTM applies on-device machine learning algorithms to filter out sensitive information and secrets, maintaining high levels of performance, security, and privacy.
 
-For advanced components that require blended processing, user preferences can be set to leverage a cloud-powered Large Language Model as the Copilot's runtime. 
+For advanced components that require blended processing, user preferences can be set to leverage a cloud-powered Large Language Model as the Copilot’s runtime. 
 
 ## Pieces Drive
 
 Pieces Drive is an intelligent and interactive material manager baked into PiecesOS that allows you to save, manage, and share important developer resources such as notes, useful code snippets, links, and more within your personal local repository.
 
-You can view, edit, reuse, and share these materials via Pieces Shareable Links from this repository. 
+You can view, edit, reuse, and share these materials via Pieces Shareable Links from this repository. 
 
 ***
 
@@ -196,7 +195,7 @@ You can view, edit, reuse, and share these materials via Pieces Shareable Links 
 
 ### Multi-Tool Integration
 
-With PiecesOS, you can use Pieces Drive in tools like [Obsidian](https://docs.pieces.app/products/obsidian) and [Raycast](https://docs.pieces.app/products/raycast), as well as your favorite code editors, such as <a target="_blank" href="https://docs.pieces.app/products/extensions-plugins/jetbrains">IntelliJ</a>, <a target="_blank" href="https://docs.pieces.app/products/extensions-plugins/visual-studio-code">Visual Studio Code</a>, and <a target="_blank" href="https://docs.pieces.app/products/extensions-plugins/sublime">Sublime Text</a>.
+With PiecesOS, you can use Pieces Drive in tools like [Obsidian](https://docs.pieces.app/products/obsidian) and [Raycast](https://docs.pieces.app/products/raycast), as well as your favorite code editors, such as <a target="_blank" href="https://docs.pieces.app/products/extensions-plugins/jetbrains">IntelliJ</a>, <a target="_blank" href="https://docs.pieces.app/products/extensions-plugins/visual-studio-code">Visual Studio Code</a>, and <a target="_blank" href="https://docs.pieces.app/products/extensions-plugins/sublime">Sublime Text</a>.
 
 You can also view and adjust metadata saved with your materials in the Applet View of Pieces plugins or the Pieces Desktop App.
 
@@ -266,4 +265,4 @@ Debugging, checking logs, and handling errors are often the toughest parts of co
 
 Context-based debugging is powerful because generative AI, whether cloud-based or local, can understand code semantics beyond what's visible and within the project's scope to find solutions and fixes.
 
-You might even be able to finally center that `div`—seriously, we've actually done it.
+You might even be able to finally center that `div`—seriously, we’ve actually done it.
