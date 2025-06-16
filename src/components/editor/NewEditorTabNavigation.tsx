@@ -2,29 +2,38 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Lock, Users, FileText, Navigation, Search } from 'lucide-react';
-import { NewBranchSelector } from './NewBranchSelector';
-import { CookieBasedPRButton } from './CookieBasedPRButton';
+import { 
+  FileText, 
+  Navigation, 
+  Search, 
+  Lock, 
+  LockOpen, 
+  Users, 
+  AlertCircle,
+  Folder
+} from 'lucide-react';
+import { BranchSelector } from './BranchSelector';
 
-interface Branch {
-  name: string;
-  sha: string;
-  isDefault: boolean;
+interface LiveSession {
+  file_path: string;
+  locked_by_email?: string;
+  locked_by_name?: string;
+  locked_at?: string;
 }
 
 interface NewEditorTabNavigationProps {
-  activeTab: 'navigation' | 'content' | 'seo';
-  setActiveTab: (tab: 'navigation' | 'content' | 'seo') => void;
+  activeTab: 'navigation' | 'content' | 'seo' | 'folders';
+  setActiveTab: (tab: 'navigation' | 'content' | 'seo' | 'folders') => void;
   selectedFile?: string;
   isLocked: boolean;
-  lockedBy: string | null;
+  lockedBy: string;
   isAcquiringLock: boolean;
-  onAcquireLock: () => void;
+  onAcquireLock: () => Promise<boolean>;
   currentBranch: string;
-  sessions: Array<{ file_path: string; content: string }>;
+  sessions: LiveSession[];
   hasChanges: boolean;
   initialized: boolean;
-  branches: Branch[];
+  branches: string[];
 }
 
 export function NewEditorTabNavigation({
@@ -41,102 +50,138 @@ export function NewEditorTabNavigation({
   initialized,
   branches
 }: NewEditorTabNavigationProps) {
-  const totalLiveFiles = sessions.filter(s => s.content && s.content.trim()).length;
+
+  const canEdit = selectedFile && !isLocked;
+  const isLockedByOthers = selectedFile && isLocked && lockedBy !== 'You';
 
   const tabs = [
-    { id: 'navigation' as const, label: 'Navigation', icon: Navigation },
-    { id: 'content' as const, label: 'Content', icon: FileText },
-    { id: 'seo' as const, label: 'SEO', icon: Search },
+    {
+      id: 'content' as const,
+      label: 'Content',
+      icon: FileText,
+      badge: hasChanges ? '•' : undefined,
+      badgeVariant: 'destructive' as const
+    },
+    {
+      id: 'navigation' as const,
+      label: 'Navigation',
+      icon: Navigation,
+      badge: undefined
+    },
+    {
+      id: 'folders' as const,
+      label: 'Folders',
+      icon: Folder,
+      badge: undefined
+    },
+    {
+      id: 'seo' as const,
+      label: 'SEO',
+      icon: Search,
+      badge: undefined
+    }
   ];
 
-  // Only show branch selector and PR button for content tab
-  const showBranchControls = activeTab === 'content';
-
   return (
-    <div className="border-b border-border/40 bg-gradient-to-r from-background via-background/95 to-muted/10 backdrop-blur-sm">
-      <div className="flex items-center justify-between px-6 py-3">
-        <div className="flex items-center gap-2">
-          {/* Tab Navigation */}
-          <div className="flex bg-muted/30 rounded-lg p-1">
-            {tabs.map((tab) => {
-              const IconComponent = tab.icon;
-              return (
-                <Button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  variant={activeTab === tab.id ? "default" : "ghost"}
-                  size="sm"
-                  className={`gap-2 transition-all duration-200 ${
-                    activeTab === tab.id 
-                      ? 'bg-background shadow-sm border border-border/50 text-foreground' 
-                      : 'hover:bg-muted/50'
-                  }`}
-                >
-                  <IconComponent className="h-4 w-4" />
-                  {tab.label}
-                </Button>
-              );
-            })}
-          </div>
+    <div className="border-b border-border/50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
+      <div className="flex items-center justify-between px-4 py-2">
+        <div className="flex items-center gap-1">
+          {tabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = activeTab === tab.id;
+            
+            return (
+              <Button
+                key={tab.id}
+                variant={isActive ? "default" : "ghost"}
+                size="sm"
+                onClick={() => setActiveTab(tab.id)}
+                className={`gap-2 relative ${isActive ? 'shadow-sm' : ''}`}
+              >
+                <Icon className="h-4 w-4" />
+                {tab.label}
+                {tab.badge && (
+                  <Badge 
+                    variant={tab.badgeVariant || "secondary"} 
+                    className="h-5 w-5 p-0 text-xs flex items-center justify-center ml-1"
+                  >
+                    {tab.badge}
+                  </Badge>
+                )}
+              </Button>
+            );
+          })}
+        </div>
 
-          {/* File Lock Status */}
-          {selectedFile && activeTab === 'content' && (
-            <div className="flex items-center gap-2 ml-4">
-              {isLocked ? (
-                <div className="flex items-center gap-2">
-                  {lockedBy === 'You' ? (
-                    <Badge variant="default" className="gap-1 bg-green-100 text-green-700 border-green-200">
-                      <Lock className="h-3 w-3" />
-                      Editing
-                    </Badge>
-                  ) : (
-                    <Badge variant="destructive" className="gap-1">
-                      <Users className="h-3 w-3" />
-                      Locked by {lockedBy}
-                    </Badge>
-                  )}
-                </div>
+        <div className="flex items-center gap-3">
+          {/* Live editing status */}
+          {activeTab === 'content' && selectedFile && (
+            <div className="flex items-center gap-2 text-sm">
+              {isLockedByOthers ? (
+                <>
+                  <Lock className="h-4 w-4 text-red-500" />
+                  <span className="text-red-600">Locked by {lockedBy}</span>
+                </>
+              ) : canEdit ? (
+                <>
+                  <LockOpen className="h-4 w-4 text-green-500" />
+                  <span className="text-green-600">Editing</span>
+                </>
               ) : (
                 <Button
-                  onClick={onAcquireLock}
-                  variant="outline"
                   size="sm"
+                  variant="outline"
+                  onClick={onAcquireLock}
                   disabled={isAcquiringLock}
-                  className="gap-1 text-xs"
+                  className="gap-2"
                 >
-                  {isAcquiringLock ? (
-                    <>
-                      <div className="w-3 h-3 animate-spin rounded-full border border-current border-t-transparent" />
-                      Acquiring...
-                    </>
-                  ) : (
-                    <>
-                      <Lock className="h-3 w-3" />
-                      Get Lock
-                    </>
-                  )}
+                  <LockOpen className="h-3 w-3" />
+                  {isAcquiringLock ? 'Acquiring...' : 'Take Lock'}
                 </Button>
               )}
             </div>
           )}
-        </div>
 
-        {/* Right Side Actions - Only show for content tab */}
-        {showBranchControls && (
-          <div className="flex items-center gap-3">
-            {/* Branch Selector */}
-            <NewBranchSelector />
+          {/* Live sessions indicator */}
+          {sessions.length > 0 && (
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <Users className="h-4 w-4" />
+              <span>{sessions.length} active</span>
+            </div>
+          )}
 
-            {/* Single PR Button */}
-            <CookieBasedPRButton
-              sessions={sessions}
-              hasChanges={hasChanges || totalLiveFiles > 0}
-              initialized={initialized}
-              targetBranch="main"
+          {/* Branch selector */}
+          {initialized && (
+            <BranchSelector
+              currentBranch={currentBranch}
+              branches={branches}
+              size="sm"
             />
-          </div>
-        )}
+          )}
+        </div>
       </div>
+
+      {/* Status bar */}
+      {activeTab === 'content' && selectedFile && (
+        <div className="px-4 py-1 bg-muted/30 border-t border-border/30">
+          <div className="flex items-center justify-between text-xs">
+            <div className="flex items-center gap-4">
+              <span className="text-muted-foreground">
+                Editing: <span className="font-medium text-foreground">{selectedFile}</span>
+              </span>
+              {hasChanges && (
+                <div className="flex items-center gap-1 text-amber-600">
+                  <AlertCircle className="h-3 w-3" />
+                  <span>Unsaved changes</span>
+                </div>
+              )}
+            </div>
+            <div className="text-muted-foreground">
+              Branch: <span className="font-medium text-foreground">{currentBranch}</span>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

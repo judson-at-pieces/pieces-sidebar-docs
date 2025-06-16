@@ -299,6 +299,28 @@ export class NavigationService {
     return data;
   }
 
+  async updateFolderVisibility(folderPath: string, isPublic: boolean) {
+    // Update all navigation items that belong to this folder or its subfolders
+    const { data, error } = await supabase
+      .from('navigation_items')
+      .update({ is_active: isPublic })
+      .or(`file_path.like.${folderPath}/%,href.like./${folderPath}/%`)
+      .select();
+    
+    if (error) throw error;
+    
+    // Also update items that represent the folder itself
+    const { data: folderData, error: folderError } = await supabase
+      .from('navigation_items')
+      .update({ is_active: isPublic })
+      .eq('href', `/${folderPath}`)
+      .select();
+    
+    if (folderError) throw folderError;
+    
+    return [...(data || []), ...(folderData || [])];
+  }
+
   async deleteNavigationItem(id: string) {
     const { error } = await supabase
       .from('navigation_items')

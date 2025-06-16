@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useBranchManager } from "@/hooks/useBranchManager";
@@ -12,6 +11,7 @@ import { Button } from "@/components/ui/button";
 import { EditorMainHeader } from "./EditorMainHeader";
 import { NewEditorTabNavigation } from "./NewEditorTabNavigation";
 import { navigationService } from "@/services/navigationService";
+import { FolderVisibilityPanel } from "./FolderVisibilityPanel";
 
 const DEBUG_EDITOR = true;
 
@@ -23,7 +23,7 @@ export function EditorLayout() {
   // Use the new simplified branch editor
   const editor = useBranchEditor();
   
-  const [activeTab, setActiveTab] = useState<'navigation' | 'content' | 'seo'>('content');
+  const [activeTab, setActiveTab] = useState<'navigation' | 'content' | 'seo' | 'folders'>('content');
   const [fileVisibility, setFileVisibility] = useState<{[filePath: string]: boolean}>({});
 
   // Get current file's visibility state
@@ -157,6 +157,13 @@ export function EditorLayout() {
                   />
                 </div>
               </>
+            ) : activeTab === 'folders' ? (
+              <div className="flex-1 animate-in fade-in slide-in-from-top-2 duration-300">
+                <FolderVisibilityPanel
+                  fileStructure={fileStructure}
+                  onVisibilityChange={refetch}
+                />
+              </div>
             ) : activeTab === 'seo' ? (
               <div className="flex-1">
                 <SeoEditor
