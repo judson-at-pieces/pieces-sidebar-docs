@@ -1,4 +1,3 @@
-
 // Client-side processor for custom markdown syntax
 
 // Security utilities for safe HTML attribute handling
@@ -46,38 +45,6 @@ export function processCustomSyntax(content: string): string {
 
   try {
     let processedContent = content;
-
-    // Transform raw HTML anchor tags FIRST before other processing
-    processedContent = processedContent.replace(
-      /<a\s+([^>]*?)>(.*?)<\/a>/gi,
-      (match, attributes, linkText) => {
-        try {
-          console.log('Processing raw HTML anchor:', { match, attributes, linkText });
-          
-          // Extract href
-          const hrefMatch = attributes.match(/href\s*=\s*["']([^"']+)["']/i);
-          const href = hrefMatch ? hrefMatch[1] : '';
-          
-          // Extract target
-          const targetMatch = attributes.match(/target\s*=\s*["']([^"']+)["']/i);
-          const target = targetMatch ? targetMatch[1] : '';
-          
-          // Validate URL
-          const safeHref = validateUrl(href);
-          if (!safeHref) {
-            console.warn('Invalid URL in anchor tag:', href);
-            return linkText; // Return just the text if URL is invalid
-          }
-          
-          // Convert to markdown link format that will be processed correctly
-          const targetAttr = target === '_blank' ? ' target="_blank" rel="noopener noreferrer"' : '';
-          return `<a href="${safeHref}"${targetAttr}>${linkText}</a>`;
-        } catch (error) {
-          console.warn('Error processing anchor tag:', error);
-          return match; // Return original if parsing fails
-        }
-      }
-    );
 
     // Transform callout syntax: :::info[Title] or :::warning{title="Warning"}
     processedContent = processedContent.replace(
