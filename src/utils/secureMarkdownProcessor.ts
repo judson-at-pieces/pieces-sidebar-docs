@@ -8,6 +8,7 @@ export interface ProcessedMarkdown {
   type: 'text' | 'bold' | 'italic' | 'code' | 'link';
   content: string;
   href?: string;
+  target?: string;
 }
 
 // Allowlist of safe URL protocols
@@ -43,12 +44,14 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
   const elements: ProcessedMarkdown[] = [];
   let currentIndex = 0;
 
-  // Process markdown patterns safely
+  // Process markdown patterns safely - including raw HTML anchor tags
   const patterns = [
     { regex: /`([^`]+)`/g, type: 'code' as const },
     { regex: /\*\*(.*?)\*\*/g, type: 'bold' as const },
     { regex: /(?<!\*)\*([^*]+)\*(?!\*)/g, type: 'italic' as const },
-    { regex: /\[([^\]]+)\]\(([^)]+)\)/g, type: 'link' as const }
+    { regex: /\[([^\]]+)\]\(([^)]+)\)/g, type: 'link' as const },
+    // Add pattern for raw HTML anchor tags
+    { regex: /<a\s+([^>]*?)>([^<]+)<\/a>/g, type: 'link' as const }
   ];
 
   const matches: Array<{ match: RegExpMatchArray; type: ProcessedMarkdown['type'] }> = [];
@@ -79,14 +82,34 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
 
     // Add the matched element
     if (type === 'link') {
-      const linkText = match[1];
-      const linkHref = match[2];
+      let linkText = '';
+      let linkHref = '';
+      let linkTarget = '';
+      
+      // Check if this is a raw HTML anchor tag
+      if (match[0].startsWith('<a')) {
+        linkText = match[2]; // Content between <a> and </a>
+        const attributes = match[1];
+        
+        // Extract href
+        const hrefMatch = attributes.match(/href=["']([^"']+)["']/);
+        linkHref = hrefMatch ? hrefMatch[1] : '';
+        
+        // Extract target
+        const targetMatch = attributes.match(/target=["']([^"']+)["']/);
+        linkTarget = targetMatch ? targetMatch[1] : '';
+      } else {
+        // Standard markdown link [text](url)
+        linkText = match[1];
+        linkHref = match[2];
+      }
       
       if (validateUrl(linkHref)) {
         elements.push({ 
           type: 'link', 
           content: linkText, 
-          href: linkHref 
+          href: linkHref,
+          target: linkTarget
         });
       } else {
         // If URL is invalid, treat as plain text

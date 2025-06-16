@@ -34,7 +34,7 @@ export function SecureInlineMarkdown({ content, className }: SecureInlineMarkdow
             key={index} 
             href={element.href} 
             className="hn-link text-primary hover:underline"
-            target={element.href?.startsWith('http') ? '_blank' : undefined}
+            target={element.target || (element.href?.startsWith('http') ? '_blank' : undefined)}
             rel={element.href?.startsWith('http') ? 'noopener noreferrer' : undefined}
           >
             {element.content}
