@@ -1,4 +1,3 @@
-
 /**
  * Secure markdown processing utilities
  * Replaces dangerouslySetInnerHTML with safe React components
@@ -62,9 +61,13 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
   const elements: ProcessedMarkdown[] = [];
   let currentIndex = 0;
 
-  // Process markdown patterns safely
+  // Process markdown patterns safely - Updated patterns to match actual content format
   const patterns = [
-    { regex: /<Image\s+([^>]*)\/>/g, type: 'image' as const },
+    // Match Image tags without opening bracket: Image src="..." /
+    { regex: /Image\s+([^/]*)\s*\/>/g, type: 'image' as const },
+    // Match HTML anchor tags: <a target="_blank" href="...">text</a>
+    { regex: /<a\s+([^>]*?)>(.*?)<\/a>/g, type: 'link' as const },
+    // Keep existing patterns
     { regex: /`([^`]+)`/g, type: 'code' as const },
     { regex: /\*\*(.*?)\*\*/g, type: 'bold' as const },
     { regex: /(?<!\*)\*([^*]+)\*(?!\*)/g, type: 'italic' as const },
@@ -116,18 +119,39 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
         elements.push({ type: 'text', content: match[0] });
       }
     } else if (type === 'link') {
-      const linkText = match[1];
-      const linkHref = match[2];
-      
-      if (validateUrl(linkHref)) {
-        elements.push({ 
-          type: 'link', 
-          content: linkText, 
-          href: linkHref 
-        });
+      // Handle both HTML <a> tags and markdown links
+      if (match[0].startsWith('<a')) {
+        // HTML anchor tag
+        const attributeString = match[1];
+        const linkText = match[2];
+        const attributes = parseAttributes(attributeString);
+        const linkHref = attributes.href;
+        
+        if (linkHref && validateUrl(linkHref)) {
+          elements.push({ 
+            type: 'link', 
+            content: linkText, 
+            href: linkHref 
+          });
+        } else {
+          // If URL is invalid, treat as plain text
+          elements.push({ type: 'text', content: match[0] });
+        }
       } else {
-        // If URL is invalid, treat as plain text
-        elements.push({ type: 'text', content: match[0] });
+        // Markdown link
+        const linkText = match[1];
+        const linkHref = match[2];
+        
+        if (validateUrl(linkHref)) {
+          elements.push({ 
+            type: 'link', 
+            content: linkText, 
+            href: linkHref 
+          });
+        } else {
+          // If URL is invalid, treat as plain text
+          elements.push({ type: 'text', content: match[0] });
+        }
       }
     } else {
       elements.push({ 
