@@ -1,3 +1,4 @@
+
 /**
  * Secure markdown processing utilities
  * Replaces dangerouslySetInnerHTML with safe React components
@@ -61,9 +62,11 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
   const elements: ProcessedMarkdown[] = [];
   let currentIndex = 0;
 
-  // Process markdown patterns safely - Updated patterns to match actual content format
+  // Process markdown patterns safely - Handle both <Image> and Image formats
   const patterns = [
-    // Match Image tags without opening bracket: Image src="..." /
+    // Match Image tags WITH angle brackets: <Image src="..." />
+    { regex: /<Image\s+([^>]*)\s*\/>/g, type: 'image' as const },
+    // Match Image tags WITHOUT angle brackets: Image src="..." /
     { regex: /Image\s+([^/]*)\s*\/>/g, type: 'image' as const },
     // Match HTML anchor tags: <a target="_blank" href="...">text</a>
     { regex: /<a\s+([^>]*?)>(.*?)<\/a>/g, type: 'link' as const },
