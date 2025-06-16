@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useBranchManager } from "@/hooks/useBranchManager";
@@ -27,10 +26,11 @@ export function EditorLayout() {
   const [fileVisibility, setFileVisibility] = useState<{[filePath: string]: boolean}>({});
   const [folderVisibility, setFolderVisibility] = useState<{[folderPath: string]: boolean}>({});
 
-  // Initialize folder visibility from navigation structure
+  // Load folder visibility from navigation structure
   useEffect(() => {
-    const initializeFolderVisibility = async () => {
+    const loadFolderVisibility = async () => {
       try {
+        console.log('Loading folder visibility from navigation structure...');
         const navStructure = await navigationService.getNavigationStructure();
         if (navStructure?.sections) {
           const visibility: {[folderPath: string]: boolean} = {};
@@ -43,20 +43,35 @@ export function EditorLayout() {
                 if (pathParts.length > 1) {
                   pathParts.pop(); // Remove filename
                   const folderPath = pathParts.join('/');
-                  visibility[folderPath] = true; // Default to public, will be overridden by actual data
+                  
+                  // Use the item's is_active status to determine folder visibility
+                  // If any item in folder is active, folder is considered public
+                  if (item.is_active !== false) {
+                    visibility[folderPath] = true;
+                  } else if (visibility[folderPath] === undefined) {
+                    // Only set to false if not already set to true
+                    visibility[folderPath] = false;
+                  }
                 }
+              }
+              
+              // Also check for direct folder items (items without file_path but representing folders)
+              if (!item.file_path && item.href) {
+                const folderPath = item.href.replace(/^\//, ''); // Remove leading slash
+                visibility[folderPath] = item.is_active !== false;
               }
             });
           });
           
+          console.log('Loaded folder visibility:', visibility);
           setFolderVisibility(visibility);
         }
       } catch (error) {
-        console.error('Failed to initialize folder visibility:', error);
+        console.error('Failed to load folder visibility:', error);
       }
     };
 
-    initializeFolderVisibility();
+    loadFolderVisibility();
   }, []);
 
   // Get current file's visibility state
@@ -92,6 +107,7 @@ export function EditorLayout() {
   const handleFolderVisibilityChange = async () => {
     // Refresh the navigation structure to get updated visibility states
     try {
+      console.log('Refreshing folder visibility after change...');
       const navStructure = await navigationService.getNavigationStructure();
       if (navStructure?.sections) {
         const visibility: {[folderPath: string]: boolean} = {};
@@ -104,13 +120,27 @@ export function EditorLayout() {
               if (pathParts.length > 1) {
                 pathParts.pop(); // Remove filename
                 const folderPath = pathParts.join('/');
+                
                 // Use the item's active status to determine folder visibility
-                visibility[folderPath] = item.is_active !== false;
+                // If any item in folder is active, folder is considered public
+                if (item.is_active !== false) {
+                  visibility[folderPath] = true;
+                } else if (visibility[folderPath] === undefined) {
+                  // Only set to false if not already set to true
+                  visibility[folderPath] = false;
+                }
               }
+            }
+            
+            // Also check for direct folder items
+            if (!item.file_path && item.href) {
+              const folderPath = item.href.replace(/^\//, ''); // Remove leading slash
+              visibility[folderPath] = item.is_active !== false;
             }
           });
         });
         
+        console.log('Updated folder visibility:', visibility);
         setFolderVisibility(visibility);
       }
     } catch (error) {
