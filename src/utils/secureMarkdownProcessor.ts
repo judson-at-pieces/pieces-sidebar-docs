@@ -55,8 +55,8 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
     { regex: /(?<!\*)\*([^*]+)\*(?!\*)/g, type: 'italic' as const },
     // Updated regex to handle escaped brackets in markdown links
     { regex: /\[([^\]]*(?:\\.[^\]]*)*)\]\(([^)]+)\)/g, type: 'link' as const },
-    // Improved pattern for raw HTML anchor tags with better attribute matching
-    { regex: /<a\s+([^>]*?)>([^<]+)<\/a>/gi, type: 'link' as const },
+    // More comprehensive pattern for raw HTML anchor tags - handles multiline and various attribute formats
+    { regex: /<a\s+([^>]*?)>([^<]*(?:<(?!\/a>)[^<]*)*)<\/a>/gi, type: 'link' as const },
     // Add pattern for Image tags
     { regex: /<Image\s+([^>]*?)\/>/g, type: 'image' as const }
   ];
@@ -125,12 +125,16 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
         linkText = match[2]; // Content between <a> and </a>
         const attributes = match[1];
         
-        // Extract href with more flexible matching
-        const hrefMatch = attributes.match(/href\s*=\s*["']([^"']+)["']/i);
+        // Extract href with more flexible matching - handle various quote styles and spacing
+        const hrefMatch = attributes.match(/href\s*=\s*["']([^"']+)["']/i) || 
+                         attributes.match(/href\s*=\s*"([^"]+)"/i) ||
+                         attributes.match(/href\s*=\s*'([^']+)'/i);
         linkHref = hrefMatch ? hrefMatch[1] : '';
         
         // Extract target with more flexible matching
-        const targetMatch = attributes.match(/target\s*=\s*["']([^"']+)["']/i);
+        const targetMatch = attributes.match(/target\s*=\s*["']([^"']+)["']/i) ||
+                           attributes.match(/target\s*=\s*"([^"]+)"/i) ||
+                           attributes.match(/target\s*=\s*'([^']+)'/i);
         linkTarget = targetMatch ? targetMatch[1] : '';
       } else {
         // Standard markdown link [text](url) - handle escaped brackets
