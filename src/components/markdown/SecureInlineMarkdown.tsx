@@ -29,13 +29,18 @@ export function SecureInlineMarkdown({ content, className }: SecureInlineMarkdow
         );
       
       case 'link':
+        // Handle both target="_blank" and external links
+        const isExternal = element.href?.startsWith('http') || element.target === '_blank';
+        const targetAttr = element.target || (isExternal ? '_blank' : undefined);
+        const relAttr = isExternal ? 'noopener noreferrer' : undefined;
+        
         return (
           <a 
             key={index} 
             href={element.href} 
             className="hn-link text-primary hover:underline"
-            target={element.target || (element.href?.startsWith('http') ? '_blank' : undefined)}
-            rel={element.href?.startsWith('http') ? 'noopener noreferrer' : undefined}
+            target={targetAttr}
+            rel={relAttr}
           >
             {element.content}
           </a>

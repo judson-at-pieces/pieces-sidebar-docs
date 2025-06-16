@@ -1,3 +1,4 @@
+
 /**
  * Secure markdown processing utilities
  * Replaces dangerouslySetInnerHTML with safe React components
@@ -47,16 +48,16 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
   const elements: ProcessedMarkdown[] = [];
   let currentIndex = 0;
 
-  // Process markdown patterns safely - including raw HTML anchor tags and Image tags
+  // Updated regex patterns - HTML anchor tags with better matching
   const patterns = [
     { regex: /`([^`]+)`/g, type: 'code' as const },
     { regex: /\*\*(.*?)\*\*/g, type: 'bold' as const },
     { regex: /(?<!\*)\*([^*]+)\*(?!\*)/g, type: 'italic' as const },
-    // Updated regex to handle escaped brackets in markdown links
-    { regex: /\[([^\]]*(?:\\.[^\]]*)*)\]\(([^)]+)\)/g, type: 'link' as const },
-    // Add pattern for HTML anchor tags - more specific pattern to handle the exact format
+    // Updated regex for HTML anchor tags - more comprehensive
     { regex: /<a\s+([^>]*?)>(.*?)<\/a>/gi, type: 'link' as const },
-    // Add pattern for Image tags
+    // Standard markdown links
+    { regex: /\[([^\]]*(?:\\.[^\]]*)*)\]\(([^)]+)\)/g, type: 'link' as const },
+    // Image tags
     { regex: /<Image\s+([^>]*?)\/>/g, type: 'image' as const }
   ];
 
@@ -124,25 +125,25 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
       let linkTarget = '';
       
       // Check if this is a raw HTML anchor tag
-      if (match[0].toLowerCase().startsWith('<a')) {
-        linkText = match[2]; // Content between <a> and </a>
-        const attributes = match[1];
+      if (match[0].toLowerCase().includes('<a')) {
+        linkText = match[2] || ''; // Content between <a> and </a>
+        const attributes = match[1] || '';
         
         console.log('Processing HTML anchor:', { fullMatch: match[0], attributes, linkText });
         
-        // Extract href with more flexible matching - handle various quote styles and spacing
+        // Extract href with flexible matching
         const hrefMatch = attributes.match(/href\s*=\s*["']([^"']+)["']/i);
         linkHref = hrefMatch ? hrefMatch[1] : '';
         
-        // Extract target with more flexible matching
+        // Extract target
         const targetMatch = attributes.match(/target\s*=\s*["']([^"']+)["']/i);
         linkTarget = targetMatch ? targetMatch[1] : '';
         
-        console.log('Extracted link data:', { linkText, linkHref, linkTarget });
+        console.log('Extracted HTML link data:', { linkText, linkHref, linkTarget });
       } else {
-        // Standard markdown link [text](url) - handle escaped brackets
-        linkText = match[1].replace(/\\(.)/g, '$1'); // Unescape characters
-        linkHref = match[2];
+        // Standard markdown link [text](url)
+        linkText = (match[1] || '').replace(/\\(.)/g, '$1'); // Unescape characters
+        linkHref = match[2] || '';
       }
       
       if (validateUrl(linkHref)) {
