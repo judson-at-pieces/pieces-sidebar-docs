@@ -12,7 +12,7 @@ import {
   AlertCircle,
   Folder
 } from 'lucide-react';
-import { BranchSelector } from './BranchSelector';
+import { NewBranchSelector } from './NewBranchSelector';
 
 interface LiveSession {
   file_path: string;
@@ -152,11 +152,7 @@ export function NewEditorTabNavigation({
 
           {/* Branch selector */}
           {initialized && (
-            <BranchSelector
-              currentBranch={currentBranch}
-              branches={branches}
-              size="sm"
-            />
+            <NewBranchSelector />
           )}
         </div>
       </div>

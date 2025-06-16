@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useBranchManager } from "@/hooks/useBranchManager";
@@ -105,6 +106,9 @@ export function EditorLayout() {
   const totalLiveFiles = sessions.filter(s => s.content && s.content.trim()).length;
   const hasChanges = editor.selectedFile ? editor.localContent !== "" : false;
 
+  // Convert Branch[] to string[] for the component
+  const branchNames = branches.map(branch => branch.name);
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
       <EditorMainHeader 
@@ -126,7 +130,7 @@ export function EditorLayout() {
             sessions={sessions}
             hasChanges={hasChanges}
             initialized={initialized}
-            branches={branches}
+            branches={branchNames}
           />
           
           {/* Show loading overlay when loading files */}
