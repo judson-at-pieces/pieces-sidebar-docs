@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useBranchManager } from "@/hooks/useBranchManager";
@@ -43,17 +44,6 @@ export function EditorLayout() {
               if (item.file_path) {
                 // This is a file
                 fileVis[item.file_path] = isItemActive;
-                
-                // Also track the folder containing this file
-                const pathParts = item.file_path.split('/');
-                if (pathParts.length > 1) {
-                  pathParts.pop(); // Remove filename
-                  const folderPath = pathParts.join('/');
-                  // Don't override if already set - let individual items control themselves
-                  if (folderVis[folderPath] === undefined) {
-                    folderVis[folderPath] = isItemActive;
-                  }
-                }
               } else if (item.href) {
                 // This is a folder/directory item
                 const folderPath = item.href.replace(/^\//, ''); // Remove leading slash
@@ -77,8 +67,8 @@ export function EditorLayout() {
 
   // Get effective visibility considering parent hierarchy
   const getEffectiveVisibility = (itemPath: string, isFile: boolean = false): boolean => {
-    // Start with the item's own visibility
-    const directVisibility = isFile ? fileVisibility[itemPath] : folderVisibility[itemPath];
+    // Start with the item's own visibility (default to true if not set)
+    const directVisibility = isFile ? (fileVisibility[itemPath] ?? true) : (folderVisibility[itemPath] ?? true);
     
     // If item is explicitly private, it's private
     if (directVisibility === false) {
@@ -94,8 +84,8 @@ export function EditorLayout() {
       }
     }
     
-    // Default to public if not explicitly set to private and no private parents
-    return directVisibility !== false;
+    // Item is public if not explicitly set to private and no private parents
+    return true;
   };
 
   // Get current file's visibility state
@@ -127,7 +117,7 @@ export function EditorLayout() {
     }
   };
 
-  // Handle folder visibility changes with cascading effect
+  // Handle folder visibility changes
   const handleFolderVisibilityChange = async () => {
     // Refresh the visibility states after any folder change
     try {
@@ -144,16 +134,6 @@ export function EditorLayout() {
             if (item.file_path) {
               // This is a file
               fileVis[item.file_path] = isItemActive;
-              
-              // Also track the folder containing this file
-              const pathParts = item.file_path.split('/');
-              if (pathParts.length > 1) {
-                pathParts.pop(); // Remove filename
-                const folderPath = pathParts.join('/');
-                if (folderVis[folderPath] === undefined) {
-                  folderVis[folderPath] = isItemActive;
-                }
-              }
             } else if (item.href) {
               // This is a folder/directory item
               const folderPath = item.href.replace(/^\//, ''); // Remove leading slash
@@ -227,12 +207,6 @@ export function EditorLayout() {
   // Convert Branch[] to string[] for the component
   const branchNames = branches.map(branch => branch.name);
 
-  // Create effective folder visibility that considers hierarchy
-  const effectiveFolderVisibility: {[folderPath: string]: boolean} = {};
-  Object.keys(folderVisibility).forEach(folderPath => {
-    effectiveFolderVisibility[folderPath] = getEffectiveVisibility(folderPath, false);
-  });
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
       <EditorMainHeader 
@@ -241,7 +215,7 @@ export function EditorLayout() {
       />
       
       <div className="flex h-[calc(100vh-4rem)]">
-        <div className="flex-1 flex flex-col">
+        <div className="flex-1 flex flex-col max-w-full">
           <NewEditorTabNavigation
             activeTab={activeTab}
             setActiveTab={setActiveTab}
@@ -268,7 +242,7 @@ export function EditorLayout() {
           )}
           
           {/* Tab Content */}
-          <div className="flex-1 overflow-hidden flex">
+          <div className="flex-1 overflow-hidden flex min-w-0">
             {activeTab === 'navigation' ? (
               <>
                 <FileTreeSidebar
@@ -278,9 +252,9 @@ export function EditorLayout() {
                   onFileSelect={editor.selectFile}
                   fileStructure={fileStructure}
                   onFolderVisibilityChange={handleFolderVisibilityChange}
-                  folderVisibility={effectiveFolderVisibility}
+                  folderVisibility={folderVisibility}
                 />
-                <div className="flex-1 animate-in fade-in slide-in-from-top-2 duration-300">
+                <div className="flex-1 animate-in fade-in slide-in-from-top-2 duration-300 min-w-0">
                   <NavigationEditor 
                     fileStructure={fileStructure} 
                     onNavigationChange={refetch}
@@ -288,7 +262,7 @@ export function EditorLayout() {
                 </div>
               </>
             ) : activeTab === 'seo' ? (
-              <div className="flex-1">
+              <div className="flex-1 min-w-0">
                 <SeoEditor
                   selectedFile={editor.selectedFile}
                   onSeoDataChange={() => {}}
@@ -307,9 +281,9 @@ export function EditorLayout() {
                   pendingChanges={sessions.map(s => s.file_path)}
                   liveSessions={sessions}
                   onFolderVisibilityChange={handleFolderVisibilityChange}
-                  folderVisibility={effectiveFolderVisibility}
+                  folderVisibility={folderVisibility}
                 />
-                <div className="flex-1 animate-in fade-in-from-bottom-2 duration-300">
+                <div className="flex-1 animate-in fade-in-from-bottom-2 duration-300 min-w-0">
                   <EditorMain 
                     selectedFile={editor.selectedFile}
                     content={editor.localContent}
