@@ -1,55 +1,44 @@
-
 import React from 'react';
-import { processInlineMarkdown, ProcessedMarkdown } from '@/utils/secureMarkdownProcessor';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
+import rehypeRaw from 'rehype-raw';
 
 interface SecureInlineMarkdownProps {
   content: string;
-  className?: string;
 }
 
-/**
- * Secure inline markdown renderer that doesn't use dangerouslySetInnerHTML
- */
-export function SecureInlineMarkdown({ content, className }: SecureInlineMarkdownProps) {
-  const elements = processInlineMarkdown(content);
-
-  const renderElement = (element: ProcessedMarkdown, index: number): React.ReactNode => {
-    switch (element.type) {
-      case 'bold':
-        return <strong key={index}>{element.content}</strong>;
-      
-      case 'italic':
-        return <em key={index}>{element.content}</em>;
-      
-      case 'code':
-        return (
-          <code key={index} className="hn-inline-code bg-muted px-1 py-0.5 rounded text-sm font-mono">
-            {element.content}
-          </code>
-        );
-      
-      case 'link':
-        return (
-          <a 
-            key={index} 
-            href={element.href} 
-            className="hn-link text-primary hover:underline"
-            target={element.href?.startsWith('http') ? '_blank' : undefined}
-            rel={element.href?.startsWith('http') ? 'noopener noreferrer' : undefined}
-          >
-            {element.content}
-          </a>
-        );
-      
-      case 'text':
-      default:
-        return <span key={index}>{element.content}</span>;
-    }
-  };
+export const SecureInlineMarkdown: React.FC<SecureInlineMarkdownProps> = ({ content }) => {
+  // Process HTML links in the content before rendering
+  const processedContent = content.replace(
+    /href="([^"]*)"[^>]*>([^<]*)</g,
+    '[$2]($1)'
+  ).replace(
+    /<a\s+[^>]*href="([^"]*)"[^>]*>([^<]*)<\/a>/gi,
+    '[$2]($1)'
+  );
 
   return (
-    <span className={className}>
-      {elements.map(renderElement)}
-    </span>
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      rehypePlugins={[rehypeRaw]}
+      components={{
+        a: ({ href, children, ...props }) => (
+          <a 
+            href={href} 
+            target="_blank" 
+            rel="noopener noreferrer" 
+            className="text-blue-600 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300 underline"
+            {...props}
+          >
+            {children}
+          </a>
+        ),
+        p: ({ children, ...props }) => (
+          <span {...props}>{children}</span>
+        )
+      }}
+    >
+      {processedContent}
+    </ReactMarkdown>
   );
-}
+};
