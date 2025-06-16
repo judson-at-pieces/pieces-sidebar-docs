@@ -48,6 +48,7 @@ export function EditorLayout() {
                 // This is a folder/directory item
                 const folderPath = item.href.replace(/^\//, ''); // Remove leading slash
                 folderVis[folderPath] = isItemActive;
+                console.log(`Loaded folder visibility: ${folderPath} = ${isItemActive}`);
               }
             });
           });
@@ -117,9 +118,8 @@ export function EditorLayout() {
     }
   };
 
-  // Handle folder visibility changes
+  // Handle folder visibility changes - refresh all visibility states
   const handleFolderVisibilityChange = async () => {
-    // Refresh the visibility states after any folder change
     try {
       console.log('Refreshing visibility states after folder change...');
       const navStructure = await navigationService.getNavigationStructure();
@@ -215,7 +215,7 @@ export function EditorLayout() {
       />
       
       <div className="flex h-[calc(100vh-4rem)]">
-        <div className="flex-1 flex flex-col max-w-full">
+        <div className="flex-1 flex flex-col">
           <NewEditorTabNavigation
             activeTab={activeTab}
             setActiveTab={setActiveTab}
@@ -242,7 +242,7 @@ export function EditorLayout() {
           )}
           
           {/* Tab Content */}
-          <div className="flex-1 overflow-hidden flex min-w-0">
+          <div className="flex-1 overflow-hidden flex">
             {activeTab === 'navigation' ? (
               <>
                 <FileTreeSidebar
@@ -254,7 +254,7 @@ export function EditorLayout() {
                   onFolderVisibilityChange={handleFolderVisibilityChange}
                   folderVisibility={folderVisibility}
                 />
-                <div className="flex-1 animate-in fade-in slide-in-from-top-2 duration-300 min-w-0">
+                <div className="flex-1 animate-in fade-in slide-in-from-top-2 duration-300">
                   <NavigationEditor 
                     fileStructure={fileStructure} 
                     onNavigationChange={refetch}
@@ -262,7 +262,7 @@ export function EditorLayout() {
                 </div>
               </>
             ) : activeTab === 'seo' ? (
-              <div className="flex-1 min-w-0">
+              <div className="flex-1">
                 <SeoEditor
                   selectedFile={editor.selectedFile}
                   onSeoDataChange={() => {}}
@@ -283,7 +283,7 @@ export function EditorLayout() {
                   onFolderVisibilityChange={handleFolderVisibilityChange}
                   folderVisibility={folderVisibility}
                 />
-                <div className="flex-1 animate-in fade-in-from-bottom-2 duration-300 min-w-0">
+                <div className="flex-1 animate-in fade-in-from-bottom-2 duration-300">
                   <EditorMain 
                     selectedFile={editor.selectedFile}
                     content={editor.localContent}
