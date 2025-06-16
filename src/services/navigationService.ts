@@ -11,6 +11,7 @@ export interface NavigationItem {
   order_index: number;
   parent_id?: string;
   is_auto_generated: boolean;
+  is_active?: boolean;
   file_path?: string;
   items?: NavigationItem[];
 }
