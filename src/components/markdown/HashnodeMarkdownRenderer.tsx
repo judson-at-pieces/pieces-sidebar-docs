@@ -60,7 +60,7 @@ const parseSections = (text: string): ParsedSection[] => {
     const hasCardGroup = section.includes(CARDGROUP_PATTERN);
     const hasSteps = section.includes(STEPS_PATTERN);
     const hasCallout = section.includes(CALLOUT_PATTERN);
-    const hasImage = section.includes(IMAGE_PATTERN);
+    const hasImage = section.includes(IMAGE_PATTERN) || section.includes('<img');
     const hasCard = section.includes(CARD_PATTERN) && !hasCardGroup;
     
     // Count markdown lines (non-empty lines that aren't special elements)
@@ -71,6 +71,7 @@ const parseSections = (text: string): ParsedSection[] => {
       line.includes('<Callout') || 
       line.includes('<Image') ||
       line.includes('<Card') ||
+      line.includes('<img') ||
       line.includes('</CardGroup>') ||
       line.includes('</Steps>') ||
       line.includes('</Callout>') ||
@@ -602,6 +603,7 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
   // Find all special elements with their positions
   const cardGroupRegex = /<CardGroup[^>]*>[\s\S]*?<\/CardGroup>/g;
   const imageRegex = /<Image[^>]*\/>/g;
+  const imgRegex = /<img[^>]*\/>/g;
   const calloutRegex = /<Callout[^>]*>[\s\S]*?<\/Callout>/g;
   const standaloneCardRegex = /<Card[^>]*>[\s\S]*?<\/Card>/g;
   const stepsRegex = /<Steps[^>]*>[\s\S]*?<\/Steps>/g;
@@ -626,11 +628,12 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
     allMatches.push({ match, type: 'callout' });
   }
   
-  // Find Images (but exclude ones inside Steps)
+  // Find Images (both <Image> and <img> tags, but exclude ones inside Steps)
   calloutRegex.lastIndex = 0;
   const stepsMatches = allMatches.filter(m => m.type === 'steps');
+  
+  // Check for <Image> tags
   while ((match = imageRegex.exec(content)) !== null) {
-    // Check if this image is inside a Steps block
     const isInSteps = stepsMatches.some(stepsMatch => {
       const stepsStart = stepsMatch.match.index!;
       const stepsEnd = stepsStart + stepsMatch.match[0].length;
@@ -642,8 +645,22 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
     }
   }
   
-  // Find standalone Cards (not inside CardGroups)
+  // Check for <img> tags (converted from <Image> by customSyntaxProcessor)
   imageRegex.lastIndex = 0;
+  while ((match = imgRegex.exec(content)) !== null) {
+    const isInSteps = stepsMatches.some(stepsMatch => {
+      const stepsStart = stepsMatch.match.index!;
+      const stepsEnd = stepsStart + stepsMatch.match[0].length;
+      return match.index! >= stepsStart && match.index! < stepsEnd;
+    });
+    
+    if (!isInSteps) {
+      allMatches.push({ match, type: 'img' });
+    }
+  }
+  
+  // Find standalone Cards (not inside CardGroups)
+  imgRegex.lastIndex = 0;
   const cardGroupMatches = allMatches.filter(m => m.type === 'cardgroup');
   while ((match = standaloneCardRegex.exec(content)) !== null) {
     // Check if this card is inside a CardGroup
@@ -705,6 +722,25 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
         const imageData = extractImageData(match[0]);
         elements.push(
           <ImageSection key={`image-${elementIndex}`} {...imageData} />
+        );
+        break;
+      }
+      case 'img': {
+        // Handle converted <img> tags from customSyntaxProcessor
+        const srcMatch = match[0].match(/src="([^"]*)"/);
+        const altMatch = match[0].match(/alt="([^"]*)"/);
+        const alignMatch = match[0].match(/data-align="([^"]*)"/);
+        const fullwidthMatch = match[0].match(/data-fullwidth="([^"]*)"/);
+        
+        const imageData = {
+          src: srcMatch?.[1] || '',
+          alt: altMatch?.[1] || '',
+          align: alignMatch?.[1] || 'center',
+          fullwidth: fullwidthMatch?.[1] === 'true'
+        };
+        
+        elements.push(
+          <ImageSection key={`img-${elementIndex}`} {...imageData} />
         );
         break;
       }
@@ -822,6 +858,31 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
 
     lines.forEach((line, index) => {
       console.log(`📝 Processing line ${index}:`, line);
+
+      // Handle converted <img> tags from customSyntaxProcessor
+      if (line.includes('<img') && line.includes('data-align')) {
+        console.log(`📝 Found converted img tag at line ${index}:`, line);
+        flushList();
+        flushTable();
+        
+        // Extract image data from the converted img tag
+        const srcMatch = line.match(/src="([^"]*)"/);
+        const altMatch = line.match(/alt="([^"]*)"/);
+        const alignMatch = line.match(/data-align="([^"]*)"/);
+        const fullwidthMatch = line.match(/data-fullwidth="([^"]*)"/);
+        
+        const imageData = {
+          src: srcMatch?.[1] || '',
+          alt: altMatch?.[1] || '',
+          align: alignMatch?.[1] || 'center',
+          fullwidth: fullwidthMatch?.[1] === 'true'
+        };
+        
+        elements.push(
+          <ImageSection key={`img-${index}`} {...imageData} />
+        );
+        return;
+      }
 
       // Code blocks
       if (line.startsWith('```')) {
