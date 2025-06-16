@@ -26,68 +26,83 @@ export function EditorLayout() {
   const [fileVisibility, setFileVisibility] = useState<{[filePath: string]: boolean}>({});
   const [folderVisibility, setFolderVisibility] = useState<{[folderPath: string]: boolean}>({});
 
-  // Load folder visibility from navigation structure
+  // Load visibility from navigation structure
   useEffect(() => {
-    const loadFolderVisibility = async () => {
+    const loadVisibility = async () => {
       try {
-        console.log('Loading folder visibility from navigation structure...');
+        console.log('Loading visibility states from navigation structure...');
         const navStructure = await navigationService.getNavigationStructure();
         if (navStructure?.sections) {
-          const visibility: {[folderPath: string]: boolean} = {};
+          const fileVis: {[filePath: string]: boolean} = {};
+          const folderVis: {[folderPath: string]: boolean} = {};
           
           navStructure.sections.forEach(section => {
             section.items?.forEach(item => {
+              const isItemActive = item.is_active === true;
+              
               if (item.file_path) {
-                // Extract folder path from file path
+                // This is a file
+                fileVis[item.file_path] = isItemActive;
+                
+                // Also track the folder containing this file
                 const pathParts = item.file_path.split('/');
                 if (pathParts.length > 1) {
                   pathParts.pop(); // Remove filename
                   const folderPath = pathParts.join('/');
-                  
-                  // Check if this item is active (public) or inactive (private)
-                  const isItemActive = item.is_active === true;
-                  
-                  // If any item in folder is public, folder should be public
-                  // Only mark as private if no public items have been found yet
-                  if (isItemActive) {
-                    visibility[folderPath] = true;
-                  } else if (visibility[folderPath] !== true) {
-                    // Only set to false if not already set to true by another item
-                    visibility[folderPath] = false;
+                  // Don't override if already set - let individual items control themselves
+                  if (folderVis[folderPath] === undefined) {
+                    folderVis[folderPath] = isItemActive;
                   }
                 }
-              }
-              
-              // Also check for direct folder items (items without file_path but representing folders)
-              if (!item.file_path && item.href) {
+              } else if (item.href) {
+                // This is a folder/directory item
                 const folderPath = item.href.replace(/^\//, ''); // Remove leading slash
-                const isItemActive = item.is_active === true;
-                
-                if (isItemActive) {
-                  visibility[folderPath] = true;
-                } else if (visibility[folderPath] !== true) {
-                  visibility[folderPath] = false;
-                }
+                folderVis[folderPath] = isItemActive;
               }
             });
           });
           
-          console.log('Loaded folder visibility:', visibility);
-          setFolderVisibility(visibility);
+          console.log('Loaded file visibility:', fileVis);
+          console.log('Loaded folder visibility:', folderVis);
+          setFileVisibility(fileVis);
+          setFolderVisibility(folderVis);
         }
       } catch (error) {
-        console.error('Failed to load folder visibility:', error);
+        console.error('Failed to load visibility states:', error);
       }
     };
 
-    loadFolderVisibility();
+    loadVisibility();
   }, []);
+
+  // Get effective visibility considering parent hierarchy
+  const getEffectiveVisibility = (itemPath: string, isFile: boolean = false): boolean => {
+    // Start with the item's own visibility
+    const directVisibility = isFile ? fileVisibility[itemPath] : folderVisibility[itemPath];
+    
+    // If item is explicitly private, it's private
+    if (directVisibility === false) {
+      return false;
+    }
+    
+    // Check parent folders - if any parent is private, this item should be hidden
+    const pathParts = itemPath.split('/');
+    for (let i = pathParts.length - 1; i > 0; i--) {
+      const parentPath = pathParts.slice(0, i).join('/');
+      if (folderVisibility[parentPath] === false) {
+        return false; // Parent is private, so this item is effectively private
+      }
+    }
+    
+    // Default to public if not explicitly set to private and no private parents
+    return directVisibility !== false;
+  };
 
   // Get current file's visibility state
   const currentFileVisibility = editor.selectedFile ? 
-    fileVisibility[editor.selectedFile] ?? true : true;
+    getEffectiveVisibility(editor.selectedFile, true) : true;
 
-  // Handle visibility change
+  // Handle file visibility change
   const handleVisibilityChange = async (isPublic: boolean) => {
     if (!editor.selectedFile) return;
 
@@ -112,56 +127,48 @@ export function EditorLayout() {
     }
   };
 
-  // Handle folder visibility changes
+  // Handle folder visibility changes with cascading effect
   const handleFolderVisibilityChange = async () => {
-    // Refresh the navigation structure to get updated visibility states
+    // Refresh the visibility states after any folder change
     try {
-      console.log('Refreshing folder visibility after change...');
+      console.log('Refreshing visibility states after folder change...');
       const navStructure = await navigationService.getNavigationStructure();
       if (navStructure?.sections) {
-        const visibility: {[folderPath: string]: boolean} = {};
+        const fileVis: {[filePath: string]: boolean} = {};
+        const folderVis: {[folderPath: string]: boolean} = {};
         
         navStructure.sections.forEach(section => {
           section.items?.forEach(item => {
+            const isItemActive = item.is_active === true;
+            
             if (item.file_path) {
-              // Extract folder path from file path  
+              // This is a file
+              fileVis[item.file_path] = isItemActive;
+              
+              // Also track the folder containing this file
               const pathParts = item.file_path.split('/');
               if (pathParts.length > 1) {
                 pathParts.pop(); // Remove filename
                 const folderPath = pathParts.join('/');
-                
-                // Check if this item is active (public) or inactive (private)
-                const isItemActive = item.is_active === true;
-                
-                // If any item in folder is public, folder should be public
-                if (isItemActive) {
-                  visibility[folderPath] = true;
-                } else if (visibility[folderPath] !== true) {
-                  // Only set to false if not already set to true by another item
-                  visibility[folderPath] = false;
+                if (folderVis[folderPath] === undefined) {
+                  folderVis[folderPath] = isItemActive;
                 }
               }
-            }
-            
-            // Also check for direct folder items
-            if (!item.file_path && item.href) {
+            } else if (item.href) {
+              // This is a folder/directory item
               const folderPath = item.href.replace(/^\//, ''); // Remove leading slash
-              const isItemActive = item.is_active === true;
-              
-              if (isItemActive) {
-                visibility[folderPath] = true;
-              } else if (visibility[folderPath] !== true) {
-                visibility[folderPath] = false;
-              }
+              folderVis[folderPath] = isItemActive;
             }
           });
         });
         
-        console.log('Updated folder visibility:', visibility);
-        setFolderVisibility(visibility);
+        console.log('Updated file visibility:', fileVis);
+        console.log('Updated folder visibility:', folderVis);
+        setFileVisibility(fileVis);
+        setFolderVisibility(folderVis);
       }
     } catch (error) {
-      console.error('Failed to update folder visibility:', error);
+      console.error('Failed to update visibility states:', error);
     }
     
     refetch();
@@ -220,6 +227,12 @@ export function EditorLayout() {
   // Convert Branch[] to string[] for the component
   const branchNames = branches.map(branch => branch.name);
 
+  // Create effective folder visibility that considers hierarchy
+  const effectiveFolderVisibility: {[folderPath: string]: boolean} = {};
+  Object.keys(folderVisibility).forEach(folderPath => {
+    effectiveFolderVisibility[folderPath] = getEffectiveVisibility(folderPath, false);
+  });
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
       <EditorMainHeader 
@@ -265,7 +278,7 @@ export function EditorLayout() {
                   onFileSelect={editor.selectFile}
                   fileStructure={fileStructure}
                   onFolderVisibilityChange={handleFolderVisibilityChange}
-                  folderVisibility={folderVisibility}
+                  folderVisibility={effectiveFolderVisibility}
                 />
                 <div className="flex-1 animate-in fade-in slide-in-from-top-2 duration-300">
                   <NavigationEditor 
@@ -294,7 +307,7 @@ export function EditorLayout() {
                   pendingChanges={sessions.map(s => s.file_path)}
                   liveSessions={sessions}
                   onFolderVisibilityChange={handleFolderVisibilityChange}
-                  folderVisibility={folderVisibility}
+                  folderVisibility={effectiveFolderVisibility}
                 />
                 <div className="flex-1 animate-in fade-in-from-bottom-2 duration-300">
                   <EditorMain 

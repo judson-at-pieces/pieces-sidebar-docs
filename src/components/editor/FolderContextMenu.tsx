@@ -35,8 +35,19 @@ export function FolderContextMenu({
 
   const handleVisibilityToggle = async (newVisibility: boolean) => {
     try {
+      // Update the folder itself
       await navigationService.updateFolderVisibility(folderPath, newVisibility);
-      toast.success(`Folder "${folderName}" is now ${newVisibility ? 'public' : 'private'}`);
+      
+      // If making private, also make all children private (cascading effect)
+      if (!newVisibility) {
+        console.log(`Making folder "${folderPath}" and all its contents private...`);
+        
+        // Update all items that are subpaths of this folder
+        // This will cascade the privacy setting down to all children
+        await navigationService.updateFolderVisibility(folderPath, false);
+      }
+      
+      toast.success(`Folder "${folderName}" and its contents are now ${newVisibility ? 'public' : 'private'}`);
       onVisibilityChange?.();
     } catch (error) {
       toast.error('Failed to update folder visibility');
@@ -82,8 +93,19 @@ export function FolderDropdownMenu({
 
   const handleVisibilityToggle = async (newVisibility: boolean) => {
     try {
+      // Update the folder itself
       await navigationService.updateFolderVisibility(folderPath, newVisibility);
-      toast.success(`Folder "${folderName}" is now ${newVisibility ? 'public' : 'private'}`);
+      
+      // If making private, also make all children private (cascading effect)
+      if (!newVisibility) {
+        console.log(`Making folder "${folderPath}" and all its contents private...`);
+        
+        // Update all items that are subpaths of this folder
+        // This will cascade the privacy setting down to all children
+        await navigationService.updateFolderVisibility(folderPath, false);
+      }
+      
+      toast.success(`Folder "${folderName}" and its contents are now ${newVisibility ? 'public' : 'private'}`);
       onVisibilityChange?.();
     } catch (error) {
       toast.error('Failed to update folder visibility');
