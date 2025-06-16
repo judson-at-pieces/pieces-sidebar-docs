@@ -436,7 +436,7 @@ const CardSection: React.FC<{ card: CardData }> = ({ card }) => {
   
   return (
     <MarkdownCard title={card.title} image={card.image}>
-      {processInlineMarkdown(card.content)}
+      {card.content}
     </MarkdownCard>
   );
 };
@@ -448,7 +448,7 @@ const CardGroupSection: React.FC<{ cols: number; cards: CardData[] }> = ({ cols,
     <CardGroup cols={cols as 2 | 3 | 4}>
       {cards.map((card, index) => (
         <MarkdownCard key={`card-${index}`} title={card.title} image={card.image}>
-          {processInlineMarkdown(card.content)}
+          {card.content}
         </MarkdownCard>
       ))}
     </CardGroup>

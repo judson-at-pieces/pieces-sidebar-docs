@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { SecureInlineMarkdown } from './SecureInlineMarkdown';
 
 interface MarkdownCardProps {
   title: string;
@@ -14,6 +15,11 @@ const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, children }) =
     hasChildren: !!children,
     childrenType: typeof children 
   });
+
+  // Process children as markdown if it's a string
+  const processedChildren = typeof children === 'string' 
+    ? <SecureInlineMarkdown content={children} />
+    : children;
 
   return (
     <div className="p-6 my-4 border rounded-xl bg-white dark:bg-[#2a2b2b] dark:border-gray-700 hover:border-slate-300 dark:hover:border-gray-600 transition-colors shadow-sm">
@@ -39,7 +45,7 @@ const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, children }) =
         {title}
       </span>
       <div className="mt-3 text-base text-slate-600 dark:text-slate-300">
-        {children}
+        {processedChildren}
       </div>
     </div>
   );
