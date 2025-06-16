@@ -47,10 +47,11 @@ export function EditorLayout() {
                   // Check if this item is active (public) or inactive (private)
                   const isItemActive = item.is_active === true;
                   
-                  // If any item in folder is active, folder is considered public
+                  // If any item in folder is public, folder should be public
+                  // Only mark as private if no public items have been found yet
                   if (isItemActive) {
                     visibility[folderPath] = true;
-                  } else if (visibility[folderPath] === undefined) {
+                  } else if (visibility[folderPath] !== true) {
                     // Only set to false if not already set to true by another item
                     visibility[folderPath] = false;
                   }
@@ -60,7 +61,13 @@ export function EditorLayout() {
               // Also check for direct folder items (items without file_path but representing folders)
               if (!item.file_path && item.href) {
                 const folderPath = item.href.replace(/^\//, ''); // Remove leading slash
-                visibility[folderPath] = item.is_active === true;
+                const isItemActive = item.is_active === true;
+                
+                if (isItemActive) {
+                  visibility[folderPath] = true;
+                } else if (visibility[folderPath] !== true) {
+                  visibility[folderPath] = false;
+                }
               }
             });
           });
@@ -126,10 +133,10 @@ export function EditorLayout() {
                 // Check if this item is active (public) or inactive (private)
                 const isItemActive = item.is_active === true;
                 
-                // If any item in folder is active, folder is considered public
+                // If any item in folder is public, folder should be public
                 if (isItemActive) {
                   visibility[folderPath] = true;
-                } else if (visibility[folderPath] === undefined) {
+                } else if (visibility[folderPath] !== true) {
                   // Only set to false if not already set to true by another item
                   visibility[folderPath] = false;
                 }
@@ -139,7 +146,13 @@ export function EditorLayout() {
             // Also check for direct folder items
             if (!item.file_path && item.href) {
               const folderPath = item.href.replace(/^\//, ''); // Remove leading slash
-              visibility[folderPath] = item.is_active === true;
+              const isItemActive = item.is_active === true;
+              
+              if (isItemActive) {
+                visibility[folderPath] = true;
+              } else if (visibility[folderPath] !== true) {
+                visibility[folderPath] = false;
+              }
             }
           });
         });
