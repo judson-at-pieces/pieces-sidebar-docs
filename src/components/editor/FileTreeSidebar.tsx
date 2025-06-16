@@ -13,6 +13,7 @@ interface FileTreeSidebarProps {
   pendingChanges?: string[];
   liveSessions?: any[];
   onFolderVisibilityChange?: () => void;
+  folderVisibility?: {[folderPath: string]: boolean};
 }
 
 export function FileTreeSidebar({
@@ -23,7 +24,8 @@ export function FileTreeSidebar({
   fileStructure,
   pendingChanges = [],
   liveSessions = [],
-  onFolderVisibilityChange
+  onFolderVisibilityChange,
+  folderVisibility = {}
 }: FileTreeSidebarProps) {
   return (
     <div className="w-80 border-r border-border/50 bg-muted/20 flex flex-col">
@@ -45,6 +47,7 @@ export function FileTreeSidebar({
               pendingChanges={pendingChanges}
               liveSessions={liveSessions}
               onFolderVisibilityChange={onFolderVisibilityChange}
+              folderVisibility={folderVisibility}
             />
           ))}
         </div>

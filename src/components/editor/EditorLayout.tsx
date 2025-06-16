@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useBranchManager } from "@/hooks/useBranchManager";
 import { useBranchSessions } from "@/hooks/useBranchSessions";
@@ -24,6 +25,39 @@ export function EditorLayout() {
   
   const [activeTab, setActiveTab] = useState<'navigation' | 'content' | 'seo'>('content');
   const [fileVisibility, setFileVisibility] = useState<{[filePath: string]: boolean}>({});
+  const [folderVisibility, setFolderVisibility] = useState<{[folderPath: string]: boolean}>({});
+
+  // Initialize folder visibility from navigation structure
+  useEffect(() => {
+    const initializeFolderVisibility = async () => {
+      try {
+        const navStructure = await navigationService.getNavigationStructure();
+        if (navStructure?.sections) {
+          const visibility: {[folderPath: string]: boolean} = {};
+          
+          navStructure.sections.forEach(section => {
+            section.items?.forEach(item => {
+              if (item.file_path) {
+                // Extract folder path from file path
+                const pathParts = item.file_path.split('/');
+                if (pathParts.length > 1) {
+                  pathParts.pop(); // Remove filename
+                  const folderPath = pathParts.join('/');
+                  visibility[folderPath] = true; // Default to public, will be overridden by actual data
+                }
+              }
+            });
+          });
+          
+          setFolderVisibility(visibility);
+        }
+      } catch (error) {
+        console.error('Failed to initialize folder visibility:', error);
+      }
+    };
+
+    initializeFolderVisibility();
+  }, []);
 
   // Get current file's visibility state
   const currentFileVisibility = editor.selectedFile ? 
@@ -55,7 +89,34 @@ export function EditorLayout() {
   };
 
   // Handle folder visibility changes
-  const handleFolderVisibilityChange = () => {
+  const handleFolderVisibilityChange = async () => {
+    // Refresh the navigation structure to get updated visibility states
+    try {
+      const navStructure = await navigationService.getNavigationStructure();
+      if (navStructure?.sections) {
+        const visibility: {[folderPath: string]: boolean} = {};
+        
+        navStructure.sections.forEach(section => {
+          section.items?.forEach(item => {
+            if (item.file_path) {
+              // Extract folder path from file path  
+              const pathParts = item.file_path.split('/');
+              if (pathParts.length > 1) {
+                pathParts.pop(); // Remove filename
+                const folderPath = pathParts.join('/');
+                // Use the item's active status to determine folder visibility
+                visibility[folderPath] = item.is_active !== false;
+              }
+            }
+          });
+        });
+        
+        setFolderVisibility(visibility);
+      }
+    } catch (error) {
+      console.error('Failed to update folder visibility:', error);
+    }
+    
     refetch();
   };
 
@@ -157,6 +218,7 @@ export function EditorLayout() {
                   onFileSelect={editor.selectFile}
                   fileStructure={fileStructure}
                   onFolderVisibilityChange={handleFolderVisibilityChange}
+                  folderVisibility={folderVisibility}
                 />
                 <div className="flex-1 animate-in fade-in slide-in-from-top-2 duration-300">
                   <NavigationEditor 
@@ -185,6 +247,7 @@ export function EditorLayout() {
                   pendingChanges={sessions.map(s => s.file_path)}
                   liveSessions={sessions}
                   onFolderVisibilityChange={handleFolderVisibilityChange}
+                  folderVisibility={folderVisibility}
                 />
                 <div className="flex-1 animate-in fade-in-from-bottom-2 duration-300">
                   <EditorMain 

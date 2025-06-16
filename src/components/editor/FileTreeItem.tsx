@@ -13,6 +13,7 @@ interface FileTreeItemProps {
   pendingChanges?: string[];
   liveSessions?: any[];
   onFolderVisibilityChange?: () => void;
+  folderVisibility?: {[folderPath: string]: boolean};
 }
 
 export function FileTreeItem({ 
@@ -21,7 +22,8 @@ export function FileTreeItem({
   onFileSelect, 
   pendingChanges = [], 
   liveSessions = [],
-  onFolderVisibilityChange
+  onFolderVisibilityChange,
+  folderVisibility = {}
 }: FileTreeItemProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   
@@ -29,6 +31,9 @@ export function FileTreeItem({
   const isSelected = selectedFile === node.path;
   const hasPendingChanges = pendingChanges.includes(node.path);
   const hasLiveSession = liveSessions.some(session => session.file_path === node.path);
+  
+  // Get folder visibility state - default to true (public) if not set
+  const isFolderPublic = folderVisibility[node.path] ?? true;
 
   const handleClick = () => {
     if (isFile) {
@@ -94,9 +99,18 @@ export function FileTreeItem({
         
         <span className="truncate flex-1">{node.name}</span>
         
+        {/* Show visibility indicator */}
+        <Badge 
+          variant={isFolderPublic ? "default" : "secondary"} 
+          className="h-4 text-xs px-1 mr-1"
+        >
+          {isFolderPublic ? "Public" : "Private"}
+        </Badge>
+        
         <FolderDropdownMenu
           folderPath={node.path}
           folderName={node.name}
+          isPublic={isFolderPublic}
           onVisibilityChange={onFolderVisibilityChange}
         />
       </div>
@@ -106,6 +120,7 @@ export function FileTreeItem({
       <FolderContextMenu
         folderPath={node.path}
         folderName={node.name}
+        isPublic={isFolderPublic}
         onVisibilityChange={onFolderVisibilityChange}
       >
         {folderContent}
@@ -128,6 +143,7 @@ export function FileTreeItem({
               pendingChanges={pendingChanges}
               liveSessions={liveSessions}
               onFolderVisibilityChange={onFolderVisibilityChange}
+              folderVisibility={folderVisibility}
             />
           ))}
         </div>

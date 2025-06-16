@@ -14,13 +14,14 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { useFolderVisibility } from '@/hooks/useFolderVisibility';
+import { navigationService } from '@/services/navigationService';
 import { toast } from 'sonner';
 
 interface FolderContextMenuProps {
   folderPath: string;
   folderName: string;
   children: React.ReactNode;
+  isPublic: boolean;
   onVisibilityChange?: () => void;
 }
 
@@ -28,14 +29,13 @@ export function FolderContextMenu({
   folderPath, 
   folderName, 
   children, 
+  isPublic,
   onVisibilityChange 
 }: FolderContextMenuProps) {
-  const { getFolderVisibility, updateFolderVisibility } = useFolderVisibility();
-  const isPublic = getFolderVisibility(folderPath);
 
   const handleVisibilityToggle = async (newVisibility: boolean) => {
     try {
-      await updateFolderVisibility(folderPath, newVisibility);
+      await navigationService.updateFolderVisibility(folderPath, newVisibility);
       toast.success(`Folder "${folderName}" is now ${newVisibility ? 'public' : 'private'}`);
       onVisibilityChange?.();
     } catch (error) {
@@ -76,14 +76,13 @@ export function FolderContextMenu({
 export function FolderDropdownMenu({ 
   folderPath, 
   folderName, 
+  isPublic,
   onVisibilityChange 
 }: Omit<FolderContextMenuProps, 'children'>) {
-  const { getFolderVisibility, updateFolderVisibility } = useFolderVisibility();
-  const isPublic = getFolderVisibility(folderPath);
 
   const handleVisibilityToggle = async (newVisibility: boolean) => {
     try {
-      await updateFolderVisibility(folderPath, newVisibility);
+      await navigationService.updateFolderVisibility(folderPath, newVisibility);
       toast.success(`Folder "${folderName}" is now ${newVisibility ? 'public' : 'private'}`);
       onVisibilityChange?.();
     } catch (error) {
