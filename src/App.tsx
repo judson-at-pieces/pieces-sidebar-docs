@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@/components/ThemeProvider';
@@ -29,6 +28,7 @@ import { CompiledDocPage } from '@/components/CompiledDocPage';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useContentPreloader } from '@/hooks/useContentPreloader';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
+import Sitemap from '@/pages/Sitemap';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -60,6 +60,10 @@ function AppContent() {
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
+          
+          {/* Sitemap route */}
+          <Route path="/sitemap.xml" element={<Sitemap />} />
+          <Route path="/sitemap" element={<Sitemap />} />
           
           {/* Protected admin route */}
           <Route 
