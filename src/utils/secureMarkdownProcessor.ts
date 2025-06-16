@@ -54,8 +54,8 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
     { regex: /(?<!\*)\*([^*]+)\*(?!\*)/g, type: 'italic' as const },
     // Updated regex to handle escaped brackets in markdown links
     { regex: /\[([^\]]*(?:\\.[^\]]*)*)\]\(([^)]+)\)/g, type: 'link' as const },
-    // Add pattern for HTML anchor tags - handle various attribute orders and formats
-    { regex: /<a\s+([^>]*?)>((?:(?!<\/a>).)*?)<\/a>/gi, type: 'link' as const },
+    // Add pattern for HTML anchor tags - more specific pattern to handle the exact format
+    { regex: /<a\s+([^>]*?)>(.*?)<\/a>/gi, type: 'link' as const },
     // Add pattern for Image tags
     { regex: /<Image\s+([^>]*?)\/>/g, type: 'image' as const }
   ];
@@ -65,6 +65,8 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
   // Find all matches
   patterns.forEach(({ regex, type }) => {
     let match;
+    // Reset regex lastIndex to ensure we find all matches
+    regex.lastIndex = 0;
     while ((match = regex.exec(text)) !== null) {
       matches.push({ match, type });
     }
@@ -129,15 +131,11 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
         console.log('Processing HTML anchor:', { fullMatch: match[0], attributes, linkText });
         
         // Extract href with more flexible matching - handle various quote styles and spacing
-        const hrefMatch = attributes.match(/href\s*=\s*["']([^"']+)["']/i) || 
-                         attributes.match(/href\s*=\s*"([^"]+)"/i) ||
-                         attributes.match(/href\s*=\s*'([^']+)'/i);
+        const hrefMatch = attributes.match(/href\s*=\s*["']([^"']+)["']/i);
         linkHref = hrefMatch ? hrefMatch[1] : '';
         
         // Extract target with more flexible matching
-        const targetMatch = attributes.match(/target\s*=\s*["']([^"']+)["']/i) ||
-                           attributes.match(/target\s*=\s*"([^"]+)"/i) ||
-                           attributes.match(/target\s*=\s*'([^']+)'/i);
+        const targetMatch = attributes.match(/target\s*=\s*["']([^"']+)["']/i);
         linkTarget = targetMatch ? targetMatch[1] : '';
         
         console.log('Extracted link data:', { linkText, linkHref, linkTarget });
