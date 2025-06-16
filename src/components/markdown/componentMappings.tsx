@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Components } from 'react-markdown';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -65,124 +66,14 @@ export const createComponentMappings = (): Components => {
       );
     },
     
-    // Define custom components for special markdown syntax
-    Callout: ({ type, title, children }: CalloutProps) => {
-      const getCalloutIcon = (type: string) => {
-        switch (type) {
-          case 'warning': return <AlertTriangle className="h-4 w-4" />;
-          case 'error': return <AlertTriangle className="h-4 w-4" />;
-          case 'success': return <CheckCircle className="h-4 w-4" />;
-          case 'tip': return <Lightbulb className="h-4 w-4" />;
-          case 'alert': return <Zap className="h-4 w-4" />;
-          default: return <Info className="h-4 w-4" />;
-        }
-      };
-
-      const getCalloutVariant = (type: string) => {
-        switch (type) {
-          case 'warning': return 'default';
-          case 'error': return 'destructive';
-          default: return 'default';
-        }
-      };
-
-      return (
-        <Alert variant={getCalloutVariant(type)} className="my-6">
-          {getCalloutIcon(type)}
-          <AlertDescription className="mt-2">
-            {children}
-          </AlertDescription>
-        </Alert>
-      );
-    },
-
-    CardGroup: ({ cols = 2, children }: CardGroupProps) => {
-      const gridClass = cols === 3 
-        ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' 
-        : 'grid-cols-1 md:grid-cols-2';
-      
-      return (
-        <div className={`grid gap-6 my-6 ${gridClass}`}>
-          {children}
-        </div>
-      );
-    },
-
-    Card: ({ title, image, href, external, icon, children }: CardProps) => {
-      const cardContent = (
-        <Card className="h-full hover:shadow-lg transition-shadow cursor-pointer">
-          {image && (
-            <div className="aspect-video w-full overflow-hidden rounded-t-lg">
-              <img 
-                src={image} 
-                alt={title} 
-                className="h-full w-full object-cover"
-              />
-            </div>
-          )}
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              {icon && <span className="text-lg">{icon}</span>}
-              <CardTitle className="text-lg">{title}</CardTitle>
-            </div>
-          </CardHeader>
-          {children && (
-            <CardContent>
-              <CardDescription>{children}</CardDescription>
-            </CardContent>
-          )}
-        </Card>
-      );
-
-      if (href && validateUrl(href)) {
-        return (
-          <a 
-            href={href} 
-            target={external ? '_blank' : '_self'}
-            rel={external ? 'noopener noreferrer' : undefined}
-            className="block no-underline"
-          >
-            {cardContent}
-          </a>
-        );
-      }
-
-      return cardContent;
-    },
-
-    Steps: ({ children }: { children: React.ReactNode }) => {
-      return (
-        <div className="my-6 space-y-6">
-          {children}
-        </div>
-      );
-    },
-
-    Step: ({ number, title, children }: StepProps) => {
-      return (
-        <div className="flex gap-4">
-          <div className="flex-shrink-0">
-            <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-medium">
-              {number}
-            </div>
-          </div>
-          <div className="flex-1">
-            {title && (
-              <h3 className="text-lg font-semibold mb-2">{title}</h3>
-            )}
-            <div className="prose prose-sm dark:prose-invert max-w-none">
-              {children}
-            </div>
-          </div>
-        </div>
-      );
-    },
-    
-    code: ({ inline, className, children, ...props }) => {
+    code: ({ children, className, ...props }: any) => {
       const match = /language-(\w+)/.exec(className || '');
       const language = match ? match[1] : '';
+      
+      // Check if this is inline code by looking at the node properties
+      const isInline = !className || !className.includes('language-');
 
-      if (inline) {
+      if (isInline) {
         return (
           <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold" {...props}>
             {children}
