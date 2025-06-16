@@ -24,9 +24,8 @@ interface ReferrerData {
 
 class AnalyticsService {
   private sessionId: string;
-  private trackedPaths: Set<string> = new Set();
-  private lastTrackTime: number = 0;
-  private trackingCooldown: number = 5000; // 5 seconds cooldown between same page tracks
+  private trackedViews: Map<string, number> = new Map(); // path -> timestamp
+  private trackingCooldown: number = 30000; // 30 seconds cooldown between same page tracks
 
   constructor() {
     // Generate or retrieve session ID
@@ -42,11 +41,6 @@ class AnalyticsService {
     return sessionId;
   }
 
-  private getCurrentUserId(): string | undefined {
-    // Get current user ID from Supabase auth
-    return supabase.auth.getUser().then(({ data }) => data.user?.id);
-  }
-
   private shouldTrackPath(path: string): boolean {
     // Don't track admin or edit routes
     const excludedPaths = ['/admin', '/edit'];
@@ -55,10 +49,11 @@ class AnalyticsService {
 
   private shouldTrackPageView(path: string): boolean {
     const now = Date.now();
-    const pathKey = `${this.sessionId}-${path}`;
+    const lastTracked = this.trackedViews.get(path);
     
-    // Don't track if same path was tracked recently in this session
-    if (this.trackedPaths.has(pathKey) && (now - this.lastTrackTime) < this.trackingCooldown) {
+    // Don't track if same path was tracked recently
+    if (lastTracked && (now - lastTracked) < this.trackingCooldown) {
+      console.log(`Skipping duplicate page view for ${path} (tracked ${now - lastTracked}ms ago)`);
       return false;
     }
     
@@ -90,6 +85,21 @@ class AnalyticsService {
         pageViewData.user_id = user.id;
       }
 
+      // Check if this exact combination already exists in the last 30 seconds
+      const recentCutoff = new Date(Date.now() - this.trackingCooldown);
+      const { data: existingViews } = await supabase
+        .from('page_views')
+        .select('id')
+        .eq('page_path', path)
+        .eq('session_id', this.sessionId)
+        .gte('created_at', recentCutoff.toISOString())
+        .limit(1);
+
+      if (existingViews && existingViews.length > 0) {
+        console.log(`Duplicate page view blocked for ${path} - already exists in database`);
+        return;
+      }
+
       const { error } = await supabase
         .from('page_views')
         .insert([pageViewData]);
@@ -99,10 +109,20 @@ class AnalyticsService {
         return;
       }
 
-      // Mark this path as tracked for this session
-      const pathKey = `${this.sessionId}-${path}`;
-      this.trackedPaths.add(pathKey);
-      this.lastTrackTime = Date.now();
+      // Mark this path as tracked
+      this.trackedViews.set(path, Date.now());
+
+      // Clean up old tracked paths to prevent memory leaks
+      if (this.trackedViews.size > 50) {
+        const cutoff = Date.now() - this.trackingCooldown;
+        for (const [trackedPath, timestamp] of this.trackedViews.entries()) {
+          if (timestamp < cutoff) {
+            this.trackedViews.delete(trackedPath);
+          }
+        }
+      }
+
+      console.log(`Page view tracked for ${path} (session: ${this.sessionId.substring(0, 8)}...)`);
 
       // Track external referrers
       if (document.referrer && !this.isInternalReferrer(document.referrer)) {
@@ -182,8 +202,9 @@ class AnalyticsService {
 
   // Clear session tracking (useful for testing or when session should reset)
   clearSessionTracking() {
-    this.trackedPaths.clear();
-    this.lastTrackTime = 0;
+    this.trackedViews.clear();
+    sessionStorage.removeItem('analytics_session_id');
+    this.sessionId = this.getOrCreateSessionId();
   }
 }
 

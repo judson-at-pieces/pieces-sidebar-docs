@@ -5,25 +5,21 @@ import { analyticsService } from '@/services/analyticsService';
 
 export function useAnalytics() {
   const location = useLocation();
-  const hasTracked = useRef<Set<string>>(new Set());
+  const lastTrackedPath = useRef<string>('');
 
-  // Track page views automatically with deduplication
+  // Track page views automatically with strict deduplication
   useEffect(() => {
     const trackPageView = async () => {
+      const currentPath = location.pathname;
+      
       // Prevent tracking the same path multiple times in React strict mode
-      const pathKey = location.pathname;
-      if (hasTracked.current.has(pathKey)) {
+      if (lastTrackedPath.current === currentPath) {
+        console.log(`Skipping duplicate useEffect for ${currentPath}`);
         return;
       }
       
-      hasTracked.current.add(pathKey);
-      await analyticsService.trackPageView(pathKey);
-      
-      // Clean up old tracked paths to prevent memory leaks
-      if (hasTracked.current.size > 50) {
-        hasTracked.current.clear();
-        hasTracked.current.add(pathKey);
-      }
+      lastTrackedPath.current = currentPath;
+      await analyticsService.trackPageView(currentPath);
     };
 
     trackPageView();
