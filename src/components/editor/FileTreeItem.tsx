@@ -23,7 +23,7 @@ export function FileTreeItem({
   liveSessions = [],
   onFolderVisibilityChange
 }: FileTreeItemProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   
   const isFile = node.type === 'file';
   const isSelected = selectedFile === node.path;
