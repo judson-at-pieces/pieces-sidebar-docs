@@ -1,5 +1,5 @@
 
-import { useState, useEffect } from "react";
+import { useState } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useBranchManager } from "@/hooks/useBranchManager";
 import { useBranchSessions } from "@/hooks/useBranchSessions";
@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/button";
 import { EditorMainHeader } from "./EditorMainHeader";
 import { NewEditorTabNavigation } from "./NewEditorTabNavigation";
 import { navigationService } from "@/services/navigationService";
+import { FolderVisibilityPanel } from "./FolderVisibilityPanel";
 
 const DEBUG_EDITOR = true;
 
@@ -23,77 +24,14 @@ export function EditorLayout() {
   // Use the new simplified branch editor
   const editor = useBranchEditor();
   
-  const [activeTab, setActiveTab] = useState<'navigation' | 'content' | 'seo'>('content');
+  const [activeTab, setActiveTab] = useState<'navigation' | 'content' | 'seo' | 'folders'>('content');
   const [fileVisibility, setFileVisibility] = useState<{[filePath: string]: boolean}>({});
-  const [folderVisibility, setFolderVisibility] = useState<{[folderPath: string]: boolean}>({});
-
-  // Load visibility from navigation structure
-  useEffect(() => {
-    const loadVisibility = async () => {
-      try {
-        console.log('Loading visibility states from navigation structure...');
-        const navStructure = await navigationService.getNavigationStructure();
-        if (navStructure?.sections) {
-          const fileVis: {[filePath: string]: boolean} = {};
-          const folderVis: {[folderPath: string]: boolean} = {};
-          
-          navStructure.sections.forEach(section => {
-            section.items?.forEach(item => {
-              const isItemActive = item.is_active === true;
-              
-              if (item.file_path) {
-                // This is a file
-                fileVis[item.file_path] = isItemActive;
-              } else if (item.href) {
-                // This is a folder/directory item
-                const folderPath = item.href.replace(/^\//, ''); // Remove leading slash
-                folderVis[folderPath] = isItemActive;
-                console.log(`Loaded folder visibility: ${folderPath} = ${isItemActive}`);
-              }
-            });
-          });
-          
-          console.log('Loaded file visibility:', fileVis);
-          console.log('Loaded folder visibility:', folderVis);
-          setFileVisibility(fileVis);
-          setFolderVisibility(folderVis);
-        }
-      } catch (error) {
-        console.error('Failed to load visibility states:', error);
-      }
-    };
-
-    loadVisibility();
-  }, []);
-
-  // Get effective visibility considering parent hierarchy
-  const getEffectiveVisibility = (itemPath: string, isFile: boolean = false): boolean => {
-    // Start with the item's own visibility (default to true if not set)
-    const directVisibility = isFile ? (fileVisibility[itemPath] ?? true) : (folderVisibility[itemPath] ?? true);
-    
-    // If item is explicitly private, it's private
-    if (directVisibility === false) {
-      return false;
-    }
-    
-    // Check parent folders - if any parent is private, this item should be hidden
-    const pathParts = itemPath.split('/');
-    for (let i = pathParts.length - 1; i > 0; i--) {
-      const parentPath = pathParts.slice(0, i).join('/');
-      if (folderVisibility[parentPath] === false) {
-        return false; // Parent is private, so this item is effectively private
-      }
-    }
-    
-    // Item is public if not explicitly set to private and no private parents
-    return true;
-  };
 
   // Get current file's visibility state
   const currentFileVisibility = editor.selectedFile ? 
-    getEffectiveVisibility(editor.selectedFile, true) : true;
+    fileVisibility[editor.selectedFile] ?? true : true;
 
-  // Handle file visibility change
+  // Handle visibility change
   const handleVisibilityChange = async (isPublic: boolean) => {
     if (!editor.selectedFile) return;
 
@@ -118,42 +56,6 @@ export function EditorLayout() {
     }
   };
 
-  // Handle folder visibility changes - refresh all visibility states
-  const handleFolderVisibilityChange = async () => {
-    try {
-      console.log('Refreshing visibility states after folder change...');
-      const navStructure = await navigationService.getNavigationStructure();
-      if (navStructure?.sections) {
-        const fileVis: {[filePath: string]: boolean} = {};
-        const folderVis: {[folderPath: string]: boolean} = {};
-        
-        navStructure.sections.forEach(section => {
-          section.items?.forEach(item => {
-            const isItemActive = item.is_active === true;
-            
-            if (item.file_path) {
-              // This is a file
-              fileVis[item.file_path] = isItemActive;
-            } else if (item.href) {
-              // This is a folder/directory item
-              const folderPath = item.href.replace(/^\//, ''); // Remove leading slash
-              folderVis[folderPath] = isItemActive;
-            }
-          });
-        });
-        
-        console.log('Updated file visibility:', fileVis);
-        console.log('Updated folder visibility:', folderVis);
-        setFileVisibility(fileVis);
-        setFolderVisibility(folderVis);
-      }
-    } catch (error) {
-      console.error('Failed to update visibility states:', error);
-    }
-    
-    refetch();
-  };
-
   if (DEBUG_EDITOR) {
     console.log('🎯 EDITOR LAYOUT STATE:', {
       selectedFile: editor.selectedFile,
@@ -161,9 +63,7 @@ export function EditorLayout() {
       isLoading: editor.isLoading,
       isAutoSaving: editor.isAutoSaving,
       isFileLocked: editor.isFileLocked,
-      lockOwnerName: editor.lockOwnerName,
-      sessionsLength: sessions.length,
-      hasChanges: sessions.some(s => s.content && s.content.trim())
+      lockOwnerName: editor.lockOwnerName
     });
   }
 
@@ -204,7 +104,7 @@ export function EditorLayout() {
   }
 
   const totalLiveFiles = sessions.filter(s => s.content && s.content.trim()).length;
-  const hasChanges = totalLiveFiles > 0 || (editor.selectedFile ? editor.localContent !== "" : false);
+  const hasChanges = editor.selectedFile ? editor.localContent !== "" : false;
 
   // Convert Branch[] to string[] for the component
   const branchNames = branches.map(branch => branch.name);
@@ -253,8 +153,6 @@ export function EditorLayout() {
                   selectedFile={editor.selectedFile}
                   onFileSelect={editor.selectFile}
                   fileStructure={fileStructure}
-                  onFolderVisibilityChange={handleFolderVisibilityChange}
-                  folderVisibility={folderVisibility}
                 />
                 <div className="flex-1 animate-in fade-in slide-in-from-top-2 duration-300">
                   <NavigationEditor 
@@ -263,6 +161,13 @@ export function EditorLayout() {
                   />
                 </div>
               </>
+            ) : activeTab === 'folders' ? (
+              <div className="flex-1 animate-in fade-in slide-in-from-top-2 duration-300">
+                <FolderVisibilityPanel
+                  fileStructure={fileStructure}
+                  onVisibilityChange={refetch}
+                />
+              </div>
             ) : activeTab === 'seo' ? (
               <div className="flex-1">
                 <SeoEditor
@@ -282,8 +187,6 @@ export function EditorLayout() {
                   fileStructure={fileStructure}
                   pendingChanges={sessions.map(s => s.file_path)}
                   liveSessions={sessions}
-                  onFolderVisibilityChange={handleFolderVisibilityChange}
-                  folderVisibility={folderVisibility}
                 />
                 <div className="flex-1 animate-in fade-in-from-bottom-2 duration-300">
                   <EditorMain 
