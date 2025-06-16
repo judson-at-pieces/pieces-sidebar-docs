@@ -9,8 +9,7 @@ import {
   Lock, 
   LockOpen, 
   Users, 
-  AlertCircle,
-  Folder
+  AlertCircle
 } from 'lucide-react';
 import { NewBranchSelector } from './NewBranchSelector';
 
@@ -22,8 +21,8 @@ interface LiveSession {
 }
 
 interface NewEditorTabNavigationProps {
-  activeTab: 'navigation' | 'content' | 'seo' | 'folders';
-  setActiveTab: (tab: 'navigation' | 'content' | 'seo' | 'folders') => void;
+  activeTab: 'navigation' | 'content' | 'seo';
+  setActiveTab: (tab: 'navigation' | 'content' | 'seo') => void;
   selectedFile?: string;
   isLocked: boolean;
   lockedBy: string;
@@ -66,12 +65,6 @@ export function NewEditorTabNavigation({
       id: 'navigation' as const,
       label: 'Navigation',
       icon: Navigation,
-      badge: undefined
-    },
-    {
-      id: 'folders' as const,
-      label: 'Folders',
-      icon: Folder,
       badge: undefined
     },
     {
