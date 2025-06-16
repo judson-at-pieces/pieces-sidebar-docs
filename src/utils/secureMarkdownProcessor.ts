@@ -53,15 +53,17 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
     { regex: /`([^`]+)`/g, type: 'code' as const },
     { regex: /\*\*(.*?)\*\*/g, type: 'bold' as const },
     { regex: /(?<!\*)\*([^*]+)\*(?!\*)/g, type: 'italic' as const },
-    // More comprehensive regex for HTML anchor tags - preserve leading whitespace
-    { regex: /(\s*)<a\s+([^>]*?)>(.*?)<\/a>/gi, type: 'link' as const },
+    // More comprehensive regex for HTML anchor tags - handles malformed tags too
+    { regex: /<a\s+([^>]*?)>(.*?)<\/a>/gi, type: 'link' as const },
+    // Also match malformed anchor tags (missing opening bracket)
+    { regex: /(?:^|\s)(a\s+target="_blank"\s+href="([^"]+)")([^<]*?)(?:<\/a>|\/a)/gi, type: 'link' as const },
     // Standard markdown links
     { regex: /\[([^\]]*(?:\\.[^\]]*)*)\]\(([^)]+)\)/g, type: 'link' as const },
     // Image tags
     { regex: /<Image\s+([^>]*?)\/>/g, type: 'image' as const }
   ];
 
-  const matches: Array<{ match: RegExpMatchArray; type: ProcessedMarkdown['type']; leadingSpace?: string }> = [];
+  const matches: Array<{ match: RegExpMatchArray; type: ProcessedMarkdown['type'] }> = [];
 
   // Find all matches
   patterns.forEach(({ regex, type }) => {
@@ -69,12 +71,7 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
     // Reset regex lastIndex to ensure we find all matches
     regex.lastIndex = 0;
     while ((match = regex.exec(text)) !== null) {
-      // For anchor tags, capture leading whitespace separately
-      if (type === 'link' && match[1] !== undefined) {
-        matches.push({ match, type, leadingSpace: match[1] });
-      } else {
-        matches.push({ match, type });
-      }
+      matches.push({ match, type });
     }
   });
 
@@ -84,7 +81,7 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
   console.log('processInlineMarkdown: Found matches:', matches.length, matches.map(m => ({ type: m.type, text: m.match[0].substring(0, 50) })));
 
   // Process text with matches
-  for (const { match, type, leadingSpace } of matches) {
+  for (const { match, type } of matches) {
     const matchStart = match.index || 0;
     const matchEnd = matchStart + match[0].length;
 
@@ -129,34 +126,20 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
       let linkHref = '';
       let linkTarget = '';
       
-      // Check if this is an HTML anchor tag with captured leading space
-      if (leadingSpace !== undefined) {
-        // HTML anchor tag with leading space: (\s*)<a\s+([^>]*?)>(.*?)<\/a>
-        const attributes = match[2] || '';
+      // Check if this is a malformed anchor tag (pattern 2)
+      if (match[0].includes('target="_blank"') && !match[0].startsWith('<a')) {
+        // Handle malformed anchor: a target="_blank" href="url"TextContent/a
+        linkHref = match[2] || '';
         linkText = match[3] || '';
+        linkTarget = '_blank';
         
-        console.log('Processing HTML anchor with leading space:', { fullMatch: match[0], leadingSpace, attributes, linkText });
-        
-        // Extract href with flexible matching
-        const hrefMatch = attributes.match(/href\s*=\s*["']([^"']+)["']/i);
-        linkHref = hrefMatch ? hrefMatch[1] : '';
-        
-        // Extract target
-        const targetMatch = attributes.match(/target\s*=\s*["']([^"']+)["']/i);
-        linkTarget = targetMatch ? targetMatch[1] : '';
-        
-        // Add leading whitespace as text first if it exists
-        if (leadingSpace) {
-          elements.push({ type: 'text', content: leadingSpace });
-        }
-        
-        console.log('Extracted HTML link data with space:', { leadingSpace, linkText, linkHref, linkTarget });
+        console.log('Processing malformed anchor:', { fullMatch: match[0], linkText, linkHref, linkTarget });
       } else if (match[0].toLowerCase().includes('<a')) {
-        // Standard HTML anchor tag without captured leading space
-        linkText = match[2] || match[3] || '';
-        const attributes = match[1] || match[2] || '';
+        // Standard HTML anchor tag
+        linkText = match[2] || ''; // Content between <a> and </a>
+        const attributes = match[1] || '';
         
-        console.log('Processing standard HTML anchor:', { fullMatch: match[0], attributes, linkText });
+        console.log('Processing HTML anchor:', { fullMatch: match[0], attributes, linkText });
         
         // Extract href with flexible matching
         const hrefMatch = attributes.match(/href\s*=\s*["']([^"']+)["']/i);
@@ -166,7 +149,7 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
         const targetMatch = attributes.match(/target\s*=\s*["']([^"']+)["']/i);
         linkTarget = targetMatch ? targetMatch[1] : '';
         
-        console.log('Extracted standard HTML link data:', { linkText, linkHref, linkTarget });
+        console.log('Extracted HTML link data:', { linkText, linkHref, linkTarget });
       } else {
         // Standard markdown link [text](url)
         linkText = (match[1] || '').replace(/\\(.)/g, '$1'); // Unescape characters
