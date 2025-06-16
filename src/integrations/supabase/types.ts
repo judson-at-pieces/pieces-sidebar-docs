@@ -320,69 +320,6 @@ export type Database = {
         }
         Relationships: []
       }
-      page_references: {
-        Row: {
-          count: number | null
-          first_seen: string
-          id: string
-          last_seen: string
-          page_path: string
-          referrer_domain: string
-          referrer_url: string | null
-        }
-        Insert: {
-          count?: number | null
-          first_seen?: string
-          id?: string
-          last_seen?: string
-          page_path: string
-          referrer_domain: string
-          referrer_url?: string | null
-        }
-        Update: {
-          count?: number | null
-          first_seen?: string
-          id?: string
-          last_seen?: string
-          page_path?: string
-          referrer_domain?: string
-          referrer_url?: string | null
-        }
-        Relationships: []
-      }
-      page_views: {
-        Row: {
-          created_at: string
-          id: string
-          ip_address: unknown | null
-          page_path: string
-          referrer: string | null
-          session_id: string | null
-          user_agent: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          ip_address?: unknown | null
-          page_path: string
-          referrer?: string | null
-          session_id?: string | null
-          user_agent?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          ip_address?: unknown | null
-          page_path?: string
-          referrer?: string | null
-          session_id?: string | null
-          user_agent?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       profiles: {
         Row: {
           created_at: string
@@ -404,33 +341,6 @@ export type Database = {
           full_name?: string | null
           id?: string
           updated_at?: string
-        }
-        Relationships: []
-      }
-      search_analytics: {
-        Row: {
-          created_at: string
-          id: string
-          query: string
-          results_count: number | null
-          session_id: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          query: string
-          results_count?: number | null
-          session_id?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          query?: string
-          results_count?: number | null
-          session_id?: string | null
-          user_id?: string | null
         }
         Relationships: []
       }
@@ -506,38 +416,11 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
-      get_popular_pages: {
-        Args: { days_back?: number; limit_count?: number }
-        Returns: {
-          page_path: string
-          view_count: number
-          unique_visitors: number
-          avg_daily_views: number
-        }[]
-      }
       get_public_documents: {
         Args: Record<PropertyKey, never>
         Returns: {
           file_path: string
           publicity: string
-        }[]
-      }
-      get_search_analytics: {
-        Args: { days_back?: number; limit_count?: number }
-        Returns: {
-          query: string
-          search_count: number
-          avg_results: number
-          last_searched: string
-        }[]
-      }
-      get_top_referrers: {
-        Args: { limit_count?: number }
-        Returns: {
-          referrer_domain: string
-          total_references: number
-          unique_pages: number
-          last_activity: string
         }[]
       }
       has_role: {
