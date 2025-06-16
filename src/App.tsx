@@ -34,7 +34,6 @@ function App() {
             <AuthProvider>
               <Router>
                 <Routes>
-                  <Route path="/" element={<DocsLayout />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/auth/callback" element={<AuthCallback />} />
                   <Route path="/admin/*" element={<Admin />} />
@@ -42,9 +41,7 @@ function App() {
                   <Route path="/sitemap.xml" element={<Sitemap />} />
                   <Route path="/llms.txt" element={<LLMText />} />
                   <Route path="/llms-full.txt" element={<LLMTextFull />} />
-                  <Route path="/docs/*" element={<DocsLayout />} />
-                  <Route path="/*" element={<DocsLayout />} />
-                  <Route path="*" element={<NotFound />} />
+                  <Route path="*" element={<DocsLayout />} />
                 </Routes>
                 <Toaster />
               </Router>
