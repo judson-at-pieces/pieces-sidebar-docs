@@ -1,0 +1,33 @@
+
+FIXES APPLIED TO pieces-os.md
+================================
+
+The following HTML formatting issues were identified and corrected:
+
+1. MISSING OPENING ANGLE BRACKETS ON LINKS (Line 21):
+   - Fixed: a target="_blank" href="https://docs.pieces.app/products/extensions-plugins/jetbrains">IntelliJ</a>
+   - To: <a target="_blank" href="https://docs.pieces.app/products/extensions-plugins/jetbrains">IntelliJ</a>
+   
+   - Fixed: a target="_blank" href="https://docs.pieces.app/products/extensions-plugins/visual-studio-code">Visual Studio Code</a>
+   - To: <a target="_blank" href="https://docs.pieces.app/products/extensions-plugins/visual-studio-code">Visual Studio Code</a>
+   
+   - Fixed: a target="_blank" href="https://docs.pieces.app/products/extensions-plugins/sublime">Sublime Text</a>
+   - To: <a target="_blank" href="https://docs.pieces.app/products/extensions-plugins/sublime">Sublime Text</a>
+
+2. MISSING OPENING BRACKET ON CARD COMPONENT (Line 45):
+   - Fixed: Card title="Want a Sneak Peak?" image="https://cdn.hashnode.com/res/hashnode/image/upload/v1745425239243/516a20d3-2664-4f22-9b32-f0f14924a87a.webp">
+   - To: <Card title="Want a Sneak Peak?" image="https://cdn.hashnode.com/res/hashnode/image/upload/v1745425239243/516a20d3-2664-4f22-9b32-f0f14924a87a.webp">
+
+3. MALFORMED LINK INSIDE CARD CONTENT (Line 46):
+   - Fixed: Here's a a target="_blank" href="https://tsavo.hashnode.dev/temporal-nano-model-breakthrough"quick read on some of the nano-models/a
+   - To: Here's a <a target="_blank" href="https://tsavo.hashnode.dev/temporal-nano-model-breakthrough">quick read on some of the nano-models</a>
+
+4. MISSING OPENING BRACKET ON SECOND CARD COMPONENT (Line 146):
+   - Fixed: Card title="Pieces + MCP" image="https://cdn.hashnode.com/res/hashnode/image/upload/v1744828766164/e0d722d2-f173-48e4-8de1-ec13d00769a3.png">
+   - To: <Card title="Pieces + MCP" image="https://cdn.hashnode.com/res/hashnode/image/upload/v1744828766164/e0d722d2-f173-48e4-8de1-ec13d00769a3.png">
+
+ROOT CAUSE:
+These issues appear to be caused by missing opening angle brackets (<) on HTML elements, which prevents the custom syntax processor and markdown renderer from recognizing and processing them correctly.
+
+EXPECTED RESULT:
+After these fixes, images, links, and Card components should render properly in the documentation.
