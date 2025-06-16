@@ -5,10 +5,14 @@
  */
 
 export interface ProcessedMarkdown {
-  type: 'text' | 'bold' | 'italic' | 'code' | 'link';
+  type: 'text' | 'bold' | 'italic' | 'code' | 'link' | 'image';
   content: string;
   href?: string;
   target?: string;
+  src?: string;
+  alt?: string;
+  align?: string;
+  fullwidth?: boolean;
 }
 
 // Allowlist of safe URL protocols
@@ -44,7 +48,7 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
   const elements: ProcessedMarkdown[] = [];
   let currentIndex = 0;
 
-  // Process markdown patterns safely - including raw HTML anchor tags
+  // Process markdown patterns safely - including raw HTML anchor tags and Image tags
   const patterns = [
     { regex: /`([^`]+)`/g, type: 'code' as const },
     { regex: /\*\*(.*?)\*\*/g, type: 'bold' as const },
@@ -52,7 +56,9 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
     // Updated regex to handle escaped brackets in markdown links
     { regex: /\[([^\]]*(?:\\.[^\]]*)*)\]\(([^)]+)\)/g, type: 'link' as const },
     // Add pattern for raw HTML anchor tags
-    { regex: /<a\s+([^>]*?)>([^<]+)<\/a>/g, type: 'link' as const }
+    { regex: /<a\s+([^>]*?)>([^<]+)<\/a>/g, type: 'link' as const },
+    // Add pattern for Image tags
+    { regex: /<Image\s+([^>]*?)\/>/g, type: 'image' as const }
   ];
 
   const matches: Array<{ match: RegExpMatchArray; type: ProcessedMarkdown['type'] }> = [];
@@ -82,7 +88,34 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
     }
 
     // Add the matched element
-    if (type === 'link') {
+    if (type === 'image') {
+      const attributes = match[1];
+      
+      // Extract image attributes
+      const srcMatch = attributes.match(/src=["']([^"']+)["']/);
+      const altMatch = attributes.match(/alt=["']([^"']*)["']/);
+      const alignMatch = attributes.match(/align=["']([^"']*)["']/);
+      const fullwidthMatch = attributes.match(/fullwidth=["']([^"']*)["']/);
+      
+      const imageSrc = srcMatch ? srcMatch[1] : '';
+      const imageAlt = altMatch ? altMatch[1] : '';
+      const imageAlign = alignMatch ? alignMatch[1] : 'center';
+      const imageFullwidth = fullwidthMatch ? fullwidthMatch[1] === 'true' : false;
+      
+      if (validateUrl(imageSrc)) {
+        elements.push({ 
+          type: 'image', 
+          content: imageAlt,
+          src: imageSrc,
+          alt: imageAlt,
+          align: imageAlign,
+          fullwidth: imageFullwidth
+        });
+      } else {
+        // If URL is invalid, treat as plain text
+        elements.push({ type: 'text', content: match[0] });
+      }
+    } else if (type === 'link') {
       let linkText = '';
       let linkHref = '';
       let linkTarget = '';

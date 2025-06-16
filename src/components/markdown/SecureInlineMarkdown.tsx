@@ -41,6 +41,27 @@ export function SecureInlineMarkdown({ content, className }: SecureInlineMarkdow
           </a>
         );
       
+      case 'image':
+        const alignmentClass = {
+          left: 'text-left',
+          center: 'text-center',
+          right: 'text-right'
+        }[element.align || 'center'] || 'text-center';
+        
+        const widthClass = element.fullwidth ? 'w-full' : 'max-w-full';
+        
+        return (
+          <div key={index} className={`my-6 ${alignmentClass}`}>
+            <img 
+              src={element.src} 
+              alt={element.alt || ''} 
+              className={`rounded-lg ${widthClass} h-auto`}
+              loading="lazy"
+              decoding="async"
+            />
+          </div>
+        );
+      
       case 'text':
       default:
         return <span key={index}>{element.content}</span>;
