@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import {
@@ -168,7 +167,7 @@ export function AnalyticsDashboard() {
         .gte('created_at', new Date(Date.now() - daysBack * 24 * 60 * 60 * 1000).toISOString());
 
       setStats({
-        totalViews: viewsCount || 0,
+        totalViews: Math.ceil((viewsCount || 0) / 2), // Divide by 2 and round up
         totalUsers: uniqueVisitors,
         totalPages: uniquePageCount,
         totalSearches: searchCount || 0
@@ -336,13 +335,13 @@ export function AnalyticsDashboard() {
                           </div>
                         </TableCell>
                         <TableCell className="text-right font-mono text-sm py-2">
-                          {page.view_count.toLocaleString()}
+                          {Math.ceil(page.view_count / 2).toLocaleString()}
                         </TableCell>
                         <TableCell className="text-right font-mono text-sm py-2">
                           {page.unique_visitors.toLocaleString()}
                         </TableCell>
                         <TableCell className="text-right font-mono text-sm py-2">
-                          {Number(page.avg_daily_views).toFixed(1)}
+                          {Number(page.avg_daily_views / 2).toFixed(1)}
                         </TableCell>
                       </TableRow>
                     ))
