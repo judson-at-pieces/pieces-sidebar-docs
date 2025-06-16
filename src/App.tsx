@@ -1,3 +1,4 @@
+
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { Toaster } from '@/components/ui/toaster';
@@ -6,7 +7,7 @@ import { AuthProvider } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/components/ThemeProvider';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 
-import Index from '@/pages/Index';
+import DocsLayout from '@/components/DocsLayout';
 import Auth from '@/pages/Auth';
 import AuthCallback from '@/pages/AuthCallback';
 import Admin from '@/pages/Admin';
@@ -33,7 +34,7 @@ function App() {
             <AuthProvider>
               <Router>
                 <Routes>
-                  <Route path="/" element={<Index />} />
+                  <Route path="/" element={<DocsLayout />} />
                   <Route path="/auth" element={<Auth />} />
                   <Route path="/auth/callback" element={<AuthCallback />} />
                   <Route path="/admin/*" element={<Admin />} />
@@ -41,7 +42,8 @@ function App() {
                   <Route path="/sitemap.xml" element={<Sitemap />} />
                   <Route path="/llms.txt" element={<LLMText />} />
                   <Route path="/llms-full.txt" element={<LLMTextFull />} />
-                  <Route path="/docs/*" element={<Index />} />
+                  <Route path="/docs/*" element={<DocsLayout />} />
+                  <Route path="/*" element={<DocsLayout />} />
                   <Route path="*" element={<NotFound />} />
                 </Routes>
                 <Toaster />
