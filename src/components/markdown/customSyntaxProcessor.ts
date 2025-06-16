@@ -1,4 +1,3 @@
-
 // Client-side processor for custom markdown syntax
 
 // Security utilities for safe HTML attribute handling
@@ -63,7 +62,7 @@ export function processCustomSyntax(content: string): string {
           return match; // Return original if invalid type
         }
         
-        return `<div data-callout="${safeType}" data-title="${safeTitle}">\n\n${safeContent}\n\n</div>`;
+        return `<Callout type="${safeType}" title="${safeTitle}">\n\n${safeContent}\n\n</Callout>`;
       }
     );
 
@@ -80,7 +79,7 @@ export function processCustomSyntax(content: string): string {
           return match; // Return original if invalid type
         }
         
-        return `<div data-callout="${safeType}">\n\n${safeContent}\n\n</div>`;
+        return `<Callout type="${safeType}">\n\n${safeContent}\n\n</Callout>`;
       }
     );
 
@@ -88,21 +87,18 @@ export function processCustomSyntax(content: string): string {
     processedContent = processedContent.replace(/<CardGroup\s+cols=\{(\d+)\}>/gi, (match, cols) => {
       const numCols = parseInt(cols, 10);
       if (isNaN(numCols) || numCols < 1 || numCols > 6) {
-        return '<div data-cardgroup="true" data-cols="2">'; // Default fallback
+        return '<CardGroup cols={2}>'; // Default fallback
       }
-      return `<div data-cardgroup="true" data-cols="${numCols}">`;
+      return `<CardGroup cols={${numCols}}>`;
     });
     
     processedContent = processedContent.replace(/<CardGroup>/gi, () => {
-      return '<div data-cardgroup="true" data-cols="2">';
+      return '<CardGroup cols={2}>';
     });
     
-    processedContent = processedContent.replace(/<\/CardGroup>/gi, () => {
-      return '</div>';
-    });
+    // Don't replace </CardGroup> - keep it as is
 
-    // Transform Card components - Use direct HTML instead of special syntax
-    // First handle self-closing cards
+    // Transform Card components - preserve original JSX syntax
     processedContent = processedContent.replace(/<Card\s+([^>]*?)\/>/gi, (match, attributes) => {
       try {
         const titleMatch = attributes.match(/title="([^"]*)"/);
@@ -111,20 +107,27 @@ export function processCustomSyntax(content: string): string {
         const externalMatch = attributes.match(/external=["']([^"']*)["']/);
         const iconMatch = attributes.match(/icon="([^"]*)"/);
         
-        const title = sanitizeAttribute(titleMatch ? titleMatch[1] : '');
-        const image = validateUrl(imageMatch ? imageMatch[1] : '');
-        const href = validateUrl(hrefMatch ? hrefMatch[1] : '');
-        const external = sanitizeAttribute(externalMatch ? externalMatch[1] : '');
-        const icon = sanitizeAttribute(iconMatch ? iconMatch[1] : '');
+        const title = titleMatch ? titleMatch[1] : '';
+        const image = imageMatch ? imageMatch[1] : '';
+        const href = hrefMatch ? hrefMatch[1] : '';
+        const external = externalMatch ? externalMatch[1] : '';
+        const icon = iconMatch ? iconMatch[1] : '';
         
-        return `<div data-card="true" data-title="${title}" data-image="${image}" data-href="${href}" data-external="${external}" data-icon="${icon}"></div>`;
+        let cardProps = '';
+        if (title) cardProps += ` title="${title}"`;
+        if (image) cardProps += ` image="${image}"`;
+        if (href) cardProps += ` href="${href}"`;
+        if (external) cardProps += ` external="${external}"`;
+        if (icon) cardProps += ` icon="${icon}"`;
+        
+        return `<Card${cardProps} />`;
       } catch (error) {
         console.warn('Error parsing Card attributes:', error);
-        return '<div data-card="true"></div>';
+        return '<Card />';
       }
     });
 
-    // Then handle Card components with content - Use direct HTML
+    // Transform Card components with content - preserve JSX
     processedContent = processedContent.replace(/<Card\s+([^>]*?)>([\s\S]*?)<\/Card>/gi, (match, attributes, innerContent) => {
       try {
         console.log('🔧 Processing Card with content:', { attributes, innerContent: innerContent.substring(0, 100) });
@@ -135,57 +138,53 @@ export function processCustomSyntax(content: string): string {
         const externalMatch = attributes.match(/external=["']([^"']*)["']/);
         const iconMatch = attributes.match(/icon="([^"]*)"/);
         
-        const title = sanitizeAttribute(titleMatch ? titleMatch[1] : '');
-        const image = validateUrl(imageMatch ? imageMatch[1] : '');
-        const href = validateUrl(hrefMatch ? hrefMatch[1] : '');
-        const external = sanitizeAttribute(externalMatch ? externalMatch[1] : '');
-        const icon = sanitizeAttribute(iconMatch ? iconMatch[1] : '');
+        const title = titleMatch ? titleMatch[1] : '';
+        const image = imageMatch ? imageMatch[1] : '';
+        const href = hrefMatch ? hrefMatch[1] : '';
+        const external = externalMatch ? externalMatch[1] : '';
+        const icon = iconMatch ? iconMatch[1] : '';
         
-        // PRESERVE the inner content exactly as is - this is crucial for markdown processing
+        let cardProps = '';
+        if (title) cardProps += ` title="${title}"`;
+        if (image) cardProps += ` image="${image}"`;
+        if (href) cardProps += ` href="${href}"`;
+        if (external) cardProps += ` external="${external}"`;
+        if (icon) cardProps += ` icon="${icon}"`;
+        
+        // PRESERVE the inner content exactly as is
         const preservedContent = innerContent || '';
         
         console.log('🔧 Card transformation result:', { title, image, href, external, icon, contentLength: preservedContent.length });
         
-        // Use direct HTML that will be processed by ReactMarkdown
-        return `<div data-card="true" data-title="${title}" data-image="${image}" data-href="${href}" data-external="${external}" data-icon="${icon}">\n\n${preservedContent}\n\n</div>`;
+        return `<Card${cardProps}>\n\n${preservedContent}\n\n</Card>`;
       } catch (error) {
         console.warn('Error parsing Card attributes:', error);
-        return `<div data-card="true">\n\n${innerContent || ''}\n\n</div>`;
+        return `<Card>\n\n${innerContent || ''}\n\n</Card>`;
       }
     });
 
-    // Transform Steps and Step components to HTML
+    // Transform Steps and Step components to JSX
     processedContent = processedContent.replace(/<Steps>/gi, () => {
-      return '<div data-steps="true">';
+      return '<Steps>';
     });
     
-    processedContent = processedContent.replace(/<\/Steps>/gi, () => {
-      return '</div>';
-    });
+    // Don't replace </Steps> - keep it as is
     
     processedContent = processedContent.replace(/<Step\s+([^>]*)>([\s\S]*?)<\/Step>/gi, (match, attributes, innerContent) => {
-      const numberMatch = attributes.match(/number="(\d+)"/);
       const titleMatch = attributes.match(/title="([^"]*)"/);
-      
-      const stepNum = parseInt(numberMatch ? numberMatch[1] : '1', 10);
-      if (isNaN(stepNum) || stepNum < 1 || stepNum > 999) {
-        return match; // Return original if invalid number
-      }
-      
-      const safeTitle = sanitizeAttribute(titleMatch ? titleMatch[1] : '');
+      const title = titleMatch ? titleMatch[1] : '';
       const safeContent = innerContent ? innerContent.trim() : '';
       
-      return `<div data-step="${stepNum}" data-step-title="${safeTitle}">\n\n${safeContent}\n\n</div>`;
+      return `<Step title="${title}">\n\n${safeContent}\n\n</Step>`;
     });
 
-    // Transform Image components - ENSURE they have proper opening brackets
-    // First fix any Image tags that are missing opening bracket
+    // Transform Image components - ENSURE they have proper opening brackets and preserve as JSX
     processedContent = processedContent.replace(
       /(?<!<)Image\s+([^>]*?)\/>/gi,
       '<Image $1/>'
     );
     
-    // Then transform Image components - PRESERVE them as standard img tags
+    // Transform Image components - keep as JSX
     processedContent = processedContent.replace(
       /<Image\s+([^>]*?)\/>/gi,
       (match, attributes) => {
@@ -197,40 +196,54 @@ export function processCustomSyntax(content: string): string {
           const alignMatch = attributes.match(/align="([^"]*)"/);
           const fullwidthMatch = attributes.match(/fullwidth="([^"]*)"/);
           
-          const src = validateUrl(srcMatch ? srcMatch[1] : '');
-          if (!src) {
-            console.warn('Invalid or unsafe image URL:', srcMatch ? srcMatch[1] : 'no src');
-            return ''; // Remove invalid images
-          }
+          const src = srcMatch ? srcMatch[1] : '';
+          const alt = altMatch ? altMatch[1] : '';
+          const align = alignMatch ? alignMatch[1] : 'center';
+          const fullwidth = fullwidthMatch ? fullwidthMatch[1] : 'false';
           
-          const alt = sanitizeAttribute(altMatch ? altMatch[1] : '');
-          const align = sanitizeAttribute(alignMatch ? alignMatch[1] : 'center');
-          const fullwidth = sanitizeAttribute(fullwidthMatch ? fullwidthMatch[1] : 'false');
+          if (!src) {
+            console.warn('Image missing src:', attributes);
+            return '';
+          }
           
           console.log('🔧 Image transformation result:', { src, alt, align, fullwidth });
           
-          return `<img src="${src}" alt="${alt}" data-align="${align}" data-fullwidth="${fullwidth}" />`;
+          return `<Image src="${src}" alt="${alt}" align="${align}" fullwidth="${fullwidth}" />`;
         } catch (error) {
           console.warn('Error parsing Image attributes:', error);
-          return match; // Return original on error
+          return match;
         }
       }
     );
 
-    // Transform ExpandableImage components to HTML
+    // Transform ExpandableImage components to JSX
     processedContent = processedContent.replace(
       /<ExpandableImage\s+src="([^"]*)"(?:\s+alt="([^"]*)")?(?:\s+caption="([^"]*)")?\/>/gi, 
       (match, src, alt, caption) => {
-        const safeSrc = validateUrl(src);
-        if (!safeSrc) {
-          console.warn('Invalid or unsafe image URL:', src);
-          return ''; // Remove invalid images
+        if (!src) {
+          console.warn('ExpandableImage missing src');
+          return '';
         }
         
-        const safeAlt = sanitizeAttribute(alt || '');
-        const safeCaption = sanitizeAttribute(caption || '');
+        const safeAlt = alt || '';
+        const safeCaption = caption || '';
         
-        return `<img src="${safeSrc}" alt="${safeAlt}" data-caption="${safeCaption}" />`;
+        return `<ExpandableImage src="${src}" alt="${safeAlt}" caption="${safeCaption}" />`;
+      }
+    );
+
+    // Transform Embed components to JSX (for YouTube)
+    processedContent = processedContent.replace(
+      /<Embed\s+src="([^"]*)"(?:\s+title="([^"]*)")?\/>/gi,
+      (match, src, title) => {
+        if (!src) {
+          console.warn('Embed missing src');
+          return '';
+        }
+        
+        const safeTitle = title || '';
+        
+        return `<Embed src="${src}" title="${safeTitle}" />`;
       }
     );
 
