@@ -161,7 +161,9 @@ export function EditorLayout() {
       isLoading: editor.isLoading,
       isAutoSaving: editor.isAutoSaving,
       isFileLocked: editor.isFileLocked,
-      lockOwnerName: editor.lockOwnerName
+      lockOwnerName: editor.lockOwnerName,
+      sessionsLength: sessions.length,
+      hasChanges: sessions.some(s => s.content && s.content.trim())
     });
   }
 
@@ -202,7 +204,7 @@ export function EditorLayout() {
   }
 
   const totalLiveFiles = sessions.filter(s => s.content && s.content.trim()).length;
-  const hasChanges = editor.selectedFile ? editor.localContent !== "" : false;
+  const hasChanges = totalLiveFiles > 0 || (editor.selectedFile ? editor.localContent !== "" : false);
 
   // Convert Branch[] to string[] for the component
   const branchNames = branches.map(branch => branch.name);
