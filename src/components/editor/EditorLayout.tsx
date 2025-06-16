@@ -12,7 +12,6 @@ import { Button } from "@/components/ui/button";
 import { EditorMainHeader } from "./EditorMainHeader";
 import { NewEditorTabNavigation } from "./NewEditorTabNavigation";
 import { navigationService } from "@/services/navigationService";
-import { FolderVisibilityPanel } from "./FolderVisibilityPanel";
 
 const DEBUG_EDITOR = true;
 
@@ -24,7 +23,7 @@ export function EditorLayout() {
   // Use the new simplified branch editor
   const editor = useBranchEditor();
   
-  const [activeTab, setActiveTab] = useState<'navigation' | 'content' | 'seo' | 'folders'>('content');
+  const [activeTab, setActiveTab] = useState<'navigation' | 'content' | 'seo'>('content');
   const [fileVisibility, setFileVisibility] = useState<{[filePath: string]: boolean}>({});
 
   // Get current file's visibility state
@@ -106,9 +105,6 @@ export function EditorLayout() {
   const totalLiveFiles = sessions.filter(s => s.content && s.content.trim()).length;
   const hasChanges = editor.selectedFile ? editor.localContent !== "" : false;
 
-  // Convert Branch[] to string[] for the component
-  const branchNames = branches.map(branch => branch.name);
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/10">
       <EditorMainHeader 
@@ -130,7 +126,7 @@ export function EditorLayout() {
             sessions={sessions}
             hasChanges={hasChanges}
             initialized={initialized}
-            branches={branchNames}
+            branches={branches}
           />
           
           {/* Show loading overlay when loading files */}
@@ -161,13 +157,6 @@ export function EditorLayout() {
                   />
                 </div>
               </>
-            ) : activeTab === 'folders' ? (
-              <div className="flex-1 animate-in fade-in slide-in-from-top-2 duration-300">
-                <FolderVisibilityPanel
-                  fileStructure={fileStructure}
-                  onVisibilityChange={refetch}
-                />
-              </div>
             ) : activeTab === 'seo' ? (
               <div className="flex-1">
                 <SeoEditor
