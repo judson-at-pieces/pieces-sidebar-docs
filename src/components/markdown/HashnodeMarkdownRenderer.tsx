@@ -38,14 +38,12 @@ interface MarkdownRendererProps {
 // Utility functions
 const parseSections = (text: string): ParsedSection[] => {
   console.log('🔍 parseSections: Input text length:', text.length);
-  console.log('🔍 parseSections: Full input text:', text);
   
   const sections = text.split(SECTION_DELIMITER).map(section => section.trim()).filter(Boolean);
   console.log('🔍 parseSections: Split into', sections.length, 'sections');
   
   return sections.map((section, index) => {
     console.log(`🔍 Parsing section ${index}:`, section.substring(0, 100));
-    console.log(`🔍 Full section ${index} content:`, section);
     
     if (section.startsWith(FRONTMATTER_PATTERN) && section.includes(TITLE_PATTERN)) {
       console.log('📋 Found frontmatter section');
@@ -56,12 +54,12 @@ const parseSections = (text: string): ParsedSection[] => {
       return { type: 'image', content: section, index };
     }
     
-    // Check for mixed content - sections that contain multiple types of elements
+    // Check for Card components more reliably
+    const hasCard = section.includes(CARD_PATTERN) && !section.includes(CARDGROUP_PATTERN);
     const hasCardGroup = section.includes(CARDGROUP_PATTERN);
     const hasSteps = section.includes(STEPS_PATTERN);
     const hasCallout = section.includes(CALLOUT_PATTERN);
     const hasImage = section.includes(IMAGE_PATTERN) || section.includes('<img');
-    const hasCard = section.includes(CARD_PATTERN) && !hasCardGroup;
     
     // Count markdown lines (non-empty lines that aren't special elements)
     const lines = section.split('\n').filter(line => line.trim());
@@ -87,43 +85,27 @@ const parseSections = (text: string): ParsedSection[] => {
     });
     
     // If we have significant markdown content along with special elements, treat as mixed
-    if (markdownLines > 5 && (hasCardGroup || hasSteps || hasCallout || hasImage || hasCard)) {
+    if (markdownLines > 3 && (hasCardGroup || hasSteps || hasCallout || hasImage || hasCard)) {
       console.log('🔀 Found mixed content section!');
       return { type: 'mixed', content: section, index };
     }
     
     // Pure special element sections
-    if (hasCardGroup && !hasSteps && !hasCallout && markdownLines <= 5) {
+    if (hasCardGroup && markdownLines <= 3) {
       console.log('🃏 Found pure CardGroup section!');
       return { type: 'cardgroup', content: section, index };
     }
-    if (hasSteps && !hasCardGroup && !hasCallout && markdownLines <= 5) {
+    if (hasSteps && markdownLines <= 3) {
       console.log('👣 Found pure Steps section!');
       return { type: 'steps', content: section, index };
     }
-    if (section.startsWith(ACCORDIONGROUP_PATTERN)) {
-      console.log('📁 Found AccordionGroup section');
-      return { type: 'accordiongroup', content: section, index };
-    }
-    if (section.startsWith(ACCORDION_PATTERN)) {
-      console.log('📂 Found Accordion section');
-      return { type: 'accordion', content: section, index };
-    }
-    if (section.startsWith(TABS_PATTERN)) {
-      console.log('📑 Found Tabs section');
-      return { type: 'tabs', content: section, index };
-    }
-    if (section.startsWith(BUTTON_PATTERN)) {
-      console.log('🔘 Found Button section');
-      return { type: 'button', content: section, index };
-    }
-    if (section.startsWith(CARD_PATTERN) && !section.includes(CARDGROUP_PATTERN)) {
-      console.log('🎯 Found standalone Card section');
-      return { type: 'card', content: section, index };
-    }
-    if (section.startsWith(CALLOUT_PATTERN) && !hasSteps && !hasCardGroup) {
+    if (section.startsWith(CALLOUT_PATTERN)) {
       console.log('💬 Found pure Callout section');
       return { type: 'callout', content: section, index };
+    }
+    if (hasCard && markdownLines <= 3) {
+      console.log('🎯 Found standalone Card section');
+      return { type: 'card', content: section, index };
     }
     
     console.log('📝 Found markdown section');
@@ -183,7 +165,6 @@ interface CardGroupData {
 const parseCardGroup = (content: string): CardGroupData => {
   console.log('🃏 Parsing CardGroup content:', content.substring(0, 200));
   
-  // Updated regex to handle both {2} and 2 formats
   const colsMatch = content.match(/<CardGroup[^>]*cols=\{?(\d+)\}?/);
   const cols = colsMatch ? parseInt(colsMatch[1]) : 2;
   
@@ -217,100 +198,7 @@ const parseCardGroup = (content: string): CardGroupData => {
   return { cols, cards };
 };
 
-// Parse Accordion
-interface AccordionData {
-  title: string;
-  content: string;
-}
-
-const parseAccordion = (content: string): AccordionData => {
-  const titleMatch = content.match(/title="([^"]*)"/);
-  const contentMatch = content.match(/<Accordion[^>]*>([\s\S]*?)<\/Accordion>/);
-  
-  return {
-    title: titleMatch?.[1] || '',
-    content: contentMatch?.[1]?.trim() || ''
-  };
-};
-
-// Parse AccordionGroup
-const parseAccordionGroup = (content: string): AccordionData[] => {
-  const accordionRegex = /<Accordion\s+([^>]*)>([\s\S]*?)<\/Accordion>/g;
-  const accordions: AccordionData[] = [];
-  
-  let match: RegExpExecArray | null;
-  while ((match = accordionRegex.exec(content)) !== null) {
-    const attributes = match[1];
-    const innerContent = match[2].trim();
-    
-    const titleMatch = attributes.match(/title="([^"]*)"/);
-    const title = titleMatch ? titleMatch[1] : '';
-    
-    accordions.push({
-      title,
-      content: innerContent
-    });
-  }
-  
-  return accordions;
-};
-
-// Parse Tabs
-interface TabData {
-  title: string;
-  content: string;
-}
-
-const parseTabs = (content: string): TabData[] => {
-  const tabRegex = /<TabItem\s+([^>]*)>([\s\S]*?)<\/TabItem>/g;
-  const tabs: TabData[] = [];
-  
-  let match: RegExpExecArray | null;
-  while ((match = tabRegex.exec(content)) !== null) {
-    const attributes = match[1];
-    const innerContent = match[2].trim();
-    
-    const titleMatch = attributes.match(/title="([^"]*)"/);
-    const title = titleMatch ? titleMatch[1] : '';
-    
-    tabs.push({
-      title,
-      content: innerContent
-    });
-  }
-  
-  return tabs;
-};
-
-// Parse Button
-interface ButtonData {
-  label: string;
-  linkHref: string;
-  openLinkInNewTab: boolean;
-  align: string;
-  lightColor?: string;
-  darkColor?: string;
-}
-
-const parseButton = (content: string): ButtonData => {
-  const labelMatch = content.match(/label="([^"]*)"/);
-  const linkHrefMatch = content.match(/linkHref="([^"]*)"/);
-  const openLinkInNewTabMatch = content.match(/openLinkInNewTab="([^"]*)"/);
-  const alignMatch = content.match(/align="([^"]*)"/);
-  const lightColorMatch = content.match(/lightColor="([^"]*)"/);
-  const darkColorMatch = content.match(/darkColor="([^"]*)"/);
-  
-  return {
-    label: labelMatch?.[1] || '',
-    linkHref: linkHrefMatch?.[1] || '#',
-    openLinkInNewTab: openLinkInNewTabMatch?.[1] === 'true',
-    align: alignMatch?.[1] || 'left',
-    lightColor: lightColorMatch?.[1],
-    darkColor: darkColorMatch?.[1]
-  };
-};
-
-// Parse Steps - Updated to handle the markdown format properly
+// Parse Steps
 interface StepData {
   title: string;
   content: string;
@@ -319,7 +207,6 @@ interface StepData {
 const parseSteps = (content: string): StepData[] => {
   console.log('👣 Parsing Steps content:', content);
   
-  // First, try to find the <Steps> block
   const stepsMatch = content.match(/<Steps>([\s\S]*?)<\/Steps>/);
   if (!stepsMatch) {
     console.log('👣 No <Steps> block found');
@@ -329,7 +216,6 @@ const parseSteps = (content: string): StepData[] => {
   const stepsContent = stepsMatch[1];
   console.log('👣 Steps inner content:', stepsContent);
   
-  // Parse individual <Step> elements
   const stepRegex = /<Step\s+title="([^"]*)"[^>]*>([\s\S]*?)<\/Step>/g;
   const steps: StepData[] = [];
   
@@ -352,14 +238,6 @@ const parseSteps = (content: string): StepData[] => {
 
 const processInlineMarkdown = (text: string): React.ReactNode => {
   console.log('🔄 processInlineMarkdown: Processing text with secure renderer');
-  const sanitizedText = sanitizeText(text);
-  return <SecureInlineMarkdown content={sanitizedText} />;
-};
-
-const processSimpleMarkdown = (text: string): React.ReactNode => {
-  if (!text) return null;
-  
-  // Use secure inline markdown instead of dangerouslySetInnerHTML
   const sanitizedText = sanitizeText(text);
   return <SecureInlineMarkdown content={sanitizedText} />;
 };
@@ -456,90 +334,6 @@ const CardGroupSection: React.FC<{ cols: number; cards: CardData[] }> = ({ cols,
   );
 };
 
-// Parse Accordion
-const AccordionSection: React.FC<{ accordion: AccordionData }> = ({ accordion }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  
-  console.log('📂 AccordionSection rendering:', { title: accordion.title, content: accordion.content });
-  
-  return (
-    <div className="hn-accordion">
-      <button 
-        className="hn-accordion-trigger" 
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        {accordion.title}
-        <span className={`hn-accordion-icon ${isOpen ? 'open' : ''}`}>▼</span>
-      </button>
-      {isOpen && (
-        <div className="hn-accordion-content">
-          {processInlineMarkdown(accordion.content)}
-        </div>
-      )}
-    </div>
-  );
-};
-
-// Parse AccordionGroup
-const AccordionGroupSection: React.FC<{ accordions: AccordionData[] }> = ({ accordions }) => {
-  console.log('📁 AccordionGroupSection rendering:', { count: accordions.length });
-  return (
-    <div className="hn-accordion-group">
-      {accordions.map((accordion, index) => (
-        <AccordionSection key={index} accordion={accordion} />
-      ))}
-    </div>
-  );
-};
-
-// Parse Tabs
-const TabsSection: React.FC<{ tabs: TabData[] }> = ({ tabs }) => {
-  const [activeTab, setActiveTab] = useState(0);
-  
-  console.log('📑 TabsSection rendering:', { tabCount: tabs.length });
-  
-  return (
-    <div className="hn-tabs">
-      <div className="hn-tabs-list">
-        {tabs.map((tab, index) => (
-          <button
-            key={index}
-            className={`hn-tab-trigger ${activeTab === index ? 'active' : ''}`}
-            onClick={() => setActiveTab(index)}
-          >
-            {tab.title}
-          </button>
-        ))}
-      </div>
-      <div className="hn-tab-content">
-        {processInlineMarkdown(tabs[activeTab]?.content || '')}
-      </div>
-    </div>
-  );
-};
-
-// Parse Button
-const ButtonSection: React.FC<{ button: ButtonData }> = ({ button }) => {
-  console.log('🔘 ButtonSection rendering:', button);
-  return (
-    <div className={`hn-button-container ${button.align}`}>
-      <a
-        href={button.linkHref}
-        target={button.openLinkInNewTab ? '_blank' : '_self'}
-        rel={button.openLinkInNewTab ? 'noopener noreferrer' : undefined}
-        className="hn-button"
-        style={({
-          backgroundColor: button.lightColor,
-          '--dark-color': button.darkColor
-        } as React.CSSProperties)}
-      >
-        {button.label}
-      </a>
-    </div>
-  );
-};
-
-// Updated Steps Section to use secure markdown rendering
 const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => {
   const [modalImage, setModalImage] = useState<{ src: string; alt: string } | null>(null);
   
@@ -557,7 +351,7 @@ const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => {
     <>
       <Steps>
         {steps.map((step, index) => (
-          <Step key={index} title={step.title}>
+          <Step key={`step-${index}`} title={step.title}>
             <div 
               className="[&_img]:rounded-lg [&_img]:my-4 [&_img]:cursor-pointer [&_img]:transition-transform [&_img]:duration-200 [&_img:hover]:-translate-y-1" 
               onClick={handleImageClick}
@@ -569,26 +363,12 @@ const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => {
       </Steps>
       
       {modalImage && (
-        <div 
-          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
-          onClick={() => setModalImage(null)}
-        >
-          <div className="relative max-w-[90vw] max-h-[90vh]">
-            <button
-              onClick={() => setModalImage(null)}
-              className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors bg-black/50 rounded-full p-2"
-              aria-label="Close image"
-            >
-              <X size={24} />
-            </button>
-            <img 
-              src={modalImage.src} 
-              alt={modalImage.alt} 
-              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
-              onClick={(e) => e.stopPropagation()}
-            />
-          </div>
-        </div>
+        <ImageModal 
+          src={modalImage.src} 
+          alt={modalImage.alt} 
+          isOpen={true} 
+          onClose={() => setModalImage(null)} 
+        />
       )}
     </>
   );
@@ -610,70 +390,31 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
   
   const allMatches: Array<{ match: RegExpMatchArray; type: string }> = [];
   
-  // Find Steps first (so we can exclude images inside them)
-  let match;
-  while ((match = stepsRegex.exec(content)) !== null) {
-    allMatches.push({ match, type: 'steps' });
-  }
-  
-  // Find CardGroups
-  stepsRegex.lastIndex = 0;
-  while ((match = cardGroupRegex.exec(content)) !== null) {
-    allMatches.push({ match, type: 'cardgroup' });
-  }
-  
-  // Find Callouts
-  cardGroupRegex.lastIndex = 0;
-  while ((match = calloutRegex.exec(content)) !== null) {
-    allMatches.push({ match, type: 'callout' });
-  }
-  
-  // Find Images (both <Image> and <img> tags, but exclude ones inside Steps)
-  calloutRegex.lastIndex = 0;
-  const stepsMatches = allMatches.filter(m => m.type === 'steps');
-  
-  // Check for <Image> tags
-  while ((match = imageRegex.exec(content)) !== null) {
-    const isInSteps = stepsMatches.some(stepsMatch => {
-      const stepsStart = stepsMatch.match.index!;
-      const stepsEnd = stepsStart + stepsMatch.match[0].length;
-      return match.index! >= stepsStart && match.index! < stepsEnd;
-    });
-    
-    if (!isInSteps) {
-      allMatches.push({ match, type: 'image' });
+  // Find all matches
+  [
+    { regex: stepsRegex, type: 'steps' },
+    { regex: cardGroupRegex, type: 'cardgroup' },
+    { regex: calloutRegex, type: 'callout' },
+    { regex: imageRegex, type: 'image' },
+    { regex: imgRegex, type: 'img' },
+    { regex: standaloneCardRegex, type: 'card' }
+  ].forEach(({ regex, type }) => {
+    let match;
+    while ((match = regex.exec(content)) !== null) {
+      // Don't include cards that are inside CardGroups
+      if (type === 'card') {
+        const isInCardGroup = allMatches.some(m => {
+          if (m.type !== 'cardgroup') return false;
+          const cgStart = m.match.index!;
+          const cgEnd = cgStart + m.match[0].length;
+          return match.index! >= cgStart && match.index! < cgEnd;
+        });
+        if (isInCardGroup) continue;
+      }
+      
+      allMatches.push({ match, type });
     }
-  }
-  
-  // Check for <img> tags (converted from <Image> by customSyntaxProcessor)
-  imageRegex.lastIndex = 0;
-  while ((match = imgRegex.exec(content)) !== null) {
-    const isInSteps = stepsMatches.some(stepsMatch => {
-      const stepsStart = stepsMatch.match.index!;
-      const stepsEnd = stepsStart + stepsMatch.match[0].length;
-      return match.index! >= stepsStart && match.index! < stepsEnd;
-    });
-    
-    if (!isInSteps) {
-      allMatches.push({ match, type: 'img' });
-    }
-  }
-  
-  // Find standalone Cards (not inside CardGroups)
-  imgRegex.lastIndex = 0;
-  const cardGroupMatches = allMatches.filter(m => m.type === 'cardgroup');
-  while ((match = standaloneCardRegex.exec(content)) !== null) {
-    // Check if this card is inside a CardGroup
-    const isInCardGroup = cardGroupMatches.some(cgMatch => {
-      const cgStart = cgMatch.match.index!;
-      const cgEnd = cgStart + cgMatch.match[0].length;
-      return match.index! >= cgStart && match.index! < cgEnd;
-    });
-    
-    if (!isInCardGroup) {
-      allMatches.push({ match, type: 'card' });
-    }
-  }
+  });
   
   // Sort by position
   allMatches.sort((a, b) => (a.match.index || 0) - (b.match.index || 0));
@@ -726,7 +467,6 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
         break;
       }
       case 'img': {
-        // Handle converted <img> tags from customSyntaxProcessor
         const srcMatch = match[0].match(/src="([^"]*)"/);
         const altMatch = match[0].match(/alt="([^"]*)"/);
         const alignMatch = match[0].match(/data-align="([^"]*)"/);
@@ -785,7 +525,7 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
   console.log('📝 MarkdownSection: Starting with content length:', content.length);
   
   const processContent = (text: string): React.ReactNode[] => {
-    console.log('📝 processContent: Starting with text:', text);
+    console.log('📝 processContent: Starting with text:', text.substring(0, 100));
     
     const lines = text.split('\n');
     console.log('📝 processContent: Split into', lines.length, 'lines');
@@ -796,8 +536,6 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
     let codeBlock: string[] = [];
     let inCodeBlock = false;
     let codeLanguage = '';
-    let tableRows: string[] = [];
-    let inTable = false;
 
     const flushList = () => {
       if (currentList.length > 0) {
@@ -820,80 +558,18 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
       }
     };
 
-    const flushTable = () => {
-      if (tableRows.length > 0) {
-        console.log('📝 Flushing table with', tableRows.length, 'rows');
-        const headerRow = tableRows[0].split('|').filter(cell => cell.trim());
-        const alignmentRow = tableRows[1]?.split('|').filter(cell => cell.trim());
-        const dataRows = tableRows.slice(2);
-
-        elements.push(
-          <table key={`table-${elements.length}`} className="hn-table">
-            <thead>
-              <tr>
-                {headerRow.map((cell, i) => (
-                  <th key={i} className="hn-table-header">
-                    <SecureInlineMarkdown content={sanitizeText(cell.trim())} />
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {dataRows.map((row, rowIndex) => (
-                <tr key={rowIndex}>
-                  {row.split('|').filter(cell => cell.trim()).map((cell, cellIndex) => (
-                    <td key={cellIndex} className="hn-table-cell">
-                      <SecureInlineMarkdown content={sanitizeText(cell.trim())} />
-                    </td>
-                  ))}
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        );
-        tableRows = [];
-        inTable = false;
-      }
-    };
-
     lines.forEach((line, index) => {
-      console.log(`📝 Processing line ${index}:`, line);
-
-      // Handle converted <img> tags from customSyntaxProcessor
-      if (line.includes('<img') && line.includes('data-align')) {
-        console.log(`📝 Found converted img tag at line ${index}:`, line);
-        flushList();
-        flushTable();
-        
-        // Extract image data from the converted img tag
-        const srcMatch = line.match(/src="([^"]*)"/);
-        const altMatch = line.match(/alt="([^"]*)"/);
-        const alignMatch = line.match(/data-align="([^"]*)"/);
-        const fullwidthMatch = line.match(/data-fullwidth="([^"]*)"/);
-        
-        const imageData = {
-          src: srcMatch?.[1] || '',
-          alt: altMatch?.[1] || '',
-          align: alignMatch?.[1] || 'center',
-          fullwidth: fullwidthMatch?.[1] === 'true'
-        };
-        
-        elements.push(
-          <ImageSection key={`img-${index}`} {...imageData} />
-        );
-        return;
-      }
+      console.log(`📝 Processing line ${index}:`, line.substring(0, 50));
 
       // Code blocks
       if (line.startsWith('```')) {
         if (!inCodeBlock) {
-          console.log(`📝 Starting code block at line ${index}:`, line);
+          console.log(`📝 Starting code block at line ${index}`);
           flushList();
-          flushTable();
           inCodeBlock = true;
           codeLanguage = sanitizeText(line.slice(3).trim());
         } else {
-          console.log(`📝 Ending code block at line ${index}, language:`, codeLanguage);
+          console.log(`📝 Ending code block at line ${index}`);
           elements.push(
             <pre key={`code-${index}`} className="hn-code-block">
               <code className={`language-${codeLanguage}`}>
@@ -909,29 +585,13 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
       }
 
       if (inCodeBlock) {
-        console.log(`📝 Adding to code block at line ${index}:`, line);
         codeBlock.push(line);
         return;
       }
 
-      // Tables
-      if (line.includes('|') && line.trim().startsWith('|')) {
-        if (!inTable) {
-          console.log(`📝 Starting table at line ${index}:`, line);
-          flushList();
-          inTable = true;
-        }
-        tableRows.push(line);
-        return;
-      } else if (inTable) {
-        flushTable();
-      }
-
       // Headers
       if (line.startsWith('# ')) {
-        console.log(`📝 Found H1 at line ${index}:`, line);
         flushList();
-        flushTable();
         elements.push(
           <h1 key={`h1-${index}`} className="hn-h1">
             {sanitizeText(line.slice(2))}
@@ -940,9 +600,7 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
         return;
       }
       if (line.startsWith('## ')) {
-        console.log(`📝 Found H2 at line ${index}:`, line);
         flushList();
-        flushTable();
         elements.push(
           <h2 key={`h2-${index}`} className="hn-h2">
             {sanitizeText(line.slice(3))}
@@ -951,9 +609,7 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
         return;
       }
       if (line.startsWith('### ')) {
-        console.log(`📝 Found H3 at line ${index}:`, line);
         flushList();
-        flushTable();
         elements.push(
           <h3 key={`h3-${index}`} className="hn-h3">
             {sanitizeText(line.slice(4))}
@@ -964,10 +620,8 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
 
       // Lists
       if (line.match(/^\d+\./)) {
-        console.log(`📝 Found ordered list item at line ${index}:`, line);
         if (listType !== 'ordered') {
           flushList();
-          flushTable();
           listType = 'ordered';
         }
         currentList.push(
@@ -979,10 +633,8 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
       }
 
       if (line.startsWith('* ')) {
-        console.log(`📝 Found unordered list item at line ${index}:`, line);
         if (listType !== 'unordered') {
           flushList();
-          flushTable();
           listType = 'unordered';
         }
         currentList.push(
@@ -995,9 +647,7 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
 
       // Blockquotes
       if (line.startsWith('> ')) {
-        console.log(`📝 Found blockquote at line ${index}:`, line);
         flushList();
-        flushTable();
         elements.push(
           <blockquote key={`quote-${index}`} className="hn-blockquote">
             <SecureInlineMarkdown content={sanitizeText(line.slice(2))} />
@@ -1008,23 +658,17 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
 
       // Regular paragraphs
       if (line.trim()) {
-        console.log(`📝 Found paragraph at line ${index}:`, line);
         flushList();
-        flushTable();
         elements.push(
           <p key={`p-${index}`} className="hn-paragraph">
             <SecureInlineMarkdown content={sanitizeText(line)} />
           </p>
         );
-      } else {
-        console.log(`📝 Empty line at ${index}`);
       }
     });
 
-    // Flush any remaining lists or tables
     flushList();
-    flushTable();
-
+    
     console.log('📝 processContent: Generated', elements.length, 'elements');
     return elements;
   };
@@ -1043,99 +687,59 @@ const HashnodeMarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) 
   
   const renderSection = (section: ParsedSection): React.ReactNode => {
     console.log('🔄 Rendering section:', section.type, 'at index:', section.index);
-    console.log('🔄 Section content preview:', section.content.substring(0, 100));
-    
-    let result: React.ReactNode = null;
     
     switch (section.type) {
       case 'frontmatter':
-        console.log('📋 Skipping frontmatter section');
-        result = null;
-        break;
+        return null;
         
       case 'image': {
         const imageData = extractImageData(section.content);
-        result = <ImageSection key={section.index} {...imageData} />;
-        break;
+        return <ImageSection key={`image-${section.index}`} {...imageData} />;
       }
       
       case 'callout': {
         const calloutData = extractCalloutData(section.content);
-        result = <CalloutSection key={section.index} type={calloutData.type} content={calloutData.content} />;
-        break;
+        return <CalloutSection key={`callout-${section.index}`} type={calloutData.type} content={calloutData.content} />;
       }
       
       case 'card': {
         const cardData = parseCard(section.content);
-        result = <CardSection key={section.index} card={cardData} />;
-        break;
+        return <CardSection key={`card-${section.index}`} card={cardData} />;
       }
       
       case 'cardgroup': {
         const { cols, cards } = parseCardGroup(section.content);
         console.log('🃏 Rendering CardGroupSection with data:', { cols, cardCount: cards.length });
-        result = <CardGroupSection key={section.index} cols={cols || 2} cards={cards} />;
-        break;
-      }
-      
-      case 'accordion': {
-        const accordionData = parseAccordion(section.content);
-        result = <AccordionSection key={section.index} accordion={accordionData} />;
-        break;
-      }
-      
-      case 'accordiongroup': {
-        const accordionGroupData = parseAccordionGroup(section.content);
-        result = <AccordionGroupSection key={section.index} accordions={accordionGroupData} />;
-        break;
-      }
-      
-      case 'tabs': {
-        const tabsData = parseTabs(section.content);
-        result = <TabsSection key={section.index} tabs={tabsData} />;
-        break;
-      }
-      
-      case 'button': {
-        const buttonData = parseButton(section.content);
-        result = <ButtonSection key={section.index} button={buttonData} />;
-        break;
+        return <CardGroupSection key={`cardgroup-${section.index}`} cols={cols || 2} cards={cards} />;
       }
       
       case 'steps': {
         const steps = parseSteps(section.content);
         console.log('👣 Rendering StepsSection with data:', { count: steps.length });
-        result = <StepsSection key={section.index} steps={steps} />;
-        break;
+        return <StepsSection key={`steps-${section.index}`} steps={steps} />;
       }
       
       case 'mixed': {
         console.log('🔀 Rendering MixedContentSection');
-        result = <MixedContentSection key={section.index} content={section.content} />;
-        break;
+        return <MixedContentSection key={`mixed-${section.index}`} content={section.content} />;
       }
         
       case 'markdown':
-        console.log('📝 Rendering markdown section with content:', section.content.substring(0, 100));
-        result = (
-          <div key={section.index} className="hn-markdown-section">
+        console.log('📝 Rendering markdown section');
+        return (
+          <div key={`markdown-${section.index}`} className="hn-markdown-section">
             <MarkdownSection content={section.content} />
           </div>
         );
-        break;
         
       default:
         console.log('⚠️ Unhandled section type:', section.type);
-        result = (
-          <div key={section.index} className="hn-markdown-section">
+        return (
+          <div key={`default-${section.index}`} className="hn-markdown-section">
             <MarkdownSection content={section.content} />
           </div>
         );
-        break;
     }
-    
-    console.log('🔄 Rendered section result:', result ? 'Component created' : 'null');
-    return result;
   };
 
   const renderedSections = sections.map(renderSection).filter(Boolean);
