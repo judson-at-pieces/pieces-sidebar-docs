@@ -176,6 +176,34 @@ export function processCustomSyntax(content: string): string {
       return `<div data-step="${stepNum}" data-step-title="${safeTitle}">\n\n${safeContent}\n\n</div>`;
     });
 
+    // Transform Image components - PRESERVE them as standard img tags
+    processedContent = processedContent.replace(
+      /<Image\s+([^>]*?)\/>/gi,
+      (match, attributes) => {
+        try {
+          const srcMatch = attributes.match(/src="([^"]*)"/);
+          const altMatch = attributes.match(/alt="([^"]*)"/);
+          const alignMatch = attributes.match(/align="([^"]*)"/);
+          const fullwidthMatch = attributes.match(/fullwidth="([^"]*)"/);
+          
+          const src = validateUrl(srcMatch ? srcMatch[1] : '');
+          if (!src) {
+            console.warn('Invalid or unsafe image URL:', srcMatch ? srcMatch[1] : 'no src');
+            return ''; // Remove invalid images
+          }
+          
+          const alt = sanitizeAttribute(altMatch ? altMatch[1] : '');
+          const align = sanitizeAttribute(alignMatch ? alignMatch[1] : 'center');
+          const fullwidth = sanitizeAttribute(fullwidthMatch ? fullwidthMatch[1] : 'false');
+          
+          return `<img src="${src}" alt="${alt}" data-align="${align}" data-fullwidth="${fullwidth}" />`;
+        } catch (error) {
+          console.warn('Error parsing Image attributes:', error);
+          return match; // Return original on error
+        }
+      }
+    );
+
     // Transform ExpandableImage components to HTML
     processedContent = processedContent.replace(
       /<ExpandableImage\s+src="([^"]*)"(?:\s+alt="([^"]*)")?(?:\s+caption="([^"]*)")?\/>/gi, 
