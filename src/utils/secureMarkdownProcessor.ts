@@ -1,4 +1,3 @@
-
 /**
  * Secure markdown processing utilities
  * Replaces dangerouslySetInnerHTML with safe React components
@@ -55,25 +54,15 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
     { regex: /(?<!\*)\*([^*]+)\*(?!\*)/g, type: 'italic' as const },
     // Updated regex to handle escaped brackets in markdown links
     { regex: /\[([^\]]*(?:\\.[^\]]*)*)\]\(([^)]+)\)/g, type: 'link' as const },
+    // Add pattern for HTML anchor tags - handle various attribute orders and formats
+    { regex: /<a\s+([^>]*?)>((?:(?!<\/a>).)*?)<\/a>/gi, type: 'link' as const },
     // Add pattern for Image tags
     { regex: /<Image\s+([^>]*?)\/>/g, type: 'image' as const }
   ];
 
-  // Handle HTML anchor tags separately with a more robust approach
-  let workingText = text;
-  const htmlLinkMatches: Array<{ match: RegExpMatchArray; type: 'link' }> = [];
-  
-  // Find all HTML anchor tags first
-  const htmlLinkRegex = /<a\s+([^>]*?)>((?:(?!<\/a>).)*)<\/a>/gi;
-  let htmlMatch;
-  while ((htmlMatch = htmlLinkRegex.exec(text)) !== null) {
-    htmlLinkMatches.push({ match: htmlMatch, type: 'link' });
-  }
+  const matches: Array<{ match: RegExpMatchArray; type: ProcessedMarkdown['type'] }> = [];
 
-  // Add other pattern matches
-  const matches: Array<{ match: RegExpMatchArray; type: ProcessedMarkdown['type'] }> = [...htmlLinkMatches];
-
-  // Find all other matches
+  // Find all matches
   patterns.forEach(({ regex, type }) => {
     let match;
     while ((match = regex.exec(text)) !== null) {
