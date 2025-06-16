@@ -49,7 +49,8 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
     { regex: /`([^`]+)`/g, type: 'code' as const },
     { regex: /\*\*(.*?)\*\*/g, type: 'bold' as const },
     { regex: /(?<!\*)\*([^*]+)\*(?!\*)/g, type: 'italic' as const },
-    { regex: /\[([^\]]+)\]\(([^)]+)\)/g, type: 'link' as const },
+    // Updated regex to handle escaped brackets in markdown links
+    { regex: /\[([^\]]*(?:\\.[^\]]*)*)\]\(([^)]+)\)/g, type: 'link' as const },
     // Add pattern for raw HTML anchor tags
     { regex: /<a\s+([^>]*?)>([^<]+)<\/a>/g, type: 'link' as const }
   ];
@@ -99,8 +100,8 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
         const targetMatch = attributes.match(/target=["']([^"']+)["']/);
         linkTarget = targetMatch ? targetMatch[1] : '';
       } else {
-        // Standard markdown link [text](url)
-        linkText = match[1];
+        // Standard markdown link [text](url) - handle escaped brackets
+        linkText = match[1].replace(/\\(.)/g, '$1'); // Unescape characters
         linkHref = match[2];
       }
       
