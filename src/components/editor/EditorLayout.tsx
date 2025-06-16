@@ -44,12 +44,14 @@ export function EditorLayout() {
                   pathParts.pop(); // Remove filename
                   const folderPath = pathParts.join('/');
                   
-                  // Use the item's is_active status to determine folder visibility
+                  // Check if this item is active (public) or inactive (private)
+                  const isItemActive = item.is_active === true;
+                  
                   // If any item in folder is active, folder is considered public
-                  if (item.is_active !== false) {
+                  if (isItemActive) {
                     visibility[folderPath] = true;
                   } else if (visibility[folderPath] === undefined) {
-                    // Only set to false if not already set to true
+                    // Only set to false if not already set to true by another item
                     visibility[folderPath] = false;
                   }
                 }
@@ -58,7 +60,7 @@ export function EditorLayout() {
               // Also check for direct folder items (items without file_path but representing folders)
               if (!item.file_path && item.href) {
                 const folderPath = item.href.replace(/^\//, ''); // Remove leading slash
-                visibility[folderPath] = item.is_active !== false;
+                visibility[folderPath] = item.is_active === true;
               }
             });
           });
@@ -121,12 +123,14 @@ export function EditorLayout() {
                 pathParts.pop(); // Remove filename
                 const folderPath = pathParts.join('/');
                 
-                // Use the item's active status to determine folder visibility
+                // Check if this item is active (public) or inactive (private)
+                const isItemActive = item.is_active === true;
+                
                 // If any item in folder is active, folder is considered public
-                if (item.is_active !== false) {
+                if (isItemActive) {
                   visibility[folderPath] = true;
                 } else if (visibility[folderPath] === undefined) {
-                  // Only set to false if not already set to true
+                  // Only set to false if not already set to true by another item
                   visibility[folderPath] = false;
                 }
               }
@@ -135,7 +139,7 @@ export function EditorLayout() {
             // Also check for direct folder items
             if (!item.file_path && item.href) {
               const folderPath = item.href.replace(/^\//, ''); // Remove leading slash
-              visibility[folderPath] = item.is_active !== false;
+              visibility[folderPath] = item.is_active === true;
             }
           });
         });
