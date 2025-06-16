@@ -48,13 +48,15 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
   const elements: ProcessedMarkdown[] = [];
   let currentIndex = 0;
 
-  // Updated regex patterns - focus on proper HTML anchor tags only
+  // Updated regex patterns - HTML anchor tags with better matching
   const patterns = [
     { regex: /`([^`]+)`/g, type: 'code' as const },
     { regex: /\*\*(.*?)\*\*/g, type: 'bold' as const },
     { regex: /(?<!\*)\*([^*]+)\*(?!\*)/g, type: 'italic' as const },
-    // HTML anchor tags - more precise matching
+    // More comprehensive regex for HTML anchor tags - handles malformed tags too
     { regex: /<a\s+([^>]*?)>(.*?)<\/a>/gi, type: 'link' as const },
+    // Also match malformed anchor tags (missing opening bracket)
+    { regex: /(?:^|\s)(a\s+target="_blank"\s+href="([^"]+)")([^<]*?)(?:<\/a>|\/a)/gi, type: 'link' as const },
     // Standard markdown links
     { regex: /\[([^\]]*(?:\\.[^\]]*)*)\]\(([^)]+)\)/g, type: 'link' as const },
     // Image tags
@@ -124,8 +126,15 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
       let linkHref = '';
       let linkTarget = '';
       
-      // Check if this is an HTML anchor tag
-      if (match[0].toLowerCase().startsWith('<a')) {
+      // Check if this is a malformed anchor tag (pattern 2)
+      if (match[0].includes('target="_blank"') && !match[0].startsWith('<a')) {
+        // Handle malformed anchor: a target="_blank" href="url"TextContent/a
+        linkHref = match[2] || '';
+        linkText = match[3] || '';
+        linkTarget = '_blank';
+        
+        console.log('Processing malformed anchor:', { fullMatch: match[0], linkText, linkHref, linkTarget });
+      } else if (match[0].toLowerCase().includes('<a')) {
         // Standard HTML anchor tag
         linkText = match[2] || ''; // Content between <a> and </a>
         const attributes = match[1] || '';
