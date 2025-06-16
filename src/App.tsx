@@ -29,6 +29,8 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { useContentPreloader } from '@/hooks/useContentPreloader';
 import { ErrorBoundary } from '@/components/ErrorBoundary';
 import Sitemap from '@/pages/Sitemap';
+import LLMText from '@/pages/LLMText';
+import LLMTextFull from '@/pages/LLMTextFull';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -60,6 +62,10 @@ function AppContent() {
           <Route path="/" element={<Index />} />
           <Route path="/auth" element={<Auth />} />
           <Route path="/auth/callback" element={<AuthCallback />} />
+          
+          {/* LLM text routes */}
+          <Route path="/llms.txt" element={<LLMText />} />
+          <Route path="/llms-full.txt" element={<LLMTextFull />} />
           
           {/* Sitemap route */}
           <Route path="/sitemap.xml" element={<Sitemap />} />
