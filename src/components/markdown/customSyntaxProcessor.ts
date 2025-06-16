@@ -47,6 +47,8 @@ export function processCustomSyntax(content: string): string {
   try {
     let processedContent = content;
 
+    console.log('🔧 processCustomSyntax: Starting with content length:', content.length);
+
     // Transform callout syntax: :::info[Title] or :::warning{title="Warning"}
     processedContent = processedContent.replace(
       /:::(\w+)(?:\[([^\]]*)\]|\{title="([^"]*)"\})?\n([\s\S]*?):::/g,
@@ -125,7 +127,7 @@ export function processCustomSyntax(content: string): string {
     // Then handle Card components with content - Use direct HTML
     processedContent = processedContent.replace(/<Card\s+([^>]*?)>([\s\S]*?)<\/Card>/gi, (match, attributes, innerContent) => {
       try {
-        console.log('Processing Card with content:', { attributes, innerContent: innerContent.substring(0, 100) });
+        console.log('🔧 Processing Card with content:', { attributes, innerContent: innerContent.substring(0, 100) });
         
         const titleMatch = attributes.match(/title="([^"]*)"/);
         const imageMatch = attributes.match(/image="([^"]*)"/);
@@ -142,7 +144,7 @@ export function processCustomSyntax(content: string): string {
         // PRESERVE the inner content exactly as is - this is crucial for markdown processing
         const preservedContent = innerContent || '';
         
-        console.log('Card transformation result:', { title, image, href, external, icon, contentLength: preservedContent.length });
+        console.log('🔧 Card transformation result:', { title, image, href, external, icon, contentLength: preservedContent.length });
         
         // Use direct HTML that will be processed by ReactMarkdown
         return `<div data-card="true" data-title="${title}" data-image="${image}" data-href="${href}" data-external="${external}" data-icon="${icon}">\n\n${preservedContent}\n\n</div>`;
@@ -176,11 +178,20 @@ export function processCustomSyntax(content: string): string {
       return `<div data-step="${stepNum}" data-step-title="${safeTitle}">\n\n${safeContent}\n\n</div>`;
     });
 
-    // Transform Image components - PRESERVE them as standard img tags
+    // Transform Image components - ENSURE they have proper opening brackets
+    // First fix any Image tags that are missing opening bracket
+    processedContent = processedContent.replace(
+      /(?<!<)Image\s+([^>]*?)\/>/gi,
+      '<Image $1/>'
+    );
+    
+    // Then transform Image components - PRESERVE them as standard img tags
     processedContent = processedContent.replace(
       /<Image\s+([^>]*?)\/>/gi,
       (match, attributes) => {
         try {
+          console.log('🔧 Processing Image component:', attributes);
+          
           const srcMatch = attributes.match(/src="([^"]*)"/);
           const altMatch = attributes.match(/alt="([^"]*)"/);
           const alignMatch = attributes.match(/align="([^"]*)"/);
@@ -195,6 +206,8 @@ export function processCustomSyntax(content: string): string {
           const alt = sanitizeAttribute(altMatch ? altMatch[1] : '');
           const align = sanitizeAttribute(alignMatch ? alignMatch[1] : 'center');
           const fullwidth = sanitizeAttribute(fullwidthMatch ? fullwidthMatch[1] : 'false');
+          
+          console.log('🔧 Image transformation result:', { src, alt, align, fullwidth });
           
           return `<img src="${src}" alt="${alt}" data-align="${align}" data-fullwidth="${fullwidth}" />`;
         } catch (error) {
@@ -221,7 +234,7 @@ export function processCustomSyntax(content: string): string {
       }
     );
 
-    console.log('Custom syntax processing complete. Sample output:', processedContent.substring(0, 500));
+    console.log('🔧 Custom syntax processing complete. Sample output:', processedContent.substring(0, 500));
     return processedContent;
   } catch (error) {
     console.error('Error processing custom syntax:', error);

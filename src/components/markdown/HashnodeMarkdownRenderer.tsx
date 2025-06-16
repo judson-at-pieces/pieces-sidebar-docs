@@ -5,6 +5,7 @@ import { CardGroup } from './CardGroup';
 import { Steps, Step } from './Steps';
 import { SecureInlineMarkdown } from './SecureInlineMarkdown';
 import { sanitizeText } from '@/utils/secureMarkdownProcessor';
+import { processCustomSyntax } from './customSyntaxProcessor';
 import { X } from 'lucide-react';
 
 // Constants
@@ -20,9 +21,11 @@ const TABS_PATTERN = '<Tabs';
 const BUTTON_PATTERN = '<Button';
 const STEPS_PATTERN = '<Steps';
 const CARD_PATTERN = '<Card';
+const YOUTUBE_PATTERN = 'youtube.com';
+const YOUTU_BE_PATTERN = 'youtu.be';
 
 // Types
-type SectionType = 'frontmatter' | 'image' | 'cardgroup' | 'callout' | 'accordion' | 'accordiongroup' | 'tabs' | 'button' | 'steps' | 'card' | 'markdown' | 'mixed';
+type SectionType = 'frontmatter' | 'image' | 'cardgroup' | 'callout' | 'accordion' | 'accordiongroup' | 'tabs' | 'button' | 'steps' | 'card' | 'youtube' | 'markdown' | 'mixed';
 type ListType = 'ordered' | 'unordered' | null;
 
 interface ParsedSection {
@@ -54,6 +57,9 @@ const parseSections = (text: string): ParsedSection[] => {
       return { type: 'image', content: section, index };
     }
     
+    // Check for YouTube embeds
+    const hasYoutube = section.includes(YOUTUBE_PATTERN) || section.includes(YOUTU_BE_PATTERN);
+    
     // Check for Card components more reliably
     const hasCard = section.includes(CARD_PATTERN) && !section.includes(CARDGROUP_PATTERN);
     const hasCardGroup = section.includes(CARDGROUP_PATTERN);
@@ -70,6 +76,8 @@ const parseSections = (text: string): ParsedSection[] => {
       line.includes('<Image') ||
       line.includes('<Card') ||
       line.includes('<img') ||
+      line.includes('youtube.com') ||
+      line.includes('youtu.be') ||
       line.includes('</CardGroup>') ||
       line.includes('</Steps>') ||
       line.includes('</Callout>') ||
@@ -78,14 +86,14 @@ const parseSections = (text: string): ParsedSection[] => {
     const markdownLines = lines.length - specialElementLines.length;
     
     console.log(`🔍 Section ${index} analysis:`, {
-      hasCardGroup, hasSteps, hasCallout, hasImage, hasCard,
+      hasCardGroup, hasSteps, hasCallout, hasImage, hasCard, hasYoutube,
       totalLines: lines.length,
       specialElementLines: specialElementLines.length,
       markdownLines
     });
     
     // If we have significant markdown content along with special elements, treat as mixed
-    if (markdownLines > 3 && (hasCardGroup || hasSteps || hasCallout || hasImage || hasCard)) {
+    if (markdownLines > 3 && (hasCardGroup || hasSteps || hasCallout || hasImage || hasCard || hasYoutube)) {
       console.log('🔀 Found mixed content section!');
       return { type: 'mixed', content: section, index };
     }
@@ -107,10 +115,59 @@ const parseSections = (text: string): ParsedSection[] => {
       console.log('🎯 Found standalone Card section');
       return { type: 'card', content: section, index };
     }
+    if (hasYoutube && markdownLines <= 3) {
+      console.log('📺 Found YouTube embed section');
+      return { type: 'youtube', content: section, index };
+    }
     
     console.log('📝 Found markdown section');
     return { type: 'markdown', content: section, index };
   });
+};
+
+// YouTube embed component
+const YouTubeEmbed: React.FC<{ url: string; title?: string }> = ({ url, title }) => {
+  console.log('📺 YouTubeEmbed rendering:', { url, title });
+  
+  // Extract video ID from various YouTube URL formats
+  const getVideoId = (url: string): string | null => {
+    const patterns = [
+      /(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#]+)/,
+      /youtube\.com\/embed\/([^&\n?#]+)/,
+    ];
+    
+    for (const pattern of patterns) {
+      const match = url.match(pattern);
+      if (match) return match[1];
+    }
+    return null;
+  };
+  
+  const videoId = getVideoId(url);
+  if (!videoId) {
+    console.warn('Invalid YouTube URL:', url);
+    return <p className="text-red-500">Invalid YouTube URL: {url}</p>;
+  }
+  
+  const embedUrl = `https://www.youtube.com/embed/${videoId}`;
+  
+  return (
+    <div className="my-6">
+      <div className="relative w-full h-0 pb-[56.25%] rounded-lg overflow-hidden bg-muted">
+        <iframe
+          src={embedUrl}
+          title={title || 'YouTube video'}
+          frameBorder="0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          className="absolute top-0 left-0 w-full h-full"
+        />
+      </div>
+      {title && (
+        <p className="text-sm text-muted-foreground mt-2 text-center">{title}</p>
+      )}
+    </div>
+  );
 };
 
 const extractImageData = (content: string) => {
@@ -137,7 +194,6 @@ const extractCalloutData = (content: string) => {
   };
 };
 
-// Parse Card element
 interface CardData {
   title: string;
   image?: string;
@@ -156,7 +212,6 @@ const parseCard = (content: string): CardData => {
   };
 };
 
-// Parse CardGroup
 interface CardGroupData {
   cols?: number;
   cards: CardData[];
@@ -198,7 +253,6 @@ const parseCardGroup = (content: string): CardGroupData => {
   return { cols, cards };
 };
 
-// Parse Steps
 interface StepData {
   title: string;
   content: string;
@@ -378,15 +432,20 @@ const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => {
 const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
   console.log('🔀 MixedContentSection: Processing content with length:', content.length);
   
+  // Apply custom syntax processing first to normalize HTML elements
+  const processedContent = processCustomSyntax(content);
+  console.log('🔀 MixedContentSection: Applied custom syntax processing');
+  
   const elements: React.ReactNode[] = [];
   
   // Find all special elements with their positions
   const cardGroupRegex = /<CardGroup[^>]*>[\s\S]*?<\/CardGroup>/g;
   const imageRegex = /<Image[^>]*\/>/g;
-  const imgRegex = /<img[^>]*\/>/g;
+  const imgRegex = /<img[^>]*\/?>/g;
   const calloutRegex = /<Callout[^>]*>[\s\S]*?<\/Callout>/g;
   const standaloneCardRegex = /<Card[^>]*>[\s\S]*?<\/Card>/g;
   const stepsRegex = /<Steps[^>]*>[\s\S]*?<\/Steps>/g;
+  const youtubeRegex = /(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#\s]+)/g;
   
   const allMatches: Array<{ match: RegExpMatchArray; type: string }> = [];
   
@@ -397,10 +456,11 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
     { regex: calloutRegex, type: 'callout' },
     { regex: imageRegex, type: 'image' },
     { regex: imgRegex, type: 'img' },
-    { regex: standaloneCardRegex, type: 'card' }
+    { regex: standaloneCardRegex, type: 'card' },
+    { regex: youtubeRegex, type: 'youtube' }
   ].forEach(({ regex, type }) => {
     let match;
-    while ((match = regex.exec(content)) !== null) {
+    while ((match = regex.exec(processedContent)) !== null) {
       // Don't include cards that are inside CardGroups
       if (type === 'card') {
         const isInCardGroup = allMatches.some(m => {
@@ -430,7 +490,7 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
     
     // Add markdown content before this element
     if (elementStart > lastIndex) {
-      const markdownContent = content.slice(lastIndex, elementStart).trim();
+      const markdownContent = processedContent.slice(lastIndex, elementStart).trim();
       if (markdownContent) {
         console.log('🔀 Adding markdown content before', type);
         elements.push(
@@ -498,14 +558,21 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
         );
         break;
       }
+      case 'youtube': {
+        const url = match[0];
+        elements.push(
+          <YouTubeEmbed key={`youtube-${elementIndex}`} url={url} />
+        );
+        break;
+      }
     }
     elementIndex++;
     lastIndex = elementEnd;
   }
   
   // Add any remaining markdown content
-  if (lastIndex < content.length) {
-    const markdownContent = content.slice(lastIndex).trim();
+  if (lastIndex < processedContent.length) {
+    const markdownContent = processedContent.slice(lastIndex).trim();
     if (markdownContent) {
       console.log('🔀 Adding final markdown content');
       elements.push(
@@ -523,6 +590,10 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
 // Parse Markdown
 const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
   console.log('📝 MarkdownSection: Starting with content length:', content.length);
+  
+  // Apply custom syntax processing to the markdown content
+  const processedContent = processCustomSyntax(content);
+  console.log('📝 MarkdownSection: Applied custom syntax processing');
   
   const processContent = (text: string): React.ReactNode[] => {
     console.log('📝 processContent: Starting with text:', text.substring(0, 100));
@@ -673,7 +744,7 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
     return elements;
   };
 
-  const result = processContent(content);
+  const result = processContent(processedContent);
   console.log('📝 MarkdownSection: Returning', result.length, 'elements');
   return <>{result}</>;
 };
@@ -717,6 +788,15 @@ const HashnodeMarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) 
         const steps = parseSteps(section.content);
         console.log('👣 Rendering StepsSection with data:', { count: steps.length });
         return <StepsSection key={`steps-${section.index}`} steps={steps} />;
+      }
+      
+      case 'youtube': {
+        // Extract YouTube URL from content
+        const urlMatch = section.content.match(/(?:https?:\/\/)?(?:www\.)?(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\n?#\s]+)/);
+        if (urlMatch) {
+          return <YouTubeEmbed key={`youtube-${section.index}`} url={urlMatch[0]} />;
+        }
+        return null;
       }
       
       case 'mixed': {
