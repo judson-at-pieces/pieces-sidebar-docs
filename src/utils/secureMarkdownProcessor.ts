@@ -5,9 +5,13 @@
  */
 
 export interface ProcessedMarkdown {
-  type: 'text' | 'bold' | 'italic' | 'code' | 'link';
+  type: 'text' | 'bold' | 'italic' | 'code' | 'link' | 'image';
   content: string;
   href?: string;
+  src?: string;
+  alt?: string;
+  align?: string;
+  fullwidth?: boolean;
 }
 
 // Allowlist of safe URL protocols
@@ -33,6 +37,21 @@ export const validateUrl = (url: string): boolean => {
 };
 
 /**
+ * Parse HTML-style attributes from a tag string
+ */
+const parseAttributes = (attributeString: string): Record<string, string> => {
+  const attributes: Record<string, string> = {};
+  const regex = /(\w+)=["']([^"']*)["']/g;
+  let match;
+  
+  while ((match = regex.exec(attributeString)) !== null) {
+    attributes[match[1]] = match[2];
+  }
+  
+  return attributes;
+};
+
+/**
  * Safely processes inline markdown without using dangerouslySetInnerHTML
  */
 export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
@@ -45,6 +64,7 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
 
   // Process markdown patterns safely
   const patterns = [
+    { regex: /<Image\s+([^>]*)\/>/g, type: 'image' as const },
     { regex: /`([^`]+)`/g, type: 'code' as const },
     { regex: /\*\*(.*?)\*\*/g, type: 'bold' as const },
     { regex: /(?<!\*)\*([^*]+)\*(?!\*)/g, type: 'italic' as const },
@@ -78,7 +98,24 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
     }
 
     // Add the matched element
-    if (type === 'link') {
+    if (type === 'image') {
+      const attributeString = match[1];
+      const attributes = parseAttributes(attributeString);
+      
+      if (attributes.src && validateUrl(attributes.src)) {
+        elements.push({ 
+          type: 'image', 
+          content: '', 
+          src: attributes.src,
+          alt: attributes.alt || '',
+          align: attributes.align || 'center',
+          fullwidth: attributes.fullwidth === 'true'
+        });
+      } else {
+        // If URL is invalid, treat as plain text
+        elements.push({ type: 'text', content: match[0] });
+      }
+    } else if (type === 'link') {
       const linkText = match[1];
       const linkHref = match[2];
       

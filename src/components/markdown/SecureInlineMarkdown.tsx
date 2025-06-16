@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { processInlineMarkdown, ProcessedMarkdown } from '@/utils/secureMarkdownProcessor';
+import { Image } from './Image';
 
 interface SecureInlineMarkdownProps {
   content: string;
@@ -39,6 +40,17 @@ export function SecureInlineMarkdown({ content, className }: SecureInlineMarkdow
           >
             {element.content}
           </a>
+        );
+      
+      case 'image':
+        return (
+          <Image 
+            key={index}
+            src={element.src!}
+            alt={element.alt}
+            align={element.align as 'left' | 'center' | 'right'}
+            fullwidth={element.fullwidth}
+          />
         );
       
       case 'text':
