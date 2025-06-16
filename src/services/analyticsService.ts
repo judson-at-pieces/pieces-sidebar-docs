@@ -24,6 +24,9 @@ interface ReferrerData {
 
 class AnalyticsService {
   private sessionId: string;
+  private trackedPaths: Set<string> = new Set();
+  private lastTrackTime: number = 0;
+  private trackingCooldown: number = 5000; // 5 seconds cooldown between same page tracks
 
   constructor() {
     // Generate or retrieve session ID
@@ -50,10 +53,27 @@ class AnalyticsService {
     return !excludedPaths.some(excludedPath => path.startsWith(excludedPath));
   }
 
+  private shouldTrackPageView(path: string): boolean {
+    const now = Date.now();
+    const pathKey = `${this.sessionId}-${path}`;
+    
+    // Don't track if same path was tracked recently in this session
+    if (this.trackedPaths.has(pathKey) && (now - this.lastTrackTime) < this.trackingCooldown) {
+      return false;
+    }
+    
+    return true;
+  }
+
   async trackPageView(path: string) {
     try {
       // Skip tracking for admin and edit routes
       if (!this.shouldTrackPath(path)) {
+        return;
+      }
+
+      // Prevent rapid duplicate tracking
+      if (!this.shouldTrackPageView(path)) {
         return;
       }
 
@@ -76,7 +96,13 @@ class AnalyticsService {
 
       if (error) {
         console.warn('Failed to track page view:', error);
+        return;
       }
+
+      // Mark this path as tracked for this session
+      const pathKey = `${this.sessionId}-${path}`;
+      this.trackedPaths.add(pathKey);
+      this.lastTrackTime = Date.now();
 
       // Track external referrers
       if (document.referrer && !this.isInternalReferrer(document.referrer)) {
@@ -152,6 +178,12 @@ class AnalyticsService {
     } catch {
       return false;
     }
+  }
+
+  // Clear session tracking (useful for testing or when session should reset)
+  clearSessionTracking() {
+    this.trackedPaths.clear();
+    this.lastTrackTime = 0;
   }
 }
 
