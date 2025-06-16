@@ -744,15 +744,71 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
   return <>{elements}</>;
 };
 
-// Parse Markdown
+// Parse Markdown - Updated to handle inline Image tags within markdown content
 const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
   console.log('📝 MarkdownSection: Starting with content length:', content.length);
   
   const processContent = (text: string): React.ReactNode[] => {
     console.log('📝 processContent: Starting with text:', text);
     
+    // First, extract any inline Image tags and process them separately
+    const imageMatches: Array<{ match: RegExpMatchArray; index: number }> = [];
+    const imageRegex = /<Image[^>]*\/>/g;
+    let match;
+    while ((match = imageRegex.exec(text)) !== null) {
+      imageMatches.push({ match, index: match.index! });
+    }
+    
+    if (imageMatches.length > 0) {
+      console.log('📝 Found', imageMatches.length, 'inline images in markdown');
+      const elements: React.ReactNode[] = [];
+      let lastIndex = 0;
+      let elementIndex = 0;
+      
+      // Process text with inline images
+      for (const { match, index } of imageMatches) {
+        // Add text content before the image
+        if (index > lastIndex) {
+          const textContent = text.slice(lastIndex, index);
+          if (textContent.trim()) {
+            const textElements = processTextContent(textContent);
+            elements.push(...textElements.map((el, i) => 
+              React.cloneElement(el as React.ReactElement, { key: `text-${elementIndex}-${i}` })
+            ));
+            elementIndex++;
+          }
+        }
+        
+        // Add the image
+        const imageData = extractImageData(match[0]);
+        elements.push(
+          <ImageSection key={`image-${elementIndex}`} {...imageData} />
+        );
+        elementIndex++;
+        lastIndex = index + match[0].length;
+      }
+      
+      // Add any remaining text content
+      if (lastIndex < text.length) {
+        const remainingText = text.slice(lastIndex);
+        if (remainingText.trim()) {
+          const textElements = processTextContent(remainingText);
+          elements.push(...textElements.map((el, i) => 
+            React.cloneElement(el as React.ReactElement, { key: `text-final-${i}` })
+          ));
+        }
+      }
+      
+      return elements;
+    }
+    
+    // No inline images, process as regular markdown
+    return processTextContent(text);
+  };
+
+  const processTextContent = (text: string): React.ReactNode[] => {
     const lines = text.split('\n');
-    console.log('📝 processContent: Split into', lines.length, 'lines');
+    console.log('📝 processTextContent: Split into', lines.length, 'lines');
     
     const elements: React.ReactNode[] = [];
     let currentList: React.ReactNode[] = [];
@@ -964,7 +1020,7 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
     flushList();
     flushTable();
 
-    console.log('📝 processContent: Generated', elements.length, 'elements');
+    console.log('📝 processTextContent: Generated', elements.length, 'elements');
     return elements;
   };
 
