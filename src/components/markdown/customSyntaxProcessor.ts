@@ -1,4 +1,3 @@
-
 // Client-side processor for custom markdown syntax
 
 // Security utilities for safe HTML attribute handling
@@ -61,7 +60,7 @@ export function processCustomSyntax(content: string): string {
           return match; // Return original if invalid type
         }
         
-        return `<div data-callout="${safeType}" data-title="${safeTitle}">\n\n${safeContent}\n\n</div>`;
+        return `<Callout type="${safeType}" title="${safeTitle}">\n\n${safeContent}\n\n</Callout>`;
       }
     );
 
@@ -78,7 +77,35 @@ export function processCustomSyntax(content: string): string {
           return match; // Return original if invalid type
         }
         
-        return `<div data-callout="${safeType}">\n\n${safeContent}\n\n</div>`;
+        return `<Callout type="${safeType}">\n\n${safeContent}\n\n</Callout>`;
+      }
+    );
+
+    // Transform YouTube Embed components
+    processedContent = processedContent.replace(
+      /<Embed\s+src="([^"]*)"[^>]*\/>/gi,
+      (match, src) => {
+        const safeSrc = validateUrl(src);
+        if (!safeSrc) {
+          console.warn('Invalid or unsafe embed URL:', src);
+          return ''; // Remove invalid embeds
+        }
+        
+        // Check if it's a YouTube URL and convert to embed format
+        let embedUrl = safeSrc;
+        if (safeSrc.includes('youtube.com/watch?v=')) {
+          const videoId = safeSrc.split('v=')[1]?.split('&')[0];
+          if (videoId) {
+            embedUrl = `https://www.youtube.com/embed/${videoId}`;
+          }
+        } else if (safeSrc.includes('youtu.be/')) {
+          const videoId = safeSrc.split('youtu.be/')[1]?.split('?')[0];
+          if (videoId) {
+            embedUrl = `https://www.youtube.com/embed/${videoId}`;
+          }
+        }
+        
+        return `<iframe src="${embedUrl}" className="w-full aspect-video rounded-lg" allowFullScreen></iframe>`;
       }
     );
 

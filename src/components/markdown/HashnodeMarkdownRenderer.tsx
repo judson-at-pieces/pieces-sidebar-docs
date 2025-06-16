@@ -374,6 +374,18 @@ const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => {
   );
 };
 
+// Add iframe component for YouTube embeds
+const IframeSection: React.FC<{ src: string; className?: string; allowFullScreen?: boolean }> = ({ src, className, allowFullScreen }) => (
+  <div className="my-6 flex justify-center">
+    <iframe 
+      src={src} 
+      className={className || "w-full max-w-4xl aspect-video rounded-lg border"}
+      allowFullScreen={allowFullScreen}
+      title="Embedded content"
+    />
+  </div>
+);
+
 // Parse mixed content that contains both special elements and markdown
 const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
   console.log('🔀 MixedContentSection: Processing content with length:', content.length);
@@ -387,6 +399,7 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
   const calloutRegex = /<Callout[^>]*>[\s\S]*?<\/Callout>/g;
   const standaloneCardRegex = /<Card[^>]*>[\s\S]*?<\/Card>/g;
   const stepsRegex = /<Steps[^>]*>[\s\S]*?<\/Steps>/g;
+  const iframeRegex = /<iframe[^>]*>[\s\S]*?<\/iframe>/g;
   
   const allMatches: Array<{ match: RegExpMatchArray; type: string }> = [];
   
@@ -397,7 +410,8 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
     { regex: calloutRegex, type: 'callout' },
     { regex: imageRegex, type: 'image' },
     { regex: imgRegex, type: 'img' },
-    { regex: standaloneCardRegex, type: 'card' }
+    { regex: standaloneCardRegex, type: 'card' },
+    { regex: iframeRegex, type: 'iframe' }
   ].forEach(({ regex, type }) => {
     let match;
     while ((match = regex.exec(content)) !== null) {
@@ -496,6 +510,23 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
         elements.push(
           <CardSection key={`card-${elementIndex}`} card={cardData} />
         );
+        break;
+      }
+      case 'iframe': {
+        const srcMatch = match[0].match(/src="([^"]*)"/);
+        const classMatch = match[0].match(/className="([^"]*)"/);
+        const allowFullScreenMatch = match[0].match(/allowFullScreen/);
+        
+        if (srcMatch?.[1]) {
+          elements.push(
+            <IframeSection 
+              key={`iframe-${elementIndex}`} 
+              src={srcMatch[1]} 
+              className={classMatch?.[1]}
+              allowFullScreen={!!allowFullScreenMatch}
+            />
+          );
+        }
         break;
       }
     }
