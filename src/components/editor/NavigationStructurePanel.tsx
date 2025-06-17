@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Plus, Trash2, RotateCcw, GripVertical, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -47,7 +48,7 @@ export function NavigationStructurePanel({
 
   const { handleDragEnd } = useDragAndDrop(sections, onSectionReorder);
 
-  const isPendingDeletion = (sectionId: string, itemIndex: number): boolean => {
+  const isPendingDeletion = (sectionId: string, itemIndex: number) => {
     return pendingDeletions.some(
       (deletion) => deletion.sectionId === sectionId && deletion.itemIndex === itemIndex
     );
