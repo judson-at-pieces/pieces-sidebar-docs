@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Plus, Trash2, RotateCcw, GripVertical, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -147,18 +146,6 @@ export function NavigationStructurePanel({
             onSettingsClick={() => handleSettingsClick(item)}
             onDeleteClick={() => onTogglePendingDeletion(sectionId, itemIndex)}
           />
-          <Button
-            variant="ghost"
-            size="icon"
-            className={`h-6 w-6 ${
-              isMarkedForDeletion 
-                ? 'text-green-600 hover:text-green-700 opacity-100' 
-                : 'text-destructive hover:text-destructive/80 opacity-0 group-hover:opacity-100'
-            } transition-opacity`}
-            onClick={() => onTogglePendingDeletion(sectionId, itemIndex)}
-          >
-            <Trash2 className="h-3 w-3" />
-          </Button>
         </div>
 
         {item.items && item.items.length > 0 && (

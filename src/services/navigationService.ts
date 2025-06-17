@@ -12,6 +12,7 @@ export interface NavigationItem {
   parent_id?: string;
   is_auto_generated: boolean;
   file_path?: string;
+  privacy?: 'PUBLIC' | 'PRIVATE';
   items?: NavigationItem[];
 }
 
