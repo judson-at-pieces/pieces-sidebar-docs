@@ -9,10 +9,10 @@ export function useNavigationEditor() {
     error,
     refetch
   } = useQuery({
-    queryKey: ['navigation-structure-editor', 'v1'],
+    queryKey: ['navigation-structure-editor', 'v2'],
     queryFn: () => navigationService.getNavigationStructureForEditor(),
-    staleTime: 1 * 60 * 1000, // 1 minute
-    gcTime: 5 * 60 * 1000, // 5 minutes
+    staleTime: 0, // Always refetch when data is requested
+    gcTime: 1 * 60 * 1000, // 1 minute cache time
   });
 
   return {

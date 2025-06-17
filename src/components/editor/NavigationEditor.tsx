@@ -103,7 +103,18 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
       const result = await navigationService.updateNavigationItem(itemId, { title });
       console.log('Navigation item title update result:', result);
       
-      await handleNavigationRefresh();
+      // Force immediate refresh of navigation data
+      console.log('Forcing navigation refresh after title update');
+      const refreshedData = await refetch();
+      
+      if (refreshedData.data?.sections) {
+        console.log('Updated sections after title change:', refreshedData.data.sections);
+        setSections(refreshedData.data.sections);
+      }
+      
+      // Also trigger parent navigation change
+      onNavigationChange();
+      
       toast.success("Navigation item title updated");
     } catch (error) {
       console.error('Error updating navigation item title:', error);
