@@ -46,6 +46,11 @@ export function NavigationItemDisplay({
   const [isUpdating, setIsUpdating] = useState(false);
   const paddingLeft = depth * 16;
   
+  // Update editTitle when item.title changes from external updates
+  useState(() => {
+    setEditTitle(item.title);
+  });
+  
   const children = item.items || [];
   const hasChildren = children.length > 0;
   const isPrivate = item.privacy === 'PRIVATE';
