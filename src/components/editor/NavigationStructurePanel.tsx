@@ -61,29 +61,32 @@ export function NavigationStructurePanel({
     return null;
   };
 
-  // Helper function to find parent of an item
-  const findParentOfItem = (items: any[], itemId: string): any => {
-    for (const item of items) {
-      if (item.items && item.items.length > 0) {
-        if (item.items.some((child: any) => child.id === itemId)) {
-          return item;
+  // Helper function to remove an item from nested structure and return the removed item
+  const removeItemFromStructure = (items: any[], itemId: string): { newItems: any[], removedItem: any | null } => {
+    let removedItem: any = null;
+    
+    const processItems = (itemList: any[]): any[] => {
+      const result: any[] = [];
+      
+      for (const item of itemList) {
+        if (item.id === itemId) {
+          removedItem = item;
+          continue; // Skip this item (remove it)
         }
-        const found = findParentOfItem(item.items, itemId);
-        if (found) return found;
+        
+        if (item.items && item.items.length > 0) {
+          const processedChildren = processItems(item.items);
+          result.push({ ...item, items: processedChildren });
+        } else {
+          result.push(item);
+        }
       }
-    }
-    return null;
-  };
-
-  // Helper function to remove an item from nested structure
-  const removeItemFromStructure = (items: any[], itemId: string): any[] => {
-    return items.map(item => {
-      if (item.items) {
-        item.items = item.items.filter((child: any) => child.id !== itemId);
-        item.items = removeItemFromStructure(item.items, itemId);
-      }
-      return item;
-    }).filter(item => item.id !== itemId);
+      
+      return result;
+    };
+    
+    const newItems = processItems(items);
+    return { newItems, removedItem };
   };
 
   // Helper function to insert item at specific position
@@ -100,22 +103,6 @@ export function NavigationStructurePanel({
       order_index: index,
       items: item.items ? updateOrderIndices(item.items) : []
     }));
-  };
-
-  // Helper function to get the container (parent's items array or root items array)
-  const getItemContainer = (sectionItems: any[], itemId: string): { container: any[], parent: any | null } => {
-    // Check if item is at root level
-    if (sectionItems.some(item => item.id === itemId)) {
-      return { container: sectionItems, parent: null };
-    }
-    
-    // Find parent and return parent's items array
-    const parent = findParentOfItem(sectionItems, itemId);
-    if (parent && parent.items) {
-      return { container: parent.items, parent };
-    }
-    
-    return { container: [], parent: null };
   };
 
   const handleDragEnd = async (result: DropResult) => {
@@ -154,72 +141,29 @@ export function NavigationStructurePanel({
 
         // Parse the draggable ID to get the item ID
         const draggedItemId = result.draggableId.replace(`${sourceSectionId}-`, '');
-        const draggedItem = findItemById(section.items, draggedItemId);
         
-        if (!draggedItem) {
-          console.warn('Could not find dragged item');
-          return;
-        }
-
-        console.log('Reordering item:', { 
-          id: draggedItem.id, 
-          title: draggedItem.title,
+        console.log('Reordering item within section:', { 
+          sectionId: sourceSectionId,
+          draggedItemId,
           sourceIndex: source.index,
           destIndex: destination.index
         });
 
-        // Get the current container for the dragged item
-        const { container: sourceContainer, parent: sourceParent } = getItemContainer(section.items, draggedItemId);
+        // Remove the dragged item from the structure
+        const { newItems: itemsWithoutDragged, removedItem } = removeItemFromStructure(section.items, draggedItemId);
         
-        if (sourceContainer.length === 0) {
-          console.warn('Could not find source container for item');
+        if (!removedItem) {
+          console.warn('Could not find dragged item');
           return;
         }
 
-        // Find current index in source container
-        const currentIndex = sourceContainer.findIndex((item: any) => item.id === draggedItemId);
+        // Insert the item at the new position (only at root level for now)
+        const reorderedItems = insertItemAtPosition(itemsWithoutDragged, destination.index, removedItem);
         
-        if (currentIndex === -1) {
-          console.warn('Could not find current index of dragged item');
-          return;
-        }
-
-        // For same-container reordering
-        if (currentIndex === destination.index) {
-          return; // No change needed
-        }
-
-        console.log('Reordering within container:', { 
-          currentIndex, 
-          newIndex: destination.index,
-          containerSize: sourceContainer.length 
-        });
-
-        // Create new container with reordered items
-        const newContainer = [...sourceContainer];
-        const [movedItem] = newContainer.splice(currentIndex, 1);
-        newContainer.splice(destination.index, 0, movedItem);
-
         // Update order indices
-        const updatedContainer = updateOrderIndices(newContainer);
+        const finalItems = updateOrderIndices(reorderedItems);
 
-        // Update the section structure
-        let newSectionItems;
-        if (sourceParent) {
-          // Update parent's items
-          newSectionItems = section.items.map((item: any) => {
-            if (item.id === sourceParent.id) {
-              return { ...item, items: updatedContainer };
-            }
-            return item;
-          });
-        } else {
-          // Update root level items
-          newSectionItems = updatedContainer;
-        }
-
-        // Apply final order index update recursively
-        const finalItems = updateOrderIndices(newSectionItems);
+        console.log('Final reordered items:', finalItems.map(item => ({ id: item.id, title: item.title, order_index: item.order_index })));
 
         // Flatten all items for database update
         const flattenItems = (items: any[]): any[] => {
@@ -243,6 +187,8 @@ export function NavigationStructurePanel({
         );
 
         await Promise.all(updatePromises);
+        
+        console.log('All order indices updated successfully');
         
         // Refresh navigation data
         onNavigationChange();
@@ -346,11 +292,13 @@ export function NavigationStructurePanel({
                           
                           <div className="p-3">
                             <Droppable droppableId={`section-${section.id}`} type="item">
-                              {(sectionProvided) => (
+                              {(sectionProvided, sectionSnapshot) => (
                                 <div
                                   {...sectionProvided.droppableProps}
                                   ref={sectionProvided.innerRef}
-                                  className="space-y-1"
+                                  className={`space-y-1 min-h-[40px] rounded ${
+                                    sectionSnapshot.isDraggingOver ? 'bg-accent/50 border-2 border-dashed border-primary' : ''
+                                  }`}
                                 >
                                   {section.items?.map((item, itemIndex) => (
                                     <NavigationItemDisplay
@@ -364,15 +312,15 @@ export function NavigationStructurePanel({
                                     />
                                   ))}
                                   {sectionProvided.placeholder}
+                                  
+                                  {(!section.items || section.items.length === 0) && !sectionSnapshot.isDraggingOver && (
+                                    <p className="text-sm text-muted-foreground italic text-center py-4">
+                                      No items in this section. Add files from the left panel.
+                                    </p>
+                                  )}
                                 </div>
                               )}
                             </Droppable>
-                            
-                            {(!section.items || section.items.length === 0) && (
-                              <p className="text-sm text-muted-foreground italic text-center py-4">
-                                No items in this section. Add files from the left panel.
-                              </p>
-                            )}
                           </div>
                         </div>
                       )}
