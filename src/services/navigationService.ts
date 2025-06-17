@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { staticNavigation } from './staticNavigation';
 
@@ -49,7 +48,8 @@ function capitalizeTitle(title: string): string {
     'github': 'GitHub',
     'jetbrains': 'JetBrains',
     'llm': 'LLM',
-    'llms': 'LLMs'
+    'llms': 'LLMs',
+    'ltm': 'LTM'  // Add LTM to special cases
   };
   
   // Check for special cases first
@@ -292,7 +292,15 @@ export class NavigationService {
         ...section,
         // PRESERVE user-entered section titles - don't auto-capitalize
         title: section.title,
-        items: mergeFolderAndMarkdownItems(section.items || []),
+        items: mergeFolderAndMarkdownItems(section.items || []).map(item => ({
+          ...item,
+          // ONLY apply capitalization for auto-generated items, preserve user titles
+          title: item.is_auto_generated ? capitalizeTitle(item.title) : item.title,
+          items: item.items ? item.items.map(subItem => ({
+            ...subItem,
+            title: subItem.is_auto_generated ? capitalizeTitle(subItem.title) : subItem.title
+          })) : undefined
+        })),
       };
     });
     
