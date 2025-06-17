@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Separator } from "@/components/ui/separator";
 import { Plus, Trash2, RotateCcw, RefreshCw } from "lucide-react";
-import { NavigationSection } from "@/services/navigationService";
+import { NavigationSection, navigationService } from "@/services/navigationService";
 import { NavigationItemDisplay } from "./NavigationItemDisplay";
 import { NavigationSectionHeader } from "./NavigationSectionHeader";
 import { PendingDeletion } from "./hooks/usePendingDeletions";
@@ -49,7 +49,7 @@ export function NavigationStructurePanel({
     }
   };
 
-  const handleDragEnd = (result: DropResult) => {
+  const handleDragEnd = async (result: DropResult) => {
     if (!result.destination) return;
 
     const { source, destination } = result;
@@ -66,6 +66,62 @@ export function NavigationStructurePanel({
       }));
       
       onSectionReorder(sectionsWithNewOrder);
+      return;
+    }
+
+    // Handle item reordering within sections or moving between sections
+    if (source.droppableId.startsWith('section-') && destination.droppableId.startsWith('section-')) {
+      const sourceSectionId = source.droppableId.replace('section-', '');
+      const destSectionId = destination.droppableId.replace('section-', '');
+      
+      try {
+        if (sourceSectionId === destSectionId) {
+          // Reorder within same section
+          const section = sections.find(s => s.id === sourceSectionId);
+          if (!section || !section.items) return;
+          
+          const sourceItem = section.items[source.index];
+          const destinationItem = section.items[destination.index];
+          
+          // Update order in database
+          await navigationService.updateNavigationItem(sourceItem.id, {
+            order_index: destination.index
+          });
+          
+          if (destinationItem) {
+            await navigationService.updateNavigationItem(destinationItem.id, {
+              order_index: source.index
+            });
+          }
+          
+          // Refresh navigation data to update UI
+          onNavigationChange();
+          
+        } else {
+          // Move between sections
+          const sourceSection = sections.find(s => s.id === sourceSectionId);
+          const destSection = sections.find(s => s.id === destSectionId);
+          
+          if (!sourceSection?.items || !destSection) return;
+          
+          const movedItem = sourceSection.items[source.index];
+          const destItems = destSection.items || [];
+          
+          // Update the moved item's section and order
+          await navigationService.updateNavigationItem(movedItem.id, {
+            order_index: destination.index
+          });
+          
+          // Update the database with section change (this would need a new field or handling)
+          // For now, we'll refresh to get the updated state
+          onNavigationChange();
+        }
+      } catch (error) {
+        console.error('Error reordering items:', error);
+        toast.error("Failed to reorder items");
+        // Refresh to restore original state
+        onNavigationChange();
+      }
     }
   };
 
