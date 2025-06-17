@@ -1,98 +1,120 @@
 
 import { useState } from "react";
-import { Settings, GripVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
+import { 
+  GripVertical, 
+  Edit2, 
+  Check, 
+  X, 
+  Trash2,
+  Folder
+} from "lucide-react";
 import { NavigationSection } from "@/services/navigationService";
 import { PendingDeletion } from "./hooks/usePendingDeletions";
+import { DraggableProvidedDragHandleProps } from "@hello-pangea/dnd";
 
 interface NavigationSectionHeaderProps {
   section: NavigationSection;
   pendingDeletions: PendingDeletion[];
   onUpdateTitle: (sectionId: string, title: string) => void;
-  dragHandleProps: any;
+  onDeleteSection: (sectionId: string) => void;
+  dragHandleProps?: DraggableProvidedDragHandleProps;
 }
 
-export function NavigationSectionHeader({ 
-  section, 
-  pendingDeletions, 
-  onUpdateTitle, 
-  dragHandleProps 
+export function NavigationSectionHeader({
+  section,
+  pendingDeletions,
+  onUpdateTitle,
+  onDeleteSection,
+  dragHandleProps
 }: NavigationSectionHeaderProps) {
-  const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
-  const [editingSectionTitle, setEditingSectionTitle] = useState("");
+  const [isEditing, setIsEditing] = useState(false);
+  const [editTitle, setEditTitle] = useState(section.title);
 
-  const handleEditSection = (section: NavigationSection) => {
-    setEditingSectionId(section.id);
-    setEditingSectionTitle(section.title);
-  };
-
-  const handleSaveEdit = () => {
-    if (editingSectionId && editingSectionTitle.trim()) {
-      onUpdateTitle(editingSectionId, editingSectionTitle.trim());
-      setEditingSectionId(null);
-      setEditingSectionTitle("");
+  const handleSaveTitle = () => {
+    if (editTitle.trim() && editTitle !== section.title) {
+      onUpdateTitle(section.id, editTitle.trim());
     }
+    setIsEditing(false);
   };
 
   const handleCancelEdit = () => {
-    setEditingSectionId(null);
-    setEditingSectionTitle("");
+    setEditTitle(section.title);
+    setIsEditing(false);
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      handleSaveTitle();
+    } else if (e.key === 'Escape') {
+      handleCancelEdit();
+    }
+  };
+
+  const handleDeleteSection = () => {
+    onDeleteSection(section.id);
   };
 
   return (
-    <div className="p-3 border-b border-border bg-muted/20">
-      <div className="flex items-center gap-3">
+    <div className="flex items-center justify-between p-3 border-b bg-muted/10 group">
+      <div className="flex items-center gap-2 flex-1">
         <div {...dragHandleProps} className="cursor-grab hover:cursor-grabbing">
           <GripVertical className="h-4 w-4 text-muted-foreground" />
         </div>
         
-        {editingSectionId === section.id ? (
-          <div className="flex-1 flex items-center gap-2">
+        <Folder className="h-4 w-4 text-blue-600 flex-shrink-0" />
+        
+        {isEditing ? (
+          <div className="flex items-center gap-2 flex-1">
             <Input
-              value={editingSectionTitle}
-              onChange={(e) => setEditingSectionTitle(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleSaveEdit();
-                if (e.key === 'Escape') handleCancelEdit();
-              }}
-              className="text-sm"
+              value={editTitle}
+              onChange={(e) => setEditTitle(e.target.value)}
+              onKeyDown={handleKeyPress}
+              className="h-7 text-sm font-medium"
               autoFocus
             />
-            <Button size="sm" onClick={handleSaveEdit}>
-              Save
-            </Button>
-            <Button size="sm" variant="outline" onClick={handleCancelEdit}>
-              Cancel
-            </Button>
-          </div>
-        ) : (
-          <>
-            <div className="flex-1">
-              <h3 className="font-medium text-sm">{section.title}</h3>
-              <div className="flex items-center gap-2 mt-1">
-                <Badge variant="secondary" className="text-xs">
-                  {section.items?.length || 0} items
-                </Badge>
-                {pendingDeletions.filter(d => d.sectionId === section.id).length > 0 && (
-                  <Badge variant="destructive" className="text-xs">
-                    {pendingDeletions.filter(d => d.sectionId === section.id).length} pending deletion
-                  </Badge>
-                )}
-              </div>
-            </div>
             <Button
               size="sm"
               variant="ghost"
-              onClick={() => handleEditSection(section)}
-              className="h-8 w-8 p-0"
+              onClick={handleSaveTitle}
+              className="h-7 w-7 p-0"
             >
-              <Settings className="h-3 w-3" />
+              <Check className="h-3 w-3 text-green-600" />
             </Button>
-          </>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={handleCancelEdit}
+              className="h-7 w-7 p-0"
+            >
+              <X className="h-3 w-3 text-red-600" />
+            </Button>
+          </div>
+        ) : (
+          <div className="flex items-center gap-2 flex-1">
+            <span className="font-medium text-sm">{section.title}</span>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setIsEditing(true)}
+              className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 hover:bg-primary/10"
+            >
+              <Edit2 className="h-3 w-3" />
+            </Button>
+          </div>
         )}
       </div>
+
+      <Button
+        size="sm"
+        variant="ghost"
+        onClick={handleDeleteSection}
+        className="h-6 w-6 p-0 opacity-0 group-hover:opacity-100 hover:bg-destructive hover:text-destructive-foreground transition-all"
+        title="Delete section"
+      >
+        <Trash2 className="h-3 w-3" />
+      </Button>
     </div>
   );
 }

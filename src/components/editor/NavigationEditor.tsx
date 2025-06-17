@@ -210,6 +210,23 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
     }
   };
 
+  const handleDeleteSection = async (sectionId: string) => {
+    try {
+      await navigationService.deleteNavigationSection(sectionId);
+      
+      console.log('Section deleted, refreshing navigation data');
+      const refreshedData = await refetch();
+      if (refreshedData.data?.sections) {
+        setSections(refreshedData.data.sections);
+      }
+      onNavigationChange();
+      toast.success("Section deleted successfully");
+    } catch (error) {
+      console.error('Error deleting section:', error);
+      toast.error("Failed to delete section");
+    }
+  };
+
   // Enhanced navigation refresh handler
   const handleNavigationRefresh = async () => {
     console.log('Refreshing navigation data');
@@ -251,6 +268,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
               pendingDeletions={pendingDeletions}
               onAddSection={handleAddSection}
               onUpdateSectionTitle={handleUpdateSectionTitle}
+              onDeleteSection={handleDeleteSection}
               onUpdateItemTitle={handleUpdateItemTitle}
               onTogglePendingDeletion={handleTogglePendingDeletion}
               onBulkDelete={handleBulkDelete}

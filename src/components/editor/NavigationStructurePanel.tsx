@@ -18,6 +18,7 @@ interface NavigationStructurePanelProps {
   pendingDeletions: PendingDeletion[];
   onAddSection: (title: string) => void;
   onUpdateSectionTitle: (sectionId: string, title: string) => void;
+  onDeleteSection: (sectionId: string) => void;
   onUpdateItemTitle: (itemId: string, title: string) => void;
   onTogglePendingDeletion: (sectionId: string, itemIndex: number) => void;
   onBulkDelete: () => void;
@@ -31,6 +32,7 @@ export function NavigationStructurePanel({
   pendingDeletions,
   onAddSection,
   onUpdateSectionTitle,
+  onDeleteSection,
   onUpdateItemTitle,
   onTogglePendingDeletion,
   onBulkDelete,
@@ -161,6 +163,7 @@ export function NavigationStructurePanel({
                             section={section}
                             pendingDeletions={pendingDeletions}
                             onUpdateTitle={onUpdateSectionTitle}
+                            onDeleteSection={onDeleteSection}
                             dragHandleProps={provided.dragHandleProps}
                           />
                           
