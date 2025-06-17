@@ -11,7 +11,9 @@ import {
   Trash2,
   Edit2,
   X,
-  Lock
+  Lock,
+  ArrowUp,
+  ArrowDown
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -27,6 +29,10 @@ interface NavigationItemDisplayProps {
   pendingDeletions: PendingDeletion[];
   onTogglePendingDeletion: (sectionId: string, itemId: string) => void;
   onUpdateTitle: (itemId: string, newTitle: string) => void;
+  onMoveUp?: (itemId: string) => void;
+  onMoveDown?: (itemId: string) => void;
+  canMoveUp?: boolean;
+  canMoveDown?: boolean;
   depth?: number;
 }
 
@@ -37,6 +43,10 @@ export function NavigationItemDisplay({
   pendingDeletions, 
   onTogglePendingDeletion,
   onUpdateTitle,
+  onMoveUp,
+  onMoveDown,
+  canMoveUp = false,
+  canMoveDown = false,
   depth = 0
 }: NavigationItemDisplayProps) {
   // Start with folders collapsed by default for better UX
@@ -129,6 +139,28 @@ export function NavigationItemDisplay({
                 className="cursor-grab hover:cursor-grabbing flex-shrink-0"
               >
                 <GripVertical className="h-4 w-4 text-muted-foreground" />
+              </div>
+              
+              {/* Up/Down arrow buttons */}
+              <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-3 w-3 p-0 hover:bg-primary/10"
+                  onClick={() => onMoveUp?.(item.id)}
+                  disabled={!canMoveUp}
+                >
+                  <ArrowUp className="h-2 w-2" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-3 w-3 p-0 hover:bg-primary/10"
+                  onClick={() => onMoveDown?.(item.id)}
+                  disabled={!canMoveDown}
+                >
+                  <ArrowDown className="h-2 w-2" />
+                </Button>
               </div>
               
               {hasChildren ? (

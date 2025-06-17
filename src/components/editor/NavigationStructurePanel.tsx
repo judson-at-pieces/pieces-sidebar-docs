@@ -49,53 +49,6 @@ export function NavigationStructurePanel({
     }
   };
 
-  // Helper function to find an item by ID recursively
-  const findItemById = (items: any[], itemId: string): any => {
-    for (const item of items) {
-      if (item.id === itemId) return item;
-      if (item.items && item.items.length > 0) {
-        const found = findItemById(item.items, itemId);
-        if (found) return found;
-      }
-    }
-    return null;
-  };
-
-  // Helper function to remove an item from nested structure and return the removed item
-  const removeItemFromStructure = (items: any[], itemId: string): { newItems: any[], removedItem: any | null } => {
-    let removedItem: any = null;
-    
-    const processItems = (itemList: any[]): any[] => {
-      const result: any[] = [];
-      
-      for (const item of itemList) {
-        if (item.id === itemId) {
-          removedItem = item;
-          continue; // Skip this item (remove it)
-        }
-        
-        if (item.items && item.items.length > 0) {
-          const processedChildren = processItems(item.items);
-          result.push({ ...item, items: processedChildren });
-        } else {
-          result.push(item);
-        }
-      }
-      
-      return result;
-    };
-    
-    const newItems = processItems(items);
-    return { newItems, removedItem };
-  };
-
-  // Helper function to insert item at specific position
-  const insertItemAtPosition = (items: any[], insertIndex: number, itemToInsert: any): any[] => {
-    const newItems = [...items];
-    newItems.splice(insertIndex, 0, itemToInsert);
-    return newItems;
-  };
-
   // Helper function to update order indices recursively
   const updateOrderIndices = (items: any[]): any[] => {
     return items.map((item, index) => ({
@@ -103,6 +56,46 @@ export function NavigationStructurePanel({
       order_index: index,
       items: item.items ? updateOrderIndices(item.items) : []
     }));
+  };
+
+  const handleMoveItem = async (sectionId: string, itemId: string, direction: 'up' | 'down') => {
+    try {
+      const section = sections.find(s => s.id === sectionId);
+      if (!section?.items) return;
+
+      const items = [...section.items];
+      const itemIndex = items.findIndex(item => item.id === itemId);
+      
+      if (itemIndex === -1) return;
+      
+      const newIndex = direction === 'up' ? itemIndex - 1 : itemIndex + 1;
+      
+      if (newIndex < 0 || newIndex >= items.length) return;
+
+      // Swap items
+      [items[itemIndex], items[newIndex]] = [items[newIndex], items[itemIndex]];
+      
+      // Update order indices
+      const finalItems = updateOrderIndices(items);
+
+      // Update database with new order indices
+      const updatePromises = finalItems.map(item => 
+        navigationService.updateNavigationItem(item.id, {
+          order_index: item.order_index
+        })
+      );
+
+      await Promise.all(updatePromises);
+      
+      // Refresh navigation data
+      onNavigationChange();
+      toast.success("Items reordered successfully");
+      
+    } catch (error) {
+      console.error('Error moving item:', error);
+      toast.error("Failed to reorder items");
+      onNavigationChange();
+    }
   };
 
   const handleDragEnd = async (result: DropResult) => {
@@ -290,7 +283,7 @@ export function NavigationStructurePanel({
                                 <div
                                   {...sectionProvided.droppableProps}
                                   ref={sectionProvided.innerRef}
-                                  className={`space-y-2 min-h-[40px] rounded-md p-2 transition-colors ${
+                                  className={`space-y-1 min-h-[40px] rounded-md p-2 transition-colors relative ${
                                     sectionSnapshot.isDraggingOver 
                                       ? 'bg-blue-50 border-2 border-dashed border-blue-300' 
                                       : 'border-2 border-dashed border-transparent'
@@ -298,13 +291,12 @@ export function NavigationStructurePanel({
                                 >
                                   {section.items?.map((item, itemIndex) => (
                                     <div key={item.id} className="relative">
-                                      {/* Drop indicator above each item */}
+                                      {/* Enhanced drop indicator above each item */}
                                       {sectionSnapshot.isDraggingOver && (
                                         <div 
-                                          className="absolute -top-1 left-0 right-0 h-0.5 bg-blue-400 opacity-0 transition-opacity"
-                                          style={{
-                                            opacity: sectionSnapshot.draggingOverWith?.endsWith(`-${item.id}`) ? 0 : 1
-                                          }}
+                                          className={`absolute -top-2 left-0 right-0 h-1 bg-blue-400 rounded-full transition-opacity z-10 ${
+                                            sectionSnapshot.draggingOverWith === `${section.id}-${item.id}` ? 'opacity-100' : 'opacity-0'
+                                          }`}
                                         />
                                       )}
                                       
@@ -315,13 +307,17 @@ export function NavigationStructurePanel({
                                         pendingDeletions={pendingDeletions}
                                         onTogglePendingDeletion={onTogglePendingDeletion}
                                         onUpdateTitle={onUpdateItemTitle}
+                                        onMoveUp={(itemId) => handleMoveItem(section.id, itemId, 'up')}
+                                        onMoveDown={(itemId) => handleMoveItem(section.id, itemId, 'down')}
+                                        canMoveUp={itemIndex > 0}
+                                        canMoveDown={itemIndex < (section.items?.length || 0) - 1}
                                       />
                                     </div>
                                   ))}
                                   
                                   {/* Drop indicator at the end */}
                                   {sectionSnapshot.isDraggingOver && (
-                                    <div className="h-0.5 bg-blue-400 rounded" />
+                                    <div className="h-1 bg-blue-400 rounded-full mt-2" />
                                   )}
                                   
                                   {sectionProvided.placeholder}
