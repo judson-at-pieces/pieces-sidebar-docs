@@ -12,7 +12,6 @@ export interface NavigationItem {
   parent_id?: string;
   is_auto_generated: boolean;
   file_path?: string;
-  privacy?: 'PUBLIC' | 'PRIVATE';
   items?: NavigationItem[];
 }
 
@@ -292,7 +291,6 @@ export class NavigationService {
     order_index: number;
     is_active: boolean;
     parent_id: string;
-    privacy: string;
   }>) {
     const { data, error } = await supabase
       .from('navigation_items')
