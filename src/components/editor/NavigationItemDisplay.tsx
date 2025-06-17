@@ -43,6 +43,7 @@ export function NavigationItemDisplay({
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(item.title);
+  const [isUpdating, setIsUpdating] = useState(false);
   const paddingLeft = depth * 16;
   
   const children = item.items || [];
@@ -54,11 +55,29 @@ export function NavigationItemDisplay({
     deletion => deletion.sectionId === sectionId && deletion.itemId === item.id
   );
 
-  const handleSaveTitle = () => {
-    if (editTitle.trim() && editTitle !== item.title) {
-      onUpdateTitle(item.id, editTitle.trim());
+  const handleSaveTitle = async () => {
+    const trimmedTitle = editTitle.trim();
+    if (!trimmedTitle) {
+      setEditTitle(item.title);
+      setIsEditing(false);
+      return;
     }
-    setIsEditing(false);
+
+    if (trimmedTitle === item.title) {
+      setIsEditing(false);
+      return;
+    }
+
+    setIsUpdating(true);
+    try {
+      await onUpdateTitle(item.id, trimmedTitle);
+      setIsEditing(false);
+    } catch (error) {
+      console.error('Failed to update title:', error);
+      setEditTitle(item.title); // Reset to original title on error
+    } finally {
+      setIsUpdating(false);
+    }
   };
 
   const handleCancelEdit = () => {
@@ -72,6 +91,11 @@ export function NavigationItemDisplay({
     } else if (e.key === 'Escape') {
       handleCancelEdit();
     }
+  };
+
+  const handleStartEdit = () => {
+    setEditTitle(item.title);
+    setIsEditing(true);
   };
 
   return (
@@ -147,12 +171,14 @@ export function NavigationItemDisplay({
                       className="h-6 text-sm"
                       autoFocus
                       onBlur={handleSaveTitle}
+                      disabled={isUpdating}
                     />
                     <Button
                       size="sm"
                       variant="ghost"
                       onClick={handleSaveTitle}
                       className="h-6 w-6 p-0 flex-shrink-0"
+                      disabled={isUpdating}
                     >
                       <Check className="h-3 w-3 text-green-600" />
                     </Button>
@@ -161,6 +187,7 @@ export function NavigationItemDisplay({
                       variant="ghost"
                       onClick={handleCancelEdit}
                       className="h-6 w-6 p-0 flex-shrink-0"
+                      disabled={isUpdating}
                     >
                       <X className="h-3 w-3 text-red-600" />
                     </Button>
@@ -174,7 +201,7 @@ export function NavigationItemDisplay({
                       <Button
                         size="sm"
                         variant="ghost"
-                        onClick={() => setIsEditing(true)}
+                        onClick={handleStartEdit}
                         className="h-4 w-4 p-0 opacity-0 group-hover:opacity-100 hover:bg-primary/10 flex-shrink-0"
                       >
                         <Edit2 className="h-3 w-3" />
