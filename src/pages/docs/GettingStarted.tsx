@@ -42,7 +42,7 @@ const GettingStarted = () => {
         </div>
 
         <div className="grid md:grid-cols-3 gap-8 mb-16">
-          <Link to="/docs/meet-pieces/windows-installation-guide" className="group no-underline">
+          <Link to="/meet-pieces/windows-installation-guide" className="group no-underline">
             <Card className="h-full bg-white dark:bg-[#2a2b2b] border-border hover:border-blue-300 dark:hover:border-blue-600 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
               <CardHeader className="text-center pb-4">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
@@ -64,7 +64,7 @@ const GettingStarted = () => {
             </Card>
           </Link>
 
-          <Link to="/docs/quick-guides/overview" className="group no-underline">
+          <Link to="/quick-guides/overview" className="group no-underline">
             <Card className="h-full bg-white dark:bg-[#2a2b2b] border-border hover:border-green-300 dark:hover:border-green-600 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
               <CardHeader className="text-center pb-4">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-green-50 dark:bg-green-950/30 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
@@ -86,7 +86,7 @@ const GettingStarted = () => {
             </Card>
           </Link>
 
-          <Link to="/docs/extensions-plugins" className="group no-underline">
+          <Link to="/extensions-plugins" className="group no-underline">
             <Card className="h-full bg-white dark:bg-[#2a2b2b] border-border hover:border-purple-300 dark:hover:border-purple-600 transition-all duration-300 hover:shadow-xl hover:-translate-y-1">
               <CardHeader className="text-center pb-4">
                 <div className="w-16 h-16 mx-auto mb-4 rounded-2xl bg-purple-50 dark:bg-purple-950/30 flex items-center justify-center group-hover:scale-110 transition-transform duration-300">
@@ -195,7 +195,7 @@ const GettingStarted = () => {
             Join thousands of developers who are already using Pieces to save time, 
             stay organized, and code more efficiently.
           </p>
-          <Link to="/docs/meet-pieces/fundamentals">
+          <Link to="/meet-pieces/fundamentals">
             <Button size="lg" className="bg-blue-600 hover:bg-blue-700 text-white px-8 py-3">
               <BookOpen className="mr-2 w-5 h-5" />
               Learn the Fundamentals
