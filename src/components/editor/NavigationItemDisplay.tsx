@@ -27,7 +27,6 @@ interface NavigationItemDisplayProps {
   onTogglePendingDeletion: (sectionId: string, itemId: string) => void;
   onUpdateTitle: (itemId: string, newTitle: string) => void;
   depth?: number;
-  globalIndex?: number;
 }
 
 export function NavigationItemDisplay({ 
@@ -37,8 +36,7 @@ export function NavigationItemDisplay({
   pendingDeletions, 
   onTogglePendingDeletion,
   onUpdateTitle,
-  depth = 0,
-  globalIndex
+  depth = 0
 }: NavigationItemDisplayProps) {
   // Start with folders collapsed by default
   const [isExpanded, setIsExpanded] = useState(false);
@@ -74,12 +72,9 @@ export function NavigationItemDisplay({
     }
   };
 
-  // Use globalIndex if provided, otherwise use index
-  const dragIndex = globalIndex !== undefined ? globalIndex : index;
-
   return (
     <>
-      <Draggable draggableId={`${sectionId}-${item.id}`} index={dragIndex}>
+      <Draggable draggableId={`${sectionId}-${item.id}`} index={index}>
         {(provided, snapshot) => (
           <div
             ref={provided.innerRef}

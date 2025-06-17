@@ -82,6 +82,24 @@ export function NavigationStructurePanel({
     }));
   };
 
+  // Helper function to remove an item from nested structure
+  const removeItemFromStructure = (items: any[], itemId: string): any[] => {
+    return items.filter(item => {
+      if (item.id === itemId) return false;
+      if (item.items) {
+        item.items = removeItemFromStructure(item.items, itemId);
+      }
+      return true;
+    });
+  };
+
+  // Helper function to insert item at specific position
+  const insertItemAtPosition = (items: any[], insertIndex: number, itemToInsert: any): any[] => {
+    const newItems = [...items];
+    newItems.splice(insertIndex, 0, itemToInsert);
+    return newItems;
+  };
+
   const handleDragEnd = async (result: DropResult) => {
     if (!result.destination) return;
 
@@ -116,116 +134,91 @@ export function NavigationStructurePanel({
         const section = sections.find(s => s.id === sourceSectionId);
         if (!section?.items) return;
 
-        // Get the flattened list for indexing
-        const flattenedItems = (items: any[]): any[] => {
+        // Parse the draggable ID to get the item ID
+        const draggedItemId = result.draggableId.replace(`${sourceSectionId}-`, '');
+        const draggedItem = findItemById(section.items, draggedItemId);
+        
+        if (!draggedItem) {
+          console.warn('Could not find dragged item');
+          return;
+        }
+
+        console.log('Dragging item:', { id: draggedItem.id, title: draggedItem.title });
+
+        // Find the parent of the dragged item
+        const draggedParent = findParentOfItem(section.items, draggedItemId);
+        
+        // Determine the container items (either parent's items or root items)
+        const containerItems = draggedParent ? draggedParent.items : section.items;
+        
+        // Get the current index of the dragged item in its container
+        const currentIndex = containerItems.findIndex((item: any) => item.id === draggedItemId);
+        
+        if (currentIndex === -1) {
+          console.warn('Could not find current index of dragged item');
+          return;
+        }
+
+        // Calculate the new index (accounting for the item being removed first)
+        let newIndex = destination.index;
+        if (currentIndex < destination.index) {
+          newIndex = destination.index - 1;
+        }
+
+        // Don't do anything if the position hasn't changed
+        if (currentIndex === newIndex) {
+          return;
+        }
+
+        console.log('Reordering within container:', { currentIndex, newIndex });
+
+        // Create new container items with reordered items
+        const newContainerItems = [...containerItems];
+        const [movedItem] = newContainerItems.splice(currentIndex, 1);
+        newContainerItems.splice(newIndex, 0, movedItem);
+
+        // Update the section with new order
+        let newSectionItems;
+        if (draggedParent) {
+          // Update the parent's items
+          newSectionItems = section.items.map((item: any) => {
+            if (item.id === draggedParent.id) {
+              return { ...item, items: updateOrderIndices(newContainerItems) };
+            }
+            return item;
+          });
+        } else {
+          // Update root level items
+          newSectionItems = updateOrderIndices(newContainerItems);
+        }
+
+        // Update all order indices recursively
+        const finalItems = updateOrderIndices(newSectionItems);
+
+        // Update database
+        const flattenForUpdate = (items: any[]): any[] => {
           const result: any[] = [];
-          const traverse = (itemList: any[]) => {
-            itemList.forEach(item => {
-              result.push(item);
-              if (item.items && item.items.length > 0) {
-                traverse(item.items);
-              }
-            });
-          };
-          traverse(items);
+          items.forEach(item => {
+            result.push(item);
+            if (item.items) {
+              result.push(...flattenForUpdate(item.items));
+            }
+          });
           return result;
         };
 
-        const flatItems = flattenedItems(section.items);
+        const allItems = flattenForUpdate(finalItems);
+        const updatePromises = allItems.map(item => 
+          navigationService.updateNavigationItem(item.id, {
+            order_index: item.order_index
+          })
+        );
+
+        await Promise.all(updatePromises);
         
-        if (source.index >= flatItems.length || destination.index >= flatItems.length) {
-          console.warn('Invalid drag indices:', { source: source.index, dest: destination.index, total: flatItems.length });
-          return;
-        }
-
-        const draggedItem = flatItems[source.index];
-        const targetItem = flatItems[destination.index];
-        
-        if (!draggedItem || !targetItem) {
-          console.warn('Could not find dragged or target items');
-          return;
-        }
-
-        console.log('Dragging:', {
-          draggedItem: { id: draggedItem.id, title: draggedItem.title },
-          targetItem: { id: targetItem.id, title: targetItem.title },
-          sourceIndex: source.index,
-          destIndex: destination.index
-        });
-
-        // Find parents
-        const draggedParent = findParentOfItem(section.items, draggedItem.id);
-        const targetParent = findParentOfItem(section.items, targetItem.id);
-
-        console.log('Parents:', {
-          draggedParent: draggedParent ? { id: draggedParent.id, title: draggedParent.title } : null,
-          targetParent: targetParent ? { id: targetParent.id, title: targetParent.title } : null
-        });
-
-        // Allow reordering within the same parent (including root level)
-        const draggedParentId = draggedParent?.id || null;
-        const targetParentId = targetParent?.id || null;
-        
-        if (draggedParentId === targetParentId) {
-          const parentItems = draggedParent ? draggedParent.items : section.items;
-          const draggedItemIndex = parentItems.findIndex((item: any) => item.id === draggedItem.id);
-          const targetItemIndex = parentItems.findIndex((item: any) => item.id === targetItem.id);
-
-          if (draggedItemIndex === -1 || targetItemIndex === -1) {
-            console.warn('Could not find item indices in parent');
-            return;
-          }
-
-          // Create new items array with reordered items
-          const newParentItems = [...parentItems];
-          const [movedItem] = newParentItems.splice(draggedItemIndex, 1);
-          newParentItems.splice(targetItemIndex, 0, movedItem);
-
-          // Update the section with new order
-          let newSectionItems;
-          if (draggedParent) {
-            // Update the parent's items
-            newSectionItems = section.items.map((item: any) => {
-              if (item.id === draggedParent.id) {
-                return { ...item, items: updateOrderIndices(newParentItems) };
-              }
-              return item;
-            });
-          } else {
-            // Update root level items
-            newSectionItems = updateOrderIndices(newParentItems);
-          }
-
-          // Update all order indices recursively
-          const finalItems = updateOrderIndices(newSectionItems);
-
-          // Update database
-          const flattenForUpdate = (items: any[]): any[] => {
-            const result: any[] = [];
-            items.forEach(item => {
-              result.push(item);
-              if (item.items) {
-                result.push(...flattenForUpdate(item.items));
-              }
-            });
-            return result;
-          };
-
-          const allItems = flattenForUpdate(finalItems);
-          const updatePromises = allItems.map(item => 
-            navigationService.updateNavigationItem(item.id, {
-              order_index: item.order_index
-            })
-          );
-
-          await Promise.all(updatePromises);
-          
-          // Refresh navigation data
-          onNavigationChange();
-          toast.success("Items reordered successfully");
-        } else {
-          toast.info("Items can only be reordered within the same parent folder");
-        }
+        // Refresh navigation data
+        onNavigationChange();
+        toast.success("Items reordered successfully");
         
       } catch (error) {
         console.error('Error reordering items:', error);
