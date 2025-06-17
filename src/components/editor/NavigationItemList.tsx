@@ -20,7 +20,7 @@ interface NavigationItemListProps {
   sectionId: string;
   items: NavigationItem[];
   pendingDeletions: PendingDeletion[];
-  onTogglePendingDeletion: (sectionId: string, itemIndex: number) => void;
+  onTogglePendingDeletion: (sectionId: string, itemId: string) => void;
   onNavigationChange: () => void;
   depth?: number;
   parentPath?: string;
@@ -31,7 +31,7 @@ interface NavigationItemProps {
   index: number;
   sectionId: string;
   pendingDeletions: PendingDeletion[];
-  onTogglePendingDeletion: (sectionId: string, itemIndex: number) => void;
+  onTogglePendingDeletion: (sectionId: string, itemId: string) => void;
   onNavigationChange: () => void;
   depth: number;
   parentPath: string;
@@ -55,9 +55,9 @@ function NavigationItemComponent({
   const hasChildren = item.items && item.items.length > 0;
   const itemPath = `${parentPath}.${index}`;
   
-  // Find if this item is pending deletion using global index
+  // Find if this item is pending deletion using item ID instead of index
   const isPendingDeletion = pendingDeletions.some(
-    deletion => deletion.sectionId === sectionId && deletion.itemIndex === globalIndex
+    deletion => deletion.sectionId === sectionId && deletion.itemId === item.id
   );
 
   return (
@@ -123,7 +123,7 @@ function NavigationItemComponent({
             <Button
               size="sm"
               variant={isPendingDeletion ? "destructive" : "ghost"}
-              onClick={() => onTogglePendingDeletion(sectionId, globalIndex)}
+              onClick={() => onTogglePendingDeletion(sectionId, item.id)}
               className={`h-6 w-6 p-0 transition-all ${
                 isPendingDeletion 
                   ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground' 
