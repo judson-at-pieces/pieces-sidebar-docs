@@ -272,6 +272,7 @@ export class NavigationService {
     order_index?: number;
     is_auto_generated?: boolean;
     file_path?: string;
+    privacy?: string;
   }) {
     const { data, error } = await supabase
       .from('navigation_items')
@@ -291,6 +292,7 @@ export class NavigationService {
     order_index: number;
     is_active: boolean;
     parent_id: string;
+    privacy: string;
   }>) {
     const { data, error } = await supabase
       .from('navigation_items')
@@ -307,6 +309,17 @@ export class NavigationService {
     const { data, error } = await supabase
       .from('navigation_items')
       .update({ is_active: isActive })
+      .eq('file_path', filePath)
+      .select();
+    
+    if (error) throw error;
+    return data;
+  }
+
+  async updateNavigationItemPrivacyByFilePath(filePath: string, privacy: 'PUBLIC' | 'PRIVATE') {
+    const { data, error } = await supabase
+      .from('navigation_items')
+      .update({ privacy })
       .eq('file_path', filePath)
       .select();
     

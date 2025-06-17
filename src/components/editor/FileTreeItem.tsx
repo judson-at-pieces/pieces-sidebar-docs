@@ -1,154 +1,143 @@
 
-import { useState } from "react";
-import { Draggable } from "@hello-pangea/dnd";
-import { 
-  GripVertical, 
-  FileText, 
-  FolderOpen, 
-  Folder,
-  ChevronDown,
-  ChevronRight
-} from "lucide-react";
-import { Badge } from "@/components/ui/badge";
-import { FileNode } from "@/utils/fileSystem";
+import React, { useState } from 'react';
+import { ChevronRight, ChevronDown, FileText, Folder, FolderOpen, MoreHorizontal, Lock, Globe } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { FileNode } from '@/utils/fileSystem';
 
 interface FileTreeItemProps {
   node: FileNode;
-  depth: number;
-  index: number;
-  isUsed: (path: string) => boolean;
+  selectedFile?: string;
+  onFileSelect: (filePath: string) => void;
+  level?: number;
+  pendingChanges?: string[];
+  liveSessions?: Array<{ file_path: string; content: string }>;
+  onOpenSettings?: (itemPath: string, itemType: 'file' | 'folder', privacy?: 'PUBLIC' | 'PRIVATE') => void;
 }
 
-export function FileTreeItem({ node, depth, index, isUsed }: FileTreeItemProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
-  const paddingLeft = depth * 16;
+export function FileTreeItem({ 
+  node, 
+  selectedFile, 
+  onFileSelect, 
+  level = 0,
+  pendingChanges = [],
+  liveSessions = [],
+  onOpenSettings
+}: FileTreeItemProps) {
+  const [isExpanded, setIsExpanded] = useState(false);
+  
+  const isSelected = selectedFile === node.path;
+  const hasChanges = pendingChanges.includes(node.path);
+  const hasLiveSession = liveSessions.some(session => session.file_path === node.path && session.content.trim());
+  
+  const paddingLeft = level * 16 + (node.type === 'file' ? 24 : 8);
 
-  // Check if any children are available
-  const hasAvailableChildren = (node: FileNode): boolean => {
-    if (!node.children) return false;
-    
-    // For folders with index files, check if there are other available children
-    const indexFileName = `${node.name}.md`;
-    return node.children.some(child => {
-      if (child.type === 'file') {
-        // Skip the index file itself, but include other files
-        return child.name !== indexFileName && !isUsed(child.path);
-      }
-      return hasAvailableChildren(child);
-    });
+  const handleToggle = () => {
+    if (node.type === 'directory') {
+      setIsExpanded(!isExpanded);
+    } else {
+      onFileSelect(node.path);
+    }
   };
 
-  // Check if this folder has an index file
-  const hasIndexFile = (node: FileNode): boolean => {
-    if (!node.children) return false;
-    const indexFileName = `${node.name}.md`;
-    return node.children.some(child => 
-      child.type === 'file' && child.name === indexFileName
-    );
+  const handleSettingsClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (onOpenSettings) {
+      onOpenSettings(node.path, node.type === 'directory' ? 'folder' : 'file', 'PUBLIC');
+    }
   };
 
-  if (node.type === 'file') {
-    const used = isUsed(node.path);
-    if (used) return null;
+  const getFileIcon = () => {
+    if (node.type === 'directory') {
+      return isExpanded ? <FolderOpen className="h-4 w-4" /> : <Folder className="h-4 w-4" />;
+    }
+    return <FileText className="h-4 w-4" />;
+  };
 
-    return (
-      <Draggable draggableId={node.path} index={index}>
-        {(provided, snapshot) => (
-          <div
-            ref={provided.innerRef}
-            {...provided.draggableProps}
-            {...provided.dragHandleProps}
-            className={`p-2 mb-1 border rounded-lg flex items-center gap-2 cursor-move transition-colors ${
-              snapshot.isDragging ? 'bg-accent border-primary' : 'hover:bg-accent/50'
-            }`}
-            style={{ marginLeft: paddingLeft, ...provided.draggableProps.style }}
-          >
-            <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-            <FileText className="h-4 w-4 flex-shrink-0" />
-            <span className="text-sm font-medium truncate">
-              {node.name.replace('.md', '')}
-            </span>
-          </div>
-        )}
-      </Draggable>
-    );
-  }
-
-  // For folders, check if they should be shown
-  const showFolder = hasIndexFile(node) || hasAvailableChildren(node);
-  if (!showFolder) return null;
-
-  // Count available items (including the folder itself if it has an index file)
-  const availableCount = (hasIndexFile(node) ? 1 : 0) + 
-    (node.children?.filter(child => 
-      child.type === 'file' ? (!isUsed(child.path) && child.name !== `${node.name}.md`) : hasAvailableChildren(child)
-    ).length || 0);
+  const getFileName = () => {
+    if (node.type === 'file' && node.name.endsWith('.md')) {
+      return node.name.replace(/\.md$/, '');
+    }
+    return node.name;
+  };
 
   return (
-    <div style={{ marginLeft: paddingLeft }}>
-      <Draggable draggableId={`folder-${node.path}`} index={index}>
-        {(provided, snapshot) => (
-          <div
-            ref={provided.innerRef}
-            {...provided.draggableProps}
-            className={`mb-2 ${snapshot.isDragging ? 'opacity-75' : ''}`}
-          >
-            <div 
-              {...provided.dragHandleProps}
-              className={`p-2 flex items-center gap-2 cursor-move hover:bg-accent/30 rounded transition-colors ${
-                snapshot.isDragging ? 'bg-accent border border-primary' : ''
-              }`}
-              onClick={() => setIsExpanded(!isExpanded)}
-            >
-              <GripVertical className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-              {hasAvailableChildren(node) ? (
-                isExpanded ? (
-                  <ChevronDown className="h-4 w-4 flex-shrink-0" />
-                ) : (
-                  <ChevronRight className="h-4 w-4 flex-shrink-0" />
-                )
-              ) : (
-                <div className="h-4 w-4 flex-shrink-0" />
-              )}
+    <div>
+      <div
+        className={`
+          group flex items-center justify-between py-1 px-2 mx-1 rounded cursor-pointer hover:bg-muted/50 transition-colors
+          ${isSelected ? 'bg-primary/10 text-primary border-l-2 border-primary' : ''}
+        `}
+        style={{ paddingLeft }}
+        onClick={handleToggle}
+      >
+        <div className="flex items-center gap-2 flex-1 min-w-0">
+          {node.type === 'directory' && (
+            <button className="p-0.5 hover:bg-muted rounded">
               {isExpanded ? (
-                <FolderOpen className="h-4 w-4 flex-shrink-0" />
+                <ChevronDown className="h-3 w-3" />
               ) : (
-                <Folder className="h-4 w-4 flex-shrink-0" />
+                <ChevronRight className="h-3 w-3" />
               )}
-              <span className="text-sm font-medium">{node.name}</span>
-              <Badge variant="secondary" className="text-xs">
-                {availableCount}
-              </Badge>
-              {hasIndexFile(node) && (
-                <Badge variant="outline" className="text-xs">
-                  Index
-                </Badge>
-              )}
-            </div>
-            {isExpanded && hasAvailableChildren(node) && node.children && (
-              <div className="mt-1">
-                {node.children
-                  .filter(child => {
-                    if (child.type === 'file') {
-                      // Exclude the index file and used files
-                      return child.name !== `${node.name}.md` && !isUsed(child.path);
-                    }
-                    return hasAvailableChildren(child);
-                  })
-                  .map((child, childIndex) => (
-                    <FileTreeItem 
-                      key={child.path} 
-                      node={child} 
-                      depth={depth + 1} 
-                      index={childIndex}
-                      isUsed={isUsed}
-                    />
-                  ))}
-              </div>
+            </button>
+          )}
+          
+          <div className="flex items-center gap-2 min-w-0 flex-1">
+            {getFileIcon()}
+            <span className="text-sm truncate font-medium">
+              {getFileName()}
+            </span>
+            
+            {hasChanges && (
+              <div className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0" title="Has unsaved changes" />
+            )}
+            
+            {hasLiveSession && (
+              <div className="w-2 h-2 rounded-full bg-green-500 flex-shrink-0" title="Live editing session" />
             )}
           </div>
-        )}
-      </Draggable>
+        </div>
+
+        {/* Settings Menu */}
+        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-6 w-6 p-0 hover:bg-muted"
+                onClick={(e) => e.stopPropagation()}
+              >
+                <MoreHorizontal className="h-3 w-3" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-48">
+              <DropdownMenuItem onClick={handleSettingsClick}>
+                <Globe className="h-4 w-4 mr-2" />
+                Privacy Settings
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
+      {/* Render children for directories */}
+      {node.type === 'directory' && isExpanded && node.children && (
+        <div>
+          {node.children.map((child) => (
+            <FileTreeItem
+              key={child.path}
+              node={child}
+              selectedFile={selectedFile}
+              onFileSelect={onFileSelect}
+              level={level + 1}
+              pendingChanges={pendingChanges}
+              liveSessions={liveSessions}
+              onOpenSettings={onOpenSettings}
+            />
+          ))}
+        </div>
+      )}
     </div>
   );
 }

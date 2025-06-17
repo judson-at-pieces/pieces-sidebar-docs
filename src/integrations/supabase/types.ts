@@ -233,6 +233,7 @@ export type Database = {
           is_auto_generated: boolean
           order_index: number
           parent_id: string | null
+          privacy: string | null
           section_id: string | null
           title: string
           updated_at: string
@@ -248,6 +249,7 @@ export type Database = {
           is_auto_generated?: boolean
           order_index?: number
           parent_id?: string | null
+          privacy?: string | null
           section_id?: string | null
           title: string
           updated_at?: string
@@ -263,6 +265,7 @@ export type Database = {
           is_auto_generated?: boolean
           order_index?: number
           parent_id?: string | null
+          privacy?: string | null
           section_id?: string | null
           title?: string
           updated_at?: string
