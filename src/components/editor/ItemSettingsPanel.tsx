@@ -35,13 +35,12 @@ export function ItemSettingsPanel({
   }, [currentPrivacy]);
 
   const handleSave = async () => {
-    if (!itemId) return;
+    if (!itemPath) return;
 
     setIsSaving(true);
     try {
-      await navigationService.updateNavigationItem(itemId, {
-        privacy
-      });
+      // Use the file path to update privacy instead of item ID
+      await navigationService.updateNavigationItemPrivacyByFilePath(itemPath, privacy);
       
       toast.success('Settings updated successfully');
       onSettingsUpdate();
