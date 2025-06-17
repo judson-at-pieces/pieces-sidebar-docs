@@ -10,7 +10,7 @@ export function useNavigation() {
     error,
     refetch
   } = useQuery({
-    queryKey: ['navigation-structure'],
+    queryKey: ['navigation-structure', 'v2'], // Updated query key to bust cache
     queryFn: () => navigationService.getNavigationStructure(),
     staleTime: 5 * 60 * 1000, // 5 minutes
     gcTime: 10 * 60 * 1000, // 10 minutes
