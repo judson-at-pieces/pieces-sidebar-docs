@@ -1,9 +1,10 @@
+
 import { useState, useEffect, useRef } from "react";
 import { Outlet, Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Menu, Search, ChevronDown, ChevronRight, X } from "lucide-react";
+import { Menu, Search, ChevronDown, ChevronRight, X, PanelLeftClose, PanelLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./ThemeToggle";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -12,6 +13,14 @@ import { useAnalytics } from "@/hooks/useAnalytics";
 import Footer from "./Footer";
 import type { NavigationItem, NavigationSection } from "@/services/navigationService";
 import { PiecesLogo } from "./PiecesLogo";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarHeader,
+  SidebarProvider,
+  SidebarTrigger,
+  useSidebar
+} from "@/components/ui/sidebar";
 
 function DocsSidebar({ className, onNavigate }: { className?: string; onNavigate?: () => void }) {
   const location = useLocation();
@@ -227,76 +236,85 @@ function DocsSidebar({ className, onNavigate }: { className?: string; onNavigate
 
   if (isLoading) {
     return (
-      <ScrollArea className={cn("h-full w-full lg:w-72", className)}>
-        <div className="space-y-4 py-4">
-          <div className="px-3 py-2">
-            <div className="animate-pulse space-y-2">
-              <div className="h-4 bg-muted rounded w-3/4"></div>
-              <div className="h-4 bg-muted rounded w-1/2"></div>
-              <div className="h-4 bg-muted rounded w-2/3"></div>
-            </div>
+      <div className="space-y-4 py-4">
+        <div className="px-3 py-2">
+          <div className="animate-pulse space-y-2">
+            <div className="h-4 bg-muted rounded w-3/4"></div>
+            <div className="h-4 bg-muted rounded w-1/2"></div>
+            <div className="h-4 bg-muted rounded w-2/3"></div>
           </div>
         </div>
-      </ScrollArea>
+      </div>
     );
   }
 
   if (error) {
     return (
-      <ScrollArea className={cn("h-full w-full lg:w-72", className)}>
-        <div className="space-y-4 py-4">
-          <div className="px-3 py-2">
-            <div className="text-sm text-muted-foreground">
-              Failed to load navigation
-            </div>
+      <div className="space-y-4 py-4">
+        <div className="px-3 py-2">
+          <div className="text-sm text-muted-foreground">
+            Failed to load navigation
           </div>
         </div>
-      </ScrollArea>
+      </div>
     );
   }
 
   return (
-    <ScrollArea className={cn("h-full w-full lg:w-72", className)}>
-      <div className="space-y-4 py-4">
-        <div className="px-3 py-2">
-          <div className="mb-6">
-            {searchTerm && (
-              <div className="flex justify-end mb-2">
-                <button
-                  onClick={() => setSearchTerm("")}
-                  className="h-6 w-6 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors rounded"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-            )}
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <input
-                type="text"
-                placeholder="Search docs..."
-                value={searchTerm}
-                onChange={(e) => handleSearchChange(e.target.value)}
-                className="w-full pl-10 pr-4 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring text-left"
-              />
+    <div className="space-y-4 py-4">
+      <div className="px-3 py-2">
+        <div className="mb-6">
+          {searchTerm && (
+            <div className="flex justify-end mb-2">
+              <button
+                onClick={() => setSearchTerm("")}
+                className="h-6 w-6 flex items-center justify-center text-muted-foreground hover:text-foreground transition-colors rounded"
+              >
+                <X className="h-4 w-4" />
+              </button>
             </div>
-          </div>
-          
-          <div className="space-y-2">
-            {filteredNavigation.map((section) => (
-              <div key={section.id}>
-                <div className="px-3 py-2 text-sm font-semibold text-foreground break-words whitespace-normal leading-tight text-left">
-                  {section.title}
-                </div>
-                <div className="ml-2 space-y-1">
-                  {section.items?.map((item) => renderNavItem(item))}
-                </div>
-              </div>
-            ))}
+          )}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search docs..."
+              value={searchTerm}
+              onChange={(e) => handleSearchChange(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 text-sm border border-border rounded-lg bg-background focus:outline-none focus:ring-2 focus:ring-ring text-left"
+            />
           </div>
         </div>
+        
+        <div className="space-y-2">
+          {filteredNavigation.map((section) => (
+            <div key={section.id}>
+              <div className="px-3 py-2 text-sm font-semibold text-foreground break-words whitespace-normal leading-tight text-left">
+                {section.title}
+              </div>
+              <div className="ml-2 space-y-1">
+                {section.items?.map((item) => renderNavItem(item))}
+              </div>
+            </div>
+          ))}
+        </div>
       </div>
-    </ScrollArea>
+    </div>
+  );
+}
+
+function CollapsibleSidebarTrigger() {
+  const { toggleSidebar } = useSidebar();
+  
+  return (
+    <Button 
+      onClick={toggleSidebar}
+      variant="outline" 
+      size="icon"
+      className="md:flex hidden"
+    >
+      <PanelLeft className="h-4 w-4" />
+    </Button>
   );
 }
 
@@ -316,56 +334,73 @@ export default function DocsLayout() {
       
       {/* Content Wrapper */}
       <div className="relative z-10 min-h-screen">
-      {/* Mobile sidebar */}
-      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
-        <div className="lg:hidden">
-          <div className="flex items-center justify-between p-4 border-b border-border">
-            <div className="flex items-center space-x-2">
-              <ThemeToggle />
-              <SheetTrigger asChild>
-                <Button variant="outline" size="icon">
-                  <Menu className="h-4 w-4" />
-                </Button>
-              </SheetTrigger>
-            </div>
-          </div>
-        </div>
-        <SheetContent side="left" className="p-0 w-[85vw] max-w-sm">
-          <ScrollArea className="h-full">
-            <DocsSidebar onNavigate={() => setSidebarOpen(false)} className="w-full" />
-          </ScrollArea>
-        </SheetContent>
-      </Sheet>
-
-      <div className="lg:flex">
-        {/* Desktop sidebar */}
-        <div className="hidden lg:flex lg:flex-shrink-0">
-          <div className="flex flex-col w-72 border-r border-border bg-card/95 backdrop-blur-sm">
-            <div className="flex items-center justify-between p-4 border-b border-border">
-              <Link to="/" className="flex items-center space-x-2">
-                <PiecesLogo className="w-8 h-8" alt="Pieces" />
-                <span className="text-xl font-bold">Docs</span>
-              </Link>
-              <ThemeToggle />
-            </div>
-            <DocsSidebar />
-          </div>
-        </div>
-
-        {/* Main content */}
-        <div className="flex flex-col flex-1 overflow-hidden">
-          <main className="flex-1 relative overflow-y-auto focus:outline-none">
-            <div className="min-h-full flex flex-col">
-              <div className="flex-1 py-4 sm:py-6 lg:py-8">
-                <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-                  <Outlet />
+        <SidebarProvider>
+          <div className="min-h-screen flex w-full">
+            {/* Mobile sidebar */}
+            <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+              <div className="lg:hidden">
+                <div className="flex items-center justify-between p-4 border-b border-border">
+                  <div className="flex items-center space-x-2">
+                    <ThemeToggle />
+                    <SheetTrigger asChild>
+                      <Button variant="outline" size="icon">
+                        <Menu className="h-4 w-4" />
+                      </Button>
+                    </SheetTrigger>
+                  </div>
                 </div>
               </div>
-              <Footer />
+              <SheetContent side="left" className="p-0 w-[85vw] max-w-sm">
+                <ScrollArea className="h-full">
+                  <div className="flex items-center justify-between p-4 border-b border-border">
+                    <Link to="/" className="flex items-center space-x-2">
+                      <PiecesLogo className="w-8 h-8" alt="Pieces" />
+                      <span className="text-xl font-bold">Docs</span>
+                    </Link>
+                  </div>
+                  <DocsSidebar onNavigate={() => setSidebarOpen(false)} />
+                </ScrollArea>
+              </SheetContent>
+            </Sheet>
+
+            {/* Desktop collapsible sidebar */}
+            <Sidebar className="hidden lg:flex">
+              <SidebarHeader className="border-b border-border">
+                <div className="flex items-center justify-between p-4">
+                  <Link to="/" className="flex items-center space-x-2">
+                    <PiecesLogo className="w-8 h-8" alt="Pieces" />
+                    <span className="text-xl font-bold">Docs</span>
+                  </Link>
+                  <ThemeToggle />
+                </div>
+              </SidebarHeader>
+              <SidebarContent>
+                <ScrollArea className="h-full">
+                  <DocsSidebar />
+                </ScrollArea>
+              </SidebarContent>
+            </Sidebar>
+
+            {/* Main content */}
+            <div className="flex flex-col flex-1 overflow-hidden">
+              <main className="flex-1 relative overflow-y-auto focus:outline-none">
+                <div className="min-h-full flex flex-col">
+                  {/* Desktop sidebar trigger */}
+                  <div className="hidden lg:flex items-center p-4 border-b border-border/50">
+                    <CollapsibleSidebarTrigger />
+                  </div>
+                  
+                  <div className="flex-1 py-4 sm:py-6 lg:py-8">
+                    <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+                      <Outlet />
+                    </div>
+                  </div>
+                  <Footer />
+                </div>
+              </main>
             </div>
-          </main>
-        </div>
-      </div>
+          </div>
+        </SidebarProvider>
       </div>
     </div>
   );
