@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { 
   FileText, 
@@ -9,8 +10,7 @@ import {
   Check,
   Trash2,
   Edit2,
-  X,
-  EyeOff
+  X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -52,8 +52,6 @@ export function NavigationItemDisplay({
     deletion => deletion.sectionId === sectionId && deletion.itemId === item.id
   );
 
-  const isPrivate = item.privacy === 'PRIVATE';
-
   const handleSaveTitle = () => {
     if (editTitle.trim() && editTitle !== item.title) {
       onUpdateTitle(item.id, editTitle.trim());
@@ -89,9 +87,7 @@ export function NavigationItemDisplay({
                   ? 'border-destructive bg-destructive/10' 
                   : snapshot.isDragging 
                     ? 'bg-accent border-primary shadow-lg' 
-                    : isPrivate
-                      ? 'hover:bg-accent/50 bg-orange-50 dark:bg-orange-950/20 border-orange-200 dark:border-orange-800'
-                      : 'hover:bg-accent/50'
+                    : 'hover:bg-accent/50'
               }`}
               style={{ marginLeft: paddingLeft }}
             >
@@ -165,14 +161,6 @@ export function NavigationItemDisplay({
                       <span className="text-sm font-medium truncate flex-1">
                         {item.title}
                       </span>
-                      {isPrivate && (
-                        <div className="flex items-center gap-1 flex-shrink-0">
-                          <EyeOff className="h-3 w-3 text-orange-600" />
-                          <Badge variant="outline" className="text-xs border-orange-300 text-orange-700 dark:text-orange-300">
-                            Private
-                          </Badge>
-                        </div>
-                      )}
                       <Button
                         size="sm"
                         variant="ghost"

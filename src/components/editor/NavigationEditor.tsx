@@ -1,6 +1,5 @@
-
 import { useState, useEffect } from "react";
-import { useNavigationEditor } from "@/hooks/useNavigationEditor";
+import { useNavigation } from "@/hooks/useNavigation";
 import { FileNode } from "@/utils/fileSystem";
 import { toast } from "sonner";
 import { AvailableFilesPanel } from "./AvailableFilesPanel";
@@ -17,7 +16,7 @@ interface NavigationEditorProps {
 }
 
 export function NavigationEditor({ fileStructure, onNavigationChange }: NavigationEditorProps) {
-  const { navigation, refetch } = useNavigationEditor();
+  const { navigation, refetch } = useNavigation();
   const [sections, setSections] = useState(navigation?.sections || []);
 
   const {
@@ -234,11 +233,11 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
   };
 
   const handleNavigationRefresh = async () => {
-    console.log('Refreshing navigation data for editor');
+    console.log('Refreshing navigation data');
     try {
       const refreshedData = await refetch();
       if (refreshedData.data?.sections) {
-        console.log('Updated sections from database (editor view):', refreshedData.data.sections);
+        console.log('Updated sections from database:', refreshedData.data.sections);
         setSections(refreshedData.data.sections);
       }
       onNavigationChange();
@@ -253,7 +252,6 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
         <h2 className="text-lg font-semibold mb-2">Navigation Editor</h2>
         <p className="text-sm text-muted-foreground">
           Add files or folders to organize your documentation. Drag sections to reorder them. Click on titles to edit them.
-          This view shows all navigation items including private ones.
         </p>
       </div>
       
