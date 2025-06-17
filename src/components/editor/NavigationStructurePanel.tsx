@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { Plus, Trash2, RotateCcw, GripVertical, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -46,7 +45,19 @@ export function NavigationStructurePanel({
   const [settingsItem, setSettingsItem] = useState<NavigationItem | null>(null);
   const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
 
-  const { handleDragEnd } = useDragAndDrop(sections, onSectionReorder);
+  // Create dummy values for the useDragAndDrop hook parameters that aren't available in this context
+  const fileStructure: any[] = [];
+  const setPendingChange = () => {};
+  const setShowConfirmDialog = () => {};
+
+  const { handleDragEnd } = useDragAndDrop(
+    fileStructure,
+    sections,
+    (newSections: NavigationSection[]) => onSectionReorder(newSections),
+    setPendingChange,
+    setShowConfirmDialog,
+    onNavigationChange
+  );
 
   const isPendingDeletion = (sectionId: string, itemIndex: number) => {
     return pendingDeletions.some(
