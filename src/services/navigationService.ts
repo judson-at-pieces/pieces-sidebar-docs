@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { staticNavigation } from './staticNavigation';
 
@@ -29,7 +30,7 @@ export interface NavigationStructure {
   sections: NavigationSection[];
 }
 
-// Helper function to capitalize titles properly while preserving special formatting
+// Helper function to capitalize titles for auto-generated content only
 function capitalizeTitle(title: string): string {
   // Words that should remain lowercase (unless they're the first word)
   const lowercaseWords = ['a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'if', 'in', 'is', 'it', 'of', 'on', 'or', 'the', 'to', 'up', 'via', 'with'];
@@ -92,7 +93,8 @@ function buildHierarchy(items: NavigationItem[]): NavigationItem[] {
     
     processedItems.set(item.id, { 
       ...item, 
-      title: capitalizeTitle(item.title),
+      // Only apply capitalization for auto-generated items
+      title: item.is_auto_generated ? capitalizeTitle(item.title) : item.title,
       items: [] 
     });
   });
@@ -254,7 +256,8 @@ export class NavigationService {
       
       return {
         ...section,
-        title: capitalizeTitle(section.title),
+        // Don't auto-capitalize section titles - preserve user input
+        title: section.title,
         items: mergeFolderAndMarkdownItems(section.items || []),
       };
     });
@@ -268,6 +271,7 @@ export class NavigationService {
     return {
       sections: staticNavigation.sections.map(section => ({
         ...section,
+        // Only capitalize static navigation titles since they're auto-generated
         title: capitalizeTitle(section.title),
         items: mergeFolderAndMarkdownItems(section.items || []),
       })),
