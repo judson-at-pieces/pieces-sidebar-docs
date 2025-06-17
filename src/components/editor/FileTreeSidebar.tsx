@@ -5,6 +5,8 @@ import { FileTreeItem } from './FileTreeItem';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ItemSettingsPanel } from './ItemSettingsPanel';
 import { useSettingsPanel } from '@/hooks/useSettingsPanel';
+import { useQuery } from '@tanstack/react-query';
+import { navigationService } from '@/services/navigationService';
 
 interface FileTreeSidebarProps {
   title: string;
@@ -26,6 +28,20 @@ export function FileTreeSidebar({
   liveSessions = []
 }: FileTreeSidebarProps) {
   const { panelState, openPanel, closePanel } = useSettingsPanel();
+
+  // Fetch navigation items with privacy info for the editor
+  const { data: navigationData } = useQuery({
+    queryKey: ['navigation-structure-editor'],
+    queryFn: () => navigationService.getNavigationStructureForEditor(),
+  });
+
+  // Extract navigation items with privacy info
+  const navigationItems = navigationData?.sections.flatMap(section => 
+    section.items.map(item => ({
+      file_path: item.file_path || '',
+      privacy: item.privacy || 'PUBLIC' as 'PUBLIC' | 'PRIVATE'
+    }))
+  ) || [];
 
   const handleOpenSettings = (itemPath: string, itemType: 'file' | 'folder', privacy: 'PUBLIC' | 'PRIVATE' = 'PUBLIC') => {
     // For now, we'll use a placeholder item ID since we don't have navigation items linked to file paths yet
@@ -61,6 +77,7 @@ export function FileTreeSidebar({
                   pendingChanges={pendingChanges}
                   liveSessions={liveSessions}
                   onOpenSettings={handleOpenSettings}
+                  navigationItems={navigationItems}
                 />
               ))
             )}

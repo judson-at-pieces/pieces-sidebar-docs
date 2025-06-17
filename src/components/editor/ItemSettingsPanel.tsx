@@ -1,6 +1,6 @@
 
 import { useState, useEffect } from 'react';
-import { X, Lock, Globe, Settings } from 'lucide-react';
+import { X, Lock, Globe, Settings, FolderOpen, FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
@@ -39,10 +39,14 @@ export function ItemSettingsPanel({
 
     setIsSaving(true);
     try {
-      // Use the file path to update privacy instead of item ID
+      // Use the cascading privacy update function
       await navigationService.updateNavigationItemPrivacyByFilePath(itemPath, privacy);
       
-      toast.success('Settings updated successfully');
+      const cascadeMessage = itemType === 'folder' 
+        ? 'Privacy settings updated for folder and all its contents'
+        : 'Privacy settings updated';
+      
+      toast.success(cascadeMessage);
       onSettingsUpdate();
       onClose();
     } catch (error) {
@@ -78,6 +82,11 @@ export function ItemSettingsPanel({
           <Label className="text-sm font-medium text-muted-foreground">Item Details</Label>
           <div className="bg-muted/20 rounded-lg p-3 space-y-1">
             <div className="flex items-center gap-2 text-sm">
+              {itemType === 'folder' ? (
+                <FolderOpen className="h-4 w-4" />
+              ) : (
+                <FileText className="h-4 w-4" />
+              )}
               <span className="font-medium">Type:</span>
               <span className="capitalize">{itemType}</span>
             </div>
@@ -109,6 +118,7 @@ export function ItemSettingsPanel({
                 </div>
                 <p className="text-sm text-muted-foreground">
                   This {itemType} is visible to everyone and appears in navigation
+                  {itemType === 'folder' && ' (applies to all contents within this folder)'}
                 </p>
               </div>
             </div>
@@ -124,10 +134,22 @@ export function ItemSettingsPanel({
                 </div>
                 <p className="text-sm text-muted-foreground">
                   This {itemType} is hidden from public navigation and requires direct access
+                  {itemType === 'folder' && ' (applies to all contents within this folder)'}
                 </p>
               </div>
             </div>
           </RadioGroup>
+
+          {itemType === 'folder' && (
+            <div className="bg-blue-50 border border-blue-200 rounded-lg p-3">
+              <div className="flex items-start gap-2">
+                <FolderOpen className="h-4 w-4 text-blue-600 mt-0.5" />
+                <div className="text-sm text-blue-800">
+                  <strong>Folder Privacy:</strong> Changing this setting will automatically update the privacy for all files and subfolders within this directory, including any corresponding .md files.
+                </div>
+              </div>
+            </div>
+          )}
         </div>
 
         <Separator />

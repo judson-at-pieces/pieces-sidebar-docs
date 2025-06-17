@@ -11,6 +11,7 @@ export interface NavigationItem {
   parent_id?: string;
   is_auto_generated: boolean;
   file_path?: string;
+  privacy?: 'PUBLIC' | 'PRIVATE';
   items?: NavigationItem[];
 }
 
@@ -156,6 +157,55 @@ export class NavigationService {
     }
   }
 
+  // Get navigation structure including private items for editor
+  async getNavigationStructureForEditor(): Promise<NavigationStructure | null> {
+    try {
+      const { data, error } = await supabase
+        .from('navigation_sections')
+        .select(`
+          id,
+          title,
+          slug,
+          description,
+          icon,
+          order_index,
+          navigation_items!inner (
+            id,
+            title,
+            href,
+            description,
+            icon,
+            order_index,
+            parent_id,
+            is_auto_generated,
+            file_path,
+            privacy
+          )
+        `)
+        .eq('is_active', true)
+        .eq('navigation_items.is_active', true)
+        .order('order_index');
+      
+      if (error) {
+        console.error('Error fetching navigation structure for editor:', error);
+        return null;
+      }
+      
+      // Transform the data to match our interface
+      const sections = data.map(section => ({
+        ...section,
+        items: section.navigation_items || []
+      }));
+      
+      const processedData = this.processNavigationData({ sections });
+      
+      return processedData;
+    } catch (error) {
+      console.error('Error in getNavigationStructureForEditor:', error);
+      return null;
+    }
+  }
+
   private processNavigationData(data: NavigationStructure): NavigationStructure {
     console.log('Processing navigation data:', data);
     
@@ -271,7 +321,7 @@ export class NavigationService {
     order_index?: number;
     is_auto_generated?: boolean;
     file_path?: string;
-    privacy?: string;
+    privacy?: 'PUBLIC' | 'PRIVATE';
   }) {
     const { data, error } = await supabase
       .from('navigation_items')
@@ -316,11 +366,11 @@ export class NavigationService {
   }
 
   async updateNavigationItemPrivacyByFilePath(filePath: string, privacy: 'PUBLIC' | 'PRIVATE') {
-    const { data, error } = await supabase
-      .from('navigation_items')
-      .update({ privacy })
-      .eq('file_path', filePath)
-      .select();
+    // Use the new cascading function
+    const { data, error } = await supabase.rpc('update_navigation_item_privacy_by_file_path_cascade', {
+      p_file_path: filePath,
+      p_privacy: privacy
+    });
     
     if (error) throw error;
     return data;

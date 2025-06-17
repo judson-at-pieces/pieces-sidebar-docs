@@ -575,6 +575,16 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
+      update_navigation_item_privacy_by_file_path_cascade: {
+        Args: { p_file_path: string; p_privacy: string }
+        Returns: {
+          updated_count: number
+        }[]
+      }
+      update_navigation_item_privacy_cascade: {
+        Args: { p_file_path: string; p_privacy: string }
+        Returns: undefined
+      }
       use_admin_access_code: {
         Args: { access_code: string }
         Returns: boolean

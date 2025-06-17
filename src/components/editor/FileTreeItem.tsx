@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { ChevronRight, ChevronDown, FileText, Folder, FolderOpen, MoreHorizontal, Lock, Globe } from 'lucide-react';
+import { ChevronRight, ChevronDown, FileText, Folder, FolderOpen, MoreHorizontal, Lock, Globe, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { FileNode } from '@/utils/fileSystem';
@@ -13,6 +13,7 @@ interface FileTreeItemProps {
   pendingChanges?: string[];
   liveSessions?: Array<{ file_path: string; content: string }>;
   onOpenSettings?: (itemPath: string, itemType: 'file' | 'folder', privacy?: 'PUBLIC' | 'PRIVATE') => void;
+  navigationItems?: Array<{ file_path: string; privacy: 'PUBLIC' | 'PRIVATE' }>;
 }
 
 export function FileTreeItem({ 
@@ -22,13 +23,18 @@ export function FileTreeItem({
   level = 0,
   pendingChanges = [],
   liveSessions = [],
-  onOpenSettings
+  onOpenSettings,
+  navigationItems = []
 }: FileTreeItemProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   
   const isSelected = selectedFile === node.path;
   const hasChanges = pendingChanges.includes(node.path);
   const hasLiveSession = liveSessions.some(session => session.file_path === node.path && session.content.trim());
+  
+  // Find navigation item for this file path to get privacy status
+  const navItem = navigationItems.find(item => item.file_path === node.path);
+  const isPrivate = navItem?.privacy === 'PRIVATE';
   
   const paddingLeft = level * 16 + (node.type === 'file' ? 24 : 8);
 
@@ -43,7 +49,7 @@ export function FileTreeItem({
   const handleSettingsClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onOpenSettings) {
-      onOpenSettings(node.path, node.type === 'folder' ? 'folder' : 'file', 'PUBLIC');
+      onOpenSettings(node.path, node.type === 'folder' ? 'folder' : 'file', navItem?.privacy || 'PUBLIC');
     }
   };
 
@@ -67,6 +73,7 @@ export function FileTreeItem({
         className={`
           group flex items-center justify-between py-1 px-2 mx-1 rounded cursor-pointer hover:bg-muted/50 transition-colors
           ${isSelected ? 'bg-primary/10 text-primary border-l-2 border-primary' : ''}
+          ${isPrivate ? 'opacity-60' : ''}
         `}
         style={{ paddingLeft }}
         onClick={handleToggle}
@@ -87,6 +94,11 @@ export function FileTreeItem({
             <span className="text-sm truncate font-medium">
               {getFileName()}
             </span>
+            
+            {/* Privacy indicator */}
+            {isPrivate && (
+              <EyeOff className="h-3 w-3 text-orange-600 flex-shrink-0" title="Private - hidden from public navigation" />
+            )}
             
             {hasChanges && (
               <div className="w-2 h-2 rounded-full bg-amber-500 flex-shrink-0" title="Has unsaved changes" />
@@ -113,8 +125,17 @@ export function FileTreeItem({
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem onClick={handleSettingsClick}>
-                <Globe className="h-4 w-4 mr-2" />
-                Privacy Settings
+                {isPrivate ? (
+                  <>
+                    <EyeOff className="h-4 w-4 mr-2" />
+                    Privacy Settings (Private)
+                  </>
+                ) : (
+                  <>
+                    <Eye className="h-4 w-4 mr-2" />
+                    Privacy Settings (Public)
+                  </>
+                )}
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
@@ -134,6 +155,7 @@ export function FileTreeItem({
               pendingChanges={pendingChanges}
               liveSessions={liveSessions}
               onOpenSettings={onOpenSettings}
+              navigationItems={navigationItems}
             />
           ))}
         </div>
