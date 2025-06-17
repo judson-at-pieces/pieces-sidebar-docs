@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ChevronDown } from 'lucide-react';
@@ -113,16 +114,27 @@ export function TableOfContents({ content }: TableOfContentsProps) {
         
         // Find the next heading to determine section bounds
         const nextHeading = headingElements[index + 1];
-        const nextHeadingTop = nextHeading 
-          ? nextHeading.getBoundingClientRect().top + scrollTop
-          : documentHeight;
+        let nextHeadingTop: number;
+        
+        if (nextHeading) {
+          nextHeadingTop = nextHeading.getBoundingClientRect().top + scrollTop;
+        } else {
+          // For the last section, use a more reasonable endpoint
+          // Instead of the full document height, use content height + some padding
+          const mainContent = document.querySelector('main') || document.body;
+          const contentRect = mainContent.getBoundingClientRect();
+          nextHeadingTop = contentRect.bottom + scrollTop - windowHeight * 0.5; // End when halfway through viewport
+        }
         
         const sectionHeight = nextHeadingTop - headingTop;
         
         // Calculate how much of this section has been scrolled through
-        if (scrollTop >= headingTop - windowHeight && scrollTop <= nextHeadingTop) {
-          const sectionScrolled = Math.max(0, scrollTop - headingTop + windowHeight);
-          const sectionProgress = Math.min(100, (sectionScrolled / (sectionHeight + windowHeight)) * 100);
+        const viewportTop = scrollTop + windowHeight * 0.3; // Start progress when heading is 30% down viewport
+        
+        if (viewportTop >= headingTop && scrollTop <= nextHeadingTop) {
+          const sectionScrolled = Math.max(0, viewportTop - headingTop);
+          const adjustedSectionHeight = Math.max(windowHeight * 0.5, sectionHeight); // Minimum section height
+          const sectionProgress = Math.min(100, (sectionScrolled / adjustedSectionHeight) * 100);
           progress[heading.id] = sectionProgress;
         } else if (scrollTop > nextHeadingTop) {
           progress[heading.id] = 100;
@@ -228,7 +240,7 @@ export function TableOfContents({ content }: TableOfContentsProps) {
         </details>
       </div>
 
-      {/* Desktop TOC - sticky sidebar without background box */}
+      {/* Desktop TOC - sticky sidebar */}
       <div className="hidden lg:block fixed top-24 right-8 z-40 max-h-[calc(100vh-8rem)] w-64">
         <div className="p-4">
           <h3 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wider">
