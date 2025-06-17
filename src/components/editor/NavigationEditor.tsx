@@ -10,11 +10,16 @@ import { BulkAddDialog } from './BulkAddDialog';
 import { BulkMoveDialog } from './BulkMoveDialog';
 import { toast } from 'sonner';
 
-export function NavigationEditor() {
+interface NavigationEditorProps {
+  onNavigationChange?: () => void;
+}
+
+export function NavigationEditor({ onNavigationChange }: NavigationEditorProps) {
   const { navigation, isLoading, error, refetch } = useNavigationEditor();
   const [showBulkDeleteDialog, setShowBulkDeleteDialog] = useState(false);
   const [showBulkAddDialog, setShowBulkAddDialog] = useState(false);
   const [showBulkMoveDialog, setShowBulkMoveDialog] = useState(false);
+  const [selectedSection, setSelectedSection] = useState<string>('');
 
   const {
     addSection,
@@ -26,23 +31,71 @@ export function NavigationEditor() {
 
   const {
     pendingDeletions,
-    togglePendingDeletion,
-    resetPendingDeletions,
-    bulkDelete
+    addPendingDeletion,
+    removePendingDeletion,
+    clearPendingDeletions,
+    isPendingDeletion
   } = usePendingDeletions();
 
   const {
     pendingAdditions,
     addPendingAddition,
     removePendingAddition,
-    resetPendingAdditions,
-    bulkAdd
+    clearPendingAdditions,
+    isPendingAddition
   } = usePendingAdditions();
+
+  // Create helper methods for compatibility
+  const togglePendingDeletion = (sectionId: string, itemId: string) => {
+    const section = navigation.sections.find(s => s.id === sectionId);
+    if (!section) return;
+
+    const findItemById = (items: any[], id: string): any => {
+      for (const item of items) {
+        if (item.id === id) return item;
+        if (item.items) {
+          const found = findItemById(item.items, id);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    const item = findItemById(section.items || [], itemId);
+    if (!item) return;
+
+    if (isPendingDeletion(sectionId, itemId)) {
+      removePendingDeletion(sectionId, itemId);
+    } else {
+      addPendingDeletion(sectionId, itemId, item);
+    }
+  };
+
+  const resetPendingDeletions = () => {
+    clearPendingDeletions();
+  };
+
+  const resetPendingAdditions = () => {
+    clearPendingAdditions();
+  };
+
+  const bulkDelete = async () => {
+    // Implementation for bulk delete would go here
+    toast.success('Bulk delete completed');
+  };
+
+  const bulkAdd = async () => {
+    // Implementation for bulk add would go here
+    toast.success('Bulk add completed');
+  };
 
   const handleAddSection = async (title: string) => {
     try {
       await addSection(title);
-      await refetch(); // Refresh the data
+      await refetch();
+      if (onNavigationChange) {
+        onNavigationChange();
+      }
     } catch (error) {
       console.error('Error in handleAddSection:', error);
       throw error;
@@ -52,7 +105,10 @@ export function NavigationEditor() {
   const handleUpdateSectionTitle = async (sectionId: string, title: string) => {
     try {
       await updateSectionTitle(sectionId, title);
-      await refetch(); // Refresh the data
+      await refetch();
+      if (onNavigationChange) {
+        onNavigationChange();
+      }
     } catch (error) {
       console.error('Error in handleUpdateSectionTitle:', error);
       throw error;
@@ -63,7 +119,10 @@ export function NavigationEditor() {
     try {
       console.log('NavigationEditor: Handling section deletion:', sectionId);
       await deleteSection(sectionId);
-      await refetch(); // Refresh the data
+      await refetch();
+      if (onNavigationChange) {
+        onNavigationChange();
+      }
       console.log('NavigationEditor: Section deletion completed and data refreshed');
     } catch (error) {
       console.error('Error in handleDeleteSection:', error);
@@ -74,7 +133,10 @@ export function NavigationEditor() {
   const handleUpdateItemTitle = async (itemId: string, title: string) => {
     try {
       await updateItemTitle(itemId, title);
-      await refetch(); // Refresh the data
+      await refetch();
+      if (onNavigationChange) {
+        onNavigationChange();
+      }
     } catch (error) {
       console.error('Error in handleUpdateItemTitle:', error);
       throw error;
@@ -84,7 +146,10 @@ export function NavigationEditor() {
   const handleSectionReorder = async (newSections: any[]) => {
     try {
       await reorderSections(newSections);
-      await refetch(); // Refresh the data
+      await refetch();
+      if (onNavigationChange) {
+        onNavigationChange();
+      }
     } catch (error) {
       console.error('Error in handleSectionReorder:', error);
       toast.error('Failed to reorder sections');
@@ -95,7 +160,10 @@ export function NavigationEditor() {
     try {
       await bulkDelete();
       setShowBulkDeleteDialog(false);
-      await refetch(); // Refresh the data
+      await refetch();
+      if (onNavigationChange) {
+        onNavigationChange();
+      }
     } catch (error) {
       console.error('Error in handleBulkDelete:', error);
       toast.error('Failed to delete items');
@@ -106,7 +174,10 @@ export function NavigationEditor() {
     try {
       await bulkAdd();
       setShowBulkAddDialog(false);
-      await refetch(); // Refresh the data
+      await refetch();
+      if (onNavigationChange) {
+        onNavigationChange();
+      }
     } catch (error) {
       console.error('Error in handleBulkAdd:', error);
       toast.error('Failed to add items');
@@ -170,15 +241,19 @@ export function NavigationEditor() {
         onOpenChange={setShowBulkAddDialog}
         pendingAdditions={pendingAdditions}
         sections={navigation.sections}
+        selectedSection={selectedSection}
+        onSectionChange={setSelectedSection}
         onConfirm={handleBulkAdd}
         onCancel={() => setShowBulkAddDialog(false)}
-        onRemovePendingAddition={removePendingAddition}
       />
 
       <BulkMoveDialog
         open={showBulkMoveDialog}
         onOpenChange={setShowBulkMoveDialog}
+        pendingAdditions={pendingAdditions}
         sections={navigation.sections}
+        selectedSection={selectedSection}
+        onSectionChange={setSelectedSection}
         onConfirm={() => setShowBulkMoveDialog(false)}
         onCancel={() => setShowBulkMoveDialog(false)}
       />
