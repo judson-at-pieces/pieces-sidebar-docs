@@ -151,7 +151,7 @@ export function NavigationStructurePanel({
         {item.items && item.items.length > 0 && (
           <div className="ml-4 space-y-1">
             {item.items.map((subItem, subIndex) => 
-              renderNavItem(subItem, sectionId, itemIndex, depth + 1)
+              renderNavItem(subItem, sectionId, itemIndex + subIndex + 1, depth + 1)
             )}
           </div>
         )}
