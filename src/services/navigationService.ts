@@ -1,4 +1,3 @@
-
 import { supabase } from '@/integrations/supabase/client';
 import { staticNavigation } from './staticNavigation';
 
@@ -30,8 +29,34 @@ export interface NavigationStructure {
   sections: NavigationSection[];
 }
 
-// Helper function to capitalize titles for auto-generated content only
+// Helper function to capitalize titles for auto-generated content only with special cases
 function capitalizeTitle(title: string): string {
+  // Special cases that should maintain specific capitalization
+  const specialCases: { [key: string]: string } = {
+    'piecesos': 'PiecesOS',
+    'pieces-os': 'PiecesOS',
+    'pieces_os': 'PiecesOS',
+    'ollama': 'Ollama',
+    'vs': 'VS',
+    'vscode': 'VSCode',
+    'macos': 'macOS',
+    'ios': 'iOS',
+    'api': 'API',
+    'ui': 'UI',
+    'cli': 'CLI',
+    'sdk': 'SDK',
+    'github': 'GitHub',
+    'jetbrains': 'JetBrains',
+    'llm': 'LLM',
+    'llms': 'LLMs'
+  };
+  
+  // Check for special cases first
+  const lowerTitle = title.toLowerCase();
+  if (specialCases[lowerTitle]) {
+    return specialCases[lowerTitle];
+  }
+  
   // Words that should remain lowercase (unless they're the first word)
   const lowercaseWords = ['a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'if', 'in', 'is', 'it', 'of', 'on', 'or', 'the', 'to', 'up', 'via', 'with'];
   
@@ -41,6 +66,12 @@ function capitalizeTitle(title: string): string {
       // If it's whitespace or a separator, keep it as-is
       if (/^\s+$/.test(part) || part === '|') {
         return part;
+      }
+      
+      // Check if this part matches a special case
+      const lowerPart = part.toLowerCase();
+      if (specialCases[lowerPart]) {
+        return specialCases[lowerPart];
       }
       
       // If it's a word

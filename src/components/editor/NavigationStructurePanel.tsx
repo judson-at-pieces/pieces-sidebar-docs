@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Button } from "@/components/ui/button";
@@ -61,16 +60,74 @@ export function NavigationStructurePanel({
     return null;
   };
 
-  // Helper function to find all items in a flat array
-  const getAllItems = (items: any[]): any[] => {
-    const result: any[] = [];
-    for (const item of items) {
-      result.push(item);
+  // Helper function to get all items with their hierarchical paths
+  const getAllItemsWithPaths = (items: any[], parentPath: number[] = []): Array<{item: any, path: number[]}> => {
+    const result: Array<{item: any, path: number[]}> = [];
+    
+    items.forEach((item, index) => {
+      const currentPath = [...parentPath, index];
+      result.push({ item, path: currentPath });
+      
       if (item.items && item.items.length > 0) {
-        result.push(...getAllItems(item.items));
+        result.push(...getAllItemsWithPaths(item.items, currentPath));
       }
-    }
+    });
+    
     return result;
+  };
+
+  // Helper function to update nested items
+  const updateNestedItems = (items: any[], path: number[], newItem: any): any[] => {
+    if (path.length === 1) {
+      const newItems = [...items];
+      newItems[path[0]] = newItem;
+      return newItems;
+    }
+    
+    const newItems = [...items];
+    const [currentIndex, ...restPath] = path;
+    newItems[currentIndex] = {
+      ...newItems[currentIndex],
+      items: updateNestedItems(newItems[currentIndex].items || [], restPath, newItem)
+    };
+    return newItems;
+  };
+
+  // Helper function to remove item from nested structure
+  const removeFromNested = (items: any[], path: number[]): any[] => {
+    if (path.length === 1) {
+      const newItems = [...items];
+      newItems.splice(path[0], 1);
+      return newItems;
+    }
+    
+    const newItems = [...items];
+    const [currentIndex, ...restPath] = path;
+    newItems[currentIndex] = {
+      ...newItems[currentIndex],
+      items: removeFromNested(newItems[currentIndex].items || [], restPath)
+    };
+    return newItems;
+  };
+
+  // Helper function to insert item into nested structure
+  const insertIntoNested = (items: any[], path: number[], item: any): any[] => {
+    if (path.length === 1) {
+      const newItems = [...items];
+      newItems.splice(path[0], 0, item);
+      return newItems;
+    }
+    
+    const newItems = [...items];
+    const [currentIndex, ...restPath] = path;
+    if (!newItems[currentIndex]) {
+      return newItems;
+    }
+    newItems[currentIndex] = {
+      ...newItems[currentIndex],
+      items: insertIntoNested(newItems[currentIndex].items || [], restPath, item)
+    };
+    return newItems;
   };
 
   const handleDragEnd = async (result: DropResult) => {
@@ -93,7 +150,7 @@ export function NavigationStructurePanel({
       return;
     }
 
-    // Handle item reordering within sections or moving between sections
+    // Handle item reordering within sections
     if (source.droppableId.startsWith('section-') && destination.droppableId.startsWith('section-')) {
       const sourceSectionId = source.droppableId.replace('section-', '');
       const destSectionId = destination.droppableId.replace('section-', '');
@@ -104,11 +161,15 @@ export function NavigationStructurePanel({
         
         if (!sourceSection?.items || !destSection) return;
         
-        // Get all items in source section (flattened)
-        const allSourceItems = getAllItems(sourceSection.items);
-        const draggedItem = allSourceItems[source.index];
+        // Get all items with their hierarchical paths for both sections
+        const sourceItemsWithPaths = getAllItemsWithPaths(sourceSection.items);
+        const destItemsWithPaths = getAllItemsWithPaths(destSection.items);
         
-        if (!draggedItem) return;
+        // Find the item being dragged
+        const draggedItemData = sourceItemsWithPaths[source.index];
+        if (!draggedItemData) return;
+        
+        const draggedItem = draggedItemData.item;
         
         console.log('Dragging item:', {
           itemId: draggedItem.id,
@@ -118,27 +179,71 @@ export function NavigationStructurePanel({
         });
 
         if (sourceSectionId === destSectionId) {
-          // Reorder within same section - need to handle nested structure
-          const allDestItems = getAllItems(destSection.items);
-          const targetItem = allDestItems[destination.index];
+          // Reordering within the same section
+          let newItems = [...sourceSection.items];
           
-          // Update the dragged item's order to match the target position
-          await navigationService.updateNavigationItem(draggedItem.id, {
-            order_index: destination.index
+          // Remove the item from its current position
+          newItems = removeFromNested(newItems, draggedItemData.path);
+          
+          // Recalculate paths after removal
+          const updatedItemsWithPaths = getAllItemsWithPaths(newItems);
+          
+          // Find the target position
+          let targetPath: number[];
+          if (destination.index === 0) {
+            targetPath = [0];
+          } else if (destination.index >= updatedItemsWithPaths.length) {
+            targetPath = [updatedItemsWithPaths.length];
+          } else {
+            // Adjust for the new flat structure
+            const adjustedIndex = destination.index > source.index ? destination.index - 1 : destination.index;
+            if (updatedItemsWithPaths[adjustedIndex]) {
+              targetPath = [...updatedItemsWithPaths[adjustedIndex].path];
+              targetPath[targetPath.length - 1]++;
+            } else {
+              targetPath = [updatedItemsWithPaths.length];
+            }
+          }
+          
+          // Insert at the new position
+          newItems = insertIntoNested(newItems, targetPath, draggedItem);
+          
+          // Update order indices recursively
+          const updateOrderIndices = (items: any[]): any[] => {
+            return items.map((item, index) => ({
+              ...item,
+              order_index: index,
+              items: item.items ? updateOrderIndices(item.items) : []
+            }));
+          };
+          
+          newItems = updateOrderIndices(newItems);
+          
+          // Update the database for all affected items
+          const updatePromises: Promise<any>[] = [];
+          const flattenForUpdate = (items: any[]): any[] => {
+            const result: any[] = [];
+            items.forEach(item => {
+              result.push(item);
+              if (item.items) {
+                result.push(...flattenForUpdate(item.items));
+              }
+            });
+            return result;
+          };
+          
+          const allItems = flattenForUpdate(newItems);
+          allItems.forEach(item => {
+            updatePromises.push(
+              navigationService.updateNavigationItem(item.id, {
+                order_index: item.order_index
+              })
+            );
           });
           
-          // If there's a target item, swap their positions
-          if (targetItem && targetItem.id !== draggedItem.id) {
-            await navigationService.updateNavigationItem(targetItem.id, {
-              order_index: source.index
-            });
-          }
+          await Promise.all(updatePromises);
         } else {
-          // Move between sections - update section reference and order
-          const allDestItems = getAllItems(destSection.items || []);
-          
-          // Update the moved item's section (this might need a new field in the database)
-          // For now, we'll update the order and let the refresh handle the section change
+          // Moving between different sections - simplified approach
           await navigationService.updateNavigationItem(draggedItem.id, {
             order_index: destination.index
           });
