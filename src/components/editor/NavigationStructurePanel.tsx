@@ -73,47 +73,6 @@ export function NavigationStructurePanel({
     return null;
   };
 
-  // Helper function to remove item from nested structure
-  const removeItemFromNested = (items: any[], itemId: string): any[] => {
-    return items.reduce((acc, item) => {
-      if (item.id === itemId) {
-        // Skip this item (remove it)
-        return acc;
-      }
-      
-      const newItem = { ...item };
-      if (newItem.items && newItem.items.length > 0) {
-        newItem.items = removeItemFromNested(newItem.items, itemId);
-      }
-      acc.push(newItem);
-      return acc;
-    }, []);
-  };
-
-  // Helper function to insert item at specific position in nested structure
-  const insertItemInNested = (items: any[], targetParentId: string | null, targetIndex: number, itemToInsert: any): any[] => {
-    if (targetParentId === null) {
-      // Insert at root level
-      const newItems = [...items];
-      newItems.splice(targetIndex, 0, itemToInsert);
-      return newItems;
-    }
-
-    return items.map(item => {
-      if (item.id === targetParentId) {
-        const newItems = [...(item.items || [])];
-        newItems.splice(targetIndex, 0, itemToInsert);
-        return { ...item, items: newItems };
-      }
-      
-      if (item.items && item.items.length > 0) {
-        return { ...item, items: insertItemInNested(item.items, targetParentId, targetIndex, itemToInsert) };
-      }
-      
-      return item;
-    });
-  };
-
   // Helper function to update order indices recursively
   const updateOrderIndices = (items: any[]): any[] => {
     return items.map((item, index) => ({
@@ -203,8 +162,11 @@ export function NavigationStructurePanel({
           targetParent: targetParent ? { id: targetParent.id, title: targetParent.title } : null
         });
 
-        // If both items have the same parent, we can reorder
-        if ((draggedParent?.id || null) === (targetParent?.id || null)) {
+        // Allow reordering within the same parent (including root level)
+        const draggedParentId = draggedParent?.id || null;
+        const targetParentId = targetParent?.id || null;
+        
+        if (draggedParentId === targetParentId) {
           const parentItems = draggedParent ? draggedParent.items : section.items;
           const draggedItemIndex = parentItems.findIndex((item: any) => item.id === draggedItem.id);
           const targetItemIndex = parentItems.findIndex((item: any) => item.id === targetItem.id);
@@ -262,7 +224,7 @@ export function NavigationStructurePanel({
           onNavigationChange();
           toast.success("Items reordered successfully");
         } else {
-          toast.error("Can only reorder items within the same parent folder");
+          toast.info("Items can only be reordered within the same parent folder");
         }
         
       } catch (error) {

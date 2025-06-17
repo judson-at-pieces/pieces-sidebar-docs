@@ -30,37 +30,6 @@ interface NavigationItemDisplayProps {
   globalIndex?: number;
 }
 
-// Helper function to calculate global flattened index
-const calculateGlobalIndex = (items: NavigationItem[], targetId: string, currentIndex = 0): number => {
-  for (let i = 0; i < items.length; i++) {
-    const item = items[i];
-    if (item.id === targetId) {
-      return currentIndex;
-    }
-    currentIndex++;
-    
-    if (item.items && item.items.length > 0) {
-      const foundIndex = calculateGlobalIndex(item.items, targetId, currentIndex);
-      if (foundIndex !== -1) {
-        return foundIndex;
-      }
-      currentIndex += countAllItems(item.items);
-    }
-  }
-  return -1;
-};
-
-const countAllItems = (items: NavigationItem[]): number => {
-  let count = 0;
-  items.forEach(item => {
-    count++;
-    if (item.items) {
-      count += countAllItems(item.items);
-    }
-  });
-  return count;
-};
-
 export function NavigationItemDisplay({ 
   item, 
   index, 
@@ -71,7 +40,8 @@ export function NavigationItemDisplay({
   depth = 0,
   globalIndex
 }: NavigationItemDisplayProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  // Start with folders collapsed by default
+  const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(item.title);
   const paddingLeft = depth * 16;
