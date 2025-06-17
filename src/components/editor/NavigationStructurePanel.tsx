@@ -49,6 +49,30 @@ export function NavigationStructurePanel({
     }
   };
 
+  // Helper function to find an item by ID in nested structure
+  const findItemById = (items: any[], itemId: string): any => {
+    for (const item of items) {
+      if (item.id === itemId) return item;
+      if (item.items && item.items.length > 0) {
+        const found = findItemById(item.items, itemId);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  // Helper function to find all items in a flat array
+  const getAllItems = (items: any[]): any[] => {
+    const result: any[] = [];
+    for (const item of items) {
+      result.push(item);
+      if (item.items && item.items.length > 0) {
+        result.push(...getAllItems(item.items));
+      }
+    }
+    return result;
+  };
+
   const handleDragEnd = async (result: DropResult) => {
     if (!result.destination) return;
 
@@ -75,47 +99,54 @@ export function NavigationStructurePanel({
       const destSectionId = destination.droppableId.replace('section-', '');
       
       try {
+        const sourceSection = sections.find(s => s.id === sourceSectionId);
+        const destSection = sections.find(s => s.id === destSectionId);
+        
+        if (!sourceSection?.items || !destSection) return;
+        
+        // Get all items in source section (flattened)
+        const allSourceItems = getAllItems(sourceSection.items);
+        const draggedItem = allSourceItems[source.index];
+        
+        if (!draggedItem) return;
+        
+        console.log('Dragging item:', {
+          itemId: draggedItem.id,
+          title: draggedItem.title,
+          from: { sectionId: sourceSectionId, index: source.index },
+          to: { sectionId: destSectionId, index: destination.index }
+        });
+
         if (sourceSectionId === destSectionId) {
-          // Reorder within same section
-          const section = sections.find(s => s.id === sourceSectionId);
-          if (!section || !section.items) return;
+          // Reorder within same section - need to handle nested structure
+          const allDestItems = getAllItems(destSection.items);
+          const targetItem = allDestItems[destination.index];
           
-          const sourceItem = section.items[source.index];
-          const destinationItem = section.items[destination.index];
-          
-          // Update order in database
-          await navigationService.updateNavigationItem(sourceItem.id, {
+          // Update the dragged item's order to match the target position
+          await navigationService.updateNavigationItem(draggedItem.id, {
             order_index: destination.index
           });
           
-          if (destinationItem) {
-            await navigationService.updateNavigationItem(destinationItem.id, {
+          // If there's a target item, swap their positions
+          if (targetItem && targetItem.id !== draggedItem.id) {
+            await navigationService.updateNavigationItem(targetItem.id, {
               order_index: source.index
             });
           }
-          
-          // Refresh navigation data to update UI
-          onNavigationChange();
-          
         } else {
-          // Move between sections
-          const sourceSection = sections.find(s => s.id === sourceSectionId);
-          const destSection = sections.find(s => s.id === destSectionId);
+          // Move between sections - update section reference and order
+          const allDestItems = getAllItems(destSection.items || []);
           
-          if (!sourceSection?.items || !destSection) return;
-          
-          const movedItem = sourceSection.items[source.index];
-          const destItems = destSection.items || [];
-          
-          // Update the moved item's section and order
-          await navigationService.updateNavigationItem(movedItem.id, {
+          // Update the moved item's section (this might need a new field in the database)
+          // For now, we'll update the order and let the refresh handle the section change
+          await navigationService.updateNavigationItem(draggedItem.id, {
             order_index: destination.index
           });
-          
-          // Update the database with section change (this would need a new field or handling)
-          // For now, we'll refresh to get the updated state
-          onNavigationChange();
         }
+        
+        // Refresh navigation data to update UI
+        onNavigationChange();
+        
       } catch (error) {
         console.error('Error reordering items:', error);
         toast.error("Failed to reorder items");

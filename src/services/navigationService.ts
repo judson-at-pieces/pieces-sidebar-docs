@@ -93,7 +93,7 @@ function buildHierarchy(items: NavigationItem[]): NavigationItem[] {
     
     processedItems.set(item.id, { 
       ...item, 
-      // Only apply capitalization for auto-generated items
+      // ONLY apply capitalization for auto-generated items, preserve user titles
       title: item.is_auto_generated ? capitalizeTitle(item.title) : item.title,
       items: [] 
     });
@@ -256,7 +256,7 @@ export class NavigationService {
       
       return {
         ...section,
-        // Don't auto-capitalize section titles - preserve user input
+        // PRESERVE user-entered section titles - don't auto-capitalize
         title: section.title,
         items: mergeFolderAndMarkdownItems(section.items || []),
       };
