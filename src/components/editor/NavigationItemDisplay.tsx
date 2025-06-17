@@ -141,27 +141,29 @@ export function NavigationItemDisplay({
                 <GripVertical className="h-4 w-4 text-muted-foreground" />
               </div>
               
-              {/* Up/Down arrow buttons */}
-              <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-3 w-3 p-0 hover:bg-primary/10"
-                  onClick={() => onMoveUp?.(item.id)}
-                  disabled={!canMoveUp}
-                >
-                  <ArrowUp className="h-2 w-2" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-3 w-3 p-0 hover:bg-primary/10"
-                  onClick={() => onMoveDown?.(item.id)}
-                  disabled={!canMoveDown}
-                >
-                  <ArrowDown className="h-2 w-2" />
-                </Button>
-              </div>
+              {/* Up/Down arrow buttons - now available at all levels */}
+              {(onMoveUp || onMoveDown) && (
+                <div className="flex flex-col gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-3 w-3 p-0 hover:bg-primary/10"
+                    onClick={() => onMoveUp?.(item.id)}
+                    disabled={!canMoveUp}
+                  >
+                    <ArrowUp className="h-2 w-2" />
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-3 w-3 p-0 hover:bg-primary/10"
+                    onClick={() => onMoveDown?.(item.id)}
+                    disabled={!canMoveDown}
+                  >
+                    <ArrowDown className="h-2 w-2" />
+                  </Button>
+                </div>
+              )}
               
               {hasChildren ? (
                 <Button
@@ -289,6 +291,10 @@ export function NavigationItemDisplay({
               pendingDeletions={pendingDeletions}
               onTogglePendingDeletion={onTogglePendingDeletion}
               onUpdateTitle={onUpdateTitle}
+              onMoveUp={onMoveUp}
+              onMoveDown={onMoveDown}
+              canMoveUp={childIndex > 0}
+              canMoveDown={childIndex < children.length - 1}
               depth={depth + 1}
             />
           ))}
