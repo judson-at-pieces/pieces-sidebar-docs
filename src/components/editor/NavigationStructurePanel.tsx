@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Button } from "@/components/ui/button";
@@ -41,11 +40,30 @@ export function NavigationStructurePanel({
   onNavigationChange
 }: NavigationStructurePanelProps) {
   const [newSectionTitle, setNewSectionTitle] = useState("");
+  const [isAddingSection, setIsAddingSection] = useState(false);
 
-  const handleAddSection = () => {
-    if (newSectionTitle.trim()) {
-      onAddSection(newSectionTitle.trim());
+  const handleAddSection = async () => {
+    if (!newSectionTitle.trim() || isAddingSection) {
+      return;
+    }
+
+    setIsAddingSection(true);
+    try {
+      console.log('Adding new section:', newSectionTitle.trim());
+      await onAddSection(newSectionTitle.trim());
       setNewSectionTitle("");
+      toast.success(`Added section: ${newSectionTitle.trim()}`);
+    } catch (error) {
+      console.error('Error adding section:', error);
+      toast.error("Failed to add section");
+    } finally {
+      setIsAddingSection(false);
+    }
+  };
+
+  const handleKeyPress = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter' && !isAddingSection) {
+      handleAddSection();
     }
   };
 
@@ -351,10 +369,19 @@ export function NavigationStructurePanel({
               value={newSectionTitle}
               onChange={(e) => setNewSectionTitle(e.target.value)}
               placeholder="Section title..."
-              onKeyPress={(e) => e.key === 'Enter' && handleAddSection()}
+              onKeyPress={handleKeyPress}
+              disabled={isAddingSection}
             />
-            <Button onClick={handleAddSection} size="sm">
-              <Plus className="h-4 w-4" />
+            <Button 
+              onClick={handleAddSection} 
+              size="sm"
+              disabled={!newSectionTitle.trim() || isAddingSection}
+            >
+              {isAddingSection ? (
+                <RefreshCw className="h-4 w-4 animate-spin" />
+              ) : (
+                <Plus className="h-4 w-4" />
+              )}
             </Button>
           </div>
         </div>
