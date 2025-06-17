@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ChevronDown } from 'lucide-react';
@@ -11,6 +10,7 @@ interface TableOfContentsProps {
 export function TableOfContents({ content }: TableOfContentsProps) {
   const [tocItems, setTocItems] = useState<TOCItem[]>([]);
   const [activeId, setActiveId] = useState<string>('');
+  const [sectionProgress, setSectionProgress] = useState<Record<string, number>>({});
 
   useEffect(() => {
     // Extract headings from markdown content and find actual rendered headings
@@ -46,7 +46,7 @@ export function TableOfContents({ content }: TableOfContentsProps) {
   }, [content]);
 
   useEffect(() => {
-    // Set up intersection observer to track active heading
+    // Set up intersection observer to track active heading and scroll progress
     const headingElements = Array.from(document.querySelectorAll('h1, h2, h3, h4, h5, h6')).filter(Boolean);
     
     if (headingElements.length === 0) return;
@@ -98,9 +98,40 @@ export function TableOfContents({ content }: TableOfContentsProps) {
       if (element) observer.observe(element);
     });
 
-    // Also listen to scroll events for better tracking
+    // Enhanced scroll handler for progress tracking
     const handleScroll = () => {
       const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      const windowHeight = window.innerHeight;
+      const documentHeight = document.documentElement.scrollHeight;
+      
+      // Calculate progress for each section
+      const progress: Record<string, number> = {};
+      
+      headingElements.forEach((heading, index) => {
+        const rect = heading.getBoundingClientRect();
+        const headingTop = rect.top + scrollTop;
+        
+        // Find the next heading to determine section bounds
+        const nextHeading = headingElements[index + 1];
+        const nextHeadingTop = nextHeading 
+          ? nextHeading.getBoundingClientRect().top + scrollTop
+          : documentHeight;
+        
+        const sectionHeight = nextHeadingTop - headingTop;
+        
+        // Calculate how much of this section has been scrolled through
+        if (scrollTop >= headingTop - windowHeight && scrollTop <= nextHeadingTop) {
+          const sectionScrolled = Math.max(0, scrollTop - headingTop + windowHeight);
+          const sectionProgress = Math.min(100, (sectionScrolled / (sectionHeight + windowHeight)) * 100);
+          progress[heading.id] = sectionProgress;
+        } else if (scrollTop > nextHeadingTop) {
+          progress[heading.id] = 100;
+        } else {
+          progress[heading.id] = 0;
+        }
+      });
+      
+      setSectionProgress(progress);
       
       // Find the heading that's currently closest to the top of the viewport
       let activeHeading = null;
@@ -122,6 +153,7 @@ export function TableOfContents({ content }: TableOfContentsProps) {
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
+    handleScroll(); // Initial call
 
     return () => {
       headingElements.forEach(element => {
@@ -196,30 +228,42 @@ export function TableOfContents({ content }: TableOfContentsProps) {
         </details>
       </div>
 
-      {/* Desktop TOC - sticky sidebar that follows scroll */}
+      {/* Desktop TOC - sticky sidebar without background box */}
       <div className="hidden lg:block fixed top-24 right-8 z-40 max-h-[calc(100vh-8rem)] w-64">
-        <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg p-4">
+        <div className="p-4">
           <h3 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wider">
             On this page
           </h3>
           <ScrollArea className="h-full max-h-[calc(100vh-12rem)]">
             <nav className="space-y-1 pr-2">
               {tocItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => scrollToHeading(item.id)}
-                  className={`block w-full text-left text-sm transition-all duration-200 hover:text-foreground cursor-pointer rounded-md ${
-                    activeId === item.id 
-                      ? 'text-primary font-medium bg-primary/10 border-l-2 border-primary' 
-                      : 'text-muted-foreground border-l-2 border-transparent hover:border-primary/50 hover:bg-muted/50'
-                  } ${
-                    item.level === 1 ? 'pl-3' : 
-                    item.level === 2 ? 'pl-7' : 
-                    'pl-11'
-                  } py-2 pr-3`}
-                >
-                  {item.text}
-                </button>
+                <div key={item.id} className="relative">
+                  {/* Progress bar */}
+                  <div className="absolute left-0 top-0 bottom-0 w-0.5 bg-border">
+                    <div 
+                      className="w-full bg-primary transition-all duration-300 ease-out"
+                      style={{ 
+                        height: `${sectionProgress[item.id] || 0}%`,
+                        transformOrigin: 'top'
+                      }}
+                    />
+                  </div>
+                  
+                  <button
+                    onClick={() => scrollToHeading(item.id)}
+                    className={`block w-full text-left text-sm transition-all duration-200 hover:text-foreground cursor-pointer ${
+                      activeId === item.id 
+                        ? 'text-primary font-medium' 
+                        : 'text-muted-foreground hover:text-foreground'
+                    } ${
+                      item.level === 1 ? 'pl-4' : 
+                      item.level === 2 ? 'pl-8' : 
+                      'pl-12'
+                    } py-2 pr-3`}
+                  >
+                    {item.text}
+                  </button>
+                </div>
               ))}
             </nav>
           </ScrollArea>
