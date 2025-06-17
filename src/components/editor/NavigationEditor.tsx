@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { useNavigation } from "@/hooks/useNavigation";
 import { FileNode } from "@/utils/fileSystem";
@@ -43,14 +44,14 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
     savePendingChanges
   } = useNavigationActions(sections, setSections, refetch, onNavigationChange);
 
-  // Check if a file is already used in navigation
+  // Check if a file is already used in navigation (including private files)
   const isFileUsed = (filePath: string): boolean => {
     // Clean up path to prevent duplicate checking
     const cleanPath = filePath.replace(/\/([^\/]+)\/\1\//g, '/$1/').replace(/\/([^\/]+)\/\1$/, '/$1');
     
     return sections.some(section => 
       section.items?.some(item => {
-        // Check if file is used at root level or nested
+        // Check if file is used at root level or nested (including private items)
         const checkNested = (navItem: any): boolean => {
           if (navItem.file_path === filePath || navItem.file_path === cleanPath) return true;
           if (navItem.href === `/${filePath.replace('.md', '')}` || navItem.href === `/${cleanPath.replace('.md', '')}`) return true;
