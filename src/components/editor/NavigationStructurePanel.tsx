@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Button } from "@/components/ui/button";
@@ -42,20 +43,55 @@ export function NavigationStructurePanel({
   const [newSectionTitle, setNewSectionTitle] = useState("");
   const [isAddingSection, setIsAddingSection] = useState(false);
 
+  const generateSlug = (title: string): string => {
+    return title
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9\s-]/g, '') // Remove special characters
+      .replace(/\s+/g, '-') // Replace spaces with hyphens
+      .replace(/-+/g, '-') // Replace multiple hyphens with single
+      .replace(/^-|-$/g, ''); // Remove leading/trailing hyphens
+  };
+
   const handleAddSection = async () => {
     if (!newSectionTitle.trim() || isAddingSection) {
       return;
     }
 
+    const title = newSectionTitle.trim();
+    const slug = generateSlug(title);
+    
+    // Check if section with this slug already exists
+    const existingSection = sections.find(section => section.slug === slug);
+    if (existingSection) {
+      toast.error(`A section with similar name already exists: "${existingSection.title}"`);
+      return;
+    }
+
     setIsAddingSection(true);
     try {
-      console.log('Adding new section:', newSectionTitle.trim());
-      await onAddSection(newSectionTitle.trim());
+      console.log('Adding new section:', { title, slug });
+      await onAddSection(title);
       setNewSectionTitle("");
-      toast.success(`Added section: ${newSectionTitle.trim()}`);
-    } catch (error) {
+      
+      // Force refresh the navigation data to ensure UI is in sync
+      setTimeout(() => {
+        onNavigationChange();
+      }, 100);
+      
+      toast.success(`Added section: ${title}`);
+    } catch (error: any) {
       console.error('Error adding section:', error);
-      toast.error("Failed to add section");
+      
+      // Handle specific duplicate key error
+      if (error?.code === '23505' && error?.message?.includes('navigation_sections_slug_key')) {
+        toast.error(`A section with this name already exists. Please choose a different name.`);
+      } else {
+        toast.error("Failed to add section");
+      }
+      
+      // Force refresh to sync UI with database state
+      onNavigationChange();
     } finally {
       setIsAddingSection(false);
     }
@@ -384,6 +420,11 @@ export function NavigationStructurePanel({
               )}
             </Button>
           </div>
+          {sections.length > 0 && (
+            <div className="text-xs text-muted-foreground">
+              Existing sections: {sections.map(s => s.title).join(', ')}
+            </div>
+          )}
         </div>
 
         {pendingDeletions.length > 0 && (
