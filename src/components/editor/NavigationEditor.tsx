@@ -122,6 +122,23 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
     }
   };
 
+  const handlePrivacyChange = async (itemId: string, privacy: 'PUBLIC' | 'PRIVATE') => {
+    try {
+      await navigationService.updateNavigationItem(itemId, { privacy });
+      
+      console.log('Navigation item privacy updated, refreshing navigation data');
+      const refreshedData = await refetch();
+      if (refreshedData.data?.sections) {
+        setSections(refreshedData.data.sections);
+      }
+      onNavigationChange();
+      toast.success(`Item privacy updated to ${privacy.toLowerCase()}`);
+    } catch (error) {
+      console.error('Error updating navigation item privacy:', error);
+      toast.error("Failed to update item privacy");
+    }
+  };
+
   const handleTogglePendingDeletion = (sectionId: string, itemIndex: number) => {
     const section = sections.find(s => s.id === sectionId);
     if (!section || !section.items || !section.items[itemIndex]) {
@@ -230,7 +247,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
       <div className="p-4 border-b flex-shrink-0">
         <h2 className="text-lg font-semibold mb-2">Navigation Editor</h2>
         <p className="text-sm text-muted-foreground">
-          Add files or folders to organize your documentation. Drag sections to reorder them. Click on titles to edit them.
+          Add files or folders to organize your documentation. Drag sections to reorder them. Click on titles to edit them. Use the three-dot menu to access privacy settings.
         </p>
       </div>
       
@@ -257,6 +274,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
               onResetPendingDeletions={clearPendingDeletions}
               onSectionReorder={handleSectionReorder}
               onNavigationChange={handleNavigationRefresh}
+              onPrivacyChange={handlePrivacyChange}
             />
           </div>
         </div>

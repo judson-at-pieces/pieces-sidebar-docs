@@ -1,21 +1,20 @@
 
-import { useState } from "react";
-import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
+import React, { useState } from "react";
+import { Plus, Trash2, RotateCcw, GripVertical, Lock } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Trash2, RotateCcw, RefreshCw } from "lucide-react";
-import { NavigationSection } from "@/services/navigationService";
-import { NavigationItemDisplay } from "./NavigationItemDisplay";
-import { NavigationSectionHeader } from "./NavigationSectionHeader";
-import { PendingDeletion } from "./hooks/usePendingDeletions";
-import { toast } from "sonner";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd";
+import { NavigationSection, NavigationItem } from "@/services/navigationService";
+import { useDragAndDrop } from "./hooks/useDragAndDrop";
+import { ItemActionsButton } from "./ItemActionsButton";
+import { ItemSettingsPanel } from "./ItemSettingsPanel";
 
 interface NavigationStructurePanelProps {
   sections: NavigationSection[];
-  pendingDeletions: PendingDeletion[];
+  pendingDeletions: Array<{ sectionId: string; itemIndex: number; item: NavigationItem }>;
   onAddSection: (title: string) => void;
   onUpdateSectionTitle: (sectionId: string, title: string) => void;
   onUpdateItemTitle: (itemId: string, title: string) => void;
@@ -24,6 +23,7 @@ interface NavigationStructurePanelProps {
   onResetPendingDeletions: () => void;
   onSectionReorder: (newSections: NavigationSection[]) => void;
   onNavigationChange: () => void;
+  onPrivacyChange: (itemId: string, privacy: 'PUBLIC' | 'PRIVATE') => void;
 }
 
 export function NavigationStructurePanel({
@@ -36,9 +36,23 @@ export function NavigationStructurePanel({
   onBulkDelete,
   onResetPendingDeletions,
   onSectionReorder,
-  onNavigationChange
+  onNavigationChange,
+  onPrivacyChange
 }: NavigationStructurePanelProps) {
   const [newSectionTitle, setNewSectionTitle] = useState("");
+  const [editingSectionId, setEditingSectionId] = useState<string | null>(null);
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editingTitle, setEditingTitle] = useState("");
+  const [settingsItem, setSettingsItem] = useState<NavigationItem | null>(null);
+  const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
+
+  const { handleDragEnd } = useDragAndDrop(sections, onSectionReorder);
+
+  const isPendingDeletion = (sectionId: string, itemIndex: number): boolean => {
+    return pendingDeletions.some(
+      (deletion) => deletion.sectionId === sectionId && deletion.itemIndex === itemIndex
+    );
+  };
 
   const handleAddSection = () => {
     if (newSectionTitle.trim()) {
@@ -47,155 +61,213 @@ export function NavigationStructurePanel({
     }
   };
 
-  const handleDragEnd = (result: DropResult) => {
-    if (!result.destination) return;
-
-    const { source, destination } = result;
-    
-    // Handle section reordering
-    if (source.droppableId === 'sections' && destination.droppableId === 'sections') {
-      const newSections = Array.from(sections);
-      const [reorderedSection] = newSections.splice(source.index, 1);
-      newSections.splice(destination.index, 0, reorderedSection);
-      
-      // Update order_index for each section
-      const sectionsWithNewOrder = newSections.map((section, index) => ({
-        ...section,
-        order_index: index
-      }));
-      
-      onSectionReorder(sectionsWithNewOrder);
-    }
+  const handleSectionTitleClick = (section: NavigationSection) => {
+    setEditingSectionId(section.id);
+    setEditingTitle(section.title);
   };
 
-  // Calculate global indices for items
-  const getGlobalIndex = (sectionIndex: number, itemIndex: number): number => {
-    let globalIndex = 0;
-    for (let i = 0; i < sectionIndex; i++) {
-      globalIndex += sections[i].items?.length || 0;
+  const handleItemTitleClick = (item: NavigationItem) => {
+    setEditingItemId(item.id);
+    setEditingTitle(item.title);
+  };
+
+  const handleSectionTitleSave = () => {
+    if (editingSectionId && editingTitle.trim()) {
+      onUpdateSectionTitle(editingSectionId, editingTitle.trim());
     }
-    return globalIndex + itemIndex;
+    setEditingSectionId(null);
+    setEditingTitle("");
+  };
+
+  const handleItemTitleSave = () => {
+    if (editingItemId && editingTitle.trim()) {
+      onUpdateItemTitle(editingItemId, editingTitle.trim());
+    }
+    setEditingItemId(null);
+    setEditingTitle("");
+  };
+
+  const handleSettingsClick = (item: NavigationItem) => {
+    setSettingsItem(item);
+    setSettingsPanelOpen(true);
+  };
+
+  const handlePrivacyChange = (itemId: string, privacy: 'PUBLIC' | 'PRIVATE') => {
+    onPrivacyChange(itemId, privacy);
+    onNavigationChange();
+  };
+
+  const renderNavItem = (item: NavigationItem, sectionId: string, itemIndex: number, depth = 0) => {
+    const isMarkedForDeletion = isPendingDeletion(sectionId, itemIndex);
+    const isEditing = editingItemId === item.id;
+    const isPrivate = item.privacy === 'PRIVATE';
+
+    return (
+      <div 
+        key={item.id}
+        className={`group flex items-center gap-2 p-2 rounded-lg transition-colors ${
+          isMarkedForDeletion ? 'bg-destructive/10 border border-destructive/20' : 'hover:bg-accent'
+        } ${depth > 0 ? 'ml-6' : ''}`}
+      >
+        <div className="flex-1 min-w-0">
+          {isEditing ? (
+            <Input
+              value={editingTitle}
+              onChange={(e) => setEditingTitle(e.target.value)}
+              onBlur={handleItemTitleSave}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') handleItemTitleSave();
+                if (e.key === 'Escape') {
+                  setEditingItemId(null);
+                  setEditingTitle("");
+                }
+              }}
+              className="h-6 text-sm"
+              autoFocus
+            />
+          ) : (
+            <div className="flex items-center gap-2">
+              <span 
+                className={`text-sm cursor-pointer truncate ${
+                  isMarkedForDeletion ? 'line-through text-muted-foreground' : ''
+                }`}
+                onClick={() => handleItemTitleClick(item)}
+              >
+                {item.title}
+              </span>
+              {isPrivate && (
+                <Lock className="h-3 w-3 text-destructive flex-shrink-0" />
+              )}
+            </div>
+          )}
+        </div>
+        
+        <div className="flex items-center gap-1">
+          <ItemActionsButton
+            onSettingsClick={() => handleSettingsClick(item)}
+            onDeleteClick={() => onTogglePendingDeletion(sectionId, itemIndex)}
+          />
+          <Button
+            variant="ghost"
+            size="icon"
+            className={`h-6 w-6 ${
+              isMarkedForDeletion 
+                ? 'text-green-600 hover:text-green-700 opacity-100' 
+                : 'text-destructive hover:text-destructive/80 opacity-0 group-hover:opacity-100'
+            } transition-opacity`}
+            onClick={() => onTogglePendingDeletion(sectionId, itemIndex)}
+          >
+            <Trash2 className="h-3 w-3" />
+          </Button>
+        </div>
+
+        {item.items && item.items.length > 0 && (
+          <div className="ml-4 space-y-1">
+            {item.items.map((subItem, subIndex) => 
+              renderNavItem(subItem, sectionId, itemIndex, depth + 1)
+            )}
+          </div>
+        )}
+      </div>
+    );
   };
 
   return (
-    <div className="h-full flex flex-col border rounded-lg bg-card">
-      <div className="p-4 border-b">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-lg font-semibold">Navigation Structure</h3>
-          <Button
-            onClick={onNavigationChange}
-            variant="outline"
-            size="sm"
-            className="gap-2"
-          >
-            <RefreshCw className="h-4 w-4" />
-            Refresh
+    <>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-lg font-medium">Navigation Structure</h3>
+          {pendingDeletions.length > 0 && (
+            <div className="flex items-center gap-2">
+              <Badge variant="destructive" className="gap-1">
+                <Trash2 className="h-3 w-3" />
+                {pendingDeletions.length} marked
+              </Badge>
+              <Button onClick={onBulkDelete} size="sm" variant="destructive">
+                Delete All
+              </Button>
+              <Button onClick={onResetPendingDeletions} size="sm" variant="outline">
+                <RotateCcw className="h-3 w-3 mr-1" />
+                Reset
+              </Button>
+            </div>
+          )}
+        </div>
+
+        <div className="flex gap-2">
+          <Input
+            placeholder="New section title..."
+            value={newSectionTitle}
+            onChange={(e) => setNewSectionTitle(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') handleAddSection();
+            }}
+          />
+          <Button onClick={handleAddSection} disabled={!newSectionTitle.trim()}>
+            <Plus className="h-4 w-4" />
           </Button>
         </div>
-        
-        <div className="space-y-2">
-          <Label htmlFor="section-title">Add New Section</Label>
-          <div className="flex gap-2">
-            <Input
-              id="section-title"
-              value={newSectionTitle}
-              onChange={(e) => setNewSectionTitle(e.target.value)}
-              placeholder="Section title..."
-              onKeyPress={(e) => e.key === 'Enter' && handleAddSection()}
-            />
-            <Button onClick={handleAddSection} size="sm">
-              <Plus className="h-4 w-4" />
-            </Button>
-          </div>
-        </div>
 
-        {pendingDeletions.length > 0 && (
-          <>
-            <Separator className="my-4" />
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">
-                {pendingDeletions.length} item{pendingDeletions.length !== 1 ? 's' : ''} marked for deletion
-              </span>
-              <div className="flex gap-2">
-                <Button
-                  onClick={onResetPendingDeletions}
-                  variant="outline"
-                  size="sm"
-                  className="gap-2"
-                >
-                  <RotateCcw className="h-4 w-4" />
-                  Reset
-                </Button>
-                <Button
-                  onClick={onBulkDelete}
-                  variant="destructive"
-                  size="sm"
-                  className="gap-2"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Delete All
-                </Button>
-              </div>
-            </div>
-          </>
-        )}
-      </div>
+        <Separator />
 
-      <ScrollArea className="flex-1">
-        <div className="p-4">
+        <ScrollArea className="h-[calc(100vh-20rem)]">
           <DragDropContext onDragEnd={handleDragEnd}>
-            <Droppable droppableId="sections" type="section">
+            <Droppable droppableId="sections">
               {(provided) => (
-                <div {...provided.droppableProps} ref={provided.innerRef} className="space-y-4">
-                  {sections.map((section, sectionIndex) => (
-                    <Draggable key={section.id} draggableId={section.id} index={sectionIndex}>
+                <div
+                  {...provided.droppableProps}
+                  ref={provided.innerRef}
+                  className="space-y-4"
+                >
+                  {sections.map((section, index) => (
+                    <Draggable
+                      key={section.id}
+                      draggableId={section.id}
+                      index={index}
+                    >
                       {(provided, snapshot) => (
                         <div
                           ref={provided.innerRef}
                           {...provided.draggableProps}
-                          className={`border rounded-lg bg-muted/20 ${
-                            snapshot.isDragging ? 'shadow-lg ring-2 ring-primary/20' : ''
+                          className={`border rounded-lg p-4 ${
+                            snapshot.isDragging ? 'shadow-lg' : ''
                           }`}
                         >
-                          <NavigationSectionHeader
-                            section={section}
-                            pendingDeletions={pendingDeletions}
-                            onUpdateTitle={onUpdateSectionTitle}
-                            dragHandleProps={provided.dragHandleProps}
-                          />
-                          
-                          <div className="p-3">
-                            <Droppable droppableId={`section-${section.id}`} type="item">
-                              {(sectionProvided) => (
-                                <div
-                                  {...sectionProvided.droppableProps}
-                                  ref={sectionProvided.innerRef}
-                                  className="space-y-1"
-                                >
-                                  {section.items?.map((item, itemIndex) => {
-                                    const globalIndex = getGlobalIndex(sectionIndex, itemIndex);
-                                    return (
-                                      <NavigationItemDisplay
-                                        key={item.id}
-                                        item={item}
-                                        index={itemIndex}
-                                        sectionId={section.id}
-                                        pendingDeletions={pendingDeletions}
-                                        onTogglePendingDeletion={onTogglePendingDeletion}
-                                        onUpdateTitle={onUpdateItemTitle}
-                                        globalIndex={globalIndex}
-                                      />
-                                    );
-                                  })}
-                                  {sectionProvided.placeholder}
-                                </div>
-                              )}
-                            </Droppable>
-                            
-                            {(!section.items || section.items.length === 0) && (
-                              <p className="text-sm text-muted-foreground italic text-center py-4">
-                                No items in this section. Add files from the left panel.
-                              </p>
+                          <div className="flex items-center gap-2 mb-3">
+                            <div {...provided.dragHandleProps}>
+                              <GripVertical className="h-4 w-4 text-muted-foreground" />
+                            </div>
+                            {editingSectionId === section.id ? (
+                              <Input
+                                value={editingTitle}
+                                onChange={(e) => setEditingTitle(e.target.value)}
+                                onBlur={handleSectionTitleSave}
+                                onKeyDown={(e) => {
+                                  if (e.key === 'Enter') handleSectionTitleSave();
+                                  if (e.key === 'Escape') {
+                                    setEditingSectionId(null);
+                                    setEditingTitle("");
+                                  }
+                                }}
+                                className="flex-1"
+                                autoFocus
+                              />
+                            ) : (
+                              <h4 
+                                className="font-medium flex-1 cursor-pointer hover:text-primary"
+                                onClick={() => handleSectionTitleClick(section)}
+                              >
+                                {section.title}
+                              </h4>
+                            )}
+                            <Badge variant="secondary">
+                              {section.items?.length || 0} items
+                            </Badge>
+                          </div>
+
+                          <div className="space-y-1">
+                            {section.items?.map((item, itemIndex) => 
+                              renderNavItem(item, section.id, itemIndex)
                             )}
                           </div>
                         </div>
@@ -207,8 +279,15 @@ export function NavigationStructurePanel({
               )}
             </Droppable>
           </DragDropContext>
-        </div>
-      </ScrollArea>
-    </div>
+        </ScrollArea>
+      </div>
+
+      <ItemSettingsPanel
+        isOpen={settingsPanelOpen}
+        onClose={() => setSettingsPanelOpen(false)}
+        item={settingsItem}
+        onPrivacyChange={handlePrivacyChange}
+      />
+    </>
   );
 }
