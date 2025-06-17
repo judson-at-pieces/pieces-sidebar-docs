@@ -71,7 +71,10 @@ export function EditorTabs({
       </TabsContent>
       
       <TabsContent value="navigation" className="flex-1 m-0">
-        <NavigationEditor onNavigationChange={onNavigationChange} />
+        <NavigationEditor
+          fileStructure={fileStructure}
+          onNavigationChange={onNavigationChange}
+        />
       </TabsContent>
       
       <TabsContent value="seo" className="flex-1 m-0">

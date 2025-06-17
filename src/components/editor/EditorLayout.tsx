@@ -151,7 +151,10 @@ export function EditorLayout() {
                   fileStructure={fileStructure}
                 />
                 <div className="flex-1 animate-in fade-in slide-in-from-top-2 duration-300">
-                  <NavigationEditor onNavigationChange={refetch} />
+                  <NavigationEditor 
+                    fileStructure={fileStructure} 
+                    onNavigationChange={refetch}
+                  />
                 </div>
               </>
             ) : activeTab === 'seo' ? (
