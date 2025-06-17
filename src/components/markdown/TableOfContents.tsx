@@ -197,31 +197,33 @@ export function TableOfContents({ content }: TableOfContentsProps) {
       </div>
 
       {/* Desktop TOC - sticky sidebar that follows scroll */}
-      <div className="hidden lg:block sticky top-24 max-h-[calc(100vh-8rem)]">
-        <h3 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wider">
-          On this page
-        </h3>
-        <ScrollArea className="h-full">
-          <nav className="space-y-1 pr-4">
-            {tocItems.map((item) => (
-              <button
-                key={item.id}
-                onClick={() => scrollToHeading(item.id)}
-                className={`block w-full text-left text-sm transition-all duration-200 hover:text-foreground cursor-pointer rounded-md ${
-                  activeId === item.id 
-                    ? 'text-primary font-medium bg-primary/10 border-l-2 border-primary' 
-                    : 'text-muted-foreground border-l-2 border-transparent hover:border-primary/50 hover:bg-muted/50'
-                } ${
-                  item.level === 1 ? 'pl-3' : 
-                  item.level === 2 ? 'pl-7' : 
-                  'pl-11'
-                } py-2 pr-3`}
-              >
-                {item.text}
-              </button>
-            ))}
-          </nav>
-        </ScrollArea>
+      <div className="hidden lg:block fixed top-24 right-8 z-40 max-h-[calc(100vh-8rem)] w-64">
+        <div className="bg-background/95 backdrop-blur-sm border border-border rounded-lg shadow-lg p-4">
+          <h3 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wider">
+            On this page
+          </h3>
+          <ScrollArea className="h-full max-h-[calc(100vh-12rem)]">
+            <nav className="space-y-1 pr-2">
+              {tocItems.map((item) => (
+                <button
+                  key={item.id}
+                  onClick={() => scrollToHeading(item.id)}
+                  className={`block w-full text-left text-sm transition-all duration-200 hover:text-foreground cursor-pointer rounded-md ${
+                    activeId === item.id 
+                      ? 'text-primary font-medium bg-primary/10 border-l-2 border-primary' 
+                      : 'text-muted-foreground border-l-2 border-transparent hover:border-primary/50 hover:bg-muted/50'
+                  } ${
+                    item.level === 1 ? 'pl-3' : 
+                    item.level === 2 ? 'pl-7' : 
+                    'pl-11'
+                  } py-2 pr-3`}
+                >
+                  {item.text}
+                </button>
+              ))}
+            </nav>
+          </ScrollArea>
+        </div>
       </div>
     </div>
   );
