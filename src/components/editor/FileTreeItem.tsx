@@ -97,7 +97,9 @@ export function FileTreeItem({
             
             {/* Privacy indicator */}
             {isPrivate && (
-              <EyeOff className="h-3 w-3 text-orange-600 flex-shrink-0" title="Private - hidden from public navigation" />
+              <div className="flex-shrink-0" title="Private - hidden from public navigation">
+                <EyeOff className="h-3 w-3 text-orange-600" />
+              </div>
             )}
             
             {hasChanges && (
