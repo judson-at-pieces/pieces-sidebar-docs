@@ -33,7 +33,7 @@ export function FileTreeItem({
   const paddingLeft = level * 16 + (node.type === 'file' ? 24 : 8);
 
   const handleToggle = () => {
-    if (node.type === 'directory') {
+    if (node.type === 'folder') {
       setIsExpanded(!isExpanded);
     } else {
       onFileSelect(node.path);
@@ -43,12 +43,12 @@ export function FileTreeItem({
   const handleSettingsClick = (e: React.MouseEvent) => {
     e.stopPropagation();
     if (onOpenSettings) {
-      onOpenSettings(node.path, node.type === 'directory' ? 'folder' : 'file', 'PUBLIC');
+      onOpenSettings(node.path, node.type === 'folder' ? 'folder' : 'file', 'PUBLIC');
     }
   };
 
   const getFileIcon = () => {
-    if (node.type === 'directory') {
+    if (node.type === 'folder') {
       return isExpanded ? <FolderOpen className="h-4 w-4" /> : <Folder className="h-4 w-4" />;
     }
     return <FileText className="h-4 w-4" />;
@@ -72,7 +72,7 @@ export function FileTreeItem({
         onClick={handleToggle}
       >
         <div className="flex items-center gap-2 flex-1 min-w-0">
-          {node.type === 'directory' && (
+          {node.type === 'folder' && (
             <button className="p-0.5 hover:bg-muted rounded">
               {isExpanded ? (
                 <ChevronDown className="h-3 w-3" />
@@ -121,8 +121,8 @@ export function FileTreeItem({
         </div>
       </div>
 
-      {/* Render children for directories */}
-      {node.type === 'directory' && isExpanded && node.children && (
+      {/* Render children for folders */}
+      {node.type === 'folder' && isExpanded && node.children && (
         <div>
           {node.children.map((child) => (
             <FileTreeItem
