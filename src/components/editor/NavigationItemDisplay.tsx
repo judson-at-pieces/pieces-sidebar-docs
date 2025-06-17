@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { 
   FileText, 
   Folder, 
@@ -57,9 +57,9 @@ export function NavigationItemDisplay({
   const paddingLeft = depth * 16;
   
   // Update editTitle when item.title changes from external updates
-  useState(() => {
+  useEffect(() => {
     setEditTitle(item.title);
-  });
+  }, [item.title]);
   
   const children = item.items || [];
   const hasChildren = children.length > 0;
@@ -85,6 +85,7 @@ export function NavigationItemDisplay({
 
     setIsUpdating(true);
     try {
+      console.log('Updating title for item:', item.id, 'from', item.title, 'to', trimmedTitle);
       await onUpdateTitle(item.id, trimmedTitle);
       setIsEditing(false);
     } catch (error) {
@@ -102,6 +103,7 @@ export function NavigationItemDisplay({
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
+      e.preventDefault();
       handleSaveTitle();
     } else if (e.key === 'Escape') {
       handleCancelEdit();
@@ -209,7 +211,6 @@ export function NavigationItemDisplay({
                       onKeyDown={handleKeyPress}
                       className="h-6 text-sm"
                       autoFocus
-                      onBlur={handleSaveTitle}
                       disabled={isUpdating}
                     />
                     <Button

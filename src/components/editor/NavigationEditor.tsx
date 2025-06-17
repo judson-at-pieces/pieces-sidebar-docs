@@ -98,7 +98,10 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
 
   const handleUpdateItemTitle = async (itemId: string, title: string) => {
     try {
-      await navigationService.updateNavigationItem(itemId, { title });
+      console.log('Updating navigation item title:', { itemId, title });
+      
+      const result = await navigationService.updateNavigationItem(itemId, { title });
+      console.log('Navigation item title update result:', result);
       
       await handleNavigationRefresh();
       toast.success("Navigation item title updated");
