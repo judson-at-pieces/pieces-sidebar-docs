@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { useNavigation } from "@/hooks/useNavigation";
 import { FileNode } from "@/utils/fileSystem";
@@ -123,18 +122,31 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
     }
   };
 
-  const handleTogglePendingDeletion = (sectionId: string, itemIndex: number) => {
+  const handleTogglePendingDeletion = (sectionId: string, itemId: string) => {
     const section = sections.find(s => s.id === sectionId);
-    if (!section || !section.items || !section.items[itemIndex]) {
+    if (!section || !section.items) {
       return;
     }
 
-    const item = section.items[itemIndex];
+    // Find the item by ID in the section (including nested items)
+    const findItemById = (items: any[], targetId: string): any => {
+      for (const item of items) {
+        if (item.id === targetId) return item;
+        if (item.items && item.items.length > 0) {
+          const found = findItemById(item.items, targetId);
+          if (found) return found;
+        }
+      }
+      return null;
+    };
+
+    const item = findItemById(section.items, itemId);
+    if (!item) return;
     
-    if (isPendingDeletion(sectionId, itemIndex)) {
-      removePendingDeletion(sectionId, itemIndex);
+    if (isPendingDeletion(sectionId, itemId)) {
+      removePendingDeletion(sectionId, itemId);
     } else {
-      addPendingDeletion(sectionId, itemIndex, item);
+      addPendingDeletion(sectionId, itemId, item);
     }
   };
 
@@ -147,17 +159,13 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
     try {
       console.log('Starting bulk delete for', pendingDeletions.length, 'items');
       
-      // Sort deletions by index in descending order to delete from end to beginning
-      const sortedDeletions = [...pendingDeletions].sort((a, b) => b.itemIndex - a.itemIndex);
-      
-      for (const deletion of sortedDeletions) {
+      for (const deletion of pendingDeletions) {
         console.log('Deleting item:', deletion.item.title, 'ID:', deletion.item.id);
         await navigationService.deleteNavigationItem(deletion.item.id);
       }
       
       console.log('All items deleted, refreshing navigation data');
       
-      // Force refresh from the database
       const refreshedData = await refetch();
       if (refreshedData.data?.sections) {
         console.log('Setting new sections data:', refreshedData.data.sections);
@@ -168,7 +176,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
       setShowBulkDeleteDialog(false);
       onNavigationChange();
       
-      toast.success(`Deleted ${sortedDeletions.length} item${sortedDeletions.length !== 1 ? 's' : ''} from navigation`);
+      toast.success(`Deleted ${pendingDeletions.length} item${pendingDeletions.length !== 1 ? 's' : ''} from navigation`);
     } catch (error) {
       console.error('Error deleting items:', error);
       toast.error("Failed to delete items from navigation");
@@ -179,10 +187,8 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
     try {
       console.log('Reordering sections with new order:', newSections.map(s => ({ id: s.id, title: s.title, order_index: s.order_index })));
       
-      // Optimistically update local state first
       setSections(newSections);
       
-      // Update each section's order_index in the database
       const updatePromises = newSections.map((section, index) => 
         navigationService.updateNavigationSection(section.id, {
           order_index: index
@@ -192,7 +198,6 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
       await Promise.all(updatePromises);
       console.log('All section orders updated successfully');
       
-      // Refresh data from database to ensure consistency
       const refreshedData = await refetch();
       if (refreshedData.data?.sections) {
         setSections(refreshedData.data.sections);
@@ -203,7 +208,6 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
       console.error('Error reordering sections:', error);
       toast.error("Failed to reorder sections");
       
-      // Revert to original state on error
       const refreshedData = await refetch();
       if (refreshedData.data?.sections) {
         setSections(refreshedData.data.sections);
@@ -228,7 +232,6 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
     }
   };
 
-  // Enhanced navigation refresh handler
   const handleNavigationRefresh = async () => {
     console.log('Refreshing navigation data');
     try {

@@ -4,26 +4,26 @@ import { NavigationItem } from "@/services/navigationService";
 
 export interface PendingDeletion {
   sectionId: string;
-  itemIndex: number;
+  itemId: string;
   item: NavigationItem;
 }
 
 export function usePendingDeletions() {
   const [pendingDeletions, setPendingDeletions] = useState<PendingDeletion[]>([]);
 
-  const addPendingDeletion = (sectionId: string, itemIndex: number, item: NavigationItem) => {
+  const addPendingDeletion = (sectionId: string, itemId: string, item: NavigationItem) => {
     setPendingDeletions(prev => {
       // Check if already exists
-      const exists = prev.some(d => d.sectionId === sectionId && d.itemIndex === itemIndex);
+      const exists = prev.some(d => d.sectionId === sectionId && d.itemId === itemId);
       if (exists) return prev;
       
-      return [...prev, { sectionId, itemIndex, item }];
+      return [...prev, { sectionId, itemId, item }];
     });
   };
 
-  const removePendingDeletion = (sectionId: string, itemIndex: number) => {
+  const removePendingDeletion = (sectionId: string, itemId: string) => {
     setPendingDeletions(prev => 
-      prev.filter(d => !(d.sectionId === sectionId && d.itemIndex === itemIndex))
+      prev.filter(d => !(d.sectionId === sectionId && d.itemId === itemId))
     );
   };
 
@@ -31,8 +31,8 @@ export function usePendingDeletions() {
     setPendingDeletions([]);
   };
 
-  const isPendingDeletion = (sectionId: string, itemIndex: number) => {
-    return pendingDeletions.some(d => d.sectionId === sectionId && d.itemIndex === itemIndex);
+  const isPendingDeletion = (sectionId: string, itemId: string) => {
+    return pendingDeletions.some(d => d.sectionId === sectionId && d.itemId === itemId);
   };
 
   return {

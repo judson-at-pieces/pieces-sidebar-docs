@@ -20,7 +20,7 @@ interface NavigationStructurePanelProps {
   onUpdateSectionTitle: (sectionId: string, title: string) => void;
   onDeleteSection: (sectionId: string) => void;
   onUpdateItemTitle: (itemId: string, title: string) => void;
-  onTogglePendingDeletion: (sectionId: string, itemIndex: number) => void;
+  onTogglePendingDeletion: (sectionId: string, itemId: string) => void;
   onBulkDelete: () => void;
   onResetPendingDeletions: () => void;
   onSectionReorder: (newSections: NavigationSection[]) => void;
@@ -60,7 +60,6 @@ export function NavigationStructurePanel({
       const [reorderedSection] = newSections.splice(source.index, 1);
       newSections.splice(destination.index, 0, reorderedSection);
       
-      // Update order_index for each section
       const sectionsWithNewOrder = newSections.map((section, index) => ({
         ...section,
         order_index: index
@@ -68,15 +67,6 @@ export function NavigationStructurePanel({
       
       onSectionReorder(sectionsWithNewOrder);
     }
-  };
-
-  // Calculate global indices for items
-  const getGlobalIndex = (sectionIndex: number, itemIndex: number): number => {
-    let globalIndex = 0;
-    for (let i = 0; i < sectionIndex; i++) {
-      globalIndex += sections[i].items?.length || 0;
-    }
-    return globalIndex + itemIndex;
   };
 
   return (
@@ -175,21 +165,17 @@ export function NavigationStructurePanel({
                                   ref={sectionProvided.innerRef}
                                   className="space-y-1"
                                 >
-                                  {section.items?.map((item, itemIndex) => {
-                                    const globalIndex = getGlobalIndex(sectionIndex, itemIndex);
-                                    return (
-                                      <NavigationItemDisplay
-                                        key={item.id}
-                                        item={item}
-                                        index={itemIndex}
-                                        sectionId={section.id}
-                                        pendingDeletions={pendingDeletions}
-                                        onTogglePendingDeletion={onTogglePendingDeletion}
-                                        onUpdateTitle={onUpdateItemTitle}
-                                        globalIndex={globalIndex}
-                                      />
-                                    );
-                                  })}
+                                  {section.items?.map((item, itemIndex) => (
+                                    <NavigationItemDisplay
+                                      key={item.id}
+                                      item={item}
+                                      index={itemIndex}
+                                      sectionId={section.id}
+                                      pendingDeletions={pendingDeletions}
+                                      onTogglePendingDeletion={onTogglePendingDeletion}
+                                      onUpdateTitle={onUpdateItemTitle}
+                                    />
+                                  ))}
                                   {sectionProvided.placeholder}
                                 </div>
                               )}

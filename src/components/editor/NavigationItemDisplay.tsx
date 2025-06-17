@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { 
   FileText, 
@@ -23,10 +24,9 @@ interface NavigationItemDisplayProps {
   index: number;
   sectionId: string;
   pendingDeletions: PendingDeletion[];
-  onTogglePendingDeletion: (sectionId: string, itemIndex: number) => void;
+  onTogglePendingDeletion: (sectionId: string, itemId: string) => void;
   onUpdateTitle: (itemId: string, newTitle: string) => void;
   depth?: number;
-  globalIndex: number;
 }
 
 export function NavigationItemDisplay({ 
@@ -36,15 +36,13 @@ export function NavigationItemDisplay({
   pendingDeletions, 
   onTogglePendingDeletion,
   onUpdateTitle,
-  depth = 0,
-  globalIndex
+  depth = 0
 }: NavigationItemDisplayProps) {
   const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(item.title);
   const paddingLeft = depth * 16;
   
-  // Use the items property from the hierarchical structure
   const children = item.items || [];
   const hasChildren = children.length > 0;
   
@@ -53,18 +51,16 @@ export function NavigationItemDisplay({
     title: item.title,
     href: item.href,
     depth,
-    globalIndex,
     parentId: item.parent_id,
     childrenCount: children.length,
     children: children.map(c => ({ title: c.title, href: c.href }))
   });
   
-  // Determine if this item is a folder (has children OR is a parent page)
   const isFolder = hasChildren;
   
-  // Find if this item is pending deletion using global index
+  // Find if this item is pending deletion using item ID
   const isPendingDeletion = pendingDeletions.some(
-    deletion => deletion.sectionId === sectionId && deletion.itemIndex === globalIndex
+    deletion => deletion.sectionId === sectionId && deletion.itemId === item.id
   );
 
   const handleSaveTitle = () => {
@@ -88,7 +84,7 @@ export function NavigationItemDisplay({
   };
 
   return (
-    <Draggable draggableId={`${sectionId}-${item.id}`} index={globalIndex}>
+    <Draggable draggableId={`${sectionId}-${item.id}`} index={index}>
       {(provided, snapshot) => (
         <div
           ref={provided.innerRef}
@@ -197,7 +193,7 @@ export function NavigationItemDisplay({
             <Button
               size="sm"
               variant={isPendingDeletion ? "destructive" : "ghost"}
-              onClick={() => onTogglePendingDeletion(sectionId, globalIndex)}
+              onClick={() => onTogglePendingDeletion(sectionId, item.id)}
               className={`h-6 w-6 p-0 transition-all ${
                 isPendingDeletion 
                   ? 'bg-destructive hover:bg-destructive/90 text-destructive-foreground' 
@@ -214,22 +210,18 @@ export function NavigationItemDisplay({
           
           {hasChildren && isExpanded && (
             <div className="mt-1">
-              {children.map((childItem, childIndex) => {
-                const childGlobalIndex = globalIndex + childIndex + 1;
-                return (
-                  <NavigationItemDisplay
-                    key={childItem.id}
-                    item={childItem}
-                    index={childIndex}
-                    sectionId={sectionId}
-                    pendingDeletions={pendingDeletions}
-                    onTogglePendingDeletion={onTogglePendingDeletion}
-                    onUpdateTitle={onUpdateTitle}
-                    depth={depth + 1}
-                    globalIndex={childGlobalIndex}
-                  />
-                );
-              })}
+              {children.map((childItem, childIndex) => (
+                <NavigationItemDisplay
+                  key={childItem.id}
+                  item={childItem}
+                  index={childIndex}
+                  sectionId={sectionId}
+                  pendingDeletions={pendingDeletions}
+                  onTogglePendingDeletion={onTogglePendingDeletion}
+                  onUpdateTitle={onUpdateTitle}
+                  depth={depth + 1}
+                />
+              ))}
             </div>
           )}
         </div>
