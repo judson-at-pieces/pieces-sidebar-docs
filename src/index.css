@@ -124,6 +124,19 @@
   }
 }
 
+/* Remove underlines from card content */
+.no-underline {
+  text-decoration: none !important;
+}
+
+/* Ensure cards don't have underlined text */
+[data-card] a,
+[data-card] .card a,
+.card a,
+.card [data-card] {
+  text-decoration: none !important;
+}
+
 /* Ensure prose styles work properly and override defaults */
 .prose {
   color: inherit !important;

@@ -199,7 +199,7 @@ const Index = () => {
                 <div className="flex items-center space-x-3">
                   <PiecesLogo className="w-8 h-8 object-contain" alt="Pieces Desktop" />
                   <div className="flex-1">
-                    <CardTitle className="text-lg group-hover:text-blue-400 transition-colors flex items-center text-left">
+                    <CardTitle className="text-lg group-hover:text-blue-400 transition-colors flex items-center text-left no-underline">
                       Pieces Desktop App
                       <ArrowRight className="w-4 h-4 ml-2 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </CardTitle>
@@ -207,7 +207,7 @@ const Index = () => {
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
-                <CardDescription className="text-muted-foreground leading-relaxed text-left">
+                <CardDescription className="text-muted-foreground leading-relaxed text-left no-underline">
                   The flagship desktop application with AI-powered code management, search, and generation features
                 </CardDescription>
               </CardContent>
@@ -217,7 +217,7 @@ const Index = () => {
                 <div className="flex items-center space-x-3">
                   <PiecesLogo variant="os" className="w-8 h-8 object-contain" alt="Core Dependencies" />
                   <div className="flex-1">
-                    <CardTitle className="text-lg group-hover:text-blue-400 transition-colors flex items-center text-left">
+                    <CardTitle className="text-lg group-hover:text-blue-400 transition-colors flex items-center text-left no-underline">
                       Core Dependencies
                       <ArrowRight className="w-4 h-4 ml-2 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </CardTitle>
@@ -225,7 +225,7 @@ const Index = () => {
                 </div>
               </CardHeader>
               <CardContent className="pt-0">
-                <CardDescription className="text-muted-foreground leading-relaxed text-left">
+                <CardDescription className="text-muted-foreground leading-relaxed text-left no-underline">
                   Essential components including Pieces OS and Ollama for local LLM support
                 </CardDescription>
               </CardContent>
@@ -245,8 +245,8 @@ const Index = () => {
                   <h2 className="text-2xl font-bold mb-6 text-foreground text-left">{category.category}</h2>
                   <Card className="bg-white dark:bg-[#2a2b2b] border-border hover:border-muted-foreground transition-all duration-200 hover:shadow-lg">
                     <CardHeader>
-                      <CardTitle className="text-lg text-center">Browser Extensions</CardTitle>
-                      <CardDescription className="text-muted-foreground leading-relaxed text-center">
+                      <CardTitle className="text-lg text-center no-underline">Browser Extensions</CardTitle>
+                      <CardDescription className="text-muted-foreground leading-relaxed text-center no-underline">
                         Available for all major web browsers
                       </CardDescription>
                     </CardHeader>
@@ -258,10 +258,10 @@ const Index = () => {
                             href={browser.repoUrl}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-muted transition-colors group"
+                            className="flex flex-col items-center gap-2 p-3 rounded-lg hover:bg-muted transition-colors group no-underline"
                           >
                             <img src={browser.logo} alt={browser.name} className="w-12 h-12 object-contain" />
-                            <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors">
+                            <span className="text-sm text-muted-foreground group-hover:text-foreground transition-colors no-underline">
                               {browser.name}
                             </span>
                           </a>
@@ -283,7 +283,7 @@ const Index = () => {
                         <div className="flex items-center space-x-3">
                           <img src={integration.logo} alt={integration.name} className="w-8 h-8 object-contain" />
                           <div className="flex-1">
-                            <CardTitle className="text-lg group-hover:text-blue-400 transition-colors flex items-center text-left">
+                            <CardTitle className="text-lg group-hover:text-blue-400 transition-colors flex items-center text-left no-underline">
                               {integration.name}
                               <ExternalLink className="w-4 h-4 ml-2 opacity-0 group-hover:opacity-100 transition-opacity" />
                             </CardTitle>
@@ -291,7 +291,7 @@ const Index = () => {
                         </div>
                       </CardHeader>
                       <CardContent className="pt-0">
-                        <CardDescription className="text-muted-foreground leading-relaxed text-left">
+                        <CardDescription className="text-muted-foreground leading-relaxed text-left no-underline">
                           {integration.description}
                         </CardDescription>
                       </CardContent>
