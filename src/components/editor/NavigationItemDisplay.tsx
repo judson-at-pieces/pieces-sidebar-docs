@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { 
   FileText, 
@@ -40,7 +39,7 @@ export function NavigationItemDisplay({
   depth = 0,
   globalIndex
 }: NavigationItemDisplayProps) {
-  const [isExpanded, setIsExpanded] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState(item.title);
   const paddingLeft = depth * 16;
