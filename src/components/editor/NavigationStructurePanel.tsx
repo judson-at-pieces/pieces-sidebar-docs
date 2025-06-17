@@ -149,38 +149,32 @@ export function NavigationStructurePanel({
           destIndex: destination.index
         });
 
-        // Remove the dragged item from the structure
-        const { newItems: itemsWithoutDragged, removedItem } = removeItemFromStructure(section.items, draggedItemId);
+        // Create new array from section items
+        const newItems = Array.from(section.items);
         
-        if (!removedItem) {
+        // Find the item being moved
+        const draggedItem = newItems.find(item => item.id === draggedItemId);
+        if (!draggedItem) {
           console.warn('Could not find dragged item');
           return;
         }
 
-        // Insert the item at the new position (only at root level for now)
-        const reorderedItems = insertItemAtPosition(itemsWithoutDragged, destination.index, removedItem);
+        // Remove from current position
+        const sourceIndex = newItems.findIndex(item => item.id === draggedItemId);
+        if (sourceIndex === -1) return;
+        
+        newItems.splice(sourceIndex, 1);
+        
+        // Insert at new position
+        newItems.splice(destination.index, 0, draggedItem);
         
         // Update order indices
-        const finalItems = updateOrderIndices(reorderedItems);
+        const finalItems = updateOrderIndices(newItems);
 
         console.log('Final reordered items:', finalItems.map(item => ({ id: item.id, title: item.title, order_index: item.order_index })));
 
-        // Flatten all items for database update
-        const flattenItems = (items: any[]): any[] => {
-          const result: any[] = [];
-          items.forEach(item => {
-            result.push(item);
-            if (item.items && item.items.length > 0) {
-              result.push(...flattenItems(item.items));
-            }
-          });
-          return result;
-        };
-
-        const allItems = flattenItems(finalItems);
-        
         // Update database with new order indices
-        const updatePromises = allItems.map(item => 
+        const updatePromises = finalItems.map(item => 
           navigationService.updateNavigationItem(item.id, {
             order_index: item.order_index
           })
@@ -296,21 +290,40 @@ export function NavigationStructurePanel({
                                 <div
                                   {...sectionProvided.droppableProps}
                                   ref={sectionProvided.innerRef}
-                                  className={`space-y-1 min-h-[40px] rounded ${
-                                    sectionSnapshot.isDraggingOver ? 'bg-accent/50 border-2 border-dashed border-primary' : ''
+                                  className={`space-y-2 min-h-[40px] rounded-md p-2 transition-colors ${
+                                    sectionSnapshot.isDraggingOver 
+                                      ? 'bg-blue-50 border-2 border-dashed border-blue-300' 
+                                      : 'border-2 border-dashed border-transparent'
                                   }`}
                                 >
                                   {section.items?.map((item, itemIndex) => (
-                                    <NavigationItemDisplay
-                                      key={item.id}
-                                      item={item}
-                                      index={itemIndex}
-                                      sectionId={section.id}
-                                      pendingDeletions={pendingDeletions}
-                                      onTogglePendingDeletion={onTogglePendingDeletion}
-                                      onUpdateTitle={onUpdateItemTitle}
-                                    />
+                                    <div key={item.id} className="relative">
+                                      {/* Drop indicator above each item */}
+                                      {sectionSnapshot.isDraggingOver && (
+                                        <div 
+                                          className="absolute -top-1 left-0 right-0 h-0.5 bg-blue-400 opacity-0 transition-opacity"
+                                          style={{
+                                            opacity: sectionSnapshot.draggingOverWith?.endsWith(`-${item.id}`) ? 0 : 1
+                                          }}
+                                        />
+                                      )}
+                                      
+                                      <NavigationItemDisplay
+                                        item={item}
+                                        index={itemIndex}
+                                        sectionId={section.id}
+                                        pendingDeletions={pendingDeletions}
+                                        onTogglePendingDeletion={onTogglePendingDeletion}
+                                        onUpdateTitle={onUpdateItemTitle}
+                                      />
+                                    </div>
                                   ))}
+                                  
+                                  {/* Drop indicator at the end */}
+                                  {sectionSnapshot.isDraggingOver && (
+                                    <div className="h-0.5 bg-blue-400 rounded" />
+                                  )}
+                                  
                                   {sectionProvided.placeholder}
                                   
                                   {(!section.items || section.items.length === 0) && !sectionSnapshot.isDraggingOver && (
