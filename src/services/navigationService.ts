@@ -29,13 +29,30 @@ export interface NavigationStructure {
   sections: NavigationSection[];
 }
 
-// Helper function to capitalize titles properly
+// Helper function to capitalize titles properly while preserving special formatting
 function capitalizeTitle(title: string): string {
+  // Words that should remain lowercase (unless they're the first word)
+  const lowercaseWords = ['a', 'an', 'and', 'as', 'at', 'but', 'by', 'for', 'if', 'in', 'is', 'it', 'of', 'on', 'or', 'the', 'to', 'up', 'via', 'with'];
+  
   return title
-    .split(' ')
-    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
-    .join(' ')
-    .replace(/&/g, '&'); // Keep ampersands as-is
+    .split(/(\s+|\|)/) // Split on whitespace and pipe characters, keeping the separators
+    .map((part, index) => {
+      // If it's whitespace or a separator, keep it as-is
+      if (/^\s+$/.test(part) || part === '|') {
+        return part;
+      }
+      
+      // If it's a word
+      const word = part.toLowerCase();
+      
+      // Always capitalize the first word, or if it's not in the lowercase list
+      if (index === 0 || !lowercaseWords.includes(word)) {
+        return word.charAt(0).toUpperCase() + word.slice(1);
+      }
+      
+      return word;
+    })
+    .join('');
 }
 
 // Helper function to build hierarchical structure from flat array
