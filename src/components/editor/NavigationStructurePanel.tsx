@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Button } from "@/components/ui/button";
@@ -103,6 +102,24 @@ export function NavigationStructurePanel({
     }
   };
 
+  const handleDeleteSectionWithRefresh = async (sectionId: string) => {
+    try {
+      console.log('Deleting section:', sectionId);
+      await navigationService.deleteNavigationSection(sectionId);
+      
+      console.log('Section deleted successfully, refreshing navigation data');
+      // Force immediate UI refresh
+      onNavigationChange();
+      
+      toast.success("Section deleted successfully");
+    } catch (error) {
+      console.error('Error deleting section:', error);
+      toast.error("Failed to delete section");
+      // Refresh to ensure UI is in sync with database
+      onNavigationChange();
+    }
+  };
+
   // Helper function to update order indices recursively
   const updateOrderIndices = (items: any[]): any[] => {
     return items.map((item, index) => ({
@@ -164,13 +181,11 @@ export function NavigationStructurePanel({
   // Helper function to insert item at specific position in nested structure
   const insertItemInStructure = (items: any[], item: any, parentId: string | null, index: number): any[] => {
     if (!parentId) {
-      // Insert at root level
       const newItems = [...items];
       newItems.splice(index, 0, item);
       return newItems;
     }
     
-    // Insert into specific parent
     return items.map(currentItem => {
       if (currentItem.id === parentId) {
         const newChildren = [...(currentItem.items || [])];
@@ -194,18 +209,15 @@ export function NavigationStructurePanel({
       const section = sections.find(s => s.id === sectionId);
       if (!section?.items) return;
 
-      // Find the item and its parent
       const { parentId } = findParentOfItem(section.items, itemId);
       
       let itemsToReorder: any[];
       let currentIndex: number;
       
       if (!parentId) {
-        // Root level item
         itemsToReorder = [...section.items];
         currentIndex = itemsToReorder.findIndex(item => item.id === itemId);
       } else {
-        // Nested item - find parent's children
         const parentItem = findItemById(section.items, parentId);
         if (!parentItem?.items) return;
         itemsToReorder = [...parentItem.items];
@@ -218,13 +230,10 @@ export function NavigationStructurePanel({
       
       if (newIndex < 0 || newIndex >= itemsToReorder.length) return;
 
-      // Swap items
       [itemsToReorder[currentIndex], itemsToReorder[newIndex]] = [itemsToReorder[newIndex], itemsToReorder[currentIndex]];
       
-      // Update order indices
       const finalItems = updateOrderIndices(itemsToReorder);
 
-      // Update database with new order indices
       const updatePromises = finalItems.map(item => 
         navigationService.updateNavigationItem(item.id, {
           order_index: item.order_index
@@ -233,7 +242,6 @@ export function NavigationStructurePanel({
 
       await Promise.all(updatePromises);
       
-      // Refresh navigation data
       onNavigationChange();
       toast.success("Items reordered successfully");
       
@@ -255,7 +263,6 @@ export function NavigationStructurePanel({
       draggableId: result.draggableId
     });
 
-    // Handle section reordering
     if (source.droppableId === 'sections' && destination.droppableId === 'sections') {
       const newSections = Array.from(sections);
       const [reorderedSection] = newSections.splice(source.index, 1);
@@ -270,7 +277,6 @@ export function NavigationStructurePanel({
       return;
     }
 
-    // Parse droppable IDs to extract section and parent information
     const parseDroppableId = (droppableId: string) => {
       if (droppableId.startsWith('section-')) {
         const parts = droppableId.replace('section-', '').split('-folder-');
@@ -290,7 +296,6 @@ export function NavigationStructurePanel({
       return;
     }
 
-    // Only handle reordering within the same section for now
     if (sourceInfo.sectionId !== destInfo.sectionId) {
       toast.error("Moving items between sections not supported yet");
       return;
@@ -300,7 +305,6 @@ export function NavigationStructurePanel({
       const section = sections.find(s => s.id === sourceInfo.sectionId);
       if (!section?.items) return;
 
-      // Parse the draggable ID to get the item ID
       const draggedItemId = result.draggableId.replace(`${sourceInfo.sectionId}-`, '');
       
       console.log('Moving item:', {
@@ -312,7 +316,6 @@ export function NavigationStructurePanel({
         destIndex: destination.index
       });
 
-      // Remove item from source location
       const { items: itemsAfterRemoval, removedItem } = removeItemFromStructure(section.items, draggedItemId);
       
       if (!removedItem) {
@@ -320,24 +323,19 @@ export function NavigationStructurePanel({
         return;
       }
 
-      // Update parent_id and insert item at destination
       const updatedItem = {
         ...removedItem,
         parent_id: destInfo.parentId
       };
 
-      // Insert item at destination
       const finalItems = insertItemInStructure(itemsAfterRemoval, updatedItem, destInfo.parentId, destination.index);
       
-      // Update order indices for all affected items
       const itemsWithOrderIndices = updateOrderIndices(finalItems);
 
       console.log('Final reordered structure:', itemsWithOrderIndices);
 
-      // Update database with new structure
       const updatePromises = [];
       
-      // Update the moved item's parent_id
       updatePromises.push(
         navigationService.updateNavigationItem(draggedItemId, {
           parent_id: destInfo.parentId,
@@ -345,7 +343,6 @@ export function NavigationStructurePanel({
         })
       );
 
-      // Update order indices for all items in the section
       const flattenItems = (items: any[]): any[] => {
         const result: any[] = [];
         for (const item of items) {
@@ -370,7 +367,6 @@ export function NavigationStructurePanel({
       
       console.log('All items updated successfully');
       
-      // Refresh navigation data
       onNavigationChange();
       toast.success("Items reordered successfully");
       
@@ -479,7 +475,7 @@ export function NavigationStructurePanel({
                             section={section}
                             pendingDeletions={pendingDeletions}
                             onUpdateTitle={onUpdateSectionTitle}
-                            onDeleteSection={onDeleteSection}
+                            onDeleteSection={handleDeleteSectionWithRefresh}
                             dragHandleProps={provided.dragHandleProps}
                           />
                           
