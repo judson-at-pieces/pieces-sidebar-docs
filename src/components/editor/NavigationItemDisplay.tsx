@@ -10,7 +10,8 @@ import {
   Check,
   Trash2,
   Edit2,
-  X
+  X,
+  Lock
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -46,6 +47,7 @@ export function NavigationItemDisplay({
   
   const children = item.items || [];
   const hasChildren = children.length > 0;
+  const isPrivate = item.privacy === 'PRIVATE';
   
   // Find if this item is pending deletion using item ID
   const isPendingDeletion = pendingDeletions.some(
@@ -87,7 +89,9 @@ export function NavigationItemDisplay({
                   ? 'border-destructive bg-destructive/10' 
                   : snapshot.isDragging 
                     ? 'bg-accent border-primary shadow-lg' 
-                    : 'hover:bg-accent/50'
+                    : isPrivate
+                      ? 'bg-orange-50 border-orange-200 hover:bg-orange-100'
+                      : 'hover:bg-accent/50'
               }`}
               style={{ marginLeft: paddingLeft }}
             >
@@ -127,6 +131,12 @@ export function NavigationItemDisplay({
                 </div>
               )}
               
+              {isPrivate && (
+                <div className="flex-shrink-0">
+                  <Lock className="h-3 w-3 text-orange-600" />
+                </div>
+              )}
+              
               <div className="flex-1 min-w-0">
                 {isEditing ? (
                   <div className="flex items-center gap-2">
@@ -158,7 +168,7 @@ export function NavigationItemDisplay({
                 ) : (
                   <>
                     <div className="flex items-center gap-2 min-w-0">
-                      <span className="text-sm font-medium truncate flex-1">
+                      <span className={`text-sm font-medium truncate flex-1 ${isPrivate ? 'text-orange-800' : ''}`}>
                         {item.title}
                       </span>
                       <Button
@@ -170,11 +180,12 @@ export function NavigationItemDisplay({
                         <Edit2 className="h-3 w-3" />
                       </Button>
                     </div>
-                    <div className="text-xs text-muted-foreground truncate">
+                    <div className={`text-xs truncate ${isPrivate ? 'text-orange-600' : 'text-muted-foreground'}`}>
                       {item.href}
+                      {isPrivate && <span className="ml-2 font-medium">(Private)</span>}
                     </div>
                     {hasChildren && (
-                      <Badge variant="secondary" className="text-xs mt-1">
+                      <Badge variant={isPrivate ? "outline" : "secondary"} className="text-xs mt-1">
                         {children.length} items
                       </Badge>
                     )}

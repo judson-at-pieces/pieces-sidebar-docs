@@ -1,5 +1,6 @@
+
 import { useState, useEffect } from "react";
-import { useNavigation } from "@/hooks/useNavigation";
+import { useNavigationEditor } from "@/hooks/useNavigationEditor";
 import { FileNode } from "@/utils/fileSystem";
 import { toast } from "sonner";
 import { AvailableFilesPanel } from "./AvailableFilesPanel";
@@ -16,7 +17,7 @@ interface NavigationEditorProps {
 }
 
 export function NavigationEditor({ fileStructure, onNavigationChange }: NavigationEditorProps) {
-  const { navigation, refetch } = useNavigation();
+  const { navigation, refetch } = useNavigationEditor();
   const [sections, setSections] = useState(navigation?.sections || []);
 
   const {
@@ -251,7 +252,7 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
       <div className="p-4 border-b flex-shrink-0">
         <h2 className="text-lg font-semibold mb-2">Navigation Editor</h2>
         <p className="text-sm text-muted-foreground">
-          Add files or folders to organize your documentation. Drag sections to reorder them. Click on titles to edit them.
+          Add files or folders to organize your documentation. Drag sections to reorder them. Click on titles to edit them. Items with a lock icon are private.
         </p>
       </div>
       
@@ -270,14 +271,140 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
             <NavigationStructurePanel
               sections={sections}
               pendingDeletions={pendingDeletions}
-              onAddSection={handleAddSection}
-              onUpdateSectionTitle={handleUpdateSectionTitle}
-              onDeleteSection={handleDeleteSection}
-              onUpdateItemTitle={handleUpdateItemTitle}
-              onTogglePendingDeletion={handleTogglePendingDeletion}
-              onBulkDelete={handleBulkDelete}
+              onAddSection={async (title: string) => {
+                try {
+                  await navigationService.addNavigationSection({
+                    title,
+                    slug: title.toLowerCase().replace(/\s+/g, '-'),
+                    order_index: sections.length
+                  });
+                  
+                  console.log('Section added, refreshing navigation data');
+                  const refreshedData = await refetch();
+                  if (refreshedData.data?.sections) {
+                    setSections(refreshedData.data.sections);
+                  }
+                  onNavigationChange();
+                  toast.success(`Added section: ${title}`);
+                } catch (error) {
+                  console.error('Error adding section:', error);
+                  toast.error("Failed to add section");
+                }
+              }}
+              onUpdateSectionTitle={async (sectionId: string, title: string) => {
+                try {
+                  await navigationService.updateNavigationSection(sectionId, {
+                    title,
+                    slug: title.toLowerCase().replace(/\s+/g, '-')
+                  });
+                  
+                  console.log('Section updated, refreshing navigation data');
+                  const refreshedData = await refetch();
+                  if (refreshedData.data?.sections) {
+                    setSections(refreshedData.data.sections);
+                  }
+                  onNavigationChange();
+                  toast.success("Section updated");
+                } catch (error) {
+                  console.error('Error updating section:', error);
+                  toast.error("Failed to update section");
+                }
+              }}
+              onDeleteSection={async (sectionId: string) => {
+                try {
+                  await navigationService.deleteNavigationSection(sectionId);
+                  
+                  console.log('Section deleted, refreshing navigation data');
+                  const refreshedData = await refetch();
+                  if (refreshedData.data?.sections) {
+                    setSections(refreshedData.data.sections);
+                  }
+                  onNavigationChange();
+                  toast.success("Section deleted successfully");
+                } catch (error) {
+                  console.error('Error deleting section:', error);
+                  toast.error("Failed to delete section");
+                }
+              }}
+              onUpdateItemTitle={async (itemId: string, title: string) => {
+                try {
+                  await navigationService.updateNavigationItem(itemId, { title });
+                  
+                  console.log('Navigation item title updated, refreshing navigation data');
+                  const refreshedData = await refetch();
+                  if (refreshedData.data?.sections) {
+                    setSections(refreshedData.data.sections);
+                  }
+                  onNavigationChange();
+                  toast.success("Navigation item title updated");
+                } catch (error) {
+                  console.error('Error updating navigation item title:', error);
+                  toast.error("Failed to update navigation item title");
+                }
+              }}
+              onTogglePendingDeletion={(sectionId: string, itemId: string) => {
+                const section = sections.find(s => s.id === sectionId);
+                if (!section || !section.items) {
+                  return;
+                }
+
+                // Find the item by ID in the section (including nested items)
+                const findItemById = (items: any[], targetId: string): any => {
+                  for (const item of items) {
+                    if (item.id === targetId) return item;
+                    if (item.items && item.items.length > 0) {
+                      const found = findItemById(item.items, targetId);
+                      if (found) return found;
+                    }
+                  }
+                  return null;
+                };
+
+                const item = findItemById(section.items, itemId);
+                if (!item) return;
+                
+                if (isPendingDeletion(sectionId, itemId)) {
+                  removePendingDeletion(sectionId, itemId);
+                } else {
+                  addPendingDeletion(sectionId, itemId, item);
+                }
+              }}
+              onBulkDelete={() => {
+                if (pendingDeletions.length === 0) return;
+                setShowBulkDeleteDialog(true);
+              }}
               onResetPendingDeletions={clearPendingDeletions}
-              onSectionReorder={handleSectionReorder}
+              onSectionReorder={async (newSections: typeof sections) => {
+                try {
+                  console.log('Reordering sections with new order:', newSections.map(s => ({ id: s.id, title: s.title, order_index: s.order_index })));
+                  
+                  setSections(newSections);
+                  
+                  const updatePromises = newSections.map((section, index) => 
+                    navigationService.updateNavigationSection(section.id, {
+                      order_index: index
+                    })
+                  );
+                  
+                  await Promise.all(updatePromises);
+                  console.log('All section orders updated successfully');
+                  
+                  const refreshedData = await refetch();
+                  if (refreshedData.data?.sections) {
+                    setSections(refreshedData.data.sections);
+                  }
+                  onNavigationChange();
+                  toast.success("Sections reordered successfully");
+                } catch (error) {
+                  console.error('Error reordering sections:', error);
+                  toast.error("Failed to reorder sections");
+                  
+                  const refreshedData = await refetch();
+                  if (refreshedData.data?.sections) {
+                    setSections(refreshedData.data.sections);
+                  }
+                }
+              }}
               onNavigationChange={handleNavigationRefresh}
             />
           </div>
@@ -303,7 +430,33 @@ export function NavigationEditor({ fileStructure, onNavigationChange }: Navigati
         onOpenChange={setShowBulkDeleteDialog}
         pendingDeletions={pendingDeletions}
         sections={sections}
-        onConfirm={handleConfirmBulkDelete}
+        onConfirm={async () => {
+          try {
+            console.log('Starting bulk delete for', pendingDeletions.length, 'items');
+            
+            for (const deletion of pendingDeletions) {
+              console.log('Deleting item:', deletion.item.title, 'ID:', deletion.item.id);
+              await navigationService.deleteNavigationItem(deletion.item.id);
+            }
+            
+            console.log('All items deleted, refreshing navigation data');
+            
+            const refreshedData = await refetch();
+            if (refreshedData.data?.sections) {
+              console.log('Setting new sections data:', refreshedData.data.sections);
+              setSections(refreshedData.data.sections);
+            }
+            
+            clearPendingDeletions();
+            setShowBulkDeleteDialog(false);
+            onNavigationChange();
+            
+            toast.success(`Deleted ${pendingDeletions.length} item${pendingDeletions.length !== 1 ? 's' : ''} from navigation`);
+          } catch (error) {
+            console.error('Error deleting items:', error);
+            toast.error("Failed to delete items from navigation");
+          }
+        }}
         onCancel={() => setShowBulkDeleteDialog(false)}
       />
     </div>
