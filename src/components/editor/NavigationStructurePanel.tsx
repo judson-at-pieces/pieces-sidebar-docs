@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { DragDropContext, Droppable, Draggable, DropResult } from "@hello-pangea/dnd";
 import { Button } from "@/components/ui/button";
@@ -100,6 +99,21 @@ export function NavigationStructurePanel({
   const handleKeyPress = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter' && !isAddingSection) {
       handleAddSection();
+    }
+  };
+
+  const handleDeleteSection = async (sectionId: string) => {
+    try {
+      console.log('NavigationStructurePanel: Deleting section:', sectionId);
+      await onDeleteSection(sectionId);
+      
+      // Force refresh the navigation data after deletion
+      setTimeout(() => {
+        onNavigationChange();
+      }, 100);
+    } catch (error) {
+      console.error('Error in handleDeleteSection:', error);
+      throw error; // Re-throw so the component can handle it
     }
   };
 
@@ -479,7 +493,7 @@ export function NavigationStructurePanel({
                             section={section}
                             pendingDeletions={pendingDeletions}
                             onUpdateTitle={onUpdateSectionTitle}
-                            onDeleteSection={onDeleteSection}
+                            onDeleteSection={handleDeleteSection}
                             dragHandleProps={provided.dragHandleProps}
                           />
                           
