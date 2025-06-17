@@ -195,6 +195,12 @@ export function NavigationStructurePanel({
 
     const { source, destination } = result;
     
+    console.log('Drag result:', {
+      source: source.droppableId,
+      destination: destination.droppableId,
+      draggableId: result.draggableId
+    });
+
     // Handle section reordering
     if (source.droppableId === 'sections' && destination.droppableId === 'sections') {
       const newSections = Array.from(sections);
@@ -210,105 +216,114 @@ export function NavigationStructurePanel({
       return;
     }
 
-    // Handle item reordering within sections or between folders
-    if (source.droppableId.startsWith('section-') && destination.droppableId.startsWith('section-')) {
-      const sourceSectionId = source.droppableId.replace('section-', '').split('-')[0];
-      const destSectionId = destination.droppableId.replace('section-', '').split('-')[0];
+    // Parse droppable IDs to extract section and parent information
+    const parseDroppableId = (droppableId: string) => {
+      if (droppableId.startsWith('section-')) {
+        const parts = droppableId.replace('section-', '').split('-folder-');
+        return {
+          sectionId: parts[0],
+          parentId: parts[1] || null
+        };
+      }
+      return null;
+    };
+
+    const sourceInfo = parseDroppableId(source.droppableId);
+    const destInfo = parseDroppableId(destination.droppableId);
+
+    if (!sourceInfo || !destInfo) {
+      console.log('Could not parse droppable IDs');
+      return;
+    }
+
+    // Only handle reordering within the same section for now
+    if (sourceInfo.sectionId !== destInfo.sectionId) {
+      toast.error("Moving items between sections not supported yet");
+      return;
+    }
+
+    try {
+      const section = sections.find(s => s.id === sourceInfo.sectionId);
+      if (!section?.items) return;
+
+      // Parse the draggable ID to get the item ID
+      const draggedItemId = result.draggableId.replace(`${sourceInfo.sectionId}-`, '');
       
-      if (sourceSectionId !== destSectionId) {
-        toast.error("Moving items between sections not supported yet");
+      console.log('Moving item:', {
+        sectionId: sourceInfo.sectionId,
+        draggedItemId,
+        sourceParentId: sourceInfo.parentId,
+        destParentId: destInfo.parentId,
+        sourceIndex: source.index,
+        destIndex: destination.index
+      });
+
+      // Remove item from source location
+      const { items: itemsAfterRemoval, removedItem } = removeItemFromStructure(section.items, draggedItemId);
+      
+      if (!removedItem) {
+        console.warn('Could not find dragged item');
         return;
       }
 
-      try {
-        const section = sections.find(s => s.id === sourceSectionId);
-        if (!section?.items) return;
+      // Update parent_id and insert item at destination
+      const updatedItem = {
+        ...removedItem,
+        parent_id: destInfo.parentId
+      };
 
-        // Parse the draggable ID to get the item ID
-        const draggedItemId = result.draggableId.replace(`${sourceSectionId}-`, '');
-        
-        // Extract parent IDs from droppable IDs
-        const sourceParentId = source.droppableId.includes('-folder-') ? 
-          source.droppableId.split('-folder-')[1] : null;
-        const destParentId = destination.droppableId.includes('-folder-') ? 
-          destination.droppableId.split('-folder-')[1] : null;
+      // Insert item at destination
+      const finalItems = insertItemInStructure(itemsAfterRemoval, updatedItem, destInfo.parentId, destination.index);
+      
+      // Update order indices for all affected items
+      const itemsWithOrderIndices = updateOrderIndices(finalItems);
 
-        console.log('Reordering item:', { 
-          sectionId: sourceSectionId,
-          draggedItemId,
-          sourceParentId,
-          destParentId,
-          sourceIndex: source.index,
-          destIndex: destination.index
-        });
+      console.log('Final reordered structure:', itemsWithOrderIndices);
 
-        // Remove item from source location
-        const { items: itemsAfterRemoval, removedItem } = removeItemFromStructure(section.items, draggedItemId);
-        
-        if (!removedItem) {
-          console.warn('Could not find dragged item');
-          return;
+      // Update database with new structure
+      const updatePromises = [];
+      
+      // Update the moved item's parent_id
+      updatePromises.push(
+        navigationService.updateNavigationItem(draggedItemId, {
+          parent_id: destInfo.parentId,
+          order_index: destination.index
+        })
+      );
+
+      // Update order indices for all items in the section
+      const flattenItems = (items: any[]): any[] => {
+        const result: any[] = [];
+        for (const item of items) {
+          result.push(item);
+          if (item.items) {
+            result.push(...flattenItems(item.items));
+          }
         }
+        return result;
+      };
 
-        // Update parent_id if moving between different parents
-        const updatedItem = {
-          ...removedItem,
-          parent_id: destParentId
-        };
-
-        // Insert item at destination
-        const finalItems = insertItemInStructure(itemsAfterRemoval, updatedItem, destParentId, destination.index);
-        
-        // Update order indices for all affected items
-        const itemsWithOrderIndices = updateOrderIndices(finalItems);
-
-        console.log('Final reordered structure:', itemsWithOrderIndices);
-
-        // Update database with new structure
-        const updatePromises = [];
-        
-        // Update the moved item's parent_id
+      const allItems = flattenItems(itemsWithOrderIndices);
+      allItems.forEach(item => {
         updatePromises.push(
-          navigationService.updateNavigationItem(draggedItemId, {
-            parent_id: destParentId,
-            order_index: destination.index
+          navigationService.updateNavigationItem(item.id, {
+            order_index: item.order_index
           })
         );
+      });
 
-        // Update order indices for all items in the section
-        const flattenItems = (items: any[]): any[] => {
-          const result: any[] = [];
-          for (const item of items) {
-            result.push(item);
-            if (item.items) {
-              result.push(...flattenItems(item.items));
-            }
-          }
-          return result;
-        };
-
-        const allItems = flattenItems(itemsWithOrderIndices);
-        allItems.forEach(item => {
-          updatePromises.push(
-            navigationService.updateNavigationItem(item.id, {
-              order_index: item.order_index
-            })
-          );
-        });
-
-        await Promise.all(updatePromises);
-        
-        console.log('All items updated successfully');
-        
-        // Refresh navigation data
-        onNavigationChange();
-        toast.success("Items reordered successfully");
-        
-      } catch (error) {
-        console.error('Error reordering items:', error);
-        toast.error("Failed to reorder items");
-        onNavigationChange();
-      }
+      await Promise.all(updatePromises);
+      
+      console.log('All items updated successfully');
+      
+      // Refresh navigation data
+      onNavigationChange();
+      toast.success("Items reordered successfully");
+      
+    } catch (error) {
+      console.error('Error reordering items:', error);
+      toast.error("Failed to reorder items");
+      onNavigationChange();
     }
   };
 
