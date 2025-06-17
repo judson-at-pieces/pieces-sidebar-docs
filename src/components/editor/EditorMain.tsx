@@ -1,9 +1,8 @@
 
-import React, { useEffect, useRef } from 'react';
-import { FileText, MoreHorizontal, Copy, Trash2, Eye, Edit3, Lock, Unlock } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { FileText, Eye, Edit3, Lock, Unlock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -11,6 +10,8 @@ import HashnodeMarkdownRenderer from '@/components/HashnodeMarkdownRenderer';
 import { useLiveTyping } from '@/hooks/useLiveTyping';
 import { TypingIndicator } from './TypingIndicator';
 import { VisibilitySwitch } from './VisibilitySwitch';
+import { ItemActionsButton } from './ItemActionsButton';
+import { ItemSettingsPanel } from './ItemSettingsPanel';
 
 interface EditorMainProps {
   selectedFile?: string;
@@ -44,6 +45,7 @@ export function EditorMain({
   onVisibilityChange
 }: EditorMainProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [settingsPanelOpen, setSettingsPanelOpen] = useState(false);
   
   // Live typing functionality
   const { typingSessions, handleTyping, getLatestTypingContent } = useLiveTyping(selectedFile);
@@ -71,6 +73,26 @@ export function EditorMain({
       handleTyping(newContent, cursorPosition);
     }
   };
+
+  // Handle settings click
+  const handleSettingsClick = () => {
+    setSettingsPanelOpen(true);
+  };
+
+  // Handle privacy change
+  const handlePrivacyChange = (itemId: string, privacy: 'PUBLIC' | 'PRIVATE') => {
+    if (onVisibilityChange) {
+      onVisibilityChange(privacy === 'PUBLIC');
+    }
+  };
+
+  // Create mock item for settings panel
+  const currentFileItem = selectedFile ? {
+    id: selectedFile,
+    title: selectedFile.split('/').pop()?.replace(/\.md$/, '') || 'Untitled',
+    privacy: isPublic ? 'PUBLIC' as const : 'PRIVATE' as const,
+    description: `Content file: ${selectedFile}`
+  } : null;
 
   // Update content when live typing content changes (for viewers)
   useEffect(() => {
@@ -208,23 +230,10 @@ export function EditorMain({
               </div>
             )}
             
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="sm" disabled={isLockedByOther}>
-                  <MoreHorizontal className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => {/* TODO: Implement file operations */}}>
-                  <Copy className="h-4 w-4 mr-2" />
-                  Copy Path
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => {/* TODO: Implement file operations */}}>
-                  <Trash2 className="h-4 w-4 mr-2" />
-                  Delete File
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
+            {/* File Actions Button */}
+            <ItemActionsButton
+              onSettingsClick={handleSettingsClick}
+            />
           </div>
         </div>
       </div>
@@ -289,6 +298,14 @@ export function EditorMain({
           </div>
         </ResizablePanel>
       </ResizablePanelGroup>
+
+      {/* Settings Panel */}
+      <ItemSettingsPanel
+        isOpen={settingsPanelOpen}
+        onClose={() => setSettingsPanelOpen(false)}
+        item={currentFileItem}
+        onPrivacyChange={handlePrivacyChange}
+      />
     </div>
   );
 }
