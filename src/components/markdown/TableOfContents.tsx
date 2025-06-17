@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { ChevronDown } from 'lucide-react';
@@ -52,16 +53,44 @@ export function TableOfContents({ content }: TableOfContentsProps) {
 
     const observer = new IntersectionObserver(
       (entries) => {
-        const visibleEntries = entries.filter(entry => entry.isIntersecting);
-        if (visibleEntries.length > 0) {
-          // Get the first visible heading
-          const firstVisible = visibleEntries[0];
-          setActiveId(firstVisible.target.id);
+        // Find the heading that's most visible
+        let mostVisible = entries[0];
+        let maxVisibility = 0;
+
+        entries.forEach(entry => {
+          if (entry.isIntersecting && entry.intersectionRatio > maxVisibility) {
+            maxVisibility = entry.intersectionRatio;
+            mostVisible = entry;
+          }
+        });
+
+        // If we have a visible heading, set it as active
+        if (mostVisible && mostVisible.isIntersecting) {
+          setActiveId(mostVisible.target.id);
+        } else {
+          // If no headings are visible, find the closest one above the viewport
+          const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+          let closestHeading = null;
+          let closestDistance = Infinity;
+
+          headingElements.forEach(heading => {
+            const rect = heading.getBoundingClientRect();
+            const distance = Math.abs(rect.top);
+            
+            if (rect.top <= 100 && distance < closestDistance) {
+              closestDistance = distance;
+              closestHeading = heading;
+            }
+          });
+
+          if (closestHeading) {
+            setActiveId(closestHeading.id);
+          }
         }
       },
       {
-        rootMargin: '-20% 0px -70% 0px',
-        threshold: 0
+        rootMargin: '-10% 0px -60% 0px',
+        threshold: [0, 0.25, 0.5, 0.75, 1]
       }
     );
 
@@ -69,12 +98,38 @@ export function TableOfContents({ content }: TableOfContentsProps) {
       if (element) observer.observe(element);
     });
 
+    // Also listen to scroll events for better tracking
+    const handleScroll = () => {
+      const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+      
+      // Find the heading that's currently closest to the top of the viewport
+      let activeHeading = null;
+      let minDistance = Infinity;
+
+      headingElements.forEach(heading => {
+        const rect = heading.getBoundingClientRect();
+        const distance = Math.abs(rect.top - 100); // 100px offset from top
+        
+        if (rect.top <= 150 && distance < minDistance) {
+          minDistance = distance;
+          activeHeading = heading;
+        }
+      });
+
+      if (activeHeading && activeHeading.id !== activeId) {
+        setActiveId(activeHeading.id);
+      }
+    };
+
+    window.addEventListener('scroll', handleScroll, { passive: true });
+
     return () => {
       headingElements.forEach(element => {
         if (element) observer.unobserve(element);
       });
+      window.removeEventListener('scroll', handleScroll);
     };
-  }, [tocItems]);
+  }, [tocItems, activeId]);
 
   const scrollToHeading = (id: string) => {
     // First try to find the element by ID
@@ -141,26 +196,26 @@ export function TableOfContents({ content }: TableOfContentsProps) {
         </details>
       </div>
 
-      {/* Desktop TOC - sticky sidebar */}
-      <div className="hidden lg:block sticky top-6">
+      {/* Desktop TOC - sticky sidebar that follows scroll */}
+      <div className="hidden lg:block sticky top-24 max-h-[calc(100vh-8rem)]">
         <h3 className="text-sm font-semibold mb-4 text-muted-foreground uppercase tracking-wider">
           On this page
         </h3>
-        <ScrollArea className="h-[calc(100vh-8rem)]">
-          <nav className="space-y-1">
+        <ScrollArea className="h-full">
+          <nav className="space-y-1 pr-4">
             {tocItems.map((item) => (
               <button
                 key={item.id}
                 onClick={() => scrollToHeading(item.id)}
-                className={`block w-full text-left text-sm transition-colors hover:text-foreground cursor-pointer ${
+                className={`block w-full text-left text-sm transition-all duration-200 hover:text-foreground cursor-pointer rounded-md ${
                   activeId === item.id 
-                    ? 'text-foreground font-medium border-l-2 border-primary' 
-                    : 'text-muted-foreground border-l-2 border-transparent hover:border-primary/50'
+                    ? 'text-primary font-medium bg-primary/10 border-l-2 border-primary' 
+                    : 'text-muted-foreground border-l-2 border-transparent hover:border-primary/50 hover:bg-muted/50'
                 } ${
                   item.level === 1 ? 'pl-3' : 
                   item.level === 2 ? 'pl-7' : 
                   'pl-11'
-                } py-1.5`}
+                } py-2 pr-3`}
               >
                 {item.text}
               </button>
