@@ -29,6 +29,15 @@ export interface NavigationStructure {
   sections: NavigationSection[];
 }
 
+// Helper function to capitalize titles properly
+function capitalizeTitle(title: string): string {
+  return title
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ')
+    .replace(/&/g, '&'); // Keep ampersands as-is
+}
+
 // Helper function to build hierarchical structure from flat array
 function buildHierarchy(items: NavigationItem[]): NavigationItem[] {
   console.log('Building hierarchy from', items.length, 'items');
@@ -64,7 +73,11 @@ function buildHierarchy(items: NavigationItem[]): NavigationItem[] {
       }
     }
     
-    processedItems.set(item.id, { ...item, items: [] });
+    processedItems.set(item.id, { 
+      ...item, 
+      title: capitalizeTitle(item.title),
+      items: [] 
+    });
   });
   
   // Convert processed items to array
@@ -175,6 +188,7 @@ export class NavigationService {
       
       return {
         ...section,
+        title: capitalizeTitle(section.title),
         items: mergeFolderAndMarkdownItems(section.items || []),
       };
     });
@@ -188,6 +202,7 @@ export class NavigationService {
     return {
       sections: staticNavigation.sections.map(section => ({
         ...section,
+        title: capitalizeTitle(section.title),
         items: mergeFolderAndMarkdownItems(section.items || []),
       })),
     };
