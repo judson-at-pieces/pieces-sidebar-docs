@@ -62,15 +62,35 @@ export function NavigationStructurePanel({
   };
 
   // Helper function to find parent of an item
-  const findParentOfItem = (items: any[], itemId: string, parent: any = null): any => {
+  const findParentOfItem = (items: any[], itemId: string): any => {
     for (const item of items) {
-      if (item.id === itemId) return parent;
       if (item.items && item.items.length > 0) {
-        const found = findParentOfItem(item.items, itemId, item);
-        if (found !== null) return found;
+        if (item.items.some((child: any) => child.id === itemId)) {
+          return item;
+        }
+        const found = findParentOfItem(item.items, itemId);
+        if (found) return found;
       }
     }
     return null;
+  };
+
+  // Helper function to remove an item from nested structure
+  const removeItemFromStructure = (items: any[], itemId: string): any[] => {
+    return items.map(item => {
+      if (item.items) {
+        item.items = item.items.filter((child: any) => child.id !== itemId);
+        item.items = removeItemFromStructure(item.items, itemId);
+      }
+      return item;
+    }).filter(item => item.id !== itemId);
+  };
+
+  // Helper function to insert item at specific position
+  const insertItemAtPosition = (items: any[], insertIndex: number, itemToInsert: any): any[] => {
+    const newItems = [...items];
+    newItems.splice(insertIndex, 0, itemToInsert);
+    return newItems;
   };
 
   // Helper function to update order indices recursively
@@ -82,22 +102,20 @@ export function NavigationStructurePanel({
     }));
   };
 
-  // Helper function to remove an item from nested structure
-  const removeItemFromStructure = (items: any[], itemId: string): any[] => {
-    return items.filter(item => {
-      if (item.id === itemId) return false;
-      if (item.items) {
-        item.items = removeItemFromStructure(item.items, itemId);
-      }
-      return true;
-    });
-  };
-
-  // Helper function to insert item at specific position
-  const insertItemAtPosition = (items: any[], insertIndex: number, itemToInsert: any): any[] => {
-    const newItems = [...items];
-    newItems.splice(insertIndex, 0, itemToInsert);
-    return newItems;
+  // Helper function to get the container (parent's items array or root items array)
+  const getItemContainer = (sectionItems: any[], itemId: string): { container: any[], parent: any | null } => {
+    // Check if item is at root level
+    if (sectionItems.some(item => item.id === itemId)) {
+      return { container: sectionItems, parent: null };
+    }
+    
+    // Find parent and return parent's items array
+    const parent = findParentOfItem(sectionItems, itemId);
+    if (parent && parent.items) {
+      return { container: parent.items, parent };
+    }
+    
+    return { container: [], parent: null };
   };
 
   const handleDragEnd = async (result: DropResult) => {
@@ -143,71 +161,81 @@ export function NavigationStructurePanel({
           return;
         }
 
-        console.log('Dragging item:', { id: draggedItem.id, title: draggedItem.title });
+        console.log('Reordering item:', { 
+          id: draggedItem.id, 
+          title: draggedItem.title,
+          sourceIndex: source.index,
+          destIndex: destination.index
+        });
 
-        // Find the parent of the dragged item
-        const draggedParent = findParentOfItem(section.items, draggedItemId);
+        // Get the current container for the dragged item
+        const { container: sourceContainer, parent: sourceParent } = getItemContainer(section.items, draggedItemId);
         
-        // Determine the container items (either parent's items or root items)
-        const containerItems = draggedParent ? draggedParent.items : section.items;
-        
-        // Get the current index of the dragged item in its container
-        const currentIndex = containerItems.findIndex((item: any) => item.id === draggedItemId);
+        if (sourceContainer.length === 0) {
+          console.warn('Could not find source container for item');
+          return;
+        }
+
+        // Find current index in source container
+        const currentIndex = sourceContainer.findIndex((item: any) => item.id === draggedItemId);
         
         if (currentIndex === -1) {
           console.warn('Could not find current index of dragged item');
           return;
         }
 
-        // Calculate the new index (accounting for the item being removed first)
-        let newIndex = destination.index;
-        if (currentIndex < destination.index) {
-          newIndex = destination.index - 1;
+        // For same-container reordering
+        if (currentIndex === destination.index) {
+          return; // No change needed
         }
 
-        // Don't do anything if the position hasn't changed
-        if (currentIndex === newIndex) {
-          return;
-        }
+        console.log('Reordering within container:', { 
+          currentIndex, 
+          newIndex: destination.index,
+          containerSize: sourceContainer.length 
+        });
 
-        console.log('Reordering within container:', { currentIndex, newIndex });
+        // Create new container with reordered items
+        const newContainer = [...sourceContainer];
+        const [movedItem] = newContainer.splice(currentIndex, 1);
+        newContainer.splice(destination.index, 0, movedItem);
 
-        // Create new container items with reordered items
-        const newContainerItems = [...containerItems];
-        const [movedItem] = newContainerItems.splice(currentIndex, 1);
-        newContainerItems.splice(newIndex, 0, movedItem);
+        // Update order indices
+        const updatedContainer = updateOrderIndices(newContainer);
 
-        // Update the section with new order
+        // Update the section structure
         let newSectionItems;
-        if (draggedParent) {
-          // Update the parent's items
+        if (sourceParent) {
+          // Update parent's items
           newSectionItems = section.items.map((item: any) => {
-            if (item.id === draggedParent.id) {
-              return { ...item, items: updateOrderIndices(newContainerItems) };
+            if (item.id === sourceParent.id) {
+              return { ...item, items: updatedContainer };
             }
             return item;
           });
         } else {
           // Update root level items
-          newSectionItems = updateOrderIndices(newContainerItems);
+          newSectionItems = updatedContainer;
         }
 
-        // Update all order indices recursively
+        // Apply final order index update recursively
         const finalItems = updateOrderIndices(newSectionItems);
 
-        // Update database
-        const flattenForUpdate = (items: any[]): any[] => {
+        // Flatten all items for database update
+        const flattenItems = (items: any[]): any[] => {
           const result: any[] = [];
           items.forEach(item => {
             result.push(item);
-            if (item.items) {
-              result.push(...flattenForUpdate(item.items));
+            if (item.items && item.items.length > 0) {
+              result.push(...flattenItems(item.items));
             }
           });
           return result;
         };
 
-        const allItems = flattenForUpdate(finalItems);
+        const allItems = flattenItems(finalItems);
+        
+        // Update database with new order indices
         const updatePromises = allItems.map(item => 
           navigationService.updateNavigationItem(item.id, {
             order_index: item.order_index
