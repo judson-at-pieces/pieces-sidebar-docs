@@ -58,25 +58,117 @@ export function NavigationStructurePanel({
     }));
   };
 
+  // Helper function to find an item by ID in nested structure
+  const findItemById = (items: any[], itemId: string): any | null => {
+    for (const item of items) {
+      if (item.id === itemId) return item;
+      if (item.items) {
+        const found = findItemById(item.items, itemId);
+        if (found) return found;
+      }
+    }
+    return null;
+  };
+
+  // Helper function to find parent of an item
+  const findParentOfItem = (items: any[], itemId: string, parentId?: string): { parent: any | null, parentId: string | null } => {
+    for (const item of items) {
+      if (item.id === itemId) {
+        return { parent: null, parentId: parentId || null };
+      }
+      if (item.items) {
+        const found = findParentOfItem(item.items, itemId, item.id);
+        if (found.parent !== undefined) return found;
+      }
+    }
+    return { parent: undefined, parentId: null };
+  };
+
+  // Helper function to remove item from nested structure
+  const removeItemFromStructure = (items: any[], itemId: string): { items: any[], removedItem: any | null } => {
+    const newItems = [...items];
+    
+    for (let i = 0; i < newItems.length; i++) {
+      if (newItems[i].id === itemId) {
+        const removedItem = newItems[i];
+        newItems.splice(i, 1);
+        return { items: newItems, removedItem };
+      }
+      
+      if (newItems[i].items) {
+        const result = removeItemFromStructure(newItems[i].items, itemId);
+        if (result.removedItem) {
+          newItems[i] = { ...newItems[i], items: result.items };
+          return { items: newItems, removedItem: result.removedItem };
+        }
+      }
+    }
+    
+    return { items: newItems, removedItem: null };
+  };
+
+  // Helper function to insert item at specific position in nested structure
+  const insertItemInStructure = (items: any[], item: any, parentId: string | null, index: number): any[] => {
+    if (!parentId) {
+      // Insert at root level
+      const newItems = [...items];
+      newItems.splice(index, 0, item);
+      return newItems;
+    }
+    
+    // Insert into specific parent
+    return items.map(currentItem => {
+      if (currentItem.id === parentId) {
+        const newChildren = [...(currentItem.items || [])];
+        newChildren.splice(index, 0, item);
+        return { ...currentItem, items: newChildren };
+      }
+      
+      if (currentItem.items) {
+        return {
+          ...currentItem,
+          items: insertItemInStructure(currentItem.items, item, parentId, index)
+        };
+      }
+      
+      return currentItem;
+    });
+  };
+
   const handleMoveItem = async (sectionId: string, itemId: string, direction: 'up' | 'down') => {
     try {
       const section = sections.find(s => s.id === sectionId);
       if (!section?.items) return;
 
-      const items = [...section.items];
-      const itemIndex = items.findIndex(item => item.id === itemId);
+      // Find the item and its parent
+      const { parentId } = findParentOfItem(section.items, itemId);
       
-      if (itemIndex === -1) return;
+      let itemsToReorder: any[];
+      let currentIndex: number;
       
-      const newIndex = direction === 'up' ? itemIndex - 1 : itemIndex + 1;
+      if (!parentId) {
+        // Root level item
+        itemsToReorder = [...section.items];
+        currentIndex = itemsToReorder.findIndex(item => item.id === itemId);
+      } else {
+        // Nested item - find parent's children
+        const parentItem = findItemById(section.items, parentId);
+        if (!parentItem?.items) return;
+        itemsToReorder = [...parentItem.items];
+        currentIndex = itemsToReorder.findIndex(item => item.id === itemId);
+      }
       
-      if (newIndex < 0 || newIndex >= items.length) return;
+      if (currentIndex === -1) return;
+      
+      const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
+      
+      if (newIndex < 0 || newIndex >= itemsToReorder.length) return;
 
       // Swap items
-      [items[itemIndex], items[newIndex]] = [items[newIndex], items[itemIndex]];
+      [itemsToReorder[currentIndex], itemsToReorder[newIndex]] = [itemsToReorder[newIndex], itemsToReorder[currentIndex]];
       
       // Update order indices
-      const finalItems = updateOrderIndices(items);
+      const finalItems = updateOrderIndices(itemsToReorder);
 
       // Update database with new order indices
       const updatePromises = finalItems.map(item => 
@@ -118,10 +210,10 @@ export function NavigationStructurePanel({
       return;
     }
 
-    // Handle item reordering within sections
+    // Handle item reordering within sections or between folders
     if (source.droppableId.startsWith('section-') && destination.droppableId.startsWith('section-')) {
-      const sourceSectionId = source.droppableId.replace('section-', '');
-      const destSectionId = destination.droppableId.replace('section-', '');
+      const sourceSectionId = source.droppableId.replace('section-', '').split('-')[0];
+      const destSectionId = destination.droppableId.replace('section-', '').split('-')[0];
       
       if (sourceSectionId !== destSectionId) {
         toast.error("Moving items between sections not supported yet");
@@ -135,47 +227,78 @@ export function NavigationStructurePanel({
         // Parse the draggable ID to get the item ID
         const draggedItemId = result.draggableId.replace(`${sourceSectionId}-`, '');
         
-        console.log('Reordering item within section:', { 
+        // Extract parent IDs from droppable IDs
+        const sourceParentId = source.droppableId.includes('-folder-') ? 
+          source.droppableId.split('-folder-')[1] : null;
+        const destParentId = destination.droppableId.includes('-folder-') ? 
+          destination.droppableId.split('-folder-')[1] : null;
+
+        console.log('Reordering item:', { 
           sectionId: sourceSectionId,
           draggedItemId,
+          sourceParentId,
+          destParentId,
           sourceIndex: source.index,
           destIndex: destination.index
         });
 
-        // Create new array from section items
-        const newItems = Array.from(section.items);
+        // Remove item from source location
+        const { items: itemsAfterRemoval, removedItem } = removeItemFromStructure(section.items, draggedItemId);
         
-        // Find the item being moved
-        const draggedItem = newItems.find(item => item.id === draggedItemId);
-        if (!draggedItem) {
+        if (!removedItem) {
           console.warn('Could not find dragged item');
           return;
         }
 
-        // Remove from current position
-        const sourceIndex = newItems.findIndex(item => item.id === draggedItemId);
-        if (sourceIndex === -1) return;
-        
-        newItems.splice(sourceIndex, 1);
-        
-        // Insert at new position
-        newItems.splice(destination.index, 0, draggedItem);
-        
-        // Update order indices
-        const finalItems = updateOrderIndices(newItems);
+        // Update parent_id if moving between different parents
+        const updatedItem = {
+          ...removedItem,
+          parent_id: destParentId
+        };
 
-        console.log('Final reordered items:', finalItems.map(item => ({ id: item.id, title: item.title, order_index: item.order_index })));
+        // Insert item at destination
+        const finalItems = insertItemInStructure(itemsAfterRemoval, updatedItem, destParentId, destination.index);
+        
+        // Update order indices for all affected items
+        const itemsWithOrderIndices = updateOrderIndices(finalItems);
 
-        // Update database with new order indices
-        const updatePromises = finalItems.map(item => 
-          navigationService.updateNavigationItem(item.id, {
-            order_index: item.order_index
+        console.log('Final reordered structure:', itemsWithOrderIndices);
+
+        // Update database with new structure
+        const updatePromises = [];
+        
+        // Update the moved item's parent_id
+        updatePromises.push(
+          navigationService.updateNavigationItem(draggedItemId, {
+            parent_id: destParentId,
+            order_index: destination.index
           })
         );
 
+        // Update order indices for all items in the section
+        const flattenItems = (items: any[]): any[] => {
+          const result: any[] = [];
+          for (const item of items) {
+            result.push(item);
+            if (item.items) {
+              result.push(...flattenItems(item.items));
+            }
+          }
+          return result;
+        };
+
+        const allItems = flattenItems(itemsWithOrderIndices);
+        allItems.forEach(item => {
+          updatePromises.push(
+            navigationService.updateNavigationItem(item.id, {
+              order_index: item.order_index
+            })
+          );
+        });
+
         await Promise.all(updatePromises);
         
-        console.log('All order indices updated successfully');
+        console.log('All items updated successfully');
         
         // Refresh navigation data
         onNavigationChange();
@@ -265,8 +388,8 @@ export function NavigationStructurePanel({
                         <div
                           ref={provided.innerRef}
                           {...provided.draggableProps}
-                          className={`border rounded-lg bg-muted/20 ${
-                            snapshot.isDragging ? 'shadow-lg ring-2 ring-primary/20' : ''
+                          className={`border rounded-lg bg-muted/20 transition-all ${
+                            snapshot.isDragging ? 'shadow-lg ring-2 ring-primary/20 bg-background' : ''
                           }`}
                         >
                           <NavigationSectionHeader
@@ -283,42 +406,27 @@ export function NavigationStructurePanel({
                                 <div
                                   {...sectionProvided.droppableProps}
                                   ref={sectionProvided.innerRef}
-                                  className={`space-y-1 min-h-[40px] rounded-md p-2 transition-colors relative ${
+                                  className={`space-y-1 min-h-[40px] rounded-md p-2 transition-all ${
                                     sectionSnapshot.isDraggingOver 
-                                      ? 'bg-blue-50 border-2 border-dashed border-blue-300' 
-                                      : 'border-2 border-dashed border-transparent'
+                                      ? 'bg-primary/5 border-2 border-dashed border-primary/30' 
+                                      : 'border-2 border-dashed border-transparent hover:border-muted-foreground/20'
                                   }`}
                                 >
                                   {section.items?.map((item, itemIndex) => (
-                                    <div key={item.id} className="relative">
-                                      {/* Enhanced drop indicator above each item */}
-                                      {sectionSnapshot.isDraggingOver && (
-                                        <div 
-                                          className={`absolute -top-2 left-0 right-0 h-1 bg-blue-400 rounded-full transition-opacity z-10 ${
-                                            sectionSnapshot.draggingOverWith === `${section.id}-${item.id}` ? 'opacity-100' : 'opacity-0'
-                                          }`}
-                                        />
-                                      )}
-                                      
-                                      <NavigationItemDisplay
-                                        item={item}
-                                        index={itemIndex}
-                                        sectionId={section.id}
-                                        pendingDeletions={pendingDeletions}
-                                        onTogglePendingDeletion={onTogglePendingDeletion}
-                                        onUpdateTitle={onUpdateItemTitle}
-                                        onMoveUp={(itemId) => handleMoveItem(section.id, itemId, 'up')}
-                                        onMoveDown={(itemId) => handleMoveItem(section.id, itemId, 'down')}
-                                        canMoveUp={itemIndex > 0}
-                                        canMoveDown={itemIndex < (section.items?.length || 0) - 1}
-                                      />
-                                    </div>
+                                    <NavigationItemDisplay
+                                      key={item.id}
+                                      item={item}
+                                      index={itemIndex}
+                                      sectionId={section.id}
+                                      pendingDeletions={pendingDeletions}
+                                      onTogglePendingDeletion={onTogglePendingDeletion}
+                                      onUpdateTitle={onUpdateItemTitle}
+                                      onMoveUp={(itemId) => handleMoveItem(section.id, itemId, 'up')}
+                                      onMoveDown={(itemId) => handleMoveItem(section.id, itemId, 'down')}
+                                      canMoveUp={itemIndex > 0}
+                                      canMoveDown={itemIndex < (section.items?.length || 0) - 1}
+                                    />
                                   ))}
-                                  
-                                  {/* Drop indicator at the end */}
-                                  {sectionSnapshot.isDraggingOver && (
-                                    <div className="h-1 bg-blue-400 rounded-full mt-2" />
-                                  )}
                                   
                                   {sectionProvided.placeholder}
                                   

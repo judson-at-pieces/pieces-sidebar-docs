@@ -20,7 +20,7 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { NavigationItem } from "@/services/navigationService";
 import { PendingDeletion } from "./hooks/usePendingDeletions";
-import { Draggable } from "@hello-pangea/dnd";
+import { Draggable, Droppable } from "@hello-pangea/dnd";
 
 interface NavigationItemDisplayProps {
   item: NavigationItem;
@@ -120,23 +120,23 @@ export function NavigationItemDisplay({
           <div
             ref={provided.innerRef}
             {...provided.draggableProps}
-            className={`transition-all ${snapshot.isDragging ? 'opacity-75 z-50' : ''}`}
+            className={`transition-all ${snapshot.isDragging ? 'opacity-90 z-50 shadow-lg ring-2 ring-primary/30' : ''}`}
           >
             <div 
               className={`p-2 mb-1 border rounded-lg flex items-center gap-2 transition-all group ${
                 isPendingDeletion 
                   ? 'border-destructive bg-destructive/10' 
                   : snapshot.isDragging 
-                    ? 'bg-accent border-primary shadow-lg' 
+                    ? 'bg-background border-primary shadow-md scale-105' 
                     : isPrivate
                       ? 'bg-orange-50 border-orange-200 hover:bg-orange-100'
-                      : 'hover:bg-accent/50'
+                      : 'hover:bg-accent/50 hover:border-accent'
               }`}
               style={{ marginLeft: paddingLeft }}
             >
               <div 
                 {...provided.dragHandleProps} 
-                className="cursor-grab hover:cursor-grabbing flex-shrink-0"
+                className="cursor-grab hover:cursor-grabbing flex-shrink-0 p-1 rounded hover:bg-muted/50"
               >
                 <GripVertical className="h-4 w-4 text-muted-foreground" />
               </div>
@@ -147,20 +147,20 @@ export function NavigationItemDisplay({
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-3 w-3 p-0 hover:bg-primary/10"
+                    className="h-4 w-4 p-0 hover:bg-primary/20"
                     onClick={() => onMoveUp?.(item.id)}
                     disabled={!canMoveUp}
                   >
-                    <ArrowUp className="h-2 w-2" />
+                    <ArrowUp className="h-3 w-3" />
                   </Button>
                   <Button
                     variant="ghost"
                     size="sm"
-                    className="h-3 w-3 p-0 hover:bg-primary/10"
+                    className="h-4 w-4 p-0 hover:bg-primary/20"
                     onClick={() => onMoveDown?.(item.id)}
                     disabled={!canMoveDown}
                   >
-                    <ArrowDown className="h-2 w-2" />
+                    <ArrowDown className="h-3 w-3" />
                   </Button>
                 </div>
               )}
@@ -282,22 +282,38 @@ export function NavigationItemDisplay({
       
       {hasChildren && isExpanded && (
         <div className="mt-1">
-          {children.map((childItem, childIndex) => (
-            <NavigationItemDisplay
-              key={childItem.id}
-              item={childItem}
-              index={childIndex}
-              sectionId={sectionId}
-              pendingDeletions={pendingDeletions}
-              onTogglePendingDeletion={onTogglePendingDeletion}
-              onUpdateTitle={onUpdateTitle}
-              onMoveUp={onMoveUp}
-              onMoveDown={onMoveDown}
-              canMoveUp={childIndex > 0}
-              canMoveDown={childIndex < children.length - 1}
-              depth={depth + 1}
-            />
-          ))}
+          <Droppable droppableId={`section-${sectionId}-folder-${item.id}`} type="item">
+            {(folderProvided, folderSnapshot) => (
+              <div
+                {...folderProvided.droppableProps}
+                ref={folderProvided.innerRef}
+                className={`ml-4 space-y-1 min-h-[20px] rounded-md p-2 transition-all ${
+                  folderSnapshot.isDraggingOver 
+                    ? 'bg-primary/5 border-2 border-dashed border-primary/30' 
+                    : 'border-2 border-dashed border-transparent hover:border-muted-foreground/20'
+                }`}
+                style={{ marginLeft: paddingLeft + 16 }}
+              >
+                {children.map((childItem, childIndex) => (
+                  <NavigationItemDisplay
+                    key={childItem.id}
+                    item={childItem}
+                    index={childIndex}
+                    sectionId={sectionId}
+                    pendingDeletions={pendingDeletions}
+                    onTogglePendingDeletion={onTogglePendingDeletion}
+                    onUpdateTitle={onUpdateTitle}
+                    onMoveUp={onMoveUp}
+                    onMoveDown={onMoveDown}
+                    canMoveUp={childIndex > 0}
+                    canMoveDown={childIndex < children.length - 1}
+                    depth={depth + 1}
+                  />
+                ))}
+                {folderProvided.placeholder}
+              </div>
+            )}
+          </Droppable>
         </div>
       )}
     </>
