@@ -1,3 +1,4 @@
+
 import { supabase } from '@/integrations/supabase/client';
 import { staticNavigation } from './staticNavigation';
 
@@ -207,44 +208,46 @@ export class NavigationService {
     }
   }
 
-  // Get navigation structure including private items for editor
+  // Get navigation structure including private items and empty sections for editor
   async getNavigationStructureForEditor(): Promise<NavigationStructure | null> {
     try {
-      const { data, error } = await supabase
+      // First get all sections
+      const { data: sectionsData, error: sectionsError } = await supabase
         .from('navigation_sections')
-        .select(`
-          id,
-          title,
-          slug,
-          description,
-          icon,
-          order_index,
-          navigation_items!inner (
-            id,
-            title,
-            href,
-            description,
-            icon,
-            order_index,
-            parent_id,
-            is_auto_generated,
-            file_path,
-            privacy
-          )
-        `)
+        .select('*')
         .eq('is_active', true)
-        .eq('navigation_items.is_active', true)
         .order('order_index');
       
-      if (error) {
-        console.error('Error fetching navigation structure for editor:', error);
+      if (sectionsError) {
+        console.error('Error fetching navigation sections for editor:', sectionsError);
         return null;
       }
+
+      // Then get all navigation items for these sections
+      const { data: itemsData, error: itemsError } = await supabase
+        .from('navigation_items')
+        .select('*')
+        .eq('is_active', true)
+        .order('order_index');
       
-      // Transform the data to match our interface
-      const sections = data.map(section => ({
+      if (itemsError) {
+        console.error('Error fetching navigation items for editor:', itemsError);
+        return null;
+      }
+
+      // Group items by section_id
+      const itemsBySection = itemsData.reduce((acc, item) => {
+        if (!acc[item.section_id]) {
+          acc[item.section_id] = [];
+        }
+        acc[item.section_id].push(item);
+        return acc;
+      }, {} as Record<string, any[]>);
+
+      // Create sections with their items (or empty arrays)
+      const sections = sectionsData.map(section => ({
         ...section,
-        items: section.navigation_items || []
+        items: itemsBySection[section.id] || []
       }));
       
       const processedData = this.processNavigationData({ sections });
