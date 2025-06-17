@@ -8,7 +8,7 @@ import { Menu, Search, ChevronDown, ChevronRight, X, PanelLeftClose, PanelLeft }
 import { cn } from "@/lib/utils";
 import { ThemeToggle } from "./ThemeToggle";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { useNavigation } from "@/hooks/useNavigation";
+import { useOptimizedNavigation } from "@/hooks/useOptimizedNavigation";
 import { useAnalytics } from "@/hooks/useAnalytics";
 import Footer from "./Footer";
 import type { NavigationItem, NavigationSection } from "@/services/navigationService";
@@ -26,7 +26,7 @@ function DocsSidebar({ className, onNavigate }: { className?: string; onNavigate
   const location = useLocation();
   const [openSections, setOpenSections] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const { navigation, isLoading, error } = useNavigation();
+  const { navigation, isLoading, error } = useOptimizedNavigation();
   const { trackSearch } = useAnalytics();
   const searchTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
