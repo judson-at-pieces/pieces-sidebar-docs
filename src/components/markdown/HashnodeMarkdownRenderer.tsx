@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { Callout } from './Callout';
+import { CodeBlock } from './CodeBlock';
 import { MarkdownCard } from './MarkdownCard';
 import { CardGroup } from './CardGroup';
 import { Steps, Step } from './Steps';
@@ -879,7 +880,7 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
     lines.forEach((line, index) => {
       console.log(`📝 Processing line ${index}:`, line);
 
-      // Code blocks
+      // Code blocks - UPDATED to use CodeBlock component with Go detection
       if (line.startsWith('```')) {
         if (!inCodeBlock) {
           console.log(`📝 Starting code block at line ${index}:`, line);
@@ -889,13 +890,19 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
           codeLanguage = sanitizeText(line.slice(3).trim());
         } else {
           console.log(`📝 Ending code block at line ${index}, language:`, codeLanguage);
+          const codeContent = codeBlock.join('\n');
+          
+          // Use the CodeBlock component with Go detection
           elements.push(
-            <pre key={`code-${index}`} className="hn-code-block">
-              <code className={`language-${codeLanguage}`}>
-                {codeBlock.join('\n')}
-              </code>
-            </pre>
+            <CodeBlock 
+              key={`code-${index}`} 
+              language={codeLanguage || undefined}
+              className={codeLanguage ? `language-${codeLanguage}` : undefined}
+            >
+              {codeContent}
+            </CodeBlock>
           );
+          
           codeBlock = [];
           inCodeBlock = false;
           codeLanguage = '';

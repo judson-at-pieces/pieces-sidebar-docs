@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Callout } from './Callout';
 import { CodeBlock } from './CodeBlock';
@@ -68,7 +69,7 @@ export function createComponentMappings() {
       </li>
     ),
     
-    // Code - Simplified approach
+    // Code - Force using the updated CodeBlock with Go detection
     code: ({ inline, children, className, ...props }: any) => {
       console.log('Code mapping called:', { inline, className, children });
       
@@ -85,6 +86,8 @@ export function createComponentMappings() {
       
       // For block code, extract language and pass to CodeBlock
       const language = className ? className.replace(/^language-/, '') : undefined;
+      
+      // Force use the markdown CodeBlock with Go detection
       return <CodeBlock className={className} language={language}>{children}</CodeBlock>;
     },
     
