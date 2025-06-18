@@ -1,4 +1,3 @@
-
 // Client-side processor for custom markdown syntax
 
 // Security utilities for safe HTML attribute handling
@@ -131,35 +130,49 @@ export function processCustomSyntax(content: string): string {
       return '</CardGroup>';
     });
 
-    // Transform Card components with content - FIXED attribute parsing
+    // Transform Card components with content - SUPER AGGRESSIVE href preservation
     processedContent = processedContent.replace(/<Card\s+([^>]*?)>([\s\S]*?)<\/Card>/gi, (match, attributes, innerContent) => {
       try {
-        console.log('🃏 Processing Card with content:', { attributes, innerContent: innerContent.substring(0, 100) });
+        console.log('🔥 FORCE Processing Card with content:', { attributes, innerContent: innerContent.substring(0, 100) });
         
-        // More robust attribute extraction using proper regex patterns
-        const titleMatch = attributes.match(/title\s*=\s*"([^"]*)"/i);
-        const imageMatch = attributes.match(/image\s*=\s*"([^"]*)"/i);
-        const hrefMatch = attributes.match(/href\s*=\s*"([^"]*)"/i);
-        const externalMatch = attributes.match(/external\s*=\s*"([^"]*)"/i);
+        // SUPER aggressive attribute extraction - try multiple patterns
+        const titleMatch = attributes.match(/title\s*=\s*["']([^"']*)["']/i);
+        const imageMatch = attributes.match(/image\s*=\s*["']([^"']*)["']/i);
+        const hrefMatch = attributes.match(/href\s*=\s*["']([^"']*)["']/i);
+        const externalMatch = attributes.match(/external\s*=\s*["']([^"']*)["']/i);
         
         const title = titleMatch ? titleMatch[1] : '';
         const image = imageMatch ? imageMatch[1] : '';
         const href = hrefMatch ? hrefMatch[1] : '';
         const external = externalMatch ? externalMatch[1] : '';
         
-        console.log('🃏 Parsed Card attributes:', { title, image, href, external });
+        console.log('🔥 FORCE Parsed Card attributes:', { title, image, href, external });
         
         // PRESERVE the inner content exactly as is
         const preservedContent = innerContent || '';
         
-        // Build the Card JSX with all attributes properly included
+        // Build the Card JSX with MAXIMUM attributes
         let cardJSX = '<Card';
         if (title) cardJSX += ` title="${title}"`;
         if (image) cardJSX += ` image="${image}"`;
         if (href) cardJSX += ` href="${href}"`;
         if (external) cardJSX += ` external="${external}"`;
+        
+        // FORCE add any other attributes we might have missed
+        const otherAttrs = attributes
+          .replace(/title\s*=\s*["'][^"']*["']/gi, '')
+          .replace(/image\s*=\s*["'][^"']*["']/gi, '')
+          .replace(/href\s*=\s*["'][^"']*["']/gi, '')
+          .replace(/external\s*=\s*["'][^"']*["']/gi, '')
+          .trim();
+        
+        if (otherAttrs) {
+          cardJSX += ` ${otherAttrs}`;
+        }
+        
         cardJSX += `>\n${preservedContent}\n</Card>`;
         
+        console.log('🔥 GENERATED CARD JSX:', cardJSX);
         return cardJSX;
       } catch (error) {
         console.warn('Error parsing Card attributes:', error);
@@ -167,32 +180,46 @@ export function processCustomSyntax(content: string): string {
       }
     });
 
-    // Transform self-closing Card components - FIXED attribute parsing
+    // Transform self-closing Card components - SUPER AGGRESSIVE href preservation
     processedContent = processedContent.replace(/<Card\s+([^>]*?)\/>/gi, (match, attributes) => {
       try {
-        console.log('🃏 Processing self-closing Card:', { attributes });
+        console.log('🔥 FORCE Processing self-closing Card:', { attributes });
         
-        // More robust attribute extraction using proper regex patterns
-        const titleMatch = attributes.match(/title\s*=\s*"([^"]*)"/i);
-        const imageMatch = attributes.match(/image\s*=\s*"([^"]*)"/i);
-        const hrefMatch = attributes.match(/href\s*=\s*"([^"]*)"/i);
-        const externalMatch = attributes.match(/external\s*=\s*"([^"]*)"/i);
+        // SUPER aggressive attribute extraction
+        const titleMatch = attributes.match(/title\s*=\s*["']([^"']*)["']/i);
+        const imageMatch = attributes.match(/image\s*=\s*["']([^"']*)["']/i);
+        const hrefMatch = attributes.match(/href\s*=\s*["']([^"']*)["']/i);
+        const externalMatch = attributes.match(/external\s*=\s*["']([^"']*)["']/i);
         
         const title = titleMatch ? titleMatch[1] : '';
         const image = imageMatch ? imageMatch[1] : '';
         const href = hrefMatch ? hrefMatch[1] : '';
         const external = externalMatch ? externalMatch[1] : '';
         
-        console.log('🃏 Parsed self-closing Card attributes:', { title, image, href, external });
+        console.log('🔥 FORCE Parsed self-closing Card attributes:', { title, image, href, external });
         
-        // Build the Card JSX with all attributes properly included
+        // Build the Card JSX with MAXIMUM attributes
         let cardJSX = '<Card';
         if (title) cardJSX += ` title="${title}"`;
         if (image) cardJSX += ` image="${image}"`;
         if (href) cardJSX += ` href="${href}"`;
         if (external) cardJSX += ` external="${external}"`;
+        
+        // FORCE add any other attributes we might have missed
+        const otherAttrs = attributes
+          .replace(/title\s*=\s*["'][^"']*["']/gi, '')
+          .replace(/image\s*=\s*["'][^"']*["']/gi, '')
+          .replace(/href\s*=\s*["'][^"']*["']/gi, '')
+          .replace(/external\s*=\s*["'][^"']*["']/gi, '')
+          .trim();
+        
+        if (otherAttrs) {
+          cardJSX += ` ${otherAttrs}`;
+        }
+        
         cardJSX += ' />';
         
+        console.log('🔥 GENERATED SELF-CLOSING CARD JSX:', cardJSX);
         return cardJSX;
       } catch (error) {
         console.warn('Error parsing Card attributes:', error);
@@ -241,7 +268,7 @@ export function processCustomSyntax(content: string): string {
       }
     );
 
-    console.log('🔧 Custom syntax processing complete. Card transformations preserved as JSX with href.');
+    console.log('🔥 FORCE Custom syntax processing complete. Cards WILL be clickable.');
     return processedContent;
   } catch (error) {
     console.error('Error processing custom syntax:', error);

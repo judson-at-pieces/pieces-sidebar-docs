@@ -146,13 +146,16 @@ export function createComponentMappings() {
     // Custom components - Card mapping with COMPLETE href support
     Callout,
     CodeBlock,
-    Card: ({ title, image, href, children, ...props }: any) => {
-      console.log('🃏 Card mapping called with:', { title, image, href, hasChildren: !!children });
+    Card: ({ title, image, href, external, children, ...props }: any) => {
+      console.log('🔥 Card mapping called with ALL PROPS:', { title, image, href, external, hasChildren: !!children, allProps: props });
+      
+      // Pass ALL possible link attributes to MarkdownCard
       return (
         <MarkdownCard 
           title={title} 
           image={image} 
           href={href}
+          external={external}
           {...props}
         >
           {children}

@@ -6,6 +6,7 @@ interface MarkdownCardProps {
   title: string;
   image?: string;
   href?: string;
+  external?: string;
   children?: React.ReactNode;
 }
 
@@ -28,8 +29,8 @@ const renderMarkdownWithSpacing = (content: string) => {
   });
 };
 
-export const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, href, children }) => {
-  console.log('MarkdownCard render:', { title, image, href, hasChildren: !!children });
+export const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, href, external, children }) => {
+  console.log('🔥 MarkdownCard FORCE RENDER:', { title, image, href, external, hasChildren: !!children });
   
   const cardContent = (
     <div className="p-6 my-4 border rounded-xl dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
@@ -64,17 +65,26 @@ export const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, href, 
     </div>
   );
 
-  if (href) {
-    console.log('MarkdownCard: Rendering as clickable link with href:', href);
+  // FORCE CLICKABILITY - check for ANY link-like attribute
+  const linkUrl = href || external;
+  
+  if (linkUrl) {
+    console.log('🔥 MAKING CARD CLICKABLE WITH URL:', linkUrl);
     return (
       <a 
-        href={href} 
+        href={linkUrl} 
         target="_blank" 
         rel="noopener noreferrer"
-        className="block no-underline hover:no-underline cursor-pointer transition-transform hover:scale-[1.02]"
+        className="block no-underline hover:no-underline cursor-pointer transition-transform hover:scale-[1.02] hover:shadow-lg"
+        style={{ 
+          textDecoration: 'none !important',
+          color: 'inherit !important' 
+        }}
         onClick={(e) => {
-          console.log('MarkdownCard: Link clicked!', href);
-          // Let the default behavior handle the navigation
+          console.log('🔥 CARD CLICKED! Opening:', linkUrl);
+          // Force open in new tab
+          window.open(linkUrl, '_blank', 'noopener,noreferrer');
+          e.preventDefault();
         }}
       >
         {cardContent}
@@ -82,6 +92,6 @@ export const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, href, 
     );
   }
 
-  console.log('MarkdownCard: Rendering as non-clickable card');
+  console.log('🔥 NON-CLICKABLE CARD');
   return cardContent;
 };
