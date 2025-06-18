@@ -1,3 +1,4 @@
+
 // Client-side processor for custom markdown syntax
 
 // Security utilities for safe HTML attribute handling
@@ -130,50 +131,52 @@ export function processCustomSyntax(content: string): string {
       return '</CardGroup>';
     });
 
-    // Transform Card components with content - PRESERVE AS JSX with BETTER href handling
+    // Transform Card components with content - FIXED attribute parsing
     processedContent = processedContent.replace(/<Card\s+([^>]*?)>([\s\S]*?)<\/Card>/gi, (match, attributes, innerContent) => {
       try {
         console.log('🃏 Processing Card with content:', { attributes, innerContent: innerContent.substring(0, 100) });
         
-        // Extract all attributes properly including href
-        const titleMatch = attributes.match(/title\s*=\s*"([^"]*)"/);
-        const imageMatch = attributes.match(/image\s*=\s*"([^"]*)"/);
-        const hrefMatch = attributes.match(/href\s*=\s*"([^"]*)"/);
-        const externalMatch = attributes.match(/external\s*=\s*"([^"]*)"/);
+        // More robust attribute extraction using proper regex patterns
+        const titleMatch = attributes.match(/title\s*=\s*"([^"]*)"/i);
+        const imageMatch = attributes.match(/image\s*=\s*"([^"]*)"/i);
+        const hrefMatch = attributes.match(/href\s*=\s*"([^"]*)"/i);
+        const externalMatch = attributes.match(/external\s*=\s*"([^"]*)"/i);
         
         const title = titleMatch ? titleMatch[1] : '';
         const image = imageMatch ? imageMatch[1] : '';
         const href = hrefMatch ? hrefMatch[1] : '';
         const external = externalMatch ? externalMatch[1] : '';
         
-        // Don't validate href too strictly - just check it exists
         console.log('🃏 Parsed Card attributes:', { title, image, href, external });
         
         // PRESERVE the inner content exactly as is
         const preservedContent = innerContent || '';
         
-        // Keep as Card component (will be mapped to MarkdownCard)
-        if (href) {
-          return `<Card title="${title}" image="${image}" href="${href}">\n${preservedContent}\n</Card>`;
-        } else {
-          return `<Card title="${title}" image="${image}">\n${preservedContent}\n</Card>`;
-        }
+        // Build the Card JSX with all attributes properly included
+        let cardJSX = '<Card';
+        if (title) cardJSX += ` title="${title}"`;
+        if (image) cardJSX += ` image="${image}"`;
+        if (href) cardJSX += ` href="${href}"`;
+        if (external) cardJSX += ` external="${external}"`;
+        cardJSX += `>\n${preservedContent}\n</Card>`;
+        
+        return cardJSX;
       } catch (error) {
         console.warn('Error parsing Card attributes:', error);
         return `<Card>\n${innerContent || ''}\n</Card>`;
       }
     });
 
-    // Transform self-closing Card components - PRESERVE AS JSX with BETTER href handling
+    // Transform self-closing Card components - FIXED attribute parsing
     processedContent = processedContent.replace(/<Card\s+([^>]*?)\/>/gi, (match, attributes) => {
       try {
         console.log('🃏 Processing self-closing Card:', { attributes });
         
-        // Extract all attributes properly including href
-        const titleMatch = attributes.match(/title\s*=\s*"([^"]*)"/);
-        const imageMatch = attributes.match(/image\s*=\s*"([^"]*)"/);
-        const hrefMatch = attributes.match(/href\s*=\s*"([^"]*)"/);
-        const externalMatch = attributes.match(/external\s*=\s*"([^"]*)"/);
+        // More robust attribute extraction using proper regex patterns
+        const titleMatch = attributes.match(/title\s*=\s*"([^"]*)"/i);
+        const imageMatch = attributes.match(/image\s*=\s*"([^"]*)"/i);
+        const hrefMatch = attributes.match(/href\s*=\s*"([^"]*)"/i);
+        const externalMatch = attributes.match(/external\s*=\s*"([^"]*)"/i);
         
         const title = titleMatch ? titleMatch[1] : '';
         const image = imageMatch ? imageMatch[1] : '';
@@ -182,12 +185,15 @@ export function processCustomSyntax(content: string): string {
         
         console.log('🃏 Parsed self-closing Card attributes:', { title, image, href, external });
         
-        // Keep as Card component (will be mapped to MarkdownCard)
-        if (href) {
-          return `<Card title="${title}" image="${image}" href="${href}" />`;
-        } else {
-          return `<Card title="${title}" image="${image}" />`;
-        }
+        // Build the Card JSX with all attributes properly included
+        let cardJSX = '<Card';
+        if (title) cardJSX += ` title="${title}"`;
+        if (image) cardJSX += ` image="${image}"`;
+        if (href) cardJSX += ` href="${href}"`;
+        if (external) cardJSX += ` external="${external}"`;
+        cardJSX += ' />';
+        
+        return cardJSX;
       } catch (error) {
         console.warn('Error parsing Card attributes:', error);
         return '<Card />';
