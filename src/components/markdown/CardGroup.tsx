@@ -1,63 +1,58 @@
 
 import React from 'react';
+import { MarkdownCard } from './MarkdownCard';
 
 interface CardGroupProps {
-  cols?: 2 | 3 | 4;
+  cols?: number;
   children: React.ReactNode;
 }
 
-const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
-  console.log('🃏 CardGroup rendering:', { 
-    cols, 
-    childrenCount: React.Children.count(children),
-    children: React.Children.toArray(children).map((child, index) => ({
-      index,
-      type: React.isValidElement(child) ? child.type : typeof child,
-      props: React.isValidElement(child) ? Object.keys(child.props || {}) : 'not-element'
-    }))
-  });
-
-  const getGridClass = () => {
-    switch (cols) {
-      case 3:
-        return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-3';
-      case 4:
-        return 'grid-cols-1 sm:grid-cols-2 lg:grid-cols-4';
-      default:
-        return 'grid-cols-1 sm:grid-cols-2';
-    }
+export const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
+  console.log('CardGroup render:', { cols, children });
+  
+  // Parse Card components from children
+  const parseCards = (children: React.ReactNode): any[] => {
+    const cards: any[] = [];
+    
+    React.Children.forEach(children, (child) => {
+      if (React.isValidElement(child) && (child.type === 'Card' || child.type === MarkdownCard)) {
+        const props = child.props as any;
+        console.log('CardGroup: Found card with props:', props);
+        cards.push({
+          title: props.title || '',
+          image: props.image || '',
+          href: props.href || '',
+          children: props.children || ''
+        });
+      }
+    });
+    
+    return cards;
   };
 
+  const cards = parseCards(children);
+  console.log('CardGroup: Parsed cards:', cards);
+
+  const gridClass = cols === 1 ? 'grid-cols-1' : 
+                   cols === 2 ? 'grid-cols-1 md:grid-cols-2' :
+                   cols === 3 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' :
+                   cols === 4 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4' :
+                   'grid-cols-1 md:grid-cols-2';
+
   return (
-    <div className={`my-4 grid gap-x-4 gap-y-6 ${getGridClass()}`}>
-      {React.Children.map(children, (child, index) => {
-        console.log(`🃏 CardGroup processing child ${index}:`, {
-          type: React.isValidElement(child) ? child.type : typeof child,
-          isValidElement: React.isValidElement(child),
-          hasProps: React.isValidElement(child) && child.props
-        });
-        
-        // Safety check for valid React elements
-        if (!React.isValidElement(child)) {
-          console.warn(`CardGroup child ${index} is not a valid React element:`, child);
-          return null;
-        }
-        
-        try {
-          return React.cloneElement(child, {
-            ...child.props,
-            className: `${child.props.className || ''} my-2`.trim(),
-          });
-        } catch (error) {
-          console.error(`Error cloning child ${index}:`, error);
-          return child; // Fallback to original child
-        }
-      })}
+    <div className={`grid ${gridClass} gap-6 my-8`}>
+      {cards.map((card, index) => (
+        <MarkdownCard
+          key={index}
+          title={card.title}
+          image={card.image}
+          href={card.href}
+        >
+          {card.children}
+        </MarkdownCard>
+      ))}
     </div>
   );
 };
 
 export default CardGroup;
-
-// Export named export for compatibility
-export { CardGroup };
