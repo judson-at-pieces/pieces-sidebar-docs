@@ -68,9 +68,9 @@ export function createComponentMappings() {
       </li>
     ),
     
-    // Code - Enhanced to pass language information
+    // Code - Simplified approach
     code: ({ inline, children, className, ...props }: any) => {
-      console.log('Code element:', { inline, className, children: typeof children === 'string' ? children.substring(0, 50) : children });
+      console.log('Code mapping called:', { inline, className, children });
       
       if (inline) {
         return (
@@ -82,32 +82,22 @@ export function createComponentMappings() {
           </code>
         );
       }
-      // Extract language from className (e.g., "language-javascript" -> "javascript")
-      const language = className ? className.replace('language-', '') : undefined;
-      return <CodeBlock className={className} language={language} {...props}>{children}</CodeBlock>;
-    },
-    pre: ({ children, className, ...props }: any) => {
-      console.log('Pre element:', { className, children });
       
-      // Check if the pre contains a code element with language info
-      if (React.isValidElement(children) && 
-          children.props && 
-          typeof children.props === 'object' && 
-          'className' in children.props && 
-          typeof children.props.className === 'string') {
-        
-        const codeClassName = children.props.className;
-        const language = codeClassName ? codeClassName.replace('language-', '') : undefined;
-        
-        // Pass the language info to CodeBlock
-        if ('children' in children.props) {
-          return <CodeBlock className={codeClassName} language={language}>{children.props.children as React.ReactNode}</CodeBlock>;
-        }
+      // For block code, extract language and pass to CodeBlock
+      const language = className ? className.replace(/^language-/, '') : undefined;
+      return <CodeBlock className={className} language={language}>{children}</CodeBlock>;
+    },
+    
+    pre: ({ children, ...props }: any) => {
+      console.log('Pre mapping called:', { children, props });
+      
+      // If pre contains code element, let the code handler deal with it
+      if (React.isValidElement(children) && children.type === 'code') {
+        return children;
       }
       
-      // If the pre contains a code element, pass through the children
-      // The CodeBlock component will handle the styling
-      return children;
+      // Otherwise, treat as code block
+      return <CodeBlock>{children}</CodeBlock>;
     },
     
     // Links and emphasis
