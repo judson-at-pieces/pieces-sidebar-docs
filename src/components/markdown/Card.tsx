@@ -1,5 +1,6 @@
 
 import React from 'react';
+import { SecureInlineMarkdown } from './SecureInlineMarkdown';
 
 interface CardProps {
   title: string;
@@ -33,7 +34,11 @@ const Card: React.FC<CardProps> = ({ title, image, href, children }) => {
         {title}
       </span>
       <div className="mt-3 text-base text-slate-600 dark:text-slate-300">
-        {children}
+        {typeof children === 'string' ? (
+          <SecureInlineMarkdown content={children} />
+        ) : (
+          children
+        )}
       </div>
     </div>
   );
