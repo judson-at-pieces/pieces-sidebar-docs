@@ -54,6 +54,23 @@ const languageMap: Record<string, string> = {
   'md': 'markdown'
 };
 
+// Function to detect Go code patterns
+const detectGoLanguage = (content: string): boolean => {
+  const goPatterns = [
+    /func\s+\w+\s*\(/,           // func declarations
+    /package\s+\w+/,             // package declarations
+    /import\s+\(/,               // import statements
+    /var\s+\w+\s+\w+/,          // var declarations
+    /:\s*=/,                     // short variable declarations
+    /fmt\.Print/,                // fmt package usage
+    /return\s+.*,\s*.*error/,    // error return patterns
+    /if\s+err\s*!=\s*nil/,       // error checking
+    /type\s+\w+\s+struct/,       // struct definitions
+  ];
+  
+  return goPatterns.some(pattern => pattern.test(content));
+};
+
 export function CodeBlock({ children, className, language }: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
 
@@ -96,13 +113,19 @@ export function CodeBlock({ children, className, language }: CodeBlockProps) {
     detectedLanguage, 
     codeContent: codeContent.substring(0, 100) + '...',
     hasLanguage: !!detectedLanguage,
-    component: 'MARKDOWN CodeBlock (updated)'
+    component: 'MARKDOWN CodeBlock (Go fixed)'
   });
 
-  // Force 'go' language if not detected but content looks like Go
-  if (!detectedLanguage && (codeContent.includes('func ') || codeContent.includes('package ') || codeContent.includes(':='))) {
+  // Enhanced Go language detection
+  if (!detectedLanguage && detectGoLanguage(codeContent)) {
     detectedLanguage = 'go';
-    console.log('🔍 Auto-detected Go language from content');
+    console.log('🔍 Auto-detected Go language from content patterns');
+  }
+
+  // Fallback for 'c' language that might actually be Go
+  if (detectedLanguage === 'c' && detectGoLanguage(codeContent)) {
+    detectedLanguage = 'go';
+    console.log('🔍 Corrected C language to Go based on content');
   }
 
   // Use syntax highlighting with the normalized language
