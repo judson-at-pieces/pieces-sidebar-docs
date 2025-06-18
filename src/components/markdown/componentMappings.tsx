@@ -69,8 +69,8 @@ export function createComponentMappings() {
       </li>
     ),
     
-    // Code
-    code: ({ inline, children, ...props }: any) => {
+    // Code - Enhanced to pass language information
+    code: ({ inline, children, className, ...props }: any) => {
       if (inline) {
         return (
           <code 
@@ -81,13 +81,15 @@ export function createComponentMappings() {
           </code>
         );
       }
-      return <CodeBlock {...props}>{children}</CodeBlock>;
+      // Extract language from className (e.g., "language-javascript" -> "javascript")
+      const language = className ? className.replace('language-', '') : undefined;
+      return <CodeBlock className={className} language={language} {...props}>{children}</CodeBlock>;
     },
-    pre: ({ children, ...props }: any) => (
-      <pre className="mb-4 overflow-x-auto rounded-lg border bg-muted p-4" {...props}>
-        {children}
-      </pre>
-    ),
+    pre: ({ children, ...props }: any) => {
+      // If the pre contains a code element, pass through the children
+      // The CodeBlock component will handle the styling
+      return children;
+    },
     
     // Links and emphasis
     a: ({ children, href, ...props }: any) => (
