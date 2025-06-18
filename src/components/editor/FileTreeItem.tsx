@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { ChevronRight, ChevronDown, FileText, Folder, FolderOpen, MoreHorizontal, Lock, Globe, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -37,6 +37,27 @@ export function FileTreeItem({
   const isPrivate = navItem?.privacy === 'PRIVATE';
   
   const paddingLeft = level * 16 + (node.type === 'file' ? 24 : 8);
+
+  // Auto-expand folders that contain the selected file
+  useEffect(() => {
+    if (selectedFile && node.type === 'folder' && node.children) {
+      const containsSelectedFile = (children: FileNode[]): boolean => {
+        return children.some(child => {
+          if (child.type === 'file' && child.path === selectedFile) {
+            return true;
+          }
+          if (child.type === 'folder' && child.children) {
+            return containsSelectedFile(child.children);
+          }
+          return false;
+        });
+      };
+
+      if (containsSelectedFile(node.children)) {
+        setIsExpanded(true);
+      }
+    }
+  }, [selectedFile, node]);
 
   const handleToggle = () => {
     if (node.type === 'folder') {
