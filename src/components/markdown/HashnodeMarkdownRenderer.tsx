@@ -1,6 +1,5 @@
-
 import React, { useState } from 'react';
-import { CodeBlock } from '../CodeBlock';
+import CodeBlock from '../CodeBlock';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { CustomTable } from './CustomTable';
