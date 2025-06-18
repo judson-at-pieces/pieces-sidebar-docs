@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Callout } from './Callout';
 import { CodeBlock } from './CodeBlock';
@@ -102,7 +101,7 @@ export function createComponentMappings() {
         
         // Pass the language info to CodeBlock
         if ('children' in children.props) {
-          return <CodeBlock className={codeClassName} language={language}>{children.props.children}</CodeBlock>;
+          return <CodeBlock className={codeClassName} language={language}>{children.props.children as React.ReactNode}</CodeBlock>;
         }
       }
       
