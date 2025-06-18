@@ -20,14 +20,16 @@ export function useUrlState<T>(
   })();
 
   const setValue = useCallback((newValue: T) => {
-    const newParams = new URLSearchParams(searchParams);
-    if (newValue === defaultValue || newValue === null || newValue === undefined) {
-      newParams.delete(key);
-    } else {
-      newParams.set(key, serialize(newValue));
-    }
-    setSearchParams(newParams, { replace: true });
-  }, [key, defaultValue, serialize, searchParams, setSearchParams]);
+    setSearchParams(prev => {
+      const newParams = new URLSearchParams(prev);
+      if (newValue === defaultValue || newValue === null || newValue === undefined) {
+        newParams.delete(key);
+      } else {
+        newParams.set(key, serialize(newValue));
+      }
+      return newParams;
+    }, { replace: true });
+  }, [key, defaultValue, serialize, setSearchParams]);
 
   return [value, setValue] as const;
 }

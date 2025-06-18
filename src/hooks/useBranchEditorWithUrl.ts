@@ -1,4 +1,5 @@
-import { useCallback, useRef } from 'react';
+
+import { useCallback, useRef, useEffect } from 'react';
 import { useBranchContentManager } from './useBranchContentManager';
 import { useBranchLockManager } from './useBranchLockManager';
 import { useUrlState } from './useUrlState';
@@ -10,7 +11,7 @@ export function useBranchEditorWithUrl() {
   const contentManager = useBranchContentManager();
   const lockManager = useBranchLockManager();
   
-  // Store selected file in URL
+  // Store selected file in URL with simple string serialization
   const [selectedFile, setSelectedFileUrl] = useUrlState<string | undefined>(
     'file', 
     undefined,
@@ -18,11 +19,18 @@ export function useBranchEditorWithUrl() {
     (value) => value || undefined
   );
   
+  // Store content in URL but only when we have a selected file
   const [localContent, setLocalContent] = useUrlState<string>(
     'content',
     '',
-    (value) => value,
-    (value) => value
+    (value) => encodeURIComponent(value),
+    (value) => {
+      try {
+        return decodeURIComponent(value);
+      } catch {
+        return value;
+      }
+    }
   );
   
   const [isLoading, setIsLoading] = useUrlState<boolean>(
@@ -34,31 +42,30 @@ export function useBranchEditorWithUrl() {
   
   const lastBranch = useRef<string | null>(null);
   const loadingFile = useRef<string | null>(null);
+  const initialLoad = useRef<boolean>(true);
 
-  // Handle file selection with proper content loading
-  const selectFile = useCallback(async (filePath: string) => {
-    if (selectedFile === filePath) return;
-    
-    if (DEBUG_EDITOR) {
-      console.log('📝 Selecting file:', filePath, 'on branch:', contentManager.currentBranch);
-    }
-
-    // Save current content if we have a lock
-    if (selectedFile && lockManager.myCurrentLock?.filePath === selectedFile) {
-      try {
-        await contentManager.saveContent(selectedFile, localContent, contentManager.currentBranch, true);
-        await lockManager.releaseLock(selectedFile, contentManager.currentBranch);
-      } catch (error) {
-        logger.error('Error saving/releasing lock during file switch', { error, selectedFile });
+  // Initialize from URL on mount
+  useEffect(() => {
+    if (initialLoad.current && selectedFile && contentManager.currentBranch) {
+      console.log('🔄 Initializing from URL:', { selectedFile, branch: contentManager.currentBranch });
+      initialLoad.current = false;
+      
+      // If we have a file in URL but no content, load it
+      if (selectedFile && !localContent) {
+        loadFileContent(selectedFile);
       }
+    }
+  }, [selectedFile, contentManager.currentBranch]);
+
+  const loadFileContent = async (filePath: string) => {
+    if (DEBUG_EDITOR) {
+      console.log('📁 Loading file content:', filePath, 'on branch:', contentManager.currentBranch);
     }
 
     loadingFile.current = filePath;
     setIsLoading(true);
-    setSelectedFileUrl(filePath);
 
     try {
-      // Load content for the selected file and current branch
       const content = await contentManager.loadContent(filePath, contentManager.currentBranch);
       
       if (loadingFile.current === filePath) {
@@ -110,7 +117,32 @@ Start editing to see the live preview!
         loadingFile.current = null;
       }
     }
-  }, [selectedFile, localContent, contentManager, lockManager, setSelectedFileUrl, setLocalContent, setIsLoading]);
+  };
+
+  // Handle file selection with proper content loading
+  const selectFile = useCallback(async (filePath: string) => {
+    if (selectedFile === filePath) return;
+    
+    if (DEBUG_EDITOR) {
+      console.log('📝 Selecting file:', filePath, 'on branch:', contentManager.currentBranch);
+    }
+
+    // Save current content if we have a lock
+    if (selectedFile && lockManager.myCurrentLock?.filePath === selectedFile) {
+      try {
+        await contentManager.saveContent(selectedFile, localContent, contentManager.currentBranch, true);
+        await lockManager.releaseLock(selectedFile, contentManager.currentBranch);
+      } catch (error) {
+        logger.error('Error saving/releasing lock during file switch', { error, selectedFile });
+      }
+    }
+
+    // Update URL with selected file
+    setSelectedFileUrl(filePath);
+    
+    // Load the file content
+    await loadFileContent(filePath);
+  }, [selectedFile, localContent, contentManager, lockManager, setSelectedFileUrl]);
 
   // Handle content changes with auto-save
   const updateContent = useCallback((newContent: string) => {
@@ -119,6 +151,7 @@ Start editing to see the live preview!
     const canEdit = lockManager.isFileLockedByMe(selectedFile, contentManager.currentBranch);
     if (!canEdit) return;
 
+    // Update URL state
     setLocalContent(newContent);
     
     // Auto-save to current branch
@@ -157,33 +190,12 @@ Start editing to see the live preview!
 
       // Reload content for new branch if we have a selected file
       if (selectedFile) {
-        setIsLoading(true);
-        try {
-          const content = await contentManager.loadContent(selectedFile, newBranch);
-          if (content !== null) {
-            setLocalContent(content);
-          } else {
-            // Keep current content if no branch-specific content exists
-            setLocalContent(localContent);
-          }
-
-          // Try to acquire lock on new branch
-          setTimeout(() => {
-            lockManager.acquireLock(selectedFile, newBranch).catch(error => {
-              logger.error('Error acquiring lock on new branch', { error, selectedFile, newBranch });
-            });
-          }, 200);
-        } catch (error) {
-          console.error('Error loading content for new branch:', error);
-          logger.error('Error loading content for branch change', { error, selectedFile, newBranch });
-        } finally {
-          setIsLoading(false);
-        }
+        await loadFileContent(selectedFile);
       }
     } catch (error) {
       logger.error('Error during branch change', { error, newBranch, selectedFile });
     }
-  }, [selectedFile, localContent, contentManager, lockManager, setLocalContent, setIsLoading]);
+  }, [selectedFile, localContent, contentManager, lockManager, loadFileContent]);
 
   // Initialize last branch
   if (lastBranch.current === null) {
