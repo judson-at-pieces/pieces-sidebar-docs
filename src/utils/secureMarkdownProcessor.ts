@@ -1,9 +1,4 @@
 
-/**
- * Secure markdown processing utilities
- * Replaces dangerouslySetInnerHTML with safe React components
- */
-
 export interface ProcessedMarkdown {
   type: 'text' | 'bold' | 'italic' | 'code' | 'link' | 'image';
   content: string;
@@ -11,206 +6,115 @@ export interface ProcessedMarkdown {
   target?: string;
   src?: string;
   alt?: string;
-  align?: string;
+  align?: 'left' | 'center' | 'right';
   fullwidth?: boolean;
 }
 
-// Allowlist of safe URL protocols
-const SAFE_PROTOCOLS = ['http:', 'https:', 'mailto:', 'tel:'];
-
-/**
- * Validates URL to prevent XSS through javascript: protocols
- */
-export const validateUrl = (url: string): boolean => {
-  if (!url || typeof url !== 'string') return false;
-  
-  try {
-    // Handle relative URLs
-    if (url.startsWith('/') || url.startsWith('#') || url.startsWith('?')) {
-      return true;
-    }
-    
-    const parsedUrl = new URL(url);
-    return SAFE_PROTOCOLS.includes(parsedUrl.protocol);
-  } catch {
-    return false;
-  }
-};
-
-/**
- * Safely processes inline markdown without using dangerouslySetInnerHTML
- */
-export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
-  if (!text || typeof text !== 'string') {
-    return [{ type: 'text', content: '' }];
+export function processInlineMarkdown(content: string): ProcessedMarkdown[] {
+  if (!content || typeof content !== 'string') {
+    return [];
   }
 
-  console.log('🔄 processInlineMarkdown input:', text.substring(0, 200));
-
-  // Simple sequential processing approach
-  let currentText = text;
   const elements: ProcessedMarkdown[] = [];
-  
-  // Process the text character by character to build elements
-  let i = 0;
-  let currentElement = '';
-  
-  while (i < currentText.length) {
-    // Check for bold **text**
-    if (currentText.substring(i, i + 2) === '**') {
-      // Add any accumulated text
-      if (currentElement) {
-        elements.push({ type: 'text', content: currentElement });
-        currentElement = '';
-      }
+  let currentIndex = 0;
+
+  // Regex patterns for inline markdown
+  const patterns = [
+    // Bold text with **text** or *text* (when used for emphasis)
+    { type: 'bold' as const, pattern: /\*\*([^*]+)\*\*/g },
+    { type: 'bold' as const, pattern: /\*([^*\n]+)\*/g },
+    // Italic text with _text_
+    { type: 'italic' as const, pattern: /_([^_]+)_/g },
+    // Inline code with `code`
+    { type: 'code' as const, pattern: /`([^`]+)`/g },
+    // Links with [text](url)
+    { type: 'link' as const, pattern: /\[([^\]]+)\]\(([^)]+)\)/g },
+    // Images with ![alt](src)
+    { type: 'image' as const, pattern: /!\[([^\]]*)\]\(([^)]+)\)/g }
+  ];
+
+  while (currentIndex < content.length) {
+    let nearestMatch: { index: number; length: number; element: ProcessedMarkdown } | null = null;
+
+    // Find the nearest pattern match
+    for (const { type, pattern } of patterns) {
+      pattern.lastIndex = 0; // Reset regex
+      const match = pattern.exec(content.slice(currentIndex));
       
-      // Find the closing **
-      let endIndex = currentText.indexOf('**', i + 2);
-      if (endIndex !== -1) {
-        const boldContent = currentText.substring(i + 2, endIndex);
-        if (boldContent.trim()) {
-          elements.push({ type: 'bold', content: boldContent });
-        }
-        i = endIndex + 2;
-        continue;
-      }
-    }
-    
-    // Check for italic *text* (but not **)
-    if (currentText[i] === '*' && currentText[i + 1] !== '*' && currentText[i - 1] !== '*') {
-      // Add any accumulated text
-      if (currentElement) {
-        elements.push({ type: 'text', content: currentElement });
-        currentElement = '';
-      }
-      
-      // Find the closing *
-      let endIndex = -1;
-      for (let j = i + 1; j < currentText.length; j++) {
-        if (currentText[j] === '*' && currentText[j + 1] !== '*' && currentText[j - 1] !== '*') {
-          endIndex = j;
-          break;
-        }
-      }
-      
-      if (endIndex !== -1) {
-        const italicContent = currentText.substring(i + 1, endIndex);
-        if (italicContent.trim()) {
-          elements.push({ type: 'italic', content: italicContent });
-        }
-        i = endIndex + 1;
-        continue;
-      }
-    }
-    
-    // Check for code `text`
-    if (currentText[i] === '`') {
-      // Add any accumulated text
-      if (currentElement) {
-        elements.push({ type: 'text', content: currentElement });
-        currentElement = '';
-      }
-      
-      // Find the closing `
-      let endIndex = currentText.indexOf('`', i + 1);
-      if (endIndex !== -1) {
-        const codeContent = currentText.substring(i + 1, endIndex);
-        if (codeContent.trim()) {
-          elements.push({ type: 'code', content: codeContent });
-        }
-        i = endIndex + 1;
-        continue;
-      }
-    }
-    
-    // Check for markdown links [text](url)
-    if (currentText[i] === '[') {
-      // Add any accumulated text
-      if (currentElement) {
-        elements.push({ type: 'text', content: currentElement });
-        currentElement = '';
-      }
-      
-      // Find the closing ] and opening (
-      let textEnd = currentText.indexOf(']', i + 1);
-      if (textEnd !== -1 && currentText[textEnd + 1] === '(') {
-        let urlEnd = currentText.indexOf(')', textEnd + 2);
-        if (urlEnd !== -1) {
-          const linkText = currentText.substring(i + 1, textEnd);
-          const linkUrl = currentText.substring(textEnd + 2, urlEnd);
+      if (match && match.index !== undefined) {
+        const absoluteIndex = currentIndex + match.index;
+        
+        if (!nearestMatch || absoluteIndex < nearestMatch.index) {
+          let element: ProcessedMarkdown;
           
-          if (linkText.trim() && validateUrl(linkUrl)) {
-            elements.push({ 
-              type: 'link', 
-              content: linkText.trim(), 
-              href: linkUrl.trim() 
-            });
-            i = urlEnd + 1;
-            continue;
+          switch (type) {
+            case 'bold':
+            case 'italic':
+            case 'code':
+              element = {
+                type,
+                content: match[1]
+              };
+              break;
+            case 'link':
+              element = {
+                type,
+                content: match[1],
+                href: match[2],
+                target: match[2].startsWith('http') ? '_blank' : undefined
+              };
+              break;
+            case 'image':
+              element = {
+                type,
+                content: match[1],
+                src: match[2],
+                alt: match[1]
+              };
+              break;
+            default:
+              element = {
+                type: 'text',
+                content: match[0]
+              };
           }
-        }
-      }
-    }
-    
-    // Check for HTML links <a href="url">text</a>
-    if (currentText.substring(i, i + 2) === '<a') {
-      // Add any accumulated text
-      if (currentElement) {
-        elements.push({ type: 'text', content: currentElement });
-        currentElement = '';
-      }
-      
-      // Find the href attribute and closing tag
-      let tagEnd = currentText.indexOf('>', i);
-      if (tagEnd !== -1) {
-        let closingTag = currentText.indexOf('</a>', tagEnd);
-        if (closingTag !== -1) {
-          const tagContent = currentText.substring(i, tagEnd + 1);
-          const hrefMatch = tagContent.match(/href\s*=\s*["']([^"']+)["']/);
-          const linkText = currentText.substring(tagEnd + 1, closingTag);
           
-          if (hrefMatch && linkText.trim() && validateUrl(hrefMatch[1])) {
-            elements.push({ 
-              type: 'link', 
-              content: linkText.trim(), 
-              href: hrefMatch[1] 
-            });
-            i = closingTag + 4; // Skip </a>
-            continue;
-          }
+          nearestMatch = {
+            index: absoluteIndex,
+            length: match[0].length,
+            element
+          };
         }
       }
     }
-    
-    // Regular character - add to current element
-    currentElement += currentText[i];
-    i++;
-  }
-  
-  // Add any remaining text
-  if (currentElement) {
-    elements.push({ type: 'text', content: currentElement });
+
+    if (nearestMatch) {
+      // Add text before the match
+      if (nearestMatch.index > currentIndex) {
+        const textBefore = content.slice(currentIndex, nearestMatch.index);
+        if (textBefore) {
+          elements.push({
+            type: 'text',
+            content: textBefore
+          });
+        }
+      }
+
+      // Add the matched element
+      elements.push(nearestMatch.element);
+      currentIndex = nearestMatch.index + nearestMatch.length;
+    } else {
+      // No more matches, add remaining text
+      const remainingText = content.slice(currentIndex);
+      if (remainingText) {
+        elements.push({
+          type: 'text',
+          content: remainingText
+        });
+      }
+      break;
+    }
   }
 
-  // If no elements were processed, return the original text
-  if (elements.length === 0) {
-    elements.push({ type: 'text', content: text });
-  }
-
-  console.log('🔄 processInlineMarkdown: Final elements:', elements.length, elements.map(e => ({ type: e.type, content: e.content?.substring(0, 30) })));
   return elements;
-};
-
-/**
- * Sanitizes text content to prevent XSS
- */
-export const sanitizeText = (text: string): string => {
-  if (!text || typeof text !== 'string') return '';
-  
-  return text
-    .replace(/[<>]/g, '') // Remove potential HTML tags
-    .replace(/javascript:/gi, '') // Remove javascript: protocols
-    .replace(/on\w+=/gi, '') // Remove event handlers
-    .trim()
-    .substring(0, 10000); // Limit length
-};
+}
