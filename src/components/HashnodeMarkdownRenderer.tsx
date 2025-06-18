@@ -35,6 +35,7 @@ interface CardData {
   title: string;
   image?: string;
   content: string;
+  href?: string; // Add href property
 }
 
 // Utility functions
@@ -156,12 +157,14 @@ const extractCalloutData = (content: string) => {
 const parseCard = (content: string): CardData => {
   const titleMatch = content.match(/title="([^"]*)"/);
   const imageMatch = content.match(/image="([^"]*)"/);
+  const hrefMatch = content.match(/href="([^"]*)"/);
   const contentMatch = content.match(/<Card[^>]*>([\s\S]*?)<\/Card>/);
   
   return {
     title: titleMatch?.[1] || '',
     image: imageMatch?.[1],
-    content: contentMatch?.[1]?.trim() || ''
+    content: contentMatch?.[1]?.trim() || '',
+    href: hrefMatch?.[1] // Extract href from card
   };
 };
 
@@ -192,12 +195,16 @@ const parseCardGroup = (content: string): CardGroupData => {
     const imageMatch = attributes.match(/image="([^"]*)"/);
     const image = imageMatch ? imageMatch[1] : undefined;
     
-    console.log('🃏 Parsed card:', { title, image, contentLength: innerContent.length });
+    const hrefMatch = attributes.match(/href="([^"]*)"/);
+    const href = hrefMatch ? hrefMatch[1] : undefined;
+    
+    console.log('🃏 Parsed card:', { title, image, href, contentLength: innerContent.length });
     
     cards.push({
       title,
       image,
-      content: innerContent
+      content: innerContent,
+      href // Include href in card data
     });
   }
   
@@ -418,19 +425,50 @@ const CalloutSection: React.FC<{ type: string; content: string }> = ({ type, con
   );
 };
 
-const CardSection: React.FC<{ card: CardData }> = ({ card }) => (
-  <div className="border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow bg-card">
-    {card.image && (
-      <div className="mb-4">
-        <img src={card.image} alt={card.title} className="w-full h-48 object-cover rounded-md" />
+const CardSection: React.FC<{ card: CardData & { href?: string } }> = ({ card }) => {
+  console.log('🎯 CardSection rendering card:', { title: card.title, href: card.href, hasHref: !!card.href });
+  
+  const cardContent = (
+    <div className="border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow bg-card">
+      {card.image && (
+        <div className="mb-4">
+          <img src={card.image} alt={card.title} className="w-full h-48 object-cover rounded-md" />
+        </div>
+      )}
+      <h3 className="text-lg font-semibold mb-2">{card.title}</h3>
+      <div className="prose prose-sm dark:prose-invert max-w-none">
+        {processInlineMarkdown(card.content)}
       </div>
-    )}
-    <h3 className="text-lg font-semibold mb-2">{card.title}</h3>
-    <div className="prose prose-sm dark:prose-invert max-w-none">
-      {processInlineMarkdown(card.content)}
     </div>
-  </div>
-);
+  );
+
+  // Make card clickable if it has an href
+  if (card.href) {
+    console.log('🎯 Making CardSection clickable with href:', card.href);
+    return (
+      <a 
+        href={card.href} 
+        target="_blank" 
+        rel="noopener noreferrer"
+        className="block no-underline hover:no-underline cursor-pointer transition-transform hover:scale-[1.02] hover:shadow-lg"
+        style={{ 
+          textDecoration: 'none !important',
+          color: 'inherit !important' 
+        }}
+        onClick={(e) => {
+          console.log('🎯 CardSection clicked! Opening:', card.href);
+          window.open(card.href, '_blank', 'noopener,noreferrer');
+          e.preventDefault();
+        }}
+      >
+        {cardContent}
+      </a>
+    );
+  }
+
+  console.log('🎯 CardSection non-clickable');
+  return cardContent;
+};
 
 const CardGroupSection: React.FC<{ cols: number; cards: CardData[] }> = ({ cols = 2, cards }) => (
   <div className={`grid gap-6 my-6 ${cols === 3 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1 md:grid-cols-2'}`}>
