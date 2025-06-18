@@ -19,6 +19,7 @@ export function InlineVisualEditor({ content, onContentChange, readOnly = false 
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [commandPosition, setCommandPosition] = useState({ top: 0, left: 0 });
   const [lastContent, setLastContent] = useState(content);
+  const [isUpdating, setIsUpdating] = useState(false);
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -62,13 +63,59 @@ export function InlineVisualEditor({ content, onContentChange, readOnly = false 
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Convert HTML back to markdown
+  // Save cursor position
+  const saveCursorPosition = useCallback(() => {
+    const selection = window.getSelection();
+    if (!selection || !contentRef.current) return null;
+
+    const range = selection.getRangeAt(0);
+    const preCaretRange = range.cloneRange();
+    preCaretRange.selectNodeContents(contentRef.current);
+    preCaretRange.setEnd(range.endContainer, range.endOffset);
+    
+    return {
+      offset: preCaretRange.toString().length,
+      element: contentRef.current
+    };
+  }, []);
+
+  // Restore cursor position
+  const restoreCursorPosition = useCallback((position: { offset: number; element: HTMLElement }) => {
+    if (!position || !contentRef.current) return;
+
+    const walker = document.createTreeWalker(
+      contentRef.current,
+      NodeFilter.SHOW_TEXT,
+      null,
+      false
+    );
+
+    let currentOffset = 0;
+    let node;
+
+    while (node = walker.nextNode()) {
+      const textLength = node.textContent?.length || 0;
+      if (currentOffset + textLength >= position.offset) {
+        const range = document.createRange();
+        const selection = window.getSelection();
+        const targetOffset = position.offset - currentOffset;
+        
+        range.setStart(node, Math.min(targetOffset, textLength));
+        range.setEnd(node, Math.min(targetOffset, textLength));
+        
+        selection?.removeAllRanges();
+        selection?.addRange(range);
+        break;
+      }
+      currentOffset += textLength;
+    }
+  }, []);
+
+  // Improved HTML to markdown conversion that preserves structure
   const htmlToMarkdown = useCallback((html: string): string => {
     // Create a temporary div to parse HTML
     const tempDiv = document.createElement('div');
     tempDiv.innerHTML = html;
-    
-    let markdown = '';
     
     function processNode(node: Node): string {
       if (node.nodeType === Node.TEXT_NODE) {
@@ -87,7 +134,9 @@ export function InlineVisualEditor({ content, onContentChange, readOnly = false 
           case 'h4': return `#### ${children}\n\n`;
           case 'h5': return `##### ${children}\n\n`;
           case 'h6': return `###### ${children}\n\n`;
-          case 'p': return `${children}\n\n`;
+          case 'p': 
+            if (!children.trim()) return '';
+            return `${children}\n\n`;
           case 'br': return '\n';
           case 'strong': case 'b': return `**${children}**`;
           case 'em': case 'i': return `_${children}_`;
@@ -105,7 +154,13 @@ export function InlineVisualEditor({ content, onContentChange, readOnly = false 
             const alt = element.getAttribute('alt') || '';
             return src ? `![${alt}](${src})` : '';
           case 'hr': return '---\n\n';
-          case 'div': case 'span': return children;
+          case 'div': 
+            // Handle special div classes
+            if (element.classList.contains('markdown-content')) {
+              return children;
+            }
+            return children ? `${children}\n` : '';
+          case 'span': return children;
           default: return children;
         }
       }
@@ -113,25 +168,35 @@ export function InlineVisualEditor({ content, onContentChange, readOnly = false 
       return '';
     }
     
+    let markdown = '';
     Array.from(tempDiv.childNodes).forEach(node => {
       markdown += processNode(node);
     });
     
-    return markdown.trim();
+    // Clean up excessive newlines
+    return markdown.replace(/\n{3,}/g, '\n\n').trim();
   }, []);
 
-  // Handle content changes
+  // Handle content changes with cursor preservation
   const handleContentChange = useCallback(() => {
-    if (!contentRef.current || readOnly) return;
+    if (!contentRef.current || readOnly || isUpdating) return;
     
+    const cursorPosition = saveCursorPosition();
     const htmlContent = contentRef.current.innerHTML;
     const markdownContent = htmlToMarkdown(htmlContent);
     
     if (markdownContent !== lastContent) {
       setLastContent(markdownContent);
       onContentChange(markdownContent);
+      
+      // Restore cursor position after a short delay
+      setTimeout(() => {
+        if (cursorPosition) {
+          restoreCursorPosition(cursorPosition);
+        }
+      }, 10);
     }
-  }, [htmlToMarkdown, lastContent, onContentChange, readOnly]);
+  }, [htmlToMarkdown, lastContent, onContentChange, readOnly, isUpdating, saveCursorPosition, restoreCursorPosition]);
 
   // Handle focus and blur
   const handleFocus = useCallback(() => {
@@ -143,9 +208,14 @@ export function InlineVisualEditor({ content, onContentChange, readOnly = false 
     handleContentChange();
   }, [handleContentChange]);
 
-  // Handle input events for real-time updates
+  // Handle input events for real-time updates with debouncing
   const handleInput = useCallback(() => {
-    handleContentChange();
+    // Debounce the content change to avoid excessive updates
+    const timeoutId = setTimeout(() => {
+      handleContentChange();
+    }, 150);
+
+    return () => clearTimeout(timeoutId);
   }, [handleContentChange]);
 
   // Handle command palette insertions
@@ -159,19 +229,13 @@ export function InlineVisualEditor({ content, onContentChange, readOnly = false 
       // Insert at cursor position
       range.deleteContents();
       
-      // Create a temporary div to convert markdown to HTML
-      const tempDiv = document.createElement('div');
-      tempDiv.innerHTML = `<div class="markdown-content"><div>${insertContent}</div></div>`;
-      
-      // Render the markdown content
-      const renderedContent = document.createElement('div');
-      renderedContent.innerHTML = insertContent;
-      
-      range.insertNode(renderedContent);
+      // Insert as text node to maintain markdown format
+      const textNode = document.createTextNode(insertContent);
+      range.insertNode(textNode);
       
       // Move cursor after inserted content
-      range.setStartAfter(renderedContent);
-      range.setEndAfter(renderedContent);
+      range.setStartAfter(textNode);
+      range.setEndAfter(textNode);
       selection?.removeAllRanges();
       selection?.addRange(range);
     } else {
@@ -181,20 +245,39 @@ export function InlineVisualEditor({ content, onContentChange, readOnly = false 
     }
     
     setShowCommandPalette(false);
-    handleContentChange();
+    
+    // Trigger content change after insertion
+    setTimeout(() => {
+      handleContentChange();
+    }, 50);
   }, [content, onContentChange, handleContentChange]);
 
-  // Update content when prop changes
+  // Update content when prop changes (but preserve cursor)
   useEffect(() => {
     if (content !== lastContent && contentRef.current && !isEditing) {
+      setIsUpdating(true);
       setLastContent(content);
-      // Re-render the content
+      
+      // Re-render the markdown content
+      const tempContainer = document.createElement('div');
+      tempContainer.className = 'markdown-content';
+      
+      // Create a React element and render it
+      const renderContainer = document.createElement('div');
+      renderContainer.innerHTML = `<div class="markdown-content"></div>`;
+      
+      // Clear and update content
       contentRef.current.innerHTML = '';
       
-      // Create a temporary container to render markdown
-      const tempContainer = document.createElement('div');
-      tempContainer.innerHTML = content; // This is simplified - in reality you'd want to properly render markdown
-      contentRef.current.appendChild(tempContainer);
+      // Use the HashnodeMarkdownRenderer to render content
+      import('react-dom/client').then(({ createRoot }) => {
+        const root = createRoot(contentRef.current!);
+        root.render(React.createElement(HashnodeMarkdownRenderer, { content }));
+        
+        setTimeout(() => {
+          setIsUpdating(false);
+        }, 100);
+      });
     }
   }, [content, lastContent, isEditing]);
 
@@ -211,8 +294,8 @@ export function InlineVisualEditor({ content, onContentChange, readOnly = false 
               <span className="text-sm font-medium">Visual Editor</span>
               <div className="text-xs text-muted-foreground">
                 {isEditing 
-                  ? "✨ Editing mode active - click anywhere to edit • Ctrl+/ for components" 
-                  : "📝 Click anywhere in the content to start editing • Ctrl+/ for components"
+                  ? "✨ Editing mode active - type anywhere • Ctrl+/ for components" 
+                  : "📝 Click anywhere to start editing • Ctrl+/ for components"
                 }
               </div>
             </div>
@@ -244,7 +327,7 @@ export function InlineVisualEditor({ content, onContentChange, readOnly = false 
               <div className="mb-4 text-sm text-muted-foreground border-b border-border pb-2">
                 <span className="font-medium">Fluid Visual Editor</span>
                 <p className="text-xs mt-1">
-                  Click anywhere in the content below to start editing. Changes are automatically saved as markdown.
+                  Click anywhere to start editing. Type naturally and changes are saved as markdown automatically.
                 </p>
               </div>
             )}
