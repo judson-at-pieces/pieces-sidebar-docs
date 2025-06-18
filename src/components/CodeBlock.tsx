@@ -27,6 +27,12 @@ const CodeBlock: React.FC<CodeBlockProps> = ({
     }
   };
 
+  console.log('🔍 ORIGINAL CodeBlock render:', { 
+    language, 
+    children: children.substring(0, 100) + '...',
+    component: 'ORIGINAL CodeBlock'
+  });
+
   return (
     <div className="relative group my-4">
       <SyntaxHighlighter

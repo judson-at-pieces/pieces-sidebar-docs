@@ -89,12 +89,13 @@ export function CodeBlock({ children, className, language }: CodeBlockProps) {
 
   const codeContent = extractCodeContent(children);
 
-  console.log('CodeBlock render:', { 
+  console.log('🔍 MARKDOWN CodeBlock render:', { 
     className, 
     language, 
     detectedLanguage, 
-    codeContent: codeContent.substring(0, 100),
-    hasLanguage: !!detectedLanguage 
+    codeContent: codeContent.substring(0, 100) + '...',
+    hasLanguage: !!detectedLanguage,
+    component: 'MARKDOWN CodeBlock (new)'
   });
 
   // Use syntax highlighting with the normalized language
