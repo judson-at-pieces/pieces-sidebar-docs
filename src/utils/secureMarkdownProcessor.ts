@@ -10,6 +10,19 @@ export interface ProcessedMarkdown {
   fullwidth?: boolean;
 }
 
+export function sanitizeText(content: string): string {
+  if (!content || typeof content !== 'string') {
+    return '';
+  }
+  
+  // Basic sanitization - remove potentially dangerous content
+  return content
+    .replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+    .replace(/<iframe\b[^<]*(?:(?!<\/iframe>)<[^<]*)*<\/iframe>/gi, '')
+    .replace(/javascript:/gi, '')
+    .replace(/vbscript:/gi, '');
+}
+
 export function processInlineMarkdown(content: string): ProcessedMarkdown[] {
   if (!content || typeof content !== 'string') {
     return [];
