@@ -10,14 +10,22 @@ interface MarkdownCardProps {
 }
 
 const renderMarkdownWithSpacing = (content: string) => {
-  // Split content by line breaks and render each line separately
-  const lines = content.split('\n').filter(line => line.trim() !== '');
+  // Split content by double line breaks for paragraphs, then by single line breaks
+  const paragraphs = content.split('\n\n').filter(para => para.trim() !== '');
   
-  return lines.map((line, index) => (
-    <div key={index} className={index > 0 ? 'mt-2' : ''}>
-      <SecureInlineMarkdown content={line.trim()} />
-    </div>
-  ));
+  return paragraphs.map((paragraph, paragraphIndex) => {
+    const lines = paragraph.split('\n').filter(line => line.trim() !== '');
+    
+    return (
+      <div key={paragraphIndex} className={paragraphIndex > 0 ? 'mt-4' : ''}>
+        {lines.map((line, lineIndex) => (
+          <div key={lineIndex} className={lineIndex > 0 ? 'mt-1' : ''}>
+            <SecureInlineMarkdown content={line.trim()} />
+          </div>
+        ))}
+      </div>
+    );
+  });
 };
 
 export const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, href, children }) => {
