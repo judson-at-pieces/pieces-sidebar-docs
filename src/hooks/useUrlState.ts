@@ -12,7 +12,7 @@ export function useUrlState<T>(
   const navigate = useNavigate();
   const location = useLocation();
   
-  // Get initial value from URL or localStorage
+  // Get initial value from URL only (no localStorage fallback for file selection)
   const getInitialValue = (): T => {
     try {
       const urlParam = searchParams.get(key);
@@ -20,10 +20,12 @@ export function useUrlState<T>(
         return deserialize(urlParam);
       }
       
-      // Fallback to localStorage
-      const stored = localStorage.getItem(`editor_${key}`);
-      if (stored) {
-        return deserialize(stored);
+      // Only fallback to localStorage for non-file keys
+      if (key !== 'file') {
+        const stored = localStorage.getItem(`editor_${key}`);
+        if (stored) {
+          return deserialize(stored);
+        }
       }
       
       return defaultValue;
@@ -34,15 +36,15 @@ export function useUrlState<T>(
 
   const [value, setValueState] = useState<T>(getInitialValue);
 
-  // Update localStorage whenever value changes
+  // Only update localStorage for non-file keys
   useEffect(() => {
-    if (value !== defaultValue && value !== null && value !== undefined) {
+    if (key !== 'file' && value !== defaultValue && value !== null && value !== undefined) {
       try {
         localStorage.setItem(`editor_${key}`, serialize(value));
       } catch {
         // Silent fail for localStorage
       }
-    } else {
+    } else if (key !== 'file') {
       localStorage.removeItem(`editor_${key}`);
     }
   }, [key, value, defaultValue, serialize]);

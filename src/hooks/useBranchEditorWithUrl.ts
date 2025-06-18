@@ -19,7 +19,7 @@ export function useBranchEditorWithUrl() {
     (value) => value || undefined
   );
   
-  // Store content only in localStorage, not URL
+  // Store content only in memory, not localStorage
   const [localContent, setLocalContent] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   
@@ -28,52 +28,50 @@ export function useBranchEditorWithUrl() {
   const initialLoad = useRef<boolean>(true);
   const lastSelectedFile = useRef<string | undefined>(undefined);
 
-  // Load content from localStorage for the current file and branch
+  // Clear localStorage when file changes to prevent content persistence
   useEffect(() => {
-    if (selectedFile && contentManager.currentBranch) {
-      const storageKey = `editor_content_${selectedFile}_${contentManager.currentBranch}`;
-      const storedContent = localStorage.getItem(storageKey);
-      if (storedContent && !isLoading) {
-        setLocalContent(storedContent);
+    if (selectedFile && selectedFile !== lastSelectedFile.current) {
+      // Clear any stored content for the previous file
+      if (lastSelectedFile.current && contentManager.currentBranch) {
+        const oldStorageKey = `editor_content_${lastSelectedFile.current}_${contentManager.currentBranch}`;
+        localStorage.removeItem(oldStorageKey);
+      }
+      
+      // Clear any stored content for the new file to force fresh load
+      if (contentManager.currentBranch) {
+        const newStorageKey = `editor_content_${selectedFile}_${contentManager.currentBranch}`;
+        localStorage.removeItem(newStorageKey);
+      }
+      
+      lastSelectedFile.current = selectedFile;
+      
+      if (DEBUG_EDITOR) {
+        console.log('🧹 Cleared localStorage for file switch:', selectedFile);
       }
     }
-  }, [selectedFile, contentManager.currentBranch, isLoading]);
+  }, [selectedFile, contentManager.currentBranch]);
 
-  // Save content to localStorage whenever it changes
-  useEffect(() => {
-    if (selectedFile && contentManager.currentBranch && localContent) {
-      const storageKey = `editor_content_${selectedFile}_${contentManager.currentBranch}`;
-      localStorage.setItem(storageKey, localContent);
-    }
-  }, [selectedFile, contentManager.currentBranch, localContent]);
-
-  // Initialize from URL/localStorage on mount
+  // Initialize from URL on mount
   useEffect(() => {
     if (initialLoad.current && selectedFile && contentManager.currentBranch) {
-      console.log('🔄 Initializing from URL/localStorage:', { selectedFile, branch: contentManager.currentBranch });
+      console.log('🔄 Initializing from URL:', { selectedFile, branch: contentManager.currentBranch });
       initialLoad.current = false;
-      lastSelectedFile.current = selectedFile;
       
       // Load the file content
       loadFileContent(selectedFile);
     }
   }, [selectedFile, contentManager.currentBranch]);
 
-  // Prevent losing selected file on re-renders
-  useEffect(() => {
-    if (selectedFile && selectedFile !== lastSelectedFile.current) {
-      lastSelectedFile.current = selectedFile;
-      console.log('🎯 File selection updated:', selectedFile);
-    }
-  }, [selectedFile]);
-
   const loadFileContent = async (filePath: string) => {
     if (DEBUG_EDITOR) {
-      console.log('📁 Loading file content:', filePath, 'on branch:', contentManager.currentBranch);
+      console.log('📁 Loading fresh file content:', filePath, 'on branch:', contentManager.currentBranch);
     }
 
     loadingFile.current = filePath;
     setIsLoading(true);
+    
+    // Clear any existing content immediately to prevent showing stale data
+    setLocalContent('');
 
     try {
       const content = await contentManager.loadContent(filePath, contentManager.currentBranch);
@@ -81,6 +79,9 @@ export function useBranchEditorWithUrl() {
       if (loadingFile.current === filePath) {
         if (content !== null) {
           setLocalContent(content);
+          if (DEBUG_EDITOR) {
+            console.log('📁 Loaded content length:', content.length);
+          }
         } else {
           // Create default content for new file
           const fileName = filePath.split('/').pop()?.replace(/\.md$/, '').replace(/-/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) || 'New Page';
@@ -141,7 +142,7 @@ Start editing to see the live preview!
     }
 
     // Save current content if we have a lock
-    if (selectedFile && lockManager.myCurrentLock?.filePath === selectedFile) {
+    if (selectedFile && lockManager.myCurrentLock?.filePath === selectedFile && localContent.trim()) {
       try {
         await contentManager.saveContent(selectedFile, localContent, contentManager.currentBranch, true);
         await lockManager.releaseLock(selectedFile, contentManager.currentBranch);
@@ -150,11 +151,21 @@ Start editing to see the live preview!
       }
     }
 
-    // Update URL with selected file - this should persist across refreshes
+    // Clear localStorage for both old and new files
+    if (selectedFile && contentManager.currentBranch) {
+      const oldStorageKey = `editor_content_${selectedFile}_${contentManager.currentBranch}`;
+      localStorage.removeItem(oldStorageKey);
+    }
+    if (contentManager.currentBranch) {
+      const newStorageKey = `editor_content_${filePath}_${contentManager.currentBranch}`;
+      localStorage.removeItem(newStorageKey);
+    }
+
+    // Update URL with selected file
     lastSelectedFile.current = filePath;
     setSelectedFileUrl(filePath);
     
-    // Load the file content
+    // Load the file content fresh
     await loadFileContent(filePath);
   }, [selectedFile, localContent, contentManager, lockManager, setSelectedFileUrl]);
 
@@ -188,7 +199,7 @@ Start editing to see the live preview!
 
     try {
       // Save current content to old branch if we have a lock
-      if (selectedFile && lockManager.myCurrentLock?.filePath === selectedFile && lastBranch.current) {
+      if (selectedFile && lockManager.myCurrentLock?.filePath === selectedFile && lastBranch.current && localContent.trim()) {
         await contentManager.saveContent(selectedFile, localContent, lastBranch.current, true);
       }
 
@@ -198,6 +209,12 @@ Start editing to see the live preview!
           lockManager.myCurrentLock.filePath, 
           lockManager.myCurrentLock.branch
         );
+      }
+
+      // Clear localStorage for the current file on branch change
+      if (selectedFile) {
+        const storageKey = `editor_content_${selectedFile}_${newBranch}`;
+        localStorage.removeItem(storageKey);
       }
 
       lastBranch.current = newBranch;
