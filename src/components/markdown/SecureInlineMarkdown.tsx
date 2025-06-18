@@ -9,6 +9,10 @@ interface SecureInlineMarkdownProps {
 export const SecureInlineMarkdown: React.FC<SecureInlineMarkdownProps> = ({ content }) => {
   console.log('🔒 SecureInlineMarkdown processing:', content.substring(0, 100));
   
+  if (!content || typeof content !== 'string') {
+    return null;
+  }
+  
   const elements = processInlineMarkdown(content);
   console.log('🔒 SecureInlineMarkdown processed elements:', elements.length);
   
@@ -27,7 +31,10 @@ export const SecureInlineMarkdown: React.FC<SecureInlineMarkdownProps> = ({ cont
               </code>
             );
           case 'link':
-            const href = element.href || '#';
+            if (!element.href || !element.content) {
+              return <span key={index}>{element.content || ''}</span>;
+            }
+            const href = element.href;
             const target = element.target || (href.startsWith('http') ? '_blank' : undefined);
             const rel = target === '_blank' ? 'noopener noreferrer' : undefined;
             return (
