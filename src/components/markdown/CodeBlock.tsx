@@ -38,6 +38,7 @@ const languageMap: Record<string, string> = {
   'kotlin': 'kotlin',
   'swift': 'swift',
   'go': 'go',
+  'golang': 'go',
   'rust': 'rust',
   'dart': 'dart',
   'scala': 'scala',
@@ -95,8 +96,14 @@ export function CodeBlock({ children, className, language }: CodeBlockProps) {
     detectedLanguage, 
     codeContent: codeContent.substring(0, 100) + '...',
     hasLanguage: !!detectedLanguage,
-    component: 'MARKDOWN CodeBlock (new)'
+    component: 'MARKDOWN CodeBlock (updated)'
   });
+
+  // Force 'go' language if not detected but content looks like Go
+  if (!detectedLanguage && (codeContent.includes('func ') || codeContent.includes('package ') || codeContent.includes(':='))) {
+    detectedLanguage = 'go';
+    console.log('🔍 Auto-detected Go language from content');
+  }
 
   // Use syntax highlighting with the normalized language
   return (
