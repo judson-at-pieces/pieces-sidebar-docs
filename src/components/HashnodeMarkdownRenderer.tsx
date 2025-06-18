@@ -48,7 +48,8 @@ const parseSections = (text: string): ParsedSection[] => {
     return [{ type: 'mixed', content: text.trim(), index: 0 }];
   }
   
-  const sections = text.split(SECTION_DELIMITER).map(section => section.trim()).filter(Boolean);
+  // Smart splitting that respects component boundaries
+  const sections = smartSplitSections(text);
   console.log('🔍 parseSections: Split into', sections.length, 'sections');
   
   return sections.map((section, index) => {
@@ -128,6 +129,77 @@ const parseSections = (text: string): ParsedSection[] => {
     console.log('📝 Found markdown section');
     return { type: 'markdown', content: section, index };
   });
+};
+
+// Smart section splitting that respects component boundaries
+const smartSplitSections = (text: string): string[] => {
+  const sections: string[] = [];
+  let currentSection = '';
+  let insideComponent = false;
+  let componentDepth = 0;
+  let componentName = '';
+  
+  const lines = text.split('\n');
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmedLine = line.trim();
+    
+    // Check if we're entering a component
+    if (!insideComponent && (
+      trimmedLine.includes('<CardGroup') ||
+      trimmedLine.includes('<Steps') ||
+      trimmedLine.includes('<Callout') ||
+      trimmedLine.includes('<Accordion')
+    )) {
+      insideComponent = true;
+      componentDepth = 1;
+      if (trimmedLine.includes('<CardGroup')) componentName = 'CardGroup';
+      else if (trimmedLine.includes('<Steps')) componentName = 'Steps';
+      else if (trimmedLine.includes('<Callout')) componentName = 'Callout';
+      else if (trimmedLine.includes('<Accordion')) componentName = 'Accordion';
+      
+      currentSection += line + '\n';
+      continue;
+    }
+    
+    // If inside a component, track depth
+    if (insideComponent) {
+      // Check for opening tags
+      if (trimmedLine.includes(`<${componentName}`) && !trimmedLine.includes('/>')) {
+        componentDepth++;
+      }
+      // Check for closing tags
+      if (trimmedLine.includes(`</${componentName}>`)) {
+        componentDepth--;
+        if (componentDepth === 0) {
+          insideComponent = false;
+          componentName = '';
+        }
+      }
+      
+      currentSection += line + '\n';
+      continue;
+    }
+    
+    // If we encounter a section delimiter and we're not inside a component
+    if (trimmedLine === '***' && !insideComponent) {
+      if (currentSection.trim()) {
+        sections.push(currentSection.trim());
+        currentSection = '';
+      }
+      continue;
+    }
+    
+    currentSection += line + '\n';
+  }
+  
+  // Add the final section
+  if (currentSection.trim()) {
+    sections.push(currentSection.trim());
+  }
+  
+  return sections.filter(Boolean);
 };
 
 const extractImageData = (content: string) => {
