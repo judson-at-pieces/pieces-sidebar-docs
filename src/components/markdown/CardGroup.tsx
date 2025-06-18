@@ -24,11 +24,11 @@ export const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
       
       console.log('🃏 CardGroup: Raw attributes string:', attributes);
       
-      // Extract attributes with multiple quote style patterns
-      const titleMatch = attributes.match(/title=["']([^"']*)["']/);
-      const imageMatch = attributes.match(/image=["']([^"']*)["']/);
-      const hrefMatch = attributes.match(/href=["']([^"']*)["']/);
-      const externalMatch = attributes.match(/external=["']([^"']*)["']/);
+      // More flexible attribute extraction - handle both quote styles and spaces
+      const titleMatch = attributes.match(/title\s*=\s*["']([^"']*)["']/i);
+      const imageMatch = attributes.match(/image\s*=\s*["']([^"']*)["']/i);
+      const hrefMatch = attributes.match(/href\s*=\s*["']([^"']*)["']/i);
+      const externalMatch = attributes.match(/external\s*=\s*["']([^"']*)["']/i);
       
       const title = titleMatch ? titleMatch[1] : '';
       const image = imageMatch ? imageMatch[1] : '';
@@ -36,11 +36,20 @@ export const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
       const external = externalMatch ? externalMatch[1] : '';
       
       console.log('🃏 CardGroup: Extracted attributes:', { title, image, href, external });
+      console.log('🃏 CardGroup: Href extraction details:', { 
+        hrefMatch: hrefMatch ? hrefMatch[0] : 'NO MATCH',
+        externalMatch: externalMatch ? externalMatch[0] : 'NO MATCH'
+      });
       
-      // Use ONLY the original href/external from markdown - no fallbacks
-      const finalHref = href || external || '';
+      // Use href first, then external as fallback
+      const finalHref = href || external;
       
-      console.log('🃏 CardGroup: Final href decision:', { original_href: href, original_external: external, final: finalHref });
+      console.log('🃏 CardGroup: Final href decision:', { 
+        original_href: href, 
+        original_external: external, 
+        final: finalHref,
+        willBeClickable: !!finalHref
+      });
       
       cards.push({
         title,
@@ -100,7 +109,7 @@ export const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
           cards.push({
             title,
             image,
-            href: href, // Use original href only, no fallbacks
+            href: href,
             children: props.children || ''
           });
         }
