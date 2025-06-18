@@ -172,4 +172,4 @@ A new window will open called **About Windows**, which will display your current
 
 ## Restart & Retry
 
-If the problem persists, please open a <new-tab href="https://github.com/pieces-app/support/issues">GitHub issue</new-tab> for further assistance or book a call with our engineers.
+If the problem persists, please open a <a href="https://github.com/pieces-app/support/issues" target="_blank" rel="noopener noreferrer">GitHub issue</a> for further assistance or book a call with our engineers.
