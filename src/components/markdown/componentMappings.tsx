@@ -2,7 +2,7 @@
 import React from 'react';
 import { Callout } from './Callout';
 import { CodeBlock } from './CodeBlock';
-import { Card } from './Card';
+import Card from './Card';
 import { CardGroup } from './CardGroup';
 import { Steps } from './Steps';
 import { Tabs } from './Tabs';
@@ -69,10 +69,11 @@ export function createComponentMappings() {
       </li>
     ),
     
-    // Code - Force using the updated CodeBlock with Go detection
+    // Code - Handle inline vs block code properly
     code: ({ inline, children, className, ...props }: any) => {
       console.log('Code mapping called:', { inline, className, children });
       
+      // For inline code (like `dxdiag`) - must return inline element
       if (inline) {
         return (
           <code 
@@ -94,9 +95,11 @@ export function createComponentMappings() {
     pre: ({ children, ...props }: any) => {
       console.log('Pre mapping called:', { children, props });
       
-      // If pre contains code element, let the code handler deal with it
+      // If pre contains code element, extract it and handle properly
       if (React.isValidElement(children) && children.type === 'code') {
-        return children;
+        const codeProps = children.props as { className?: string; children?: React.ReactNode };
+        const language = codeProps.className ? codeProps.className.replace(/^language-/, '') : undefined;
+        return <CodeBlock className={codeProps.className} language={language}>{codeProps.children}</CodeBlock>;
       }
       
       // Otherwise, treat as code block
