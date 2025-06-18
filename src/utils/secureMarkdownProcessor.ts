@@ -48,145 +48,163 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
   console.log('🔄 processInlineMarkdown input:', text.substring(0, 200));
 
   const elements: ProcessedMarkdown[] = [];
-  let currentIndex = 0;
+  let processedText = text;
 
-  // Enhanced regex patterns for better matching
-  const patterns = [
-    { regex: /`([^`]+)`/g, type: 'code' as const },
-    { regex: /\*\*(.*?)\*\*/g, type: 'bold' as const },
-    { regex: /(?<!\*)\*([^*]+)\*(?!\*)/g, type: 'italic' as const },
-    // More comprehensive regex for HTML anchor tags
-    { regex: /<a\s+([^>]*?)>(.*?)<\/a>/gi, type: 'link' as const },
-    // Standard markdown links with better handling
-    { regex: /\[([^\]]*(?:\\.[^\]]*)*)\]\(([^)]+)\)/g, type: 'link' as const },
-    // Image tags
-    { regex: /<Image\s+([^>]*?)\/>/g, type: 'image' as const }
-  ];
+  // Process in order of precedence to avoid conflicts
+  // 1. Code blocks first (highest precedence)
+  // 2. Links (including complex markdown links)
+  // 3. Bold and italic
+  // 4. Images
 
-  const matches: Array<{ match: RegExpMatchArray; type: ProcessedMarkdown['type'] }> = [];
-
-  // Find all matches
-  patterns.forEach(({ regex, type }) => {
-    let match;
-    // Reset regex lastIndex to ensure we find all matches
-    regex.lastIndex = 0;
-    while ((match = regex.exec(text)) !== null) {
-      matches.push({ match, type });
-    }
+  // Step 1: Extract and replace code blocks
+  const codeBlocks: { placeholder: string; content: string }[] = [];
+  let codeIndex = 0;
+  
+  processedText = processedText.replace(/`([^`]+)`/g, (match, content) => {
+    const placeholder = `__CODE_BLOCK_${codeIndex}__`;
+    codeBlocks.push({ placeholder, content: content.trim() });
+    codeIndex++;
+    return placeholder;
   });
 
-  // Sort matches by position
-  matches.sort((a, b) => (a.match.index || 0) - (b.match.index || 0));
+  // Step 2: Extract and replace links (both markdown and HTML)
+  const links: { placeholder: string; text: string; href: string; target?: string }[] = [];
+  let linkIndex = 0;
 
-  console.log('🔄 processInlineMarkdown: Found matches:', matches.length, matches.map(m => ({ type: m.type, text: m.match[0].substring(0, 50) })));
+  // Handle HTML anchor tags first
+  processedText = processedText.replace(/<a\s+([^>]*?)>(.*?)<\/a>/gi, (match, attributes, linkText) => {
+    const placeholder = `__LINK_${linkIndex}__`;
+    
+    // Extract href
+    const hrefMatch = attributes.match(/href\s*=\s*["']([^"']+)["']/i);
+    const href = hrefMatch ? hrefMatch[1] : '';
+    
+    // Extract target
+    const targetMatch = attributes.match(/target\s*=\s*["']([^"']+)["']/i);
+    const target = targetMatch ? targetMatch[1] : '';
+    
+    if (validateUrl(href) && linkText.trim()) {
+      links.push({ placeholder, text: linkText.trim(), href, target });
+      linkIndex++;
+      return placeholder;
+    }
+    
+    return match; // Return original if invalid
+  });
 
-  // Process text with matches
-  for (const { match, type } of matches) {
-    const matchStart = match.index || 0;
-    const matchEnd = matchStart + match[0].length;
+  // Handle markdown links
+  processedText = processedText.replace(/\[([^\]]*(?:\\.[^\]]*)*)\]\(([^)]+)\)/g, (match, linkText, href) => {
+    const placeholder = `__LINK_${linkIndex}__`;
+    const cleanText = linkText.replace(/\\(.)/g, '$1'); // Unescape characters
+    
+    if (validateUrl(href) && cleanText.trim()) {
+      links.push({ placeholder, text: cleanText.trim(), href });
+      linkIndex++;
+      return placeholder;
+    }
+    
+    return match; // Return original if invalid
+  });
 
-    // Skip overlapping matches
-    if (matchStart < currentIndex) {
+  // Step 3: Extract and replace images
+  const images: { placeholder: string; src: string; alt: string; align: string; fullwidth: boolean }[] = [];
+  let imageIndex = 0;
+  
+  processedText = processedText.replace(/<Image\s+([^>]*?)\/>/g, (match, attributes) => {
+    const placeholder = `__IMAGE_${imageIndex}__`;
+    
+    // Extract image attributes
+    const srcMatch = attributes.match(/src=["']([^"']+)["']/);
+    const altMatch = attributes.match(/alt=["']([^"']*)["']/);
+    const alignMatch = attributes.match(/align=["']([^"']*)["']/);
+    const fullwidthMatch = attributes.match(/fullwidth=["']([^"']*)["']/);
+    
+    const imageSrc = srcMatch ? srcMatch[1] : '';
+    const imageAlt = altMatch ? altMatch[1] : '';
+    const imageAlign = alignMatch ? alignMatch[1] : 'center';
+    const imageFullwidth = fullwidthMatch ? fullwidthMatch[1] === 'true' : false;
+    
+    if (validateUrl(imageSrc)) {
+      images.push({ placeholder, src: imageSrc, alt: imageAlt, align: imageAlign, fullwidth: imageFullwidth });
+      imageIndex++;
+      return placeholder;
+    }
+    
+    return match; // Return original if invalid
+  });
+
+  // Step 4: Process bold and italic (order matters - bold first to avoid conflicts)
+  const textStyles: { placeholder: string; type: 'bold' | 'italic'; content: string }[] = [];
+  let styleIndex = 0;
+
+  // Bold (**text**)
+  processedText = processedText.replace(/\*\*(.*?)\*\*/g, (match, content) => {
+    if (content.trim()) {
+      const placeholder = `__BOLD_${styleIndex}__`;
+      textStyles.push({ placeholder, type: 'bold', content: content.trim() });
+      styleIndex++;
+      return placeholder;
+    }
+    return match;
+  });
+
+  // Italic (*text*) - but not if it's part of **
+  processedText = processedText.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, (match, content) => {
+    if (content.trim()) {
+      const placeholder = `__ITALIC_${styleIndex}__`;
+      textStyles.push({ placeholder, type: 'italic', content: content.trim() });
+      styleIndex++;
+      return placeholder;
+    }
+    return match;
+  });
+
+  // Step 5: Split the processed text and rebuild with elements
+  const tokens = processedText.split(/(__(?:CODE_BLOCK|LINK|IMAGE|BOLD|ITALIC)_\d+__)/);
+  
+  for (const token of tokens) {
+    if (!token) continue;
+
+    // Check for placeholders and replace with appropriate elements
+    const codeBlock = codeBlocks.find(cb => cb.placeholder === token);
+    if (codeBlock) {
+      elements.push({ type: 'code', content: codeBlock.content });
       continue;
     }
 
-    // Add text before match
-    if (matchStart > currentIndex) {
-      const textContent = text.slice(currentIndex, matchStart);
-      if (textContent) {
-        elements.push({ type: 'text', content: textContent });
-      }
+    const link = links.find(l => l.placeholder === token);
+    if (link) {
+      elements.push({ 
+        type: 'link', 
+        content: link.text, 
+        href: link.href,
+        target: link.target
+      });
+      continue;
     }
 
-    // Add the matched element
-    if (type === 'image') {
-      const attributes = match[1];
-      
-      // Extract image attributes
-      const srcMatch = attributes.match(/src=["']([^"']+)["']/);
-      const altMatch = attributes.match(/alt=["']([^"']*)["']/);
-      const alignMatch = attributes.match(/align=["']([^"']*)["']/);
-      const fullwidthMatch = attributes.match(/fullwidth=["']([^"']*)["']/);
-      
-      const imageSrc = srcMatch ? srcMatch[1] : '';
-      const imageAlt = altMatch ? altMatch[1] : '';
-      const imageAlign = alignMatch ? alignMatch[1] : 'center';
-      const imageFullwidth = fullwidthMatch ? fullwidthMatch[1] === 'true' : false;
-      
-      if (validateUrl(imageSrc)) {
-        elements.push({ 
-          type: 'image', 
-          content: imageAlt,
-          src: imageSrc,
-          alt: imageAlt,
-          align: imageAlign,
-          fullwidth: imageFullwidth
-        });
-      } else {
-        // If URL is invalid, treat as plain text
-        elements.push({ type: 'text', content: match[0] });
-      }
-    } else if (type === 'link') {
-      let linkText = '';
-      let linkHref = '';
-      let linkTarget = '';
-      
-      if (match[0].toLowerCase().includes('<a')) {
-        // HTML anchor tag
-        linkText = match[2] || ''; // Content between <a> and </a>
-        const attributes = match[1] || '';
-        
-        console.log('🔗 Processing HTML anchor:', { fullMatch: match[0], attributes, linkText });
-        
-        // Extract href with flexible matching
-        const hrefMatch = attributes.match(/href\s*=\s*["']([^"']+)["']/i);
-        linkHref = hrefMatch ? hrefMatch[1] : '';
-        
-        // Extract target
-        const targetMatch = attributes.match(/target\s*=\s*["']([^"']+)["']/i);
-        linkTarget = targetMatch ? targetMatch[1] : '';
-        
-        console.log('🔗 Extracted HTML link data:', { linkText, linkHref, linkTarget });
-      } else {
-        // Standard markdown link [text](url)
-        linkText = (match[1] || '').replace(/\\(.)/g, '$1'); // Unescape characters
-        linkHref = match[2] || '';
-        
-        console.log('🔗 Processing markdown link:', { linkText, linkHref });
-      }
-      
-      if (validateUrl(linkHref) && linkText.trim()) {
-        elements.push({ 
-          type: 'link', 
-          content: linkText.trim(), 
-          href: linkHref,
-          target: linkTarget
-        });
-        console.log('🔗 Added link element:', { linkText: linkText.trim(), linkHref, linkTarget });
-      } else {
-        // If URL is invalid or no text, treat as plain text
-        console.log('🔗 Invalid link, treating as text:', { linkHref, linkText, isValidUrl: validateUrl(linkHref) });
-        elements.push({ type: 'text', content: match[0] });
-      }
-    } else {
-      // Bold, italic, code
-      const content = match[1] || '';
-      if (content.trim()) {
-        elements.push({ 
-          type, 
-          content: content.trim()
-        });
-      }
+    const image = images.find(img => img.placeholder === token);
+    if (image) {
+      elements.push({ 
+        type: 'image', 
+        content: image.alt,
+        src: image.src,
+        alt: image.alt,
+        align: image.align,
+        fullwidth: image.fullwidth
+      });
+      continue;
     }
 
-    currentIndex = matchEnd;
-  }
+    const style = textStyles.find(s => s.placeholder === token);
+    if (style) {
+      elements.push({ type: style.type, content: style.content });
+      continue;
+    }
 
-  // Add remaining text
-  if (currentIndex < text.length) {
-    const remainingText = text.slice(currentIndex);
-    if (remainingText) {
-      elements.push({ type: 'text', content: remainingText });
+    // Regular text
+    if (token.trim()) {
+      elements.push({ type: 'text', content: token });
     }
   }
 
