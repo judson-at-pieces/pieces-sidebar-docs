@@ -1,8 +1,11 @@
 import React, { useState } from 'react';
-import CodeBlock from '../CodeBlock';
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
-import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
-import { CustomTable } from './CustomTable';
+import { Callout } from './Callout';
+import { MarkdownCard } from './MarkdownCard';
+import { CardGroup } from './CardGroup';
+import { Steps, Step } from './Steps';
+import { SecureInlineMarkdown } from './SecureInlineMarkdown';
+import { sanitizeText } from '@/utils/secureMarkdownProcessor';
+import { X } from 'lucide-react';
 
 // Constants
 const SECTION_DELIMITER = '***';
@@ -32,72 +35,69 @@ interface MarkdownRendererProps {
   content: string;
 }
 
-interface CardData {
-  title: string;
-  image?: string;
-  content: string;
-}
-
 // Utility functions
 const parseSections = (text: string): ParsedSection[] => {
   console.log('🔍 parseSections: Input text length:', text.length);
-  
-  // If no section delimiters found, treat the entire content as one section
-  if (!text.includes(SECTION_DELIMITER)) {
-    console.log('🔍 No section delimiters found, treating as single section');
-    return [{ type: 'mixed', content: text.trim(), index: 0 }];
-  }
+  console.log('🔍 parseSections: Full input text:', text);
   
   const sections = text.split(SECTION_DELIMITER).map(section => section.trim()).filter(Boolean);
   console.log('🔍 parseSections: Split into', sections.length, 'sections');
   
   return sections.map((section, index) => {
     console.log(`🔍 Parsing section ${index}:`, section.substring(0, 100));
+    console.log(`🔍 Full section ${index} content:`, section);
     
     if (section.startsWith(FRONTMATTER_PATTERN) && section.includes(TITLE_PATTERN)) {
       console.log('📋 Found frontmatter section');
       return { type: 'frontmatter', content: section, index };
     }
-    
-    // Check for special components
-    const hasImage = section.includes(IMAGE_PATTERN);
-    const hasCardGroup = section.includes(CARDGROUP_PATTERN);
-    const hasSteps = section.includes(STEPS_PATTERN);
-    const hasCallout = section.includes(CALLOUT_PATTERN);
-    const hasAccordion = section.includes(ACCORDION_PATTERN);
-    const hasAccordionGroup = section.includes(ACCORDIONGROUP_PATTERN);
-    const hasTabs = section.includes(TABS_PATTERN);
-    const hasButton = section.includes(BUTTON_PATTERN);
-    const hasCard = section.includes(CARD_PATTERN) && !hasCardGroup;
-    
-    // Count special components
-    const specialComponentCount = [hasImage, hasCardGroup, hasSteps, hasCallout, hasAccordion, hasAccordionGroup, hasTabs, hasButton, hasCard].filter(Boolean).length;
-    
-    // If multiple special components or has markdown content with special components, treat as mixed
-    const markdownLines = section.split('\n').filter(line => {
-      const trimmed = line.trim();
-      return trimmed && 
-             !trimmed.startsWith('<') && 
-             !trimmed.startsWith('---') &&
-             trimmed !== '***';
-    });
-    
-    if (specialComponentCount > 1 || (specialComponentCount > 0 && markdownLines.length > 0)) {
-      console.log('🔀 Found mixed content section!');
-      return { type: 'mixed', content: section, index };
-    }
-    
-    // Single special component types
     if (section.startsWith(IMAGE_PATTERN)) {
       console.log('🖼️ Found image section');
       return { type: 'image', content: section, index };
     }
-    if (hasCardGroup) {
-      console.log('🃏 Found CardGroup section!');
+    
+    // Check for mixed content - sections that contain multiple types of elements
+    const hasCardGroup = section.includes(CARDGROUP_PATTERN);
+    const hasSteps = section.includes(STEPS_PATTERN);
+    const hasCallout = section.includes(CALLOUT_PATTERN);
+    const hasImage = section.includes(IMAGE_PATTERN);
+    const hasCard = section.includes(CARD_PATTERN) && !hasCardGroup;
+    
+    // Count markdown lines (non-empty lines that aren't special elements)
+    const lines = section.split('\n').filter(line => line.trim());
+    const specialElementLines = lines.filter(line => 
+      line.includes('<CardGroup') || 
+      line.includes('<Steps') || 
+      line.includes('<Callout') || 
+      line.includes('<Image') ||
+      line.includes('<Card') ||
+      line.includes('</CardGroup>') ||
+      line.includes('</Steps>') ||
+      line.includes('</Callout>') ||
+      line.includes('</Card>')
+    );
+    const markdownLines = lines.length - specialElementLines.length;
+    
+    console.log(`🔍 Section ${index} analysis:`, {
+      hasCardGroup, hasSteps, hasCallout, hasImage, hasCard,
+      totalLines: lines.length,
+      specialElementLines: specialElementLines.length,
+      markdownLines
+    });
+    
+    // If we have significant markdown content along with special elements, treat as mixed
+    if (markdownLines > 5 && (hasCardGroup || hasSteps || hasCallout || hasImage || hasCard)) {
+      console.log('🔀 Found mixed content section!');
+      return { type: 'mixed', content: section, index };
+    }
+    
+    // Pure special element sections
+    if (hasCardGroup && !hasSteps && !hasCallout && markdownLines <= 5) {
+      console.log('🃏 Found pure CardGroup section!');
       return { type: 'cardgroup', content: section, index };
     }
-    if (hasSteps) {
-      console.log('👣 Found Steps section!');
+    if (hasSteps && !hasCardGroup && !hasCallout && markdownLines <= 5) {
+      console.log('👣 Found pure Steps section!');
       return { type: 'steps', content: section, index };
     }
     if (section.startsWith(ACCORDIONGROUP_PATTERN)) {
@@ -116,12 +116,12 @@ const parseSections = (text: string): ParsedSection[] => {
       console.log('🔘 Found Button section');
       return { type: 'button', content: section, index };
     }
-    if (hasCard) {
+    if (section.startsWith(CARD_PATTERN) && !section.includes(CARDGROUP_PATTERN)) {
       console.log('🎯 Found standalone Card section');
       return { type: 'card', content: section, index };
     }
-    if (section.startsWith(CALLOUT_PATTERN)) {
-      console.log('💬 Found Callout section');
+    if (section.startsWith(CALLOUT_PATTERN) && !hasSteps && !hasCardGroup) {
+      console.log('💬 Found pure Callout section');
       return { type: 'callout', content: section, index };
     }
     
@@ -154,6 +154,13 @@ const extractCalloutData = (content: string) => {
   };
 };
 
+// Parse Card element
+interface CardData {
+  title: string;
+  image?: string;
+  content: string;
+}
+
 const parseCard = (content: string): CardData => {
   const titleMatch = content.match(/title="([^"]*)"/);
   const imageMatch = content.match(/image="([^"]*)"/);
@@ -166,6 +173,7 @@ const parseCard = (content: string): CardData => {
   };
 };
 
+// Parse CardGroup
 interface CardGroupData {
   cols?: number;
   cards: CardData[];
@@ -174,6 +182,7 @@ interface CardGroupData {
 const parseCardGroup = (content: string): CardGroupData => {
   console.log('🃏 Parsing CardGroup content:', content.substring(0, 200));
   
+  // Updated regex to handle both {2} and 2 formats
   const colsMatch = content.match(/<CardGroup[^>]*cols=\{?(\d+)\}?/);
   const cols = colsMatch ? parseInt(colsMatch[1]) : 2;
   
@@ -207,6 +216,7 @@ const parseCardGroup = (content: string): CardGroupData => {
   return { cols, cards };
 };
 
+// Parse Accordion
 interface AccordionData {
   title: string;
   content: string;
@@ -222,6 +232,7 @@ const parseAccordion = (content: string): AccordionData => {
   };
 };
 
+// Parse AccordionGroup
 const parseAccordionGroup = (content: string): AccordionData[] => {
   const accordionRegex = /<Accordion\s+([^>]*)>([\s\S]*?)<\/Accordion>/g;
   const accordions: AccordionData[] = [];
@@ -243,6 +254,7 @@ const parseAccordionGroup = (content: string): AccordionData[] => {
   return accordions;
 };
 
+// Parse Tabs
 interface TabData {
   title: string;
   content: string;
@@ -269,6 +281,7 @@ const parseTabs = (content: string): TabData[] => {
   return tabs;
 };
 
+// Parse Button
 interface ButtonData {
   label: string;
   linkHref: string;
@@ -296,24 +309,33 @@ const parseButton = (content: string): ButtonData => {
   };
 };
 
+// Parse Steps - Updated to handle the markdown format properly
 interface StepData {
   title: string;
   content: string;
 }
 
 const parseSteps = (content: string): StepData[] => {
-  console.log('👣 Parsing Steps content:', content.substring(0, 200));
+  console.log('👣 Parsing Steps content:', content);
   
-  const stepRegex = /<Step\s+([^>]*)>([\s\S]*?)<\/Step>/g;
+  // First, try to find the <Steps> block
+  const stepsMatch = content.match(/<Steps>([\s\S]*?)<\/Steps>/);
+  if (!stepsMatch) {
+    console.log('👣 No <Steps> block found');
+    return [];
+  }
+  
+  const stepsContent = stepsMatch[1];
+  console.log('👣 Steps inner content:', stepsContent);
+  
+  // Parse individual <Step> elements
+  const stepRegex = /<Step\s+title="([^"]*)"[^>]*>([\s\S]*?)<\/Step>/g;
   const steps: StepData[] = [];
   
   let match: RegExpExecArray | null;
-  while ((match = stepRegex.exec(content)) !== null) {
-    const attributes = match[1];
+  while ((match = stepRegex.exec(stepsContent)) !== null) {
+    const title = match[1];
     const innerContent = match[2].trim();
-    
-    const titleMatch = attributes.match(/title="([^"]*)"/);
-    const title = titleMatch ? titleMatch[1] : '';
     
     console.log('👣 Parsed step:', { title, contentLength: innerContent.length });
     
@@ -324,364 +346,251 @@ const parseSteps = (content: string): StepData[] => {
   }
   
   console.log('👣 Total steps parsed:', steps.length);
-  
   return steps;
 };
 
 const processInlineMarkdown = (text: string): React.ReactNode => {
-  console.log('🔄 processInlineMarkdown: Processing text:', text);
-  
-  // Handle code blocks with language support
-  const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
-  const parts: React.ReactNode[] = [];
-  let lastIndex = 0;
-  let match;
-
-  while ((match = codeBlockRegex.exec(text)) !== null) {
-    // Add text before code block
-    if (match.index > lastIndex) {
-      const beforeText = text.slice(lastIndex, match.index);
-      parts.push(processSimpleMarkdown(beforeText));
-    }
-
-    const language = match[1] || 'text';
-    const code = match[2].trim();
-    
-    // Add syntax highlighted code block using CodeBlock component
-    parts.push(
-      <CodeBlock key={match.index} language={language}>
-        {code}
-      </CodeBlock>
-    );
-
-    lastIndex = match.index + match[0].length;
-  }
-
-  // Add remaining text
-  if (lastIndex < text.length) {
-    parts.push(processSimpleMarkdown(text.slice(lastIndex)));
-  }
-
-  return parts.length > 0 ? <>{parts}</> : processSimpleMarkdown(text);
+  console.log('🔄 processInlineMarkdown: Processing text with secure renderer');
+  const sanitizedText = sanitizeText(text);
+  return <SecureInlineMarkdown content={sanitizedText} />;
 };
 
 const processSimpleMarkdown = (text: string): React.ReactNode => {
   if (!text) return null;
   
-  // Handle inline code
-  text = text.replace(/`([^`]+)`/g, '<code class="hn-inline-code bg-muted px-1 py-0.5 rounded text-sm font-mono">$1</code>');
-  
-  // Handle bold with **
-  text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
-  
-  // Handle italic with *
-  text = text.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
-  
-  // Handle links
-  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="hn-link text-primary underline hover:no-underline">$1</a>');
-  
-  return <span dangerouslySetInnerHTML={{ __html: text }} />;
+  // Use secure inline markdown instead of dangerouslySetInnerHTML
+  const sanitizedText = sanitizeText(text);
+  return <SecureInlineMarkdown content={sanitizedText} />;
 };
 
 // Components
-const ImageSection: React.FC<{ src: string; alt: string; align: string; fullwidth: boolean }> = ({ src, alt, align, fullwidth }) => (
-  <div className={`my-6 ${align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left'}`}>
-    <img 
-      src={src} 
-      alt={alt} 
-      className={`rounded-lg shadow-md ${fullwidth ? 'w-full' : 'max-w-full'} ${align === 'center' ? 'mx-auto' : ''}`}
-    />
-  </div>
-);
-
-const CalloutSection: React.FC<{ type: string; content: string }> = ({ type, content }) => {
-  const getCalloutStyles = (type: string) => {
-    switch (type) {
-      case 'warning':
-        return 'border-orange-200 bg-orange-50 text-orange-800 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-200';
-      case 'error':
-        return 'border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200';
-      case 'success':
-        return 'border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200';
-      case 'tip':
-        return 'border-purple-200 bg-purple-50 text-purple-800 dark:border-purple-800 dark:bg-purple-950 dark:text-purple-200';
-      default:
-        return 'border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200';
-    }
-  };
+const ImageModal: React.FC<{ src: string; alt: string; isOpen: boolean; onClose: () => void }> = ({ src, alt, isOpen, onClose }) => {
+  if (!isOpen) return null;
 
   return (
-    <div className={`border-l-4 p-4 my-4 rounded-r-lg ${getCalloutStyles(type)}`}>
-      <div className="prose prose-sm dark:prose-invert max-w-none">
-        {processInlineMarkdown(content)}
+    <div 
+      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={onClose}
+    >
+      <div className="relative max-w-[90vw] max-h-[90vh]">
+        <button
+          onClick={onClose}
+          className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors bg-black/50 rounded-full p-2"
+          aria-label="Close image"
+        >
+          <X size={24} />
+        </button>
+        <img 
+          src={src} 
+          alt={alt} 
+          className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+          onClick={(e) => e.stopPropagation()}
+        />
       </div>
     </div>
   );
 };
 
-const CardSection: React.FC<{ card: CardData }> = ({ card }) => (
-  <div className="border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow bg-card">
-    {card.image && (
-      <div className="mb-4">
-        <img src={card.image} alt={card.title} className="w-full h-48 object-cover rounded-md" />
-      </div>
-    )}
-    <h3 className="text-lg font-semibold mb-2">{card.title}</h3>
-    <div className="prose prose-sm dark:prose-invert max-w-none">
-      {processInlineMarkdown(card.content)}
-    </div>
-  </div>
-);
-
-const CardGroupSection: React.FC<{ cols: number; cards: CardData[] }> = ({ cols = 2, cards }) => (
-  <div className={`grid gap-6 my-6 ${cols === 3 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1 md:grid-cols-2'}`}>
-    {cards.map((card, index) => (
-      <CardSection key={index} card={card} />
-    ))}
-  </div>
-);
-
-const AccordionSection: React.FC<AccordionData> = ({ title, content }) => {
-  const [isOpen, setIsOpen] = useState(false);
-
+const ImageSection: React.FC<{ src: string; alt: string; align: string; fullwidth: boolean }> = ({ src, alt, align, fullwidth }) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  
+  console.log('🖼️ ImageSection rendering:', { src, alt, align, fullwidth });
+  
+  const alignmentClass = {
+    left: 'justify-start',
+    center: 'justify-center',
+    right: 'justify-end'
+  }[align] || 'justify-center';
+  
   return (
-    <div className="border border-border rounded-lg my-4">
-      <button
+    <>
+      <div className={`flex my-6 ${alignmentClass}`}>
+        <img 
+          src={src} 
+          alt={alt} 
+          className={`rounded-lg cursor-pointer transition-transform duration-200 hover:-translate-y-1 ${fullwidth ? 'w-full' : 'max-w-full'} h-auto`}
+          onClick={() => setIsModalOpen(true)}
+        />
+      </div>
+      <ImageModal 
+        src={src} 
+        alt={alt} 
+        isOpen={isModalOpen} 
+        onClose={() => setIsModalOpen(false)} 
+      />
+    </>
+  );
+};
+
+const CalloutSection: React.FC<{ type: string; content: string }> = ({ type, content }) => {
+  console.log('💬 CalloutSection rendering:', { type, content });
+  return (
+    <Callout type={type as 'info' | 'tip' | 'alert'}>
+      {processInlineMarkdown(content)}
+    </Callout>
+  );
+};
+
+const CardSection: React.FC<{ card: CardData }> = ({ card }) => {
+  console.log('🎯 Rendering individual Card:', { title: card.title, image: card.image });
+  
+  return (
+    <MarkdownCard title={card.title} image={card.image}>
+      {card.content}
+    </MarkdownCard>
+  );
+};
+
+const CardGroupSection: React.FC<{ cols: number; cards: CardData[] }> = ({ cols, cards }) => {
+  console.log('🃏 Rendering CardGroup with:', { cols, cardCount: cards.length });
+  
+  return (
+    <CardGroup cols={cols as 2 | 3 | 4}>
+      {cards.map((card, index) => (
+        <MarkdownCard key={`card-${index}`} title={card.title} image={card.image}>
+          {card.content}
+        </MarkdownCard>
+      ))}
+    </CardGroup>
+  );
+};
+
+// Parse Accordion
+const AccordionSection: React.FC<{ accordion: AccordionData }> = ({ accordion }) => {
+  const [isOpen, setIsOpen] = useState(false);
+  
+  console.log('📂 AccordionSection rendering:', { title: accordion.title, content: accordion.content });
+  
+  return (
+    <div className="hn-accordion">
+      <button 
+        className="hn-accordion-trigger" 
         onClick={() => setIsOpen(!isOpen)}
-        className="w-full px-4 py-3 text-left font-medium hover:bg-muted/50 transition-colors flex items-center justify-between"
       >
-        <span>{title}</span>
-        <span className={`transform transition-transform ${isOpen ? 'rotate-180' : ''}`}>
-          ▼
-        </span>
+        {accordion.title}
+        <span className={`hn-accordion-icon ${isOpen ? 'open' : ''}`}>▼</span>
       </button>
       {isOpen && (
-        <div className="px-4 pb-4 border-t border-border">
-          <div className="pt-3 prose prose-sm dark:prose-invert max-w-none">
-            {processInlineMarkdown(content)}
-          </div>
+        <div className="hn-accordion-content">
+          {processInlineMarkdown(accordion.content)}
         </div>
       )}
     </div>
   );
 };
 
-const AccordionGroupSection: React.FC<{ accordions: AccordionData[] }> = ({ accordions }) => (
-  <div className="space-y-2 my-6">
-    {accordions.map((accordion, index) => (
-      <AccordionSection key={index} {...accordion} />
-    ))}
-  </div>
-);
+// Parse AccordionGroup
+const AccordionGroupSection: React.FC<{ accordions: AccordionData[] }> = ({ accordions }) => {
+  console.log('📁 AccordionGroupSection rendering:', { count: accordions.length });
+  return (
+    <div className="hn-accordion-group">
+      {accordions.map((accordion, index) => (
+        <AccordionSection key={index} accordion={accordion} />
+      ))}
+    </div>
+  );
+};
 
+// Parse Tabs
 const TabsSection: React.FC<{ tabs: TabData[] }> = ({ tabs }) => {
   const [activeTab, setActiveTab] = useState(0);
-
+  
+  console.log('📑 TabsSection rendering:', { tabCount: tabs.length });
+  
   return (
-    <div className="my-6">
-      <div className="border-b border-border">
-        <div className="flex space-x-8">
-          {tabs.map((tab, index) => (
-            <button
-              key={index}
-              onClick={() => setActiveTab(index)}
-              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
-                activeTab === index
-                  ? 'border-primary text-primary'
-                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground'
-              }`}
-            >
-              {tab.title}
-            </button>
-          ))}
-        </div>
+    <div className="hn-tabs">
+      <div className="hn-tabs-list">
+        {tabs.map((tab, index) => (
+          <button
+            key={index}
+            className={`hn-tab-trigger ${activeTab === index ? 'active' : ''}`}
+            onClick={() => setActiveTab(index)}
+          >
+            {tab.title}
+          </button>
+        ))}
       </div>
-      <div className="pt-4">
-        <div className="prose prose-sm dark:prose-invert max-w-none">
-          {processInlineMarkdown(tabs[activeTab]?.content || '')}
-        </div>
+      <div className="hn-tab-content">
+        {processInlineMarkdown(tabs[activeTab]?.content || '')}
       </div>
     </div>
   );
 };
 
-const ButtonSection: React.FC<ButtonData> = ({ label, linkHref, openLinkInNewTab, align, lightColor, darkColor }) => {
-  const alignClass = align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left';
-  
+// Parse Button
+const ButtonSection: React.FC<{ button: ButtonData }> = ({ button }) => {
+  console.log('🔘 ButtonSection rendering:', button);
   return (
-    <div className={`my-4 ${alignClass}`}>
+    <div className={`hn-button-container ${button.align}`}>
       <a
-        href={linkHref}
-        target={openLinkInNewTab ? '_blank' : '_self'}
-        rel={openLinkInNewTab ? 'noopener noreferrer' : undefined}
-        className="inline-block px-6 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors font-medium"
-        style={{
-          backgroundColor: lightColor,
-          color: darkColor
-        }}
+        href={button.linkHref}
+        target={button.openLinkInNewTab ? '_blank' : '_self'}
+        rel={button.openLinkInNewTab ? 'noopener noreferrer' : undefined}
+        className="hn-button"
+        style={({
+          backgroundColor: button.lightColor,
+          '--dark-color': button.darkColor
+        } as React.CSSProperties)}
       >
-        {label}
+        {button.label}
       </a>
     </div>
   );
 };
 
+// Updated Steps Section to use secure markdown rendering
 const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => {
+  const [modalImage, setModalImage] = useState<{ src: string; alt: string } | null>(null);
+  
   console.log('👣 StepsSection rendering:', { stepCount: steps.length });
   
-  return (
-    <div className="my-6 [&>.step:last-of-type]:mb-0">
-      {steps.map((step, index) => {
-        const isLast = index === steps.length - 1;
-        
-        return (
-          <div key={index} className="flex gap-4 step mb-5">
-            <div className="flex flex-col items-center gap-2">
-              <div className="w-6 h-6 text-xs font-semibold border rounded-md flex items-center justify-center border-slate-100 bg-slate-50 dark:bg-slate-900 dark:border-slate-800/40 text-slate-700 dark:text-slate-200">
-                {index + 1}
-              </div>
-              {!isLast && (
-                <div className="h-[20px] w-[1px] bg-slate-200 dark:bg-slate-800/80"></div>
-              )}
-            </div>
-            <div className="flex-1 w-60">
-              <div className="flex flex-col gap-3">
-                <h3 className="font-bold text-base text-slate-700 dark:text-slate-200 m-0">
-                  {step.title}
-                </h3>
-                <div className="text-base text-slate-600 dark:text-slate-300 prose prose-sm dark:prose-invert max-w-none">
-                  {processInlineMarkdown(step.content)}
-                </div>
-              </div>
-            </div>
-          </div>
-        );
-      })}
-    </div>
-  );
-};
-
-// Basic markdown renderer with enhanced code block support
-const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
-  if (!content) return null;
-
-  // First check for code blocks and handle them specially
-  const codeBlockRegex = /```(\w+)?\n([\s\S]*?)```/g;
-  const parts: React.ReactNode[] = [];
-  let lastIndex = 0;
-  let match;
-  let elementIndex = 0;
-
-  while ((match = codeBlockRegex.exec(content)) !== null) {
-    // Add markdown content before code block
-    if (match.index > lastIndex) {
-      const markdownContent = content.slice(lastIndex, match.index).trim();
-      if (markdownContent) {
-        parts.push(
-          <div key={`markdown-${elementIndex}`}>
-            {renderBasicMarkdown(markdownContent)}
-          </div>
-        );
-        elementIndex++;
-      }
-    }
-
-    const language = match[1] || 'text';
-    const code = match[2].trim();
-    
-    // Add syntax highlighted code block using CodeBlock component
-    parts.push(
-      <CodeBlock key={`code-${elementIndex}`} language={language}>
-        {code}
-      </CodeBlock>
-    );
-    elementIndex++;
-
-    lastIndex = match.index + match[0].length;
-  }
-
-  // Add remaining markdown content
-  if (lastIndex < content.length) {
-    const remainingContent = content.slice(lastIndex).trim();
-    if (remainingContent) {
-      parts.push(
-        <div key={`markdown-final`}>
-          {renderBasicMarkdown(remainingContent)}
-        </div>
-      );
-    }
-  }
-
-  return parts.length > 0 ? <>{parts}</> : renderBasicMarkdown(content);
-};
-
-const renderBasicMarkdown = (content: string): React.ReactNode => {
-  const lines = content.split('\n');
-  const elements: React.ReactNode[] = [];
-  let currentListItems: string[] = [];
-  let currentListType: ListType = null;
-
-  const flushList = () => {
-    if (currentListItems.length > 0) {
-      const ListComponent = currentListType === 'ordered' ? 'ol' : 'ul';
-      elements.push(
-        React.createElement(
-          ListComponent,
-          { key: elements.length, className: 'my-2 ml-6 list-disc space-y-1' },
-          currentListItems.map((item, idx) => 
-            React.createElement('li', { key: idx }, item.replace(/^[*\-]\s*/, '').replace(/^\d+\.\s*/, ''))
-          )
-        )
-      );
-      currentListItems = [];
-      currentListType = null;
+  const handleImageClick = (event: React.MouseEvent) => {
+    const target = event.target as HTMLElement;
+    if (target.tagName === 'IMG') {
+      const img = target as HTMLImageElement;
+      setModalImage({ src: img.src, alt: img.alt || '' });
     }
   };
-
-  lines.forEach((line, index) => {
-    line = line.trim();
-    
-    if (!line) {
-      flushList();
-      return;
-    }
-
-    // Handle lists
-    if (line.match(/^[*\-]\s+/)) {
-      if (currentListType !== 'unordered') {
-        flushList();
-        currentListType = 'unordered';
-      }
-      currentListItems.push(line);
-      return;
-    }
-    
-    if (line.match(/^\d+\.\s+/)) {
-      if (currentListType !== 'ordered') {
-        flushList();
-        currentListType = 'ordered';
-      }
-      currentListItems.push(line);
-      return;
-    }
-
-    flushList();
-
-    // Handle headers
-    if (line.startsWith('### ')) {
-      elements.push(React.createElement('h3', { key: index, className: 'text-lg font-semibold mt-4 mb-2' }, line.slice(4)));
-    } else if (line.startsWith('## ')) {
-      elements.push(React.createElement('h2', { key: index, className: 'text-xl font-semibold mt-6 mb-3' }, line.slice(3)));
-    } else if (line.startsWith('# ')) {
-      elements.push(React.createElement('h1', { key: index, className: 'text-2xl font-bold mt-8 mb-4' }, line.slice(2)));
-    } else {
-      // Regular paragraph
-      elements.push(React.createElement('p', { key: index, className: 'mb-3 leading-relaxed' }, processSimpleMarkdown(line)));
-    }
-  });
-
-  flushList();
-  return <>{elements}</>;
+  
+  return (
+    <>
+      <Steps>
+        {steps.map((step, index) => (
+          <Step key={index} title={step.title}>
+            <div 
+              className="[&_img]:rounded-lg [&_img]:my-4 [&_img]:cursor-pointer [&_img]:transition-transform [&_img]:duration-200 [&_img:hover]:-translate-y-1" 
+              onClick={handleImageClick}
+            >
+              {processInlineMarkdown(step.content)}
+            </div>
+          </Step>
+        ))}
+      </Steps>
+      
+      {modalImage && (
+        <div 
+          className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+          onClick={() => setModalImage(null)}
+        >
+          <div className="relative max-w-[90vw] max-h-[90vh]">
+            <button
+              onClick={() => setModalImage(null)}
+              className="absolute -top-12 right-0 text-white hover:text-gray-300 transition-colors bg-black/50 rounded-full p-2"
+              aria-label="Close image"
+            >
+              <X size={24} />
+            </button>
+            <img 
+              src={modalImage.src} 
+              alt={modalImage.alt} 
+              className="max-w-full max-h-full object-contain rounded-lg shadow-2xl"
+              onClick={(e) => e.stopPropagation()}
+            />
+          </div>
+        </div>
+      )}
+    </>
+  );
 };
 
 // Parse mixed content that contains both special elements and markdown
@@ -692,33 +601,49 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
   
   // Find all special elements with their positions
   const cardGroupRegex = /<CardGroup[^>]*>[\s\S]*?<\/CardGroup>/g;
-  const stepsRegex = /<Steps[^>]*>[\s\S]*?<\/Steps>/g;
   const imageRegex = /<Image[^>]*\/>/g;
   const calloutRegex = /<Callout[^>]*>[\s\S]*?<\/Callout>/g;
   const standaloneCardRegex = /<Card[^>]*>[\s\S]*?<\/Card>/g;
+  const stepsRegex = /<Steps[^>]*>[\s\S]*?<\/Steps>/g;
   
   const allMatches: Array<{ match: RegExpMatchArray; type: string }> = [];
   
-  // Find CardGroups first
+  // Find Steps first (so we can exclude images inside them)
   let match;
-  while ((match = cardGroupRegex.exec(content)) !== null) {
-    allMatches.push({ match, type: 'cardgroup' });
-  }
-  
-  // Find Steps
-  cardGroupRegex.lastIndex = 0;
   while ((match = stepsRegex.exec(content)) !== null) {
     allMatches.push({ match, type: 'steps' });
   }
   
-  // Find Callouts
+  // Find CardGroups
   stepsRegex.lastIndex = 0;
+  while ((match = cardGroupRegex.exec(content)) !== null) {
+    allMatches.push({ match, type: 'cardgroup' });
+  }
+  
+  // Find Callouts
+  cardGroupRegex.lastIndex = 0;
   while ((match = calloutRegex.exec(content)) !== null) {
     allMatches.push({ match, type: 'callout' });
   }
   
-  // Find standalone Cards (not inside CardGroups)
+  // Find Images (but exclude ones inside Steps)
   calloutRegex.lastIndex = 0;
+  const stepsMatches = allMatches.filter(m => m.type === 'steps');
+  while ((match = imageRegex.exec(content)) !== null) {
+    // Check if this image is inside a Steps block
+    const isInSteps = stepsMatches.some(stepsMatch => {
+      const stepsStart = stepsMatch.match.index!;
+      const stepsEnd = stepsStart + stepsMatch.match[0].length;
+      return match.index! >= stepsStart && match.index! < stepsEnd;
+    });
+    
+    if (!isInSteps) {
+      allMatches.push({ match, type: 'image' });
+    }
+  }
+  
+  // Find standalone Cards (not inside CardGroups)
+  imageRegex.lastIndex = 0;
   const cardGroupMatches = allMatches.filter(m => m.type === 'cardgroup');
   while ((match = standaloneCardRegex.exec(content)) !== null) {
     // Check if this card is inside a CardGroup
@@ -733,29 +658,10 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
     }
   }
   
-  // Find Images (but exclude those inside Steps, CardGroups, or other components)
-  standaloneCardRegex.lastIndex = 0;
-  const stepsMatches = allMatches.filter(m => m.type === 'steps');
-  while ((match = imageRegex.exec(content)) !== null) {
-    // Check if this image is inside any special component
-    const isInsideComponent = allMatches.some(componentMatch => {
-      const componentStart = componentMatch.match.index!;
-      const componentEnd = componentStart + componentMatch.match[0].length;
-      return match.index! >= componentStart && match.index! < componentEnd;
-    });
-    
-    if (!isInsideComponent) {
-      console.log('🖼️ Found standalone image at position:', match.index);
-      allMatches.push({ match, type: 'image' });
-    } else {
-      console.log('🖼️ Skipping image inside component at position:', match.index);
-    }
-  }
-  
   // Sort by position
   allMatches.sort((a, b) => (a.match.index || 0) - (b.match.index || 0));
   
-  console.log('🔀 Found special elements:', allMatches.length, allMatches.map(m => ({ type: m.type, position: m.match.index })));
+  console.log('🔀 Found special elements:', allMatches.length);
   
   let lastIndex = 0;
   let elementIndex = 0;
@@ -838,6 +744,305 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
   return <>{elements}</>;
 };
 
+// Parse Markdown - Updated to handle inline Image tags within markdown content
+const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
+  console.log('📝 MarkdownSection: Starting with content length:', content.length);
+  
+  const processContent = (text: string): React.ReactNode[] => {
+    console.log('📝 processContent: Starting with text:', text);
+    
+    // First, extract any inline Image tags and process them separately
+    const imageMatches: Array<{ match: RegExpMatchArray; index: number }> = [];
+    const imageRegex = /<Image[^>]*\/>/g;
+    let match;
+    while ((match = imageRegex.exec(text)) !== null) {
+      imageMatches.push({ match, index: match.index! });
+    }
+    
+    if (imageMatches.length > 0) {
+      console.log('📝 Found', imageMatches.length, 'inline images in markdown');
+      const elements: React.ReactNode[] = [];
+      let lastIndex = 0;
+      let elementIndex = 0;
+      
+      // Process text with inline images
+      for (const { match, index } of imageMatches) {
+        // Add text content before the image
+        if (index > lastIndex) {
+          const textContent = text.slice(lastIndex, index);
+          if (textContent.trim()) {
+            const textElements = processTextContent(textContent);
+            elements.push(...textElements.map((el, i) => 
+              React.cloneElement(el as React.ReactElement, { key: `text-${elementIndex}-${i}` })
+            ));
+            elementIndex++;
+          }
+        }
+        
+        // Add the image
+        const imageData = extractImageData(match[0]);
+        elements.push(
+          <ImageSection key={`image-${elementIndex}`} {...imageData} />
+        );
+        elementIndex++;
+        lastIndex = index + match[0].length;
+      }
+      
+      // Add any remaining text content
+      if (lastIndex < text.length) {
+        const remainingText = text.slice(lastIndex);
+        if (remainingText.trim()) {
+          const textElements = processTextContent(remainingText);
+          elements.push(...textElements.map((el, i) => 
+            React.cloneElement(el as React.ReactElement, { key: `text-final-${i}` })
+          ));
+        }
+      }
+      
+      return elements;
+    }
+    
+    // No inline images, process as regular markdown
+    return processTextContent(text);
+  };
+
+  const processTextContent = (text: string): React.ReactNode[] => {
+    const lines = text.split('\n');
+    console.log('📝 processTextContent: Split into', lines.length, 'lines');
+    
+    const elements: React.ReactNode[] = [];
+    let currentList: React.ReactNode[] = [];
+    let listType: ListType = null;
+    let codeBlock: string[] = [];
+    let inCodeBlock = false;
+    let codeLanguage = '';
+    let tableRows: string[] = [];
+    let inTable = false;
+
+    const flushList = () => {
+      if (currentList.length > 0) {
+        console.log('📝 Flushing list with', currentList.length, 'items, type:', listType);
+        if (listType === 'ordered') {
+          elements.push(
+            <ol key={`list-${elements.length}`} className="hn-ordered-list">
+              {currentList}
+            </ol>
+          );
+        } else if (listType === 'unordered') {
+          elements.push(
+            <ul key={`list-${elements.length}`} className="hn-unordered-list">
+              {currentList}
+            </ul>
+          );
+        }
+        currentList = [];
+        listType = null;
+      }
+    };
+
+    const flushTable = () => {
+      if (tableRows.length > 0) {
+        console.log('📝 Flushing table with', tableRows.length, 'rows');
+        
+        // Parse table rows properly
+        const headerRow = tableRows[0]?.split('|').map(cell => cell.trim()).filter(Boolean) || [];
+        const separatorRow = tableRows[1]?.split('|').map(cell => cell.trim()).filter(Boolean) || [];
+        const dataRows = tableRows.slice(2).filter(row => row.trim());
+
+        if (headerRow.length > 0) {
+          elements.push(
+            <div key={`table-${elements.length}`} className="overflow-x-auto my-6">
+              <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800/80">
+                <thead>
+                  <tr>
+                    {headerRow.map((cell, i) => (
+                      <th key={i} className="px-4 py-2 text-left text-sm font-semibold text-slate-700 dark:text-slate-200">
+                        <p className="!m-0 min-h-6">
+                          <strong>
+                            <SecureInlineMarkdown content={sanitizeText(cell)} />
+                          </strong>
+                        </p>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-200 dark:divide-slate-800/80">
+                  {dataRows.map((row, rowIndex) => {
+                    const cells = row.split('|').map(cell => cell.trim()).filter(Boolean);
+                    return (
+                      <tr key={rowIndex}>
+                        {cells.map((cell, cellIndex) => (
+                          <td key={cellIndex} className="px-4 py-2 text-sm text-slate-700 dark:text-slate-300">
+                            <SecureInlineMarkdown content={sanitizeText(cell)} />
+                          </td>
+                        ))}
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          );
+        }
+        
+        tableRows = [];
+        inTable = false;
+      }
+    };
+
+    lines.forEach((line, index) => {
+      console.log(`📝 Processing line ${index}:`, line);
+
+      // Code blocks
+      if (line.startsWith('```')) {
+        if (!inCodeBlock) {
+          console.log(`📝 Starting code block at line ${index}:`, line);
+          flushList();
+          flushTable();
+          inCodeBlock = true;
+          codeLanguage = sanitizeText(line.slice(3).trim());
+        } else {
+          console.log(`📝 Ending code block at line ${index}, language:`, codeLanguage);
+          elements.push(
+            <pre key={`code-${index}`} className="hn-code-block">
+              <code className={`language-${codeLanguage}`}>
+                {codeBlock.join('\n')}
+              </code>
+            </pre>
+          );
+          codeBlock = [];
+          inCodeBlock = false;
+          codeLanguage = '';
+        }
+        return;
+      }
+
+      if (inCodeBlock) {
+        console.log(`📝 Adding to code block at line ${index}:`, line);
+        codeBlock.push(line);
+        return;
+      }
+
+      // Tables - improved detection
+      if (line.includes('|') && (line.trim().startsWith('|') || line.match(/\|.*\|/))) {
+        if (!inTable) {
+          console.log(`📝 Starting table at line ${index}:`, line);
+          flushList();
+          inTable = true;
+        }
+        tableRows.push(line);
+        return;
+      } else if (inTable) {
+        flushTable();
+      }
+
+      // Headers
+      if (line.startsWith('# ')) {
+        console.log(`📝 Found H1 at line ${index}:`, line);
+        flushList();
+        flushTable();
+        elements.push(
+          <h1 key={`h1-${index}`} className="hn-h1">
+            {sanitizeText(line.slice(2))}
+          </h1>
+        );
+        return;
+      }
+      if (line.startsWith('## ')) {
+        console.log(`📝 Found H2 at line ${index}:`, line);
+        flushList();
+        flushTable();
+        elements.push(
+          <h2 key={`h2-${index}`} className="hn-h2">
+            {sanitizeText(line.slice(3))}
+          </h2>
+        );
+        return;
+      }
+      if (line.startsWith('### ')) {
+        console.log(`📝 Found H3 at line ${index}:`, line);
+        flushList();
+        flushTable();
+        elements.push(
+          <h3 key={`h3-${index}`} className="hn-h3">
+            {sanitizeText(line.slice(4))}
+          </h3>
+        );
+        return;
+      }
+
+      // Lists
+      if (line.match(/^\d+\./)) {
+        console.log(`📝 Found ordered list item at line ${index}:`, line);
+        if (listType !== 'ordered') {
+          flushList();
+          flushTable();
+          listType = 'ordered';
+        }
+        currentList.push(
+          <li key={`li-${index}`} className="hn-list-item">
+            <SecureInlineMarkdown content={sanitizeText(line.replace(/^\d+\./, '').trim())} />
+          </li>
+        );
+        return;
+      }
+
+      if (line.startsWith('* ')) {
+        console.log(`📝 Found unordered list item at line ${index}:`, line);
+        if (listType !== 'unordered') {
+          flushList();
+          flushTable();
+          listType = 'unordered';
+        }
+        currentList.push(
+          <li key={`li-${index}`} className="hn-list-item">
+            <SecureInlineMarkdown content={sanitizeText(line.slice(2))} />
+          </li>
+        );
+        return;
+      }
+
+      // Blockquotes
+      if (line.startsWith('> ')) {
+        console.log(`📝 Found blockquote at line ${index}:`, line);
+        flushList();
+        flushTable();
+        elements.push(
+          <blockquote key={`quote-${index}`} className="hn-blockquote">
+            <SecureInlineMarkdown content={sanitizeText(line.slice(2))} />
+          </blockquote>
+        );
+        return;
+      }
+
+      // Regular paragraphs
+      if (line.trim()) {
+        console.log(`📝 Found paragraph at line ${index}:`, line);
+        flushList();
+        flushTable();
+        elements.push(
+          <p key={`p-${index}`} className="hn-paragraph">
+            <SecureInlineMarkdown content={sanitizeText(line)} />
+          </p>
+        );
+      } else {
+        console.log(`📝 Empty line at ${index}`);
+      }
+    });
+
+    // Flush any remaining lists or tables
+    flushList();
+    flushTable();
+
+    console.log('📝 processTextContent: Generated', elements.length, 'elements');
+    return elements;
+  };
+
+  const result = processContent(content);
+  console.log('📝 MarkdownSection: Returning', result.length, 'elements');
+  return <>{result}</>;
+};
+
 // Main component
 const HashnodeMarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) => {
   console.log('🚀 HashnodeMarkdownRenderer processing content length:', content.length);
@@ -847,6 +1052,7 @@ const HashnodeMarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) 
   
   const renderSection = (section: ParsedSection): React.ReactNode => {
     console.log('🔄 Rendering section:', section.type, 'at index:', section.index);
+    console.log('🔄 Section content preview:', section.content.substring(0, 100));
     
     let result: React.ReactNode = null;
     
@@ -883,7 +1089,7 @@ const HashnodeMarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) 
       
       case 'accordion': {
         const accordionData = parseAccordion(section.content);
-        result = <AccordionSection key={section.index} {...accordionData} />;
+        result = <AccordionSection key={section.index} accordion={accordionData} />;
         break;
       }
       
@@ -901,7 +1107,7 @@ const HashnodeMarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) 
       
       case 'button': {
         const buttonData = parseButton(section.content);
-        result = <ButtonSection key={section.index} {...buttonData} />;
+        result = <ButtonSection key={section.index} button={buttonData} />;
         break;
       }
       
