@@ -22,13 +22,14 @@ export function InteractiveEditor({
 }: InteractiveEditorProps) {
   const [isEditing, setIsEditing] = useState(false);
   const [editingElement, setEditingElement] = useState<string | null>(null);
-  const [tempContent, setTempContent] = useState(content);
   const containerRef = useRef<HTMLDivElement>(null);
+  const originalContentRef = useRef<string>('');
 
   const canEdit = !isLocked || lockedBy === 'You';
 
+  // Track content changes
   useEffect(() => {
-    setTempContent(content);
+    originalContentRef.current = content;
   }, [content]);
 
   // Make elements editable when editing mode is enabled
@@ -58,7 +59,7 @@ export function InteractiveEditor({
         element.removeEventListener('click', handleElementClick);
       });
     };
-  }, [isEditing, tempContent, canEdit]);
+  }, [isEditing, content, canEdit]);
 
   const handleElementClick = (e: Event) => {
     if (!canEdit || !isEditing) return;
@@ -68,6 +69,10 @@ export function InteractiveEditor({
     
     const target = e.currentTarget as HTMLElement;
     const elementType = target.tagName.toLowerCase();
+    const originalText = target.textContent || '';
+    
+    // Store original text for cancellation
+    target.setAttribute('data-original-text', originalText);
     
     // Make element editable
     target.contentEditable = 'true';
@@ -79,65 +84,89 @@ export function InteractiveEditor({
     target.style.outlineOffset = '2px';
     
     // Add keydown handler
-    target.addEventListener('keydown', handleKeyDown);
+    const keydownHandler = (keyEvent: KeyboardEvent) => {
+      if (keyEvent.key === 'Enter' && !keyEvent.shiftKey) {
+        keyEvent.preventDefault();
+        saveElement(target, originalText);
+      } else if (keyEvent.key === 'Escape') {
+        cancelEdit(target);
+      }
+    };
+    
+    target.addEventListener('keydown', keydownHandler);
+    target.setAttribute('data-keydown-added', 'true');
     
     toast.info(`Editing ${elementType}. Press Enter to save or Escape to cancel.`);
   };
 
-  const handleKeyDown = (e: KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      saveElement(e.currentTarget as HTMLElement);
-    } else if (e.key === 'Escape') {
-      cancelEdit(e.currentTarget as HTMLElement);
-    }
-  };
-
-  const saveElement = (element: HTMLElement) => {
-    const newContent = element.textContent || '';
+  const saveElement = (element: HTMLElement, originalText: string) => {
+    const newText = element.textContent || '';
     const elementType = element.tagName.toLowerCase();
     
-    // Update the markdown content based on element type
-    let updatedMarkdown = tempContent;
-    
-    // Simple content replacement - in a real implementation, you'd want more sophisticated parsing
-    if (elementType === 'h1') {
-      updatedMarkdown = updatedMarkdown.replace(/^# .+$/m, `# ${newContent}`);
-    } else if (elementType === 'h2') {
-      updatedMarkdown = updatedMarkdown.replace(/^## .+$/m, `## ${newContent}`);
-    } else if (elementType === 'h3') {
-      updatedMarkdown = updatedMarkdown.replace(/^### .+$/m, `### ${newContent}`);
-    } else if (elementType === 'p') {
-      // For paragraphs, replace the first occurrence of similar content
-      const lines = updatedMarkdown.split('\n');
-      const targetLine = lines.findIndex(line => line.trim() && !line.startsWith('#') && !line.startsWith('-') && !line.startsWith('```'));
-      if (targetLine !== -1) {
-        lines[targetLine] = newContent;
-        updatedMarkdown = lines.join('\n');
-      }
+    if (newText === originalText) {
+      // No changes, just cleanup
+      cleanupElement(element);
+      return;
     }
     
-    setTempContent(updatedMarkdown);
-    onContentChange(updatedMarkdown);
+    // Update the markdown content based on element type and original text
+    let updatedMarkdown = content;
     
-    // Remove editing state
-    element.contentEditable = 'false';
-    element.style.outline = '';
-    element.removeEventListener('keydown', handleKeyDown);
-    setEditingElement(null);
+    try {
+      if (elementType.startsWith('h')) {
+        // Handle headings
+        const level = parseInt(elementType.charAt(1));
+        const headingPrefix = '#'.repeat(level);
+        const regex = new RegExp(`^${headingPrefix}\\s+${escapeRegex(originalText)}$`, 'm');
+        updatedMarkdown = updatedMarkdown.replace(regex, `${headingPrefix} ${newText}`);
+      } else if (elementType === 'p') {
+        // Handle paragraphs - find and replace the exact text
+        const regex = new RegExp(`^${escapeRegex(originalText)}$`, 'm');
+        updatedMarkdown = updatedMarkdown.replace(regex, newText);
+      }
+      
+      // If regex replacement didn't work, try a simpler approach
+      if (updatedMarkdown === content) {
+        updatedMarkdown = content.replace(originalText, newText);
+      }
+      
+      onContentChange(updatedMarkdown);
+      toast.success('Content updated!');
+    } catch (error) {
+      console.error('Error updating content:', error);
+      toast.error('Failed to update content');
+    }
     
-    toast.success('Content updated!');
+    cleanupElement(element);
   };
 
   const cancelEdit = (element: HTMLElement) => {
+    const originalText = element.getAttribute('data-original-text') || '';
+    element.textContent = originalText;
+    cleanupElement(element);
+    toast.info('Edit cancelled');
+  };
+
+  const cleanupElement = (element: HTMLElement) => {
     element.contentEditable = 'false';
     element.style.outline = '';
-    element.removeEventListener('keydown', handleKeyDown);
-    setEditingElement(null);
+    element.removeAttribute('data-original-text');
     
-    // Restore original content
-    setTempContent(content);
-    toast.info('Edit cancelled');
+    // Remove keydown handler if it was added
+    if (element.getAttribute('data-keydown-added')) {
+      element.removeEventListener('keydown', handleKeyDown);
+      element.removeAttribute('data-keydown-added');
+    }
+    
+    setEditingElement(null);
+  };
+
+  const handleKeyDown = (e: KeyboardEvent) => {
+    // This is a fallback, the actual handler is added inline
+  };
+
+  const escapeRegex = (text: string) => {
+    return text.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
   };
 
   const addNewSection = (type: 'heading' | 'paragraph' | 'list' | 'image') => {
@@ -160,8 +189,7 @@ export function InteractiveEditor({
         break;
     }
     
-    const updatedContent = tempContent + newContent;
-    setTempContent(updatedContent);
+    const updatedContent = content + newContent;
     onContentChange(updatedContent);
     
     toast.success(`New ${type} added!`);
@@ -267,7 +295,7 @@ export function InteractiveEditor({
               )}
               
               <div className="markdown-content" ref={containerRef}>
-                <HashnodeMarkdownRenderer content={tempContent} />
+                <HashnodeMarkdownRenderer content={content} />
               </div>
             </div>
           </div>
