@@ -2,13 +2,7 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { WYSIWYGEditor } from './WYSIWYGEditor';
-import ReactMarkdown from 'react-markdown';
-import { createComponentMappings } from '@/components/markdown/componentMappings';
-import { processCustomSyntax } from '@/components/markdown/customSyntaxProcessor';
-import remarkGfm from 'remark-gfm';
-import remarkBreaks from 'remark-breaks';
-import remarkFrontmatter from 'remark-frontmatter';
-import rehypeRaw from 'rehype-raw';
+import HashnodeMarkdownRenderer from '@/components/markdown/HashnodeMarkdownRenderer';
 import { Edit, Eye, Sparkles, Wand2, GitPullRequest } from 'lucide-react';
 import { toast } from 'sonner';
 import { githubService } from '@/services/githubService';
@@ -25,28 +19,6 @@ interface TSXRendererProps {
 export function TSXRenderer({ content, onContentChange, readOnly = false, filePath }: TSXRendererProps) {
   const [mode, setMode] = useState<'preview' | 'wysiwyg'>('preview');
   const { user } = useAuth();
-  const components = createComponentMappings();
-
-  // Process the content using the EXACT same method as the actual user-facing docs
-  const processedContent = React.useMemo(() => {
-    console.log('🔧 TSXRenderer processing content with EXACT docs process...');
-    
-    try {
-      // Apply custom syntax processing (same as MarkdownRenderer)
-      const processedMarkdown = processCustomSyntax(content);
-      
-      console.log('🔧 TSXRenderer content processed:', {
-        originalLength: content.length,
-        processedLength: processedMarkdown.length,
-        hasCustomSyntax: processedMarkdown !== content
-      });
-
-      return processedMarkdown;
-    } catch (error) {
-      console.error('Error processing content:', error);
-      return content; // Fallback to original content
-    }
-  }, [content]);
 
   async function handleCreatePR() {
     try {
@@ -213,7 +185,7 @@ Please review the changes and merge when ready.
               <div className="text-xs text-muted-foreground">
                 {mode === 'wysiwyg' 
                   ? "✨ Click elements to edit them directly" 
-                  : "📝 Real-time markdown rendering with exact docs processing"
+                  : "📝 Real-time rendering using the exact same docs renderer"
                 }
               </div>
             </div>
@@ -274,17 +246,10 @@ Please review the changes and merge when ready.
                 <div className="bg-background rounded-lg border border-border p-6 shadow-sm">
                   <div className="mb-4 text-sm text-muted-foreground border-b border-border pb-2">
                     <span className="font-medium">Live Preview</span>
-                    <p className="text-xs mt-1">This shows exactly how the content will appear using the same processing and components as the actual docs.</p>
+                    <p className="text-xs mt-1">This shows exactly how the content will appear using the same HashnodeMarkdownRenderer as the actual docs.</p>
                   </div>
                   <div className="markdown-content">
-                    <ReactMarkdown
-                      components={components}
-                      remarkPlugins={[remarkGfm, remarkBreaks, remarkFrontmatter]}
-                      rehypePlugins={[rehypeRaw]}
-                      skipHtml={false}
-                    >
-                      {processedContent}
-                    </ReactMarkdown>
+                    <HashnodeMarkdownRenderer content={content} />
                   </div>
                 </div>
               </div>

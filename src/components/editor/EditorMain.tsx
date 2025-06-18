@@ -7,7 +7,7 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import HashnodeMarkdownRenderer from '@/components/HashnodeMarkdownRenderer';
+import HashnodeMarkdownRenderer from '@/components/markdown/HashnodeMarkdownRenderer';
 import { useLiveTyping } from '@/hooks/useLiveTyping';
 import { TypingIndicator } from './TypingIndicator';
 import { VisibilitySwitch } from './VisibilitySwitch';
@@ -273,6 +273,7 @@ export function EditorMain({
               <div className="flex items-center gap-2">
                 <Eye className="h-4 w-4 text-muted-foreground" />
                 <span className="text-sm font-medium">Live Preview</span>
+                <span className="text-xs text-muted-foreground">(Same renderer as docs)</span>
                 {isLockedByOther && (
                   <Badge variant="outline" className="text-xs">
                     {(liveContent || latestTypingContent) ? 'Live Updates' : 'Read-only'}
