@@ -23,14 +23,8 @@ export function useBranchEditorWithUrl() {
   const [localContent, setLocalContent] = useUrlState<string>(
     'content',
     '',
-    (value) => encodeURIComponent(value),
-    (value) => {
-      try {
-        return decodeURIComponent(value);
-      } catch {
-        return value;
-      }
-    }
+    (value) => value,
+    (value) => value
   );
   
   const [isLoading, setIsLoading] = useUrlState<boolean>(
@@ -55,7 +49,7 @@ export function useBranchEditorWithUrl() {
         loadFileContent(selectedFile);
       }
     }
-  }, [selectedFile, contentManager.currentBranch]);
+  }, [selectedFile, contentManager.currentBranch, localContent]);
 
   const loadFileContent = async (filePath: string) => {
     if (DEBUG_EDITOR) {
@@ -137,7 +131,7 @@ Start editing to see the live preview!
       }
     }
 
-    // Update URL with selected file
+    // Update URL with selected file - don't navigate away from current page
     setSelectedFileUrl(filePath);
     
     // Load the file content

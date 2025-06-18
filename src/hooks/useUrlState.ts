@@ -28,7 +28,7 @@ export function useUrlState<T>(
         newParams.set(key, serialize(newValue));
       }
       return newParams;
-    }, { replace: true });
+    });
   }, [key, defaultValue, serialize, setSearchParams]);
 
   return [value, setValue] as const;
