@@ -1,9 +1,9 @@
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import HashnodeMarkdownRenderer from '@/components/markdown/HashnodeMarkdownRenderer';
 import { Button } from '@/components/ui/button';
-import { Wand2, Type, Image, List, Quote, Code } from 'lucide-react';
+import { Wand2, Type, Bold, Italic, List, Quote, Code } from 'lucide-react';
 
 interface WYSIWYGEditorProps {
   content: string;
@@ -19,61 +19,58 @@ export function WYSIWYGEditor({ content, onContentChange }: WYSIWYGEditorProps) 
     setEditableContent(content);
   }, [content]);
 
-  const handleContentEdit = () => {
+  // Debounced save function to prevent too many updates
+  const debouncedSave = useCallback(
+    (() => {
+      let timeoutId: NodeJS.Timeout;
+      return (newContent: string) => {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => {
+          onContentChange(newContent);
+        }, 500);
+      };
+    })(),
+    [onContentChange]
+  );
+
+  const handleContentEdit = useCallback(() => {
     if (containerRef.current) {
-      const htmlContent = containerRef.current.innerHTML;
-      // This is a simplified conversion - in a real implementation, 
-      // you'd want a proper HTML to Markdown converter
-      const markdownContent = htmlToMarkdown(htmlContent);
-      onContentChange(markdownContent);
+      const textContent = containerRef.current.innerText || '';
+      // For now, just use the text content as markdown
+      // This preserves the content without complex HTML->MD conversion
+      setEditableContent(textContent);
+      debouncedSave(textContent);
     }
-  };
+  }, [debouncedSave]);
 
-  // Simplified HTML to Markdown conversion
-  const htmlToMarkdown = (html: string): string => {
-    // This is a basic conversion - you might want to use a library like turndown.js
-    let markdown = html;
-    
-    // Convert headings
-    markdown = markdown.replace(/<h1[^>]*>(.*?)<\/h1>/gi, '# $1\n\n');
-    markdown = markdown.replace(/<h2[^>]*>(.*?)<\/h2>/gi, '## $1\n\n');
-    markdown = markdown.replace(/<h3[^>]*>(.*?)<\/h3>/gi, '### $1\n\n');
-    
-    // Convert paragraphs
-    markdown = markdown.replace(/<p[^>]*>(.*?)<\/p>/gi, '$1\n\n');
-    
-    // Convert strong/bold
-    markdown = markdown.replace(/<strong[^>]*>(.*?)<\/strong>/gi, '**$1**');
-    markdown = markdown.replace(/<b[^>]*>(.*?)<\/b>/gi, '**$1**');
-    
-    // Convert emphasis/italic
-    markdown = markdown.replace(/<em[^>]*>(.*?)<\/em>/gi, '*$1*');
-    markdown = markdown.replace(/<i[^>]*>(.*?)<\/i>/gi, '*$1*');
-    
-    // Convert links
-    markdown = markdown.replace(/<a[^>]*href="([^"]*)"[^>]*>(.*?)<\/a>/gi, '[$2]($1)');
-    
-    // Remove other HTML tags
-    markdown = markdown.replace(/<[^>]*>/g, '');
-    
-    // Clean up extra whitespace
-    markdown = markdown.replace(/\n\s*\n\s*\n/g, '\n\n');
-    
-    return markdown.trim();
-  };
+  const handleInput = useCallback(() => {
+    handleContentEdit();
+  }, [handleContentEdit]);
 
-  const insertText = (text: string) => {
+  const insertText = useCallback((text: string) => {
     const newContent = editableContent + '\n\n' + text;
     setEditableContent(newContent);
     onContentChange(newContent);
-  };
+  }, [editableContent, onContentChange]);
+
+  const formatText = useCallback((command: string) => {
+    if (!isEditing) return;
+    
+    try {
+      document.execCommand(command, false);
+      handleContentEdit();
+    } catch (error) {
+      console.log('Format command not supported:', command);
+    }
+  }, [isEditing, handleContentEdit]);
 
   const toolbarItems = [
     { icon: Type, label: 'Heading', action: () => insertText('## New Heading') },
+    { icon: Bold, label: 'Bold', action: () => formatText('bold') },
+    { icon: Italic, label: 'Italic', action: () => formatText('italic') },
     { icon: List, label: 'List', action: () => insertText('- List item\n- Another item') },
     { icon: Quote, label: 'Quote', action: () => insertText('> This is a quote') },
     { icon: Code, label: 'Code', action: () => insertText('```\ncode here\n```') },
-    { icon: Image, label: 'Image', action: () => insertText('![Alt text](image-url)') },
   ];
 
   return (
@@ -117,15 +114,17 @@ export function WYSIWYGEditor({ content, onContentChange }: WYSIWYGEditorProps) 
               ref={containerRef}
               contentEditable
               suppressContentEditableWarning
+              onInput={handleInput}
               onBlur={handleContentEdit}
               className="min-h-[400px] outline-none prose prose-slate max-w-none dark:prose-invert focus:ring-2 focus:ring-primary/20 rounded-lg p-4 border border-dashed border-muted-foreground/30"
               style={{ whiteSpace: 'pre-wrap' }}
-            >
-              <HashnodeMarkdownRenderer content={editableContent} />
-            </div>
+              dangerouslySetInnerHTML={{ 
+                __html: editableContent.replace(/\n/g, '<br>') 
+              }}
+            />
           ) : (
             <div className="prose prose-slate max-w-none dark:prose-invert">
-              <HashnodeMarkdownRenderer content={content} />
+              <HashnodeMarkdownRenderer content={editableContent} />
             </div>
           )}
         </div>
