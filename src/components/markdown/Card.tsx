@@ -1,62 +1,79 @@
+import * as React from "react"
 
-import React from 'react';
-import { SecureInlineMarkdown } from './SecureInlineMarkdown';
+import { cn } from "@/lib/utils"
 
-interface CardProps {
-  title: string;
-  image?: string;
-  href?: string;
-  children: React.ReactNode;
-}
+const Card = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn(
+      "rounded-lg border bg-card text-card-foreground shadow-sm",
+      className
+    )}
+    {...props}
+  />
+))
+Card.displayName = "Card"
 
-const Card: React.FC<CardProps> = ({ title, image, href, children }) => {
-  const cardContent = (
-    <div className="p-6 my-4 border rounded-xl dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
-      {image && (
-        <div className="w-10 h-10 mb-6 relative rounded-lg">
-          <img
-            src={image}
-            alt={title}
-            loading="lazy"
-            decoding="async"
-            className="rounded-lg object-cover"
-            style={{
-              position: 'absolute',
-              height: '100%',
-              width: '100%',
-              left: 0,
-              top: 0,
-            }}
-          />
-        </div>
-      )}
-      <span className="block text-base font-semibold text-slate-700 dark:text-slate-200">
-        {title}
-      </span>
-      <div className="mt-3 text-base text-slate-600 dark:text-slate-300">
-        {typeof children === 'string' ? (
-          <SecureInlineMarkdown content={children} />
-        ) : (
-          children
-        )}
-      </div>
-    </div>
-  );
+const CardHeader = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("flex flex-col space-y-1.5 p-6", className)}
+    {...props}
+  />
+))
+CardHeader.displayName = "CardHeader"
 
-  if (href) {
-    return (
-      <a 
-        href={href} 
-        target="_blank" 
-        rel="noopener noreferrer"
-        className="block no-underline hover:no-underline"
-      >
-        {cardContent}
-      </a>
-    );
-  }
+const CardTitle = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLHeadingElement>
+>(({ className, ...props }, ref) => (
+  <h3
+    ref={ref}
+    className={cn(
+      "text-2xl font-semibold leading-none tracking-tight",
+      className
+    )}
+    {...props}
+  />
+))
+CardTitle.displayName = "CardTitle"
 
-  return cardContent;
-};
+const CardDescription = React.forwardRef<
+  HTMLParagraphElement,
+  React.HTMLAttributes<HTMLParagraphElement>
+>(({ className, ...props }, ref) => (
+  <p
+    ref={ref}
+    className={cn("text-sm text-muted-foreground", className)}
+    {...props}
+  />
+))
+CardDescription.displayName = "CardDescription"
 
-export default Card;
+const CardContent = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div ref={ref} className={cn("p-6 pt-0", className)} {...props} />
+))
+CardContent.displayName = "CardContent"
+
+const CardFooter = React.forwardRef<
+  HTMLDivElement,
+  React.HTMLAttributes<HTMLDivElement>
+>(({ className, ...props }, ref) => (
+  <div
+    ref={ref}
+    className={cn("flex items-center p-6 pt-0", className)}
+    {...props}
+  />
+))
+CardFooter.displayName = "CardFooter"
+
+export { Card, CardHeader, CardFooter, CardTitle, CardDescription, CardContent }
