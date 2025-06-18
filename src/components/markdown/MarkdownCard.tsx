@@ -1,27 +1,17 @@
 
 import React from 'react';
-import ReactMarkdown from 'react-markdown';
-import { createComponentMappings } from './componentMappings';
+import { SecureInlineMarkdown } from './SecureInlineMarkdown';
 
 interface MarkdownCardProps {
   title: string;
   image?: string;
+  href?: string;
   children: React.ReactNode;
 }
 
-const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, children }) => {
-  console.log('🎯 MarkdownCard rendering:', { 
-    title, 
-    image, 
-    hasChildren: !!children,
-    childrenType: typeof children,
-    childrenContent: typeof children === 'string' ? children.substring(0, 100) : 'not-string'
-  });
-
-  const components = createComponentMappings();
-
-  return (
-    <div className="p-6 my-4 border rounded-xl bg-white dark:bg-[#2a2b2b] dark:border-gray-700 hover:border-slate-300 dark:hover:border-gray-600 transition-colors shadow-sm">
+export const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, href, children }) => {
+  const cardContent = (
+    <div className="p-6 my-4 border rounded-xl dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
       {image && (
         <div className="w-10 h-10 mb-6 relative rounded-lg">
           <img
@@ -40,23 +30,31 @@ const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, children }) =
           />
         </div>
       )}
-      <span className="block text-base font-semibold text-slate-700 dark:text-slate-200 mb-3">
+      <span className="block text-base font-semibold text-slate-700 dark:text-slate-200">
         {title}
       </span>
-      <div className="text-base text-slate-600 dark:text-slate-300 leading-relaxed [&_a]:text-blue-600 [&_a]:hover:text-blue-800 [&_a]:underline [&_a]:underline-offset-4 dark:[&_a]:text-blue-400 dark:[&_a]:hover:text-blue-300">
+      <div className="mt-3 text-base text-slate-600 dark:text-slate-300">
         {typeof children === 'string' ? (
-          <ReactMarkdown components={components}>
-            {children}
-          </ReactMarkdown>
+          <SecureInlineMarkdown content={children} />
         ) : (
           children
         )}
       </div>
     </div>
   );
+
+  if (href) {
+    return (
+      <a 
+        href={href} 
+        target="_blank" 
+        rel="noopener noreferrer"
+        className="block no-underline hover:no-underline"
+      >
+        {cardContent}
+      </a>
+    );
+  }
+
+  return cardContent;
 };
-
-export default MarkdownCard;
-
-// Export named export for compatibility
-export { MarkdownCard };
