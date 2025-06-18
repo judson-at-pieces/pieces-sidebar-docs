@@ -1,7 +1,8 @@
+
 import React from 'react';
 import { Callout } from './Callout';
 import { CodeBlock } from './CodeBlock';
-import { Card } from './Card';
+import Card from './Card';
 import { CardGroup } from './CardGroup';
 import { Steps } from './Steps';
 import { Tabs } from './Tabs';
@@ -96,7 +97,7 @@ export function createComponentMappings() {
       
       // If pre contains code element, extract it and handle properly
       if (React.isValidElement(children) && children.type === 'code') {
-        const codeProps = children.props;
+        const codeProps = children.props as { className?: string; children?: React.ReactNode };
         const language = codeProps.className ? codeProps.className.replace(/^language-/, '') : undefined;
         return <CodeBlock className={codeProps.className} language={language}>{codeProps.children}</CodeBlock>;
       }
