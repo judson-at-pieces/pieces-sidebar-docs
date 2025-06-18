@@ -50,166 +50,127 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
   const elements: ProcessedMarkdown[] = [];
   let processedText = text;
 
-  // Process in order of precedence to avoid conflicts
-  // 1. Code blocks first (highest precedence)
-  // 2. Links (including complex markdown links)
-  // 3. Bold and italic
-  // 4. Images
+  // Simple regex patterns for inline markdown
+  const patterns = [
+    // Code blocks first (to avoid conflicts)
+    {
+      regex: /`([^`]+)`/g,
+      type: 'code' as const,
+      process: (match: string, content: string) => ({ type: 'code' as const, content: content.trim() })
+    },
+    // Links - both markdown and HTML
+    {
+      regex: /<a\s+href\s*=\s*["']([^"']+)["'][^>]*>(.*?)<\/a>/gi,
+      type: 'link' as const,
+      process: (match: string, href: string, linkText: string) => {
+        if (validateUrl(href) && linkText.trim()) {
+          return { type: 'link' as const, content: linkText.trim(), href };
+        }
+        return { type: 'text' as const, content: match };
+      }
+    },
+    {
+      regex: /\[([^\]]*)\]\(([^)]+)\)/g,
+      type: 'link' as const,
+      process: (match: string, linkText: string, href: string) => {
+        const cleanText = linkText.replace(/\\(.)/g, '$1'); // Unescape characters
+        if (validateUrl(href) && cleanText.trim()) {
+          return { type: 'link' as const, content: cleanText.trim(), href };
+        }
+        return { type: 'text' as const, content: match };
+      }
+    },
+    // Bold
+    {
+      regex: /\*\*(.*?)\*\*/g,
+      type: 'bold' as const,
+      process: (match: string, content: string) => {
+        if (content.trim()) {
+          return { type: 'bold' as const, content: content.trim() };
+        }
+        return { type: 'text' as const, content: match };
+      }
+    },
+    // Italic (but not if it's part of **)
+    {
+      regex: /(?<!\*)\*([^*]+)\*(?!\*)/g,
+      type: 'italic' as const,
+      process: (match: string, content: string) => {
+        if (content.trim()) {
+          return { type: 'italic' as const, content: content.trim() };
+        }
+        return { type: 'text' as const, content: match };
+      }
+    }
+  ];
 
-  // Step 1: Extract and replace code blocks
-  const codeBlocks: { placeholder: string; content: string }[] = [];
-  let codeIndex = 0;
+  // Process patterns one by one
+  const foundElements: Array<{ start: number; end: number; element: ProcessedMarkdown }> = [];
+
+  patterns.forEach(pattern => {
+    let match;
+    const regex = new RegExp(pattern.regex.source, pattern.regex.flags);
+    
+    while ((match = regex.exec(text)) !== null) {
+      const element = pattern.process(match[0], match[1], match[2]);
+      if (element.type !== 'text' || element.content !== match[0]) {
+        foundElements.push({
+          start: match.index!,
+          end: match.index! + match[0].length,
+          element
+        });
+      }
+    }
+  });
+
+  // Sort by position and resolve overlaps
+  foundElements.sort((a, b) => a.start - b.start);
   
-  processedText = processedText.replace(/`([^`]+)`/g, (match, content) => {
-    const placeholder = `__CODE_BLOCK_${codeIndex}__`;
-    codeBlocks.push({ placeholder, content: content.trim() });
-    codeIndex++;
-    return placeholder;
-  });
-
-  // Step 2: Extract and replace links (both markdown and HTML)
-  const links: { placeholder: string; text: string; href: string; target?: string }[] = [];
-  let linkIndex = 0;
-
-  // Handle HTML anchor tags first
-  processedText = processedText.replace(/<a\s+([^>]*?)>(.*?)<\/a>/gi, (match, attributes, linkText) => {
-    const placeholder = `__LINK_${linkIndex}__`;
-    
-    // Extract href
-    const hrefMatch = attributes.match(/href\s*=\s*["']([^"']+)["']/i);
-    const href = hrefMatch ? hrefMatch[1] : '';
-    
-    // Extract target
-    const targetMatch = attributes.match(/target\s*=\s*["']([^"']+)["']/i);
-    const target = targetMatch ? targetMatch[1] : '';
-    
-    if (validateUrl(href) && linkText.trim()) {
-      links.push({ placeholder, text: linkText.trim(), href, target });
-      linkIndex++;
-      return placeholder;
-    }
-    
-    return match; // Return original if invalid
-  });
-
-  // Handle markdown links
-  processedText = processedText.replace(/\[([^\]]*(?:\\.[^\]]*)*)\]\(([^)]+)\)/g, (match, linkText, href) => {
-    const placeholder = `__LINK_${linkIndex}__`;
-    const cleanText = linkText.replace(/\\(.)/g, '$1'); // Unescape characters
-    
-    if (validateUrl(href) && cleanText.trim()) {
-      links.push({ placeholder, text: cleanText.trim(), href });
-      linkIndex++;
-      return placeholder;
-    }
-    
-    return match; // Return original if invalid
-  });
-
-  // Step 3: Extract and replace images
-  const images: { placeholder: string; src: string; alt: string; align: string; fullwidth: boolean }[] = [];
-  let imageIndex = 0;
+  const resolvedElements: Array<{ start: number; end: number; element: ProcessedMarkdown }> = [];
   
-  processedText = processedText.replace(/<Image\s+([^>]*?)\/>/g, (match, attributes) => {
-    const placeholder = `__IMAGE_${imageIndex}__`;
+  for (const current of foundElements) {
+    // Check if this element overlaps with any already resolved element
+    const hasOverlap = resolvedElements.some(resolved => 
+      (current.start < resolved.end && current.end > resolved.start)
+    );
     
-    // Extract image attributes
-    const srcMatch = attributes.match(/src=["']([^"']+)["']/);
-    const altMatch = attributes.match(/alt=["']([^"']*)["']/);
-    const alignMatch = attributes.match(/align=["']([^"']*)["']/);
-    const fullwidthMatch = attributes.match(/fullwidth=["']([^"']*)["']/);
-    
-    const imageSrc = srcMatch ? srcMatch[1] : '';
-    const imageAlt = altMatch ? altMatch[1] : '';
-    const imageAlign = alignMatch ? alignMatch[1] : 'center';
-    const imageFullwidth = fullwidthMatch ? fullwidthMatch[1] === 'true' : false;
-    
-    if (validateUrl(imageSrc)) {
-      images.push({ placeholder, src: imageSrc, alt: imageAlt, align: imageAlign, fullwidth: imageFullwidth });
-      imageIndex++;
-      return placeholder;
-    }
-    
-    return match; // Return original if invalid
-  });
-
-  // Step 4: Process bold and italic (order matters - bold first to avoid conflicts)
-  const textStyles: { placeholder: string; type: 'bold' | 'italic'; content: string }[] = [];
-  let styleIndex = 0;
-
-  // Bold (**text**)
-  processedText = processedText.replace(/\*\*(.*?)\*\*/g, (match, content) => {
-    if (content.trim()) {
-      const placeholder = `__BOLD_${styleIndex}__`;
-      textStyles.push({ placeholder, type: 'bold', content: content.trim() });
-      styleIndex++;
-      return placeholder;
-    }
-    return match;
-  });
-
-  // Italic (*text*) - but not if it's part of **
-  processedText = processedText.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, (match, content) => {
-    if (content.trim()) {
-      const placeholder = `__ITALIC_${styleIndex}__`;
-      textStyles.push({ placeholder, type: 'italic', content: content.trim() });
-      styleIndex++;
-      return placeholder;
-    }
-    return match;
-  });
-
-  // Step 5: Split the processed text and rebuild with elements
-  const tokens = processedText.split(/(__(?:CODE_BLOCK|LINK|IMAGE|BOLD|ITALIC)_\d+__)/);
-  
-  for (const token of tokens) {
-    if (!token) continue;
-
-    // Check for placeholders and replace with appropriate elements
-    const codeBlock = codeBlocks.find(cb => cb.placeholder === token);
-    if (codeBlock) {
-      elements.push({ type: 'code', content: codeBlock.content });
-      continue;
-    }
-
-    const link = links.find(l => l.placeholder === token);
-    if (link) {
-      elements.push({ 
-        type: 'link', 
-        content: link.text, 
-        href: link.href,
-        target: link.target
-      });
-      continue;
-    }
-
-    const image = images.find(img => img.placeholder === token);
-    if (image) {
-      elements.push({ 
-        type: 'image', 
-        content: image.alt,
-        src: image.src,
-        alt: image.alt,
-        align: image.align,
-        fullwidth: image.fullwidth
-      });
-      continue;
-    }
-
-    const style = textStyles.find(s => s.placeholder === token);
-    if (style) {
-      elements.push({ type: style.type, content: style.content });
-      continue;
-    }
-
-    // Regular text
-    if (token.trim()) {
-      elements.push({ type: 'text', content: token });
+    if (!hasOverlap) {
+      resolvedElements.push(current);
     }
   }
 
+  // Build final elements array
+  let lastIndex = 0;
+  
+  for (const { start, end, element } of resolvedElements) {
+    // Add text before this element
+    if (start > lastIndex) {
+      const textContent = text.slice(lastIndex, start);
+      if (textContent) {
+        elements.push({ type: 'text', content: textContent });
+      }
+    }
+    
+    // Add the processed element
+    elements.push(element);
+    lastIndex = end;
+  }
+  
+  // Add remaining text
+  if (lastIndex < text.length) {
+    const remainingText = text.slice(lastIndex);
+    if (remainingText) {
+      elements.push({ type: 'text', content: remainingText });
+    }
+  }
+
+  // If no elements were processed, return the original text
+  if (elements.length === 0) {
+    elements.push({ type: 'text', content: text });
+  }
+
   console.log('🔄 processInlineMarkdown: Final elements:', elements.length, elements.map(e => ({ type: e.type, content: e.content?.substring(0, 30) })));
-  return elements.length > 0 ? elements : [{ type: 'text', content: text }];
+  return elements;
 };
 
 /**
