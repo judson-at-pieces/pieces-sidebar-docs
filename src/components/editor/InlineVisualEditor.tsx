@@ -14,16 +14,11 @@ interface InlineVisualEditorProps {
 
 export function InlineVisualEditor({ content, onContentChange, readOnly = false }: InlineVisualEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [commandPosition, setCommandPosition] = useState({ top: 0, left: 0 });
-  const [editingElement, setEditingElement] = useState<HTMLElement | null>(null);
-  const [markdownLines, setMarkdownLines] = useState<string[]>([]);
-
-  // Parse markdown into lines for easier manipulation
-  useEffect(() => {
-    setMarkdownLines(content.split('\n'));
-  }, [content]);
+  const [lastContent, setLastContent] = useState(content);
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -31,21 +26,35 @@ export function InlineVisualEditor({ content, onContentChange, readOnly = false 
       // Ctrl+/ for command palette
       if (e.key === '/' && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
-        const rect = containerRef.current?.getBoundingClientRect();
-        if (rect) {
-          setCommandPosition({
+        const selection = window.getSelection();
+        const range = selection?.getRangeAt(0);
+        let position = { top: 100, left: 50 };
+        
+        if (range) {
+          const rect = range.getBoundingClientRect();
+          position = {
+            top: rect.bottom + 10,
+            left: rect.left
+          };
+        } else if (containerRef.current) {
+          const rect = containerRef.current.getBoundingClientRect();
+          position = {
             top: rect.top + 100,
             left: rect.left + 50
-          });
-          setShowCommandPalette(true);
+          };
         }
+        
+        setCommandPosition(position);
+        setShowCommandPalette(true);
       }
       
       // Escape to exit editing
       if (e.key === 'Escape') {
         setIsEditing(false);
-        setEditingElement(null);
         setShowCommandPalette(false);
+        if (contentRef.current) {
+          contentRef.current.blur();
+        }
       }
     };
 
@@ -53,132 +62,141 @@ export function InlineVisualEditor({ content, onContentChange, readOnly = false 
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, []);
 
-  // Make elements editable when clicked
-  const makeElementsEditable = useCallback(() => {
-    if (!containerRef.current || readOnly) return;
-
-    const editableSelectors = [
-      'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
-      'p', 'li', 'blockquote',
-      'code:not(pre code)', 'strong', 'em'
-    ];
-
-    editableSelectors.forEach(selector => {
-      const elements = containerRef.current!.querySelectorAll(selector);
-      elements.forEach((element: Element) => {
-        const htmlElement = element as HTMLElement;
+  // Convert HTML back to markdown
+  const htmlToMarkdown = useCallback((html: string): string => {
+    // Create a temporary div to parse HTML
+    const tempDiv = document.createElement('div');
+    tempDiv.innerHTML = html;
+    
+    let markdown = '';
+    
+    function processNode(node: Node): string {
+      if (node.nodeType === Node.TEXT_NODE) {
+        return node.textContent || '';
+      }
+      
+      if (node.nodeType === Node.ELEMENT_NODE) {
+        const element = node as Element;
+        const tagName = element.tagName.toLowerCase();
+        const children = Array.from(element.childNodes).map(processNode).join('');
         
-        // Add hover effect
-        htmlElement.style.transition = 'all 0.2s ease';
-        htmlElement.addEventListener('mouseenter', () => {
-          if (!isEditing) {
-            htmlElement.style.outline = '2px dashed #3b82f6';
-            htmlElement.style.outlineOffset = '2px';
-            htmlElement.style.cursor = 'pointer';
-          }
-        });
-        
-        htmlElement.addEventListener('mouseleave', () => {
-          if (!isEditing) {
-            htmlElement.style.outline = 'none';
-          }
-        });
-
-        // Handle click to edit
-        htmlElement.addEventListener('click', (e) => {
-          e.preventDefault();
-          e.stopPropagation();
-          
-          if (!isEditing) {
-            setIsEditing(true);
-            setEditingElement(htmlElement);
-            htmlElement.contentEditable = 'true';
-            htmlElement.style.outline = '2px solid #3b82f6';
-            htmlElement.style.backgroundColor = 'rgba(59, 130, 246, 0.1)';
-            htmlElement.focus();
-            
-            // Select all text
-            const range = document.createRange();
-            range.selectNodeContents(htmlElement);
-            const selection = window.getSelection();
-            selection?.removeAllRanges();
-            selection?.addRange(range);
-          }
-        });
-
-        // Handle content changes
-        htmlElement.addEventListener('blur', () => {
-          if (htmlElement === editingElement) {
-            handleElementEdit(htmlElement);
-            setIsEditing(false);
-            setEditingElement(null);
-            htmlElement.contentEditable = 'false';
-            htmlElement.style.outline = 'none';
-            htmlElement.style.backgroundColor = 'transparent';
-          }
-        });
-
-        htmlElement.addEventListener('keydown', (e) => {
-          if (e.key === 'Enter' && !e.shiftKey) {
-            e.preventDefault();
-            htmlElement.blur();
-          }
-        });
-      });
-    });
-  }, [isEditing, editingElement, readOnly]);
-
-  // Convert edited HTML back to markdown
-  const handleElementEdit = (element: HTMLElement) => {
-    const newText = element.innerText.trim();
-    const tagName = element.tagName.toLowerCase();
-    
-    // Find the original text in markdown and replace it
-    let newMarkdown = content;
-    
-    // Simple text replacement for now - in a production app you'd want more sophisticated parsing
-    const originalText = element.dataset.originalText || element.innerText;
-    
-    if (tagName.startsWith('h')) {
-      const level = parseInt(tagName.charAt(1));
-      const prefix = '#'.repeat(level);
-      newMarkdown = newMarkdown.replace(
-        new RegExp(`^${prefix}\\s+.*$`, 'm'),
-        `${prefix} ${newText}`
-      );
-    } else if (tagName === 'p') {
-      // Replace paragraph content
-      const lines = newMarkdown.split('\n');
-      for (let i = 0; i < lines.length; i++) {
-        if (lines[i].trim() && !lines[i].startsWith('#') && !lines[i].startsWith('-') && !lines[i].startsWith('*')) {
-          if (lines[i].includes(originalText)) {
-            lines[i] = newText;
-            break;
-          }
+        switch (tagName) {
+          case 'h1': return `# ${children}\n\n`;
+          case 'h2': return `## ${children}\n\n`;
+          case 'h3': return `### ${children}\n\n`;
+          case 'h4': return `#### ${children}\n\n`;
+          case 'h5': return `##### ${children}\n\n`;
+          case 'h6': return `###### ${children}\n\n`;
+          case 'p': return `${children}\n\n`;
+          case 'br': return '\n';
+          case 'strong': case 'b': return `**${children}**`;
+          case 'em': case 'i': return `_${children}_`;
+          case 'code': return `\`${children}\``;
+          case 'pre': return `\`\`\`\n${children}\n\`\`\`\n\n`;
+          case 'blockquote': return `> ${children}\n\n`;
+          case 'ul': return `${children}\n`;
+          case 'ol': return `${children}\n`;
+          case 'li': return `- ${children}\n`;
+          case 'a': 
+            const href = element.getAttribute('href');
+            return href ? `[${children}](${href})` : children;
+          case 'img':
+            const src = element.getAttribute('src');
+            const alt = element.getAttribute('alt') || '';
+            return src ? `![${alt}](${src})` : '';
+          case 'hr': return '---\n\n';
+          case 'div': case 'span': return children;
+          default: return children;
         }
       }
-      newMarkdown = lines.join('\n');
+      
+      return '';
     }
     
-    onContentChange(newMarkdown);
-  };
+    Array.from(tempDiv.childNodes).forEach(node => {
+      markdown += processNode(node);
+    });
+    
+    return markdown.trim();
+  }, []);
+
+  // Handle content changes
+  const handleContentChange = useCallback(() => {
+    if (!contentRef.current || readOnly) return;
+    
+    const htmlContent = contentRef.current.innerHTML;
+    const markdownContent = htmlToMarkdown(htmlContent);
+    
+    if (markdownContent !== lastContent) {
+      setLastContent(markdownContent);
+      onContentChange(markdownContent);
+    }
+  }, [htmlToMarkdown, lastContent, onContentChange, readOnly]);
+
+  // Handle focus and blur
+  const handleFocus = useCallback(() => {
+    setIsEditing(true);
+  }, []);
+
+  const handleBlur = useCallback(() => {
+    setIsEditing(false);
+    handleContentChange();
+  }, [handleContentChange]);
+
+  // Handle input events for real-time updates
+  const handleInput = useCallback(() => {
+    handleContentChange();
+  }, [handleContentChange]);
 
   // Handle command palette insertions
-  const handleInsertContent = (insertContent: string) => {
-    const lines = content.split('\n');
+  const handleInsertContent = useCallback((insertContent: string) => {
+    if (!contentRef.current) return;
     
-    // Insert at the end for now - could be made smarter based on cursor position
-    lines.push('', insertContent);
+    const selection = window.getSelection();
+    const range = selection?.getRangeAt(0);
     
-    onContentChange(lines.join('\n'));
+    if (range) {
+      // Insert at cursor position
+      range.deleteContents();
+      
+      // Create a temporary div to convert markdown to HTML
+      const tempDiv = document.createElement('div');
+      tempDiv.innerHTML = `<div class="markdown-content"><div>${insertContent}</div></div>`;
+      
+      // Render the markdown content
+      const renderedContent = document.createElement('div');
+      renderedContent.innerHTML = insertContent;
+      
+      range.insertNode(renderedContent);
+      
+      // Move cursor after inserted content
+      range.setStartAfter(renderedContent);
+      range.setEndAfter(renderedContent);
+      selection?.removeAllRanges();
+      selection?.addRange(range);
+    } else {
+      // Append to end
+      const newContent = content + '\n\n' + insertContent;
+      onContentChange(newContent);
+    }
+    
     setShowCommandPalette(false);
-  };
+    handleContentChange();
+  }, [content, onContentChange, handleContentChange]);
 
-  // Re-make elements editable when content changes
+  // Update content when prop changes
   useEffect(() => {
-    const timer = setTimeout(makeElementsEditable, 100);
-    return () => clearTimeout(timer);
-  }, [content, makeElementsEditable]);
+    if (content !== lastContent && contentRef.current && !isEditing) {
+      setLastContent(content);
+      // Re-render the content
+      contentRef.current.innerHTML = '';
+      
+      // Create a temporary container to render markdown
+      const tempContainer = document.createElement('div');
+      tempContainer.innerHTML = content; // This is simplified - in reality you'd want to properly render markdown
+      contentRef.current.appendChild(tempContainer);
+    }
+  }, [content, lastContent, isEditing]);
 
   return (
     <div className="h-full flex flex-col bg-gradient-to-br from-background to-muted/10">
@@ -193,8 +211,8 @@ export function InlineVisualEditor({ content, onContentChange, readOnly = false 
               <span className="text-sm font-medium">Visual Editor</span>
               <div className="text-xs text-muted-foreground">
                 {isEditing 
-                  ? "🎯 Click elsewhere or press Enter to save changes" 
-                  : "✨ Click any element to edit inline • Ctrl+/ for components"
+                  ? "✨ Editing mode active - click anywhere to edit • Ctrl+/ for components" 
+                  : "📝 Click anywhere in the content to start editing • Ctrl+/ for components"
                 }
               </div>
             </div>
@@ -218,23 +236,36 @@ export function InlineVisualEditor({ content, onContentChange, readOnly = false 
       {/* Content Area */}
       <div className="flex-1 overflow-y-auto p-6">
         <div className="max-w-4xl mx-auto">
-          <div 
-            ref={containerRef}
-            className={`
-              bg-background rounded-lg border border-border p-6 shadow-sm
-              ${!readOnly ? 'hover:shadow-md transition-shadow duration-200' : ''}
-            `}
-          >
+          <div className={`
+            bg-background rounded-lg border border-border p-6 shadow-sm
+            ${!readOnly ? 'hover:shadow-md transition-shadow duration-200' : ''}
+          `}>
             {!readOnly && (
               <div className="mb-4 text-sm text-muted-foreground border-b border-border pb-2">
-                <span className="font-medium">Live Visual Editor</span>
+                <span className="font-medium">Fluid Visual Editor</span>
                 <p className="text-xs mt-1">
-                  Click on any text element to edit it directly. Changes are automatically converted to markdown.
+                  Click anywhere in the content below to start editing. Changes are automatically saved as markdown.
                 </p>
               </div>
             )}
             
-            <div className="markdown-content">
+            <div 
+              ref={contentRef}
+              contentEditable={!readOnly}
+              suppressContentEditableWarning={true}
+              onFocus={handleFocus}
+              onBlur={handleBlur}
+              onInput={handleInput}
+              className={`
+                markdown-content outline-none min-h-[200px]
+                ${!readOnly ? 'cursor-text' : 'cursor-default'}
+                ${isEditing ? 'ring-2 ring-purple-500/20 ring-offset-2' : ''}
+              `}
+              style={{
+                wordBreak: 'break-word',
+                whiteSpace: 'pre-wrap'
+              }}
+            >
               <HashnodeMarkdownRenderer content={content} />
             </div>
           </div>
