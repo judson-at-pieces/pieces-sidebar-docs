@@ -539,7 +539,7 @@ const ButtonSection: React.FC<{ button: ButtonData }> = ({ button }) => {
   );
 };
 
-// Updated Steps Section to use secure markdown rendering
+// Updated Steps Section to use secure markdown rendering with better link processing
 const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => {
   const [modalImage, setModalImage] = useState<{ src: string; alt: string } | null>(null);
   
@@ -559,10 +559,10 @@ const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => {
         {steps.map((step, index) => (
           <Step key={index} title={step.title}>
             <div 
-              className="[&_img]:rounded-lg [&_img]:my-4 [&_img]:cursor-pointer [&_img]:transition-transform [&_img]:duration-200 [&_img:hover]:-translate-y-1" 
+              className="[&_img]:rounded-lg [&_img]:my-4 [&_img]:cursor-pointer [&_img]:transition-transform [&_img]:duration-200 [&_img:hover]:-translate-y-1 [&_a]:text-blue-600 [&_a]:hover:text-blue-800 [&_a]:underline [&_a]:underline-offset-4" 
               onClick={handleImageClick}
             >
-              {processInlineMarkdown(step.content)}
+              <SecureInlineMarkdown content={step.content} />
             </div>
           </Step>
         ))}
