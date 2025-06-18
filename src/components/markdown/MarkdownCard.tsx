@@ -9,6 +9,17 @@ interface MarkdownCardProps {
   children: React.ReactNode;
 }
 
+const renderMarkdownWithSpacing = (content: string) => {
+  // Split content by line breaks and render each line separately
+  const lines = content.split('\n').filter(line => line.trim() !== '');
+  
+  return lines.map((line, index) => (
+    <div key={index} className={index > 0 ? 'mt-2' : ''}>
+      <SecureInlineMarkdown content={line.trim()} />
+    </div>
+  ));
+};
+
 export const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, href, children }) => {
   const cardContent = (
     <div className="p-6 my-4 border rounded-xl dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
@@ -35,7 +46,7 @@ export const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, href, 
       </span>
       <div className="mt-3 text-base text-slate-600 dark:text-slate-300">
         {typeof children === 'string' ? (
-          <SecureInlineMarkdown content={children} />
+          renderMarkdownWithSpacing(children)
         ) : (
           children
         )}
