@@ -44,7 +44,7 @@ Once you've downloaded the correct `.pkg` file, it's time to run the installer.
 
 ### System Requirements
 
-There are <mark>(2)</mark> requirements for installing Pieces on your macOS device:
+There are **(2)** requirements for installing Pieces on your macOS device:
 
 1. Compatible OS Version—**macOS 13.0 (Ventura) or higher**
 
