@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Callout } from './Callout';
 import { CodeBlock } from './CodeBlock';
@@ -142,7 +143,7 @@ export function createComponentMappings() {
     // Horizontal rule
     hr: HorizontalRule,
     
-    // Custom components - ensure Card is properly mapped to MarkdownCard with href support
+    // Custom components - Card mapping with COMPLETE href support
     Callout,
     CodeBlock,
     Card: ({ title, image, href, children, ...props }: any) => {
@@ -151,7 +152,7 @@ export function createComponentMappings() {
         <MarkdownCard 
           title={title} 
           image={image} 
-          href={href} 
+          href={href}
           {...props}
         >
           {children}

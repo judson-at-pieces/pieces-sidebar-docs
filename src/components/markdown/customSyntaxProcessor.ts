@@ -130,31 +130,31 @@ export function processCustomSyntax(content: string): string {
       return '</CardGroup>';
     });
 
-    // Transform Card components with content - PRESERVE AS JSX with proper href handling
+    // Transform Card components with content - PRESERVE AS JSX with BETTER href handling
     processedContent = processedContent.replace(/<Card\s+([^>]*?)>([\s\S]*?)<\/Card>/gi, (match, attributes, innerContent) => {
       try {
         console.log('🃏 Processing Card with content:', { attributes, innerContent: innerContent.substring(0, 100) });
         
-        // More robust attribute parsing
+        // Extract all attributes properly including href
         const titleMatch = attributes.match(/title\s*=\s*"([^"]*)"/);
         const imageMatch = attributes.match(/image\s*=\s*"([^"]*)"/);
         const hrefMatch = attributes.match(/href\s*=\s*"([^"]*)"/);
+        const externalMatch = attributes.match(/external\s*=\s*"([^"]*)"/);
         
         const title = titleMatch ? titleMatch[1] : '';
         const image = imageMatch ? imageMatch[1] : '';
         const href = hrefMatch ? hrefMatch[1] : '';
+        const external = externalMatch ? externalMatch[1] : '';
         
-        // Validate URL but don't sanitize it too aggressively
-        const safeHref = href && (href.startsWith('http') || href.startsWith('/')) ? href : '';
-        
-        console.log('🃏 Parsed Card attributes:', { title, image, href, safeHref });
+        // Don't validate href too strictly - just check it exists
+        console.log('🃏 Parsed Card attributes:', { title, image, href, external });
         
         // PRESERVE the inner content exactly as is
         const preservedContent = innerContent || '';
         
-        // Use Card component directly - this should map to MarkdownCard via componentMappings
-        if (safeHref) {
-          return `<Card title="${title}" image="${image}" href="${safeHref}">\n${preservedContent}\n</Card>`;
+        // Keep as Card component (will be mapped to MarkdownCard)
+        if (href) {
+          return `<Card title="${title}" image="${image}" href="${href}">\n${preservedContent}\n</Card>`;
         } else {
           return `<Card title="${title}" image="${image}">\n${preservedContent}\n</Card>`;
         }
@@ -164,22 +164,27 @@ export function processCustomSyntax(content: string): string {
       }
     });
 
-    // Transform self-closing Card components
+    // Transform self-closing Card components - PRESERVE AS JSX with BETTER href handling
     processedContent = processedContent.replace(/<Card\s+([^>]*?)\/>/gi, (match, attributes) => {
       try {
+        console.log('🃏 Processing self-closing Card:', { attributes });
+        
+        // Extract all attributes properly including href
         const titleMatch = attributes.match(/title\s*=\s*"([^"]*)"/);
         const imageMatch = attributes.match(/image\s*=\s*"([^"]*)"/);
         const hrefMatch = attributes.match(/href\s*=\s*"([^"]*)"/);
+        const externalMatch = attributes.match(/external\s*=\s*"([^"]*)"/);
         
         const title = titleMatch ? titleMatch[1] : '';
         const image = imageMatch ? imageMatch[1] : '';
         const href = hrefMatch ? hrefMatch[1] : '';
+        const external = externalMatch ? externalMatch[1] : '';
         
-        // Validate URL but don't sanitize it too aggressively
-        const safeHref = href && (href.startsWith('http') || href.startsWith('/')) ? href : '';
+        console.log('🃏 Parsed self-closing Card attributes:', { title, image, href, external });
         
-        if (safeHref) {
-          return `<Card title="${title}" image="${image}" href="${safeHref}" />`;
+        // Keep as Card component (will be mapped to MarkdownCard)
+        if (href) {
+          return `<Card title="${title}" image="${image}" href="${href}" />`;
         } else {
           return `<Card title="${title}" image="${image}" />`;
         }
@@ -230,7 +235,7 @@ export function processCustomSyntax(content: string): string {
       }
     );
 
-    console.log('🔧 Custom syntax processing complete. Card transformations preserved as JSX.');
+    console.log('🔧 Custom syntax processing complete. Card transformations preserved as JSX with href.');
     return processedContent;
   } catch (error) {
     console.error('Error processing custom syntax:', error);
