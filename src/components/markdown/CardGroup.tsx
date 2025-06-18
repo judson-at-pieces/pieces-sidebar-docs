@@ -25,25 +25,25 @@ export const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
       console.log('🃏 CardGroup: Raw attributes string:', attributes);
       console.log('🃏 CardGroup: Inner content:', innerContent);
       
-      // Extract attributes - handle multiple quote styles and spacing
-      const titleMatch = attributes.match(/title\s*=\s*["']([^"']*)["']/i);
-      const imageMatch = attributes.match(/image\s*=\s*["']([^"']*)["']/i);
-      const hrefMatch = attributes.match(/href\s*=\s*["']([^"']*)["']/i);
-      const targetMatch = attributes.match(/target\s*=\s*["']([^"']*)["']/i);
-      const externalMatch = attributes.match(/external\s*=\s*["']([^"']*)["']/i);
+      // More flexible attribute extraction - handle optional attributes
+      const extractAttribute = (attrName: string) => {
+        const regex = new RegExp(`${attrName}\\s*=\\s*["']([^"']*)["']`, 'i');
+        const match = attributes.match(regex);
+        return match ? match[1] : '';
+      };
       
-      const title = titleMatch ? titleMatch[1] : '';
-      const image = imageMatch ? imageMatch[1] : '';
-      const href = hrefMatch ? hrefMatch[1] : '';
-      const target = targetMatch ? targetMatch[1] : '';
-      const external = externalMatch ? externalMatch[1] : '';
+      const title = extractAttribute('title');
+      const image = extractAttribute('image');
+      const href = extractAttribute('href');
+      const target = extractAttribute('target');
+      const external = extractAttribute('external');
       
       console.log('🃏 CardGroup: Extracted attributes:', { title, image, href, target, external });
       
-      // Use href first, then external as fallback
-      const finalHref = href || external;
-      // Default to _blank if no target specified but href exists
-      const finalTarget = target || (finalHref ? '_blank' : '');
+      // Use href first, then external as fallback - but allow empty
+      const finalHref = href || external || '';
+      // Only set target if there's actually a link
+      const finalTarget = finalHref ? (target || '_blank') : '';
       
       console.log('🃏 CardGroup: Final decisions:', { 
         original_href: href, 
@@ -54,6 +54,7 @@ export const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
         willBeClickable: !!finalHref
       });
       
+      // Always add the card, even if it has no href
       cards.push({
         title,
         image,
@@ -108,7 +109,7 @@ export const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
           const title = props.title || '';
           const image = props.image || '';
           const href = props.href || props.external || '';
-          const target = props.target || (href ? '_blank' : '');
+          const target = href ? (props.target || '_blank') : '';
           
           console.log('🃏 CardGroup: Using attributes from React element:', { href, target });
           
