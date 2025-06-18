@@ -11,7 +11,7 @@ export const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
   console.log('🃏 CardGroup render - RAW children:', children);
   console.log('🃏 CardGroup render - children type:', typeof children);
   
-  // Function to get download URL based on title
+  // Function to get download URL based on title (ONLY as fallback)
   const getDownloadUrl = (title: string): string => {
     if (title.includes('PiecesOS') && title.includes('.EXE')) {
       return 'https://builds.pieces.app/stages/production/os/windows/download';
@@ -33,21 +33,21 @@ export const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
       const attributes = match[1];
       const innerContent = match[2].trim();
       
-      // Extract attributes
-      const titleMatch = attributes.match(/title="([^"]*)"/);
-      const imageMatch = attributes.match(/image="([^"]*)"/);
-      const hrefMatch = attributes.match(/href="([^"]*)"/);
-      const externalMatch = attributes.match(/external="([^"]*)"/);
+      // Extract attributes with better regex patterns
+      const titleMatch = attributes.match(/title=["']([^"']*)["']/);
+      const imageMatch = attributes.match(/image=["']([^"']*)["']/);
+      const hrefMatch = attributes.match(/href=["']([^"']*)["']/);
+      const externalMatch = attributes.match(/external=["']([^"']*)["']/);
       
       const title = titleMatch ? titleMatch[1] : '';
       const image = imageMatch ? imageMatch[1] : '';
       const href = hrefMatch ? hrefMatch[1] : '';
       const external = externalMatch ? externalMatch[1] : '';
       
-      // FORCE CLICKABILITY - if no href/external, try to get download URL
+      // PREFER original href/external, only use download URL as last resort
       const finalHref = href || external || getDownloadUrl(title);
       
-      console.log('🃏 CardGroup: Parsed card from string:', { title, image, href, external, finalHref });
+      console.log('🃏 CardGroup: Parsed card from string:', { title, image, href, external, finalHref, rawAttributes: attributes });
       
       cards.push({
         title,
@@ -102,8 +102,10 @@ export const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
           const image = props.image || '';
           const href = props.href || props.external || '';
           
-          // FORCE CLICKABILITY - if no href/external, try to get download URL
+          // PREFER original href/external, only use download URL as last resort
           const finalHref = href || getDownloadUrl(title);
+          
+          console.log('🃏 CardGroup: Using href:', { original: href, fallback: getDownloadUrl(title), final: finalHref });
           
           cards.push({
             title,
