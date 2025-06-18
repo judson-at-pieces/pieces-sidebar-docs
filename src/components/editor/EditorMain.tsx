@@ -1,13 +1,15 @@
 
-import React, { useEffect, useRef } from 'react';
-import { FileText, MoreHorizontal, Copy, Trash2, Eye, Edit3, Lock, Unlock } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { FileText, MoreHorizontal, Copy, Trash2, Eye, Edit3, Lock, Unlock, Wand2 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import HashnodeMarkdownRenderer from '@/components/HashnodeMarkdownRenderer';
+import { InteractiveEditor } from './InteractiveEditor';
 import { useLiveTyping } from '@/hooks/useLiveTyping';
 import { TypingIndicator } from './TypingIndicator';
 import { VisibilitySwitch } from './VisibilitySwitch';
@@ -44,6 +46,7 @@ export function EditorMain({
   onVisibilityChange
 }: EditorMainProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [viewMode, setViewMode] = useState<'split' | 'editor' | 'preview' | 'interactive'>('split');
   
   // Live typing functionality
   const { typingSessions, handleTyping, getLatestTypingContent } = useLiveTyping(selectedFile);
@@ -214,6 +217,19 @@ export function EditorMain({
         </div>
 
         <div className="flex items-center gap-4">
+          {/* View Mode Selector */}
+          <Tabs value={viewMode} onValueChange={(value) => setViewMode(value as any)} className="w-auto">
+            <TabsList className="grid w-full grid-cols-4 h-8">
+              <TabsTrigger value="split" className="text-xs px-2">Split</TabsTrigger>
+              <TabsTrigger value="editor" className="text-xs px-2">Editor</TabsTrigger>
+              <TabsTrigger value="preview" className="text-xs px-2">Preview</TabsTrigger>
+              <TabsTrigger value="interactive" className="text-xs px-2" disabled={!canEdit}>
+                <Wand2 className="h-3 w-3 mr-1" />
+                Interactive
+              </TabsTrigger>
+            </TabsList>
+          </Tabs>
+
           {/* Visibility Switch */}
           {canEdit && onVisibilityChange && (
             <VisibilitySwitch
@@ -252,77 +268,135 @@ export function EditorMain({
         </div>
       </div>
 
-      {/* Enhanced Split View */}
-      <ResizablePanelGroup direction="horizontal" className="flex-1">
-        {/* Enhanced Editor Panel */}
-        <ResizablePanel defaultSize={50} minSize={30}>
-          <div className="h-full flex flex-col bg-slate-50/50 dark:bg-slate-900/50">
-            <div className="flex-1 relative">
-              <Textarea
-                ref={textareaRef}
-                value={displayContent}
-                onChange={(e) => handleContentChangeWithTyping(e.target.value)}
-                placeholder={
-                  isLockedByOther 
-                    ? `${lockedBy} is editing this file...` 
-                    : canEdit
-                      ? "Start typing your content here..."
-                      : isAcquiringLock
-                        ? "Acquiring editing permissions..."
-                        : "Content will be editable once lock is acquired..."
-                }
-                disabled={!canEdit}
-                className={`h-full resize-none border-0 rounded-none focus:ring-0 font-mono text-sm leading-relaxed bg-transparent transition-all duration-200 ${
-                  !canEdit ? 'bg-slate-100/50 dark:bg-slate-800/50 cursor-default text-slate-600 dark:text-slate-400' : 'bg-white dark:bg-slate-900'
-                }`}
-                style={{ 
-                  minHeight: '100%',
-                  fontFamily: '"JetBrains Mono", "Fira Code", "SF Mono", Consolas, monospace',
-                  lineHeight: '1.7'
-                }}
-              />
-              {!canEdit && (
-                <div className="absolute inset-0 bg-transparent pointer-events-none" />
-              )}
-            </div>
-          </div>
-        </ResizablePanel>
-
-        <ResizableHandle withHandle className="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors duration-200" />
-
-        {/* Enhanced Preview Panel */}
-        <ResizablePanel defaultSize={50} minSize={30}>
-          <div className="h-full border-l border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-900">
-            <div className="p-4 border-b border-slate-200/60 dark:border-slate-700/60 bg-gradient-to-r from-slate-50 to-indigo-50/30 dark:from-slate-800 dark:to-slate-800/50">
-              <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center shadow-sm">
-                  <Eye className="h-4 w-4 text-white" />
+      {/* Content Area */}
+      <div className="flex-1 overflow-hidden">
+        <Tabs value={viewMode} className="h-full">
+          <TabsContent value="split" className="h-full m-0">
+            <ResizablePanelGroup direction="horizontal" className="h-full">
+              {/* Enhanced Editor Panel */}
+              <ResizablePanel defaultSize={50} minSize={30}>
+                <div className="h-full flex flex-col bg-slate-50/50 dark:bg-slate-900/50">
+                  <div className="flex-1 relative">
+                    <Textarea
+                      ref={textareaRef}
+                      value={displayContent}
+                      onChange={(e) => handleContentChangeWithTyping(e.target.value)}
+                      placeholder={
+                        isLockedByOther 
+                          ? `${lockedBy} is editing this file...` 
+                          : canEdit
+                            ? "Start typing your content here..."
+                            : isAcquiringLock
+                              ? "Acquiring editing permissions..."
+                              : "Content will be editable once lock is acquired..."
+                      }
+                      disabled={!canEdit}
+                      className={`h-full resize-none border-0 rounded-none focus:ring-0 font-mono text-sm leading-relaxed bg-transparent transition-all duration-200 ${
+                        !canEdit ? 'bg-slate-100/50 dark:bg-slate-800/50 cursor-default text-slate-600 dark:text-slate-400' : 'bg-white dark:bg-slate-900'
+                      }`}
+                      style={{ 
+                        minHeight: '100%',
+                        fontFamily: '"JetBrains Mono", "Fira Code", "SF Mono", Consolas, monospace',
+                        lineHeight: '1.7'
+                      }}
+                    />
+                    {!canEdit && (
+                      <div className="absolute inset-0 bg-transparent pointer-events-none" />
+                    )}
+                  </div>
                 </div>
-                <div>
-                  <span className="text-sm font-bold text-slate-800 dark:text-slate-200">Live Preview</span>
-                  <div className="text-xs text-slate-500 dark:text-slate-400">Real-time markdown rendering</div>
-                </div>
-                {isLockedByOther && (
-                  <Badge variant="outline" className="text-xs ml-auto">
-                    {(liveContent || latestTypingContent) ? (
-                      <div className="flex items-center gap-1">
-                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                        Live Updates
+              </ResizablePanel>
+
+              <ResizableHandle withHandle className="bg-slate-200 dark:bg-slate-700 hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors duration-200" />
+
+              {/* Enhanced Preview Panel */}
+              <ResizablePanel defaultSize={50} minSize={30}>
+                <div className="h-full border-l border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-900">
+                  <div className="p-4 border-b border-slate-200/60 dark:border-slate-700/60 bg-gradient-to-r from-slate-50 to-indigo-50/30 dark:from-slate-800 dark:to-slate-800/50">
+                    <div className="flex items-center gap-3">
+                      <div className="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center shadow-sm">
+                        <Eye className="h-4 w-4 text-white" />
                       </div>
-                    ) : 'Read-only'}
-                  </Badge>
+                      <div>
+                        <span className="text-sm font-bold text-slate-800 dark:text-slate-200">Live Preview</span>
+                        <div className="text-xs text-slate-500 dark:text-slate-400">Real-time markdown rendering</div>
+                      </div>
+                      {isLockedByOther && (
+                        <Badge variant="outline" className="text-xs ml-auto">
+                          {(liveContent || latestTypingContent) ? (
+                            <div className="flex items-center gap-1">
+                              <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                              Live Updates
+                            </div>
+                          ) : 'Read-only'}
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+                  
+                  <ScrollArea className="h-[calc(100%-73px)]">
+                    <div className="p-6 bg-gradient-to-b from-white to-slate-50/30 dark:from-slate-900 dark:to-slate-900/50 min-h-full">
+                      <HashnodeMarkdownRenderer content={displayContent} />
+                    </div>
+                  </ScrollArea>
+                </div>
+              </ResizablePanel>
+            </ResizablePanelGroup>
+          </TabsContent>
+
+          <TabsContent value="editor" className="h-full m-0">
+            <div className="h-full flex flex-col bg-slate-50/50 dark:bg-slate-900/50">
+              <div className="flex-1 relative">
+                <Textarea
+                  ref={textareaRef}
+                  value={displayContent}
+                  onChange={(e) => handleContentChangeWithTyping(e.target.value)}
+                  placeholder={
+                    isLockedByOther 
+                      ? `${lockedBy} is editing this file...` 
+                      : canEdit
+                        ? "Start typing your content here..."
+                        : isAcquiringLock
+                          ? "Acquiring editing permissions..."
+                          : "Content will be editable once lock is acquired..."
+                  }
+                  disabled={!canEdit}
+                  className={`h-full resize-none border-0 rounded-none focus:ring-0 font-mono text-sm leading-relaxed bg-transparent transition-all duration-200 ${
+                    !canEdit ? 'bg-slate-100/50 dark:bg-slate-800/50 cursor-default text-slate-600 dark:text-slate-400' : 'bg-white dark:bg-slate-900'
+                  }`}
+                  style={{ 
+                    minHeight: '100%',
+                    fontFamily: '"JetBrains Mono", "Fira Code", "SF Mono", Consolas, monospace',
+                    lineHeight: '1.7'
+                  }}
+                />
+                {!canEdit && (
+                  <div className="absolute inset-0 bg-transparent pointer-events-none" />
                 )}
               </div>
             </div>
-            
-            <ScrollArea className="h-[calc(100%-73px)]">
-              <div className="p-6 bg-gradient-to-b from-white to-slate-50/30 dark:from-slate-900 dark:to-slate-900/50 min-h-full">
-                <HashnodeMarkdownRenderer content={displayContent} />
-              </div>
-            </ScrollArea>
-          </div>
-        </ResizablePanel>
-      </ResizablePanelGroup>
+          </TabsContent>
+
+          <TabsContent value="preview" className="h-full m-0">
+            <div className="h-full border-slate-200/60 dark:border-slate-700/60 bg-white dark:bg-slate-900">
+              <ScrollArea className="h-full">
+                <div className="p-6 bg-gradient-to-b from-white to-slate-50/30 dark:from-slate-900 dark:to-slate-900/50 min-h-full">
+                  <HashnodeMarkdownRenderer content={displayContent} />
+                </div>
+              </ScrollArea>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="interactive" className="h-full m-0">
+            <InteractiveEditor
+              content={displayContent}
+              onContentChange={handleContentChangeWithTyping}
+              isLocked={isLocked}
+              lockedBy={lockedBy}
+            />
+          </TabsContent>
+        </Tabs>
+      </div>
     </div>
   );
 }
