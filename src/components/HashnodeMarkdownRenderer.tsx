@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import CodeBlock from './CodeBlock';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -148,6 +149,7 @@ const smartSplitSections = (text: string): string[] => {
     // Check if we're entering a component
     if (!insideComponent && (
       trimmedLine.includes('<CardGroup') ||
+      trimmedLine.includes('<Card ') ||
       trimmedLine.includes('<Steps') ||
       trimmedLine.includes('<Callout') ||
       trimmedLine.includes('<Accordion')
@@ -155,6 +157,7 @@ const smartSplitSections = (text: string): string[] => {
       insideComponent = true;
       componentDepth = 1;
       if (trimmedLine.includes('<CardGroup')) componentName = 'CardGroup';
+      else if (trimmedLine.includes('<Card ')) componentName = 'Card';
       else if (trimmedLine.includes('<Steps')) componentName = 'Steps';
       else if (trimmedLine.includes('<Callout')) componentName = 'Callout';
       else if (trimmedLine.includes('<Accordion')) componentName = 'Accordion';
