@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -39,20 +38,6 @@ const commands = [
     icon: AlertCircle,
     content: ':::info\nYour callout content here...\n:::',
     description: 'Add an info callout'
-  },
-  {
-    id: 'card',
-    label: 'Card',
-    icon: Quote,
-    content: '<Card title="Card Title" image="https://image-url.com">\nCard content goes here...\n</Card>',
-    description: 'Insert a content card'
-  },
-  {
-    id: 'cardgroup',
-    label: 'Card Group',
-    icon: Quote,
-    content: '<CardGroup cols={2}>\n  <Card title="Card 1">\n    Content 1\n  </Card>\n  <Card title="Card 2">\n    Content 2\n  </Card>\n</CardGroup>',
-    description: 'Insert a group of cards'
   },
   {
     id: 'list',

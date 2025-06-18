@@ -1,6 +1,5 @@
-
-import React, { useEffect, useRef } from 'react';
-import { FileText, MoreHorizontal, Copy, Trash2, Eye, Edit3, Lock, Unlock } from 'lucide-react';
+import React, { useEffect, useRef, useState } from 'react';
+import { FileText, MoreHorizontal, Copy, Trash2, Eye, Edit3, Lock, Unlock, Palette } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
@@ -11,6 +10,7 @@ import HashnodeMarkdownRenderer from '@/components/markdown/HashnodeMarkdownRend
 import { useLiveTyping } from '@/hooks/useLiveTyping';
 import { TypingIndicator } from './TypingIndicator';
 import { VisibilitySwitch } from './VisibilitySwitch';
+import { InlineVisualEditor } from './InlineVisualEditor';
 
 interface EditorMainProps {
   selectedFile?: string;
@@ -44,6 +44,7 @@ export function EditorMain({
   onVisibilityChange
 }: EditorMainProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [viewMode, setViewMode] = useState<'split' | 'markdown' | 'visual'>('split');
   
   // Live typing functionality
   const { typingSessions, handleTyping, getLatestTypingContent } = useLiveTyping(selectedFile);
@@ -191,6 +192,43 @@ export function EditorMain({
         </div>
 
         <div className="flex items-center gap-4">
+          {/* View Mode Selector */}
+          <div className="flex items-center border rounded-lg p-1 bg-background">
+            <button
+              onClick={() => setViewMode('markdown')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 flex items-center gap-1.5 ${
+                viewMode === 'markdown' 
+                  ? 'bg-primary text-primary-foreground shadow-sm' 
+                  : 'hover:bg-muted text-muted-foreground'
+              }`}
+            >
+              <Edit3 className="h-3.5 w-3.5" />
+              Markdown
+            </button>
+            <button
+              onClick={() => setViewMode('visual')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 flex items-center gap-1.5 ${
+                viewMode === 'visual' 
+                  ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-sm' 
+                  : 'hover:bg-muted text-muted-foreground'
+              }`}
+            >
+              <Palette className="h-3.5 w-3.5" />
+              Visual
+            </button>
+            <button
+              onClick={() => setViewMode('split')}
+              className={`px-3 py-1.5 text-xs font-medium rounded-md transition-all duration-200 flex items-center gap-1.5 ${
+                viewMode === 'split' 
+                  ? 'bg-primary text-primary-foreground shadow-sm' 
+                  : 'hover:bg-muted text-muted-foreground'
+              }`}
+            >
+              <Eye className="h-3.5 w-3.5" />
+              Split
+            </button>
+          </div>
+
           {/* Visibility Switch */}
           {canEdit && onVisibilityChange && (
             <VisibilitySwitch
@@ -229,67 +267,106 @@ export function EditorMain({
         </div>
       </div>
 
-      {/* Split View */}
-      <ResizablePanelGroup direction="horizontal" className="flex-1">
-        {/* Editor Panel */}
-        <ResizablePanel defaultSize={50} minSize={30}>
-          <div className="h-full flex flex-col">
-            <div className="flex-1 relative">
-              <Textarea
-                ref={textareaRef}
-                value={displayContent}
-                onChange={(e) => handleContentChangeWithTyping(e.target.value)}
-                placeholder={
-                  isLockedByOther 
-                    ? `${lockedBy} is editing this file...` 
-                    : canEdit
-                      ? "Start typing your content here..."
-                      : isAcquiringLock
-                        ? "Acquiring editing permissions..."
-                        : "Content will be editable once lock is acquired..."
-                }
-                disabled={!canEdit}
-                className={`h-full resize-none border-0 rounded-none focus:ring-0 font-mono text-sm leading-relaxed ${
-                  !canEdit ? 'bg-muted/30 cursor-default' : ''
-                }`}
-                style={{ 
-                  minHeight: '100%',
-                  fontFamily: '"JetBrains Mono", "Fira Code", monospace'
-                }}
-              />
-              {!canEdit && (
-                <div className="absolute inset-0 bg-transparent pointer-events-none" />
-              )}
-            </div>
-          </div>
-        </ResizablePanel>
-
-        <ResizableHandle withHandle />
-
-        {/* Preview Panel */}
-        <ResizablePanel defaultSize={50} minSize={30}>
-          <div className="h-full border-l border-border/50">
-            <div className="p-4 border-b border-border/50 bg-muted/10">
-              <div className="flex items-center gap-2">
-                <Eye className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Live Preview</span>
-                <span className="text-xs text-muted-foreground">(Same renderer as docs)</span>
-                {isLockedByOther && (
-                  <Badge variant="outline" className="text-xs">
-                    {(liveContent || latestTypingContent) ? 'Live Updates' : 'Read-only'}
-                  </Badge>
+      {/* Content Area */}
+      {viewMode === 'visual' ? (
+        <div className="flex-1 animate-in fade-in slide-in-from-top-2 duration-300">
+          <InlineVisualEditor
+            content={displayContent}
+            onContentChange={handleContentChangeWithTyping}
+            readOnly={!canEdit}
+          />
+        </div>
+      ) : viewMode === 'markdown' ? (
+        <div className="flex-1 relative animate-in fade-in slide-in-from-left-2 duration-300">
+          <Textarea
+            ref={textareaRef}
+            value={displayContent}
+            onChange={(e) => handleContentChangeWithTyping(e.target.value)}
+            placeholder={
+              isLockedByOther 
+                ? `${lockedBy} is editing this file...` 
+                : canEdit
+                  ? "Start typing your content here..."
+                  : isAcquiringLock
+                    ? "Acquiring editing permissions..."
+                    : "Content will be editable once lock is acquired..."
+            }
+            disabled={!canEdit}
+            className={`h-full resize-none border-0 rounded-none focus:ring-0 font-mono text-sm leading-relaxed p-6 ${
+              !canEdit ? 'bg-muted/30 cursor-default' : ''
+            }`}
+            style={{ 
+              minHeight: '100%',
+              fontFamily: '"JetBrains Mono", "Fira Code", monospace'
+            }}
+          />
+          {!canEdit && (
+            <div className="absolute inset-0 bg-transparent pointer-events-none" />
+          )}
+        </div>
+      ) : (
+        /* Split View */
+        <ResizablePanelGroup direction="horizontal" className="flex-1">
+          {/* Editor Panel */}
+          <ResizablePanel defaultSize={50} minSize={30}>
+            <div className="h-full flex flex-col">
+              <div className="flex-1 relative">
+                <Textarea
+                  ref={textareaRef}
+                  value={displayContent}
+                  onChange={(e) => handleContentChangeWithTyping(e.target.value)}
+                  placeholder={
+                    isLockedByOther 
+                      ? `${lockedBy} is editing this file...` 
+                      : canEdit
+                        ? "Start typing your content here..."
+                        : isAcquiringLock
+                          ? "Acquiring editing permissions..."
+                          : "Content will be editable once lock is acquired..."
+                  }
+                  disabled={!canEdit}
+                  className={`h-full resize-none border-0 rounded-none focus:ring-0 font-mono text-sm leading-relaxed ${
+                    !canEdit ? 'bg-muted/30 cursor-default' : ''
+                  }`}
+                  style={{ 
+                    minHeight: '100%',
+                    fontFamily: '"JetBrains Mono", "Fira Code", monospace'
+                  }}
+                />
+                {!canEdit && (
+                  <div className="absolute inset-0 bg-transparent pointer-events-none" />
                 )}
               </div>
             </div>
-            
-            <ScrollArea className="h-[calc(100%-57px)]">
-              <div className="p-6">
-                <HashnodeMarkdownRenderer content={displayContent} />
+          </ResizablePanel>
+
+          <ResizableHandle withHandle />
+
+          {/* Preview Panel */}
+          <ResizablePanel defaultSize={50} minSize={30}>
+            <div className="h-full border-l border-border/50">
+              <div className="p-4 border-b border-border/50 bg-muted/10">
+                <div className="flex items-center gap-2">
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                  <span className="text-sm font-medium">Live Preview</span>
+                  <span className="text-xs text-muted-foreground">(Same renderer as docs)</span>
+                  {isLockedByOther && (
+                    <Badge variant="outline" className="text-xs">
+                      {(liveContent || latestTypingContent) ? 'Live Updates' : 'Read-only'}
+                    </Badge>
+                  )}
+                </div>
               </div>
-            </ScrollArea>
-          </div>
-        </ResizablePanel>
-      </ResizablePanelGroup>
+              
+              <ScrollArea className="h-[calc(100%-57px)]">
+                <div className="p-6">
+                  <HashnodeMarkdownRenderer content={displayContent} />
+                </div>
+              </ScrollArea>
+            </div>
+          </ResizablePanel>
+        </ResizablePanelGroup>
+      )}
     </div>
   );
 }
