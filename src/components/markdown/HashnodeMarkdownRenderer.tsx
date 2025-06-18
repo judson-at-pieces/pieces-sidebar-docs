@@ -843,48 +843,34 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
     const flushTable = () => {
       if (tableRows.length > 0) {
         console.log('📝 Flushing table with', tableRows.length, 'rows');
-        
-        // Parse table rows properly
-        const headerRow = tableRows[0]?.split('|').map(cell => cell.trim()).filter(Boolean) || [];
-        const separatorRow = tableRows[1]?.split('|').map(cell => cell.trim()).filter(Boolean) || [];
-        const dataRows = tableRows.slice(2).filter(row => row.trim());
+        const headerRow = tableRows[0].split('|').filter(cell => cell.trim());
+        const alignmentRow = tableRows[1]?.split('|').filter(cell => cell.trim());
+        const dataRows = tableRows.slice(2);
 
-        if (headerRow.length > 0) {
-          elements.push(
-            <div key={`table-${elements.length}`} className="overflow-x-auto my-6">
-              <table className="min-w-full divide-y divide-slate-200 dark:divide-slate-800/80">
-                <thead>
-                  <tr>
-                    {headerRow.map((cell, i) => (
-                      <th key={i} className="px-4 py-2 text-left text-sm font-semibold text-slate-700 dark:text-slate-200">
-                        <p className="!m-0 min-h-6">
-                          <strong>
-                            <SecureInlineMarkdown content={sanitizeText(cell)} />
-                          </strong>
-                        </p>
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-200 dark:divide-slate-800/80">
-                  {dataRows.map((row, rowIndex) => {
-                    const cells = row.split('|').map(cell => cell.trim()).filter(Boolean);
-                    return (
-                      <tr key={rowIndex}>
-                        {cells.map((cell, cellIndex) => (
-                          <td key={cellIndex} className="px-4 py-2 text-sm text-slate-700 dark:text-slate-300">
-                            <SecureInlineMarkdown content={sanitizeText(cell)} />
-                          </td>
-                        ))}
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          );
-        }
-        
+        elements.push(
+          <table key={`table-${elements.length}`} className="hn-table">
+            <thead>
+              <tr>
+                {headerRow.map((cell, i) => (
+                  <th key={i} className="hn-table-header">
+                    <SecureInlineMarkdown content={sanitizeText(cell.trim())} />
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {dataRows.map((row, rowIndex) => (
+                <tr key={rowIndex}>
+                  {row.split('|').filter(cell => cell.trim()).map((cell, cellIndex) => (
+                    <td key={cellIndex} className="hn-table-cell">
+                      <SecureInlineMarkdown content={sanitizeText(cell.trim())} />
+                    </td>
+                  ))}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        );
         tableRows = [];
         inTable = false;
       }
@@ -923,8 +909,8 @@ const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
         return;
       }
 
-      // Tables - improved detection
-      if (line.includes('|') && (line.trim().startsWith('|') || line.match(/\|.*\|/))) {
+      // Tables
+      if (line.includes('|') && line.trim().startsWith('|')) {
         if (!inTable) {
           console.log(`📝 Starting table at line ${index}:`, line);
           flushList();
