@@ -13,10 +13,11 @@ const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, children }) =
     title, 
     image, 
     hasChildren: !!children,
-    childrenType: typeof children 
+    childrenType: typeof children,
+    childrenContent: typeof children === 'string' ? children.substring(0, 100) : 'not-string'
   });
 
-  // Process children as markdown if it's a string
+  // Process children as markdown if it's a string, otherwise render as-is
   const processedChildren = typeof children === 'string' 
     ? <SecureInlineMarkdown content={children} />
     : children;
@@ -41,10 +42,10 @@ const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, children }) =
           />
         </div>
       )}
-      <span className="block text-base font-semibold text-slate-700 dark:text-slate-200">
+      <span className="block text-base font-semibold text-slate-700 dark:text-slate-200 mb-3">
         {title}
       </span>
-      <div className="mt-3 text-base text-slate-600 dark:text-slate-300">
+      <div className="text-base text-slate-600 dark:text-slate-300 leading-relaxed [&_a]:text-blue-600 [&_a]:hover:text-blue-800 [&_a]:underline [&_a]:underline-offset-4 dark:[&_a]:text-blue-400 dark:[&_a]:hover:text-blue-300">
         {processedChildren}
       </div>
     </div>

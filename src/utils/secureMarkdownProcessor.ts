@@ -45,19 +45,19 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
     return [{ type: 'text', content: '' }];
   }
 
+  console.log('🔄 processInlineMarkdown input:', text.substring(0, 200));
+
   const elements: ProcessedMarkdown[] = [];
   let currentIndex = 0;
 
-  // Updated regex patterns - HTML anchor tags with better matching
+  // Enhanced regex patterns for better matching
   const patterns = [
     { regex: /`([^`]+)`/g, type: 'code' as const },
     { regex: /\*\*(.*?)\*\*/g, type: 'bold' as const },
     { regex: /(?<!\*)\*([^*]+)\*(?!\*)/g, type: 'italic' as const },
-    // More comprehensive regex for HTML anchor tags - handles malformed tags too
+    // More comprehensive regex for HTML anchor tags
     { regex: /<a\s+([^>]*?)>(.*?)<\/a>/gi, type: 'link' as const },
-    // Also match malformed anchor tags (missing opening bracket)
-    { regex: /(?:^|\s)(a\s+target="_blank"\s+href="([^"]+)")([^<]*?)(?:<\/a>|\/a)/gi, type: 'link' as const },
-    // Standard markdown links
+    // Standard markdown links with better handling
     { regex: /\[([^\]]*(?:\\.[^\]]*)*)\]\(([^)]+)\)/g, type: 'link' as const },
     // Image tags
     { regex: /<Image\s+([^>]*?)\/>/g, type: 'image' as const }
@@ -78,12 +78,17 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
   // Sort matches by position
   matches.sort((a, b) => (a.match.index || 0) - (b.match.index || 0));
 
-  console.log('processInlineMarkdown: Found matches:', matches.length, matches.map(m => ({ type: m.type, text: m.match[0].substring(0, 50) })));
+  console.log('🔄 processInlineMarkdown: Found matches:', matches.length, matches.map(m => ({ type: m.type, text: m.match[0].substring(0, 50) })));
 
   // Process text with matches
   for (const { match, type } of matches) {
     const matchStart = match.index || 0;
     const matchEnd = matchStart + match[0].length;
+
+    // Skip overlapping matches
+    if (matchStart < currentIndex) {
+      continue;
+    }
 
     // Add text before match
     if (matchStart > currentIndex) {
@@ -126,20 +131,12 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
       let linkHref = '';
       let linkTarget = '';
       
-      // Check if this is a malformed anchor tag (pattern 2)
-      if (match[0].includes('target="_blank"') && !match[0].startsWith('<a')) {
-        // Handle malformed anchor: a target="_blank" href="url"TextContent/a
-        linkHref = match[2] || '';
-        linkText = match[3] || '';
-        linkTarget = '_blank';
-        
-        console.log('Processing malformed anchor:', { fullMatch: match[0], linkText, linkHref, linkTarget });
-      } else if (match[0].toLowerCase().includes('<a')) {
-        // Standard HTML anchor tag
+      if (match[0].toLowerCase().includes('<a')) {
+        // HTML anchor tag
         linkText = match[2] || ''; // Content between <a> and </a>
         const attributes = match[1] || '';
         
-        console.log('Processing HTML anchor:', { fullMatch: match[0], attributes, linkText });
+        console.log('🔗 Processing HTML anchor:', { fullMatch: match[0], attributes, linkText });
         
         // Extract href with flexible matching
         const hrefMatch = attributes.match(/href\s*=\s*["']([^"']+)["']/i);
@@ -149,31 +146,37 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
         const targetMatch = attributes.match(/target\s*=\s*["']([^"']+)["']/i);
         linkTarget = targetMatch ? targetMatch[1] : '';
         
-        console.log('Extracted HTML link data:', { linkText, linkHref, linkTarget });
+        console.log('🔗 Extracted HTML link data:', { linkText, linkHref, linkTarget });
       } else {
         // Standard markdown link [text](url)
         linkText = (match[1] || '').replace(/\\(.)/g, '$1'); // Unescape characters
         linkHref = match[2] || '';
+        
+        console.log('🔗 Processing markdown link:', { linkText, linkHref });
       }
       
-      if (validateUrl(linkHref)) {
+      if (validateUrl(linkHref) && linkText.trim()) {
         elements.push({ 
           type: 'link', 
-          content: linkText, 
+          content: linkText.trim(), 
           href: linkHref,
           target: linkTarget
         });
-        console.log('Added link element:', { linkText, linkHref, linkTarget });
+        console.log('🔗 Added link element:', { linkText: linkText.trim(), linkHref, linkTarget });
       } else {
-        // If URL is invalid, treat as plain text
-        console.log('Invalid URL, treating as text:', linkHref);
+        // If URL is invalid or no text, treat as plain text
+        console.log('🔗 Invalid link, treating as text:', { linkHref, linkText, isValidUrl: validateUrl(linkHref) });
         elements.push({ type: 'text', content: match[0] });
       }
     } else {
-      elements.push({ 
-        type, 
-        content: match[1] 
-      });
+      // Bold, italic, code
+      const content = match[1] || '';
+      if (content.trim()) {
+        elements.push({ 
+          type, 
+          content: content.trim()
+        });
+      }
     }
 
     currentIndex = matchEnd;
@@ -187,7 +190,7 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
     }
   }
 
-  console.log('processInlineMarkdown: Final elements:', elements.length, elements.map(e => ({ type: e.type, content: e.content?.substring(0, 30) })));
+  console.log('🔄 processInlineMarkdown: Final elements:', elements.length, elements.map(e => ({ type: e.type, content: e.content?.substring(0, 30) })));
   return elements.length > 0 ? elements : [{ type: 'text', content: text }];
 };
 
