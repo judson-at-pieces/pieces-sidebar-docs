@@ -3,7 +3,7 @@ import { useState } from "react";
 import { useFileStructure } from "@/hooks/useFileStructure";
 import { useBranchManager } from "@/hooks/useBranchManager";
 import { useBranchSessions } from "@/hooks/useBranchSessions";
-import { useBranchEditor } from "@/hooks/useBranchEditor";
+import { useBranchEditorWithUrl } from "@/hooks/useBranchEditorWithUrl";
 import { NavigationEditor } from "./NavigationEditor";
 import { EditorMain } from "./EditorMain";
 import { SeoEditor } from "./SeoEditor";
@@ -20,8 +20,8 @@ export function EditorLayout() {
   const { currentBranch, initialized, branches } = useBranchManager();
   const { sessions } = useBranchSessions(currentBranch);
   
-  // Use the new simplified branch editor
-  const editor = useBranchEditor();
+  // Use the URL-aware branch editor
+  const editor = useBranchEditorWithUrl();
   
   const [activeTab, setActiveTab] = useState<'navigation' | 'content' | 'seo'>('content');
   const [fileVisibility, setFileVisibility] = useState<{[filePath: string]: boolean}>({});
