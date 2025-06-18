@@ -1,6 +1,6 @@
 
 import React, { useEffect, useRef, useState } from 'react';
-import { FileText, MoreHorizontal, Copy, Trash2, Eye, Edit3, Lock, Unlock, Wand2 } from 'lucide-react';
+import { FileText, MoreHorizontal, Copy, Trash2, Eye, Edit3, Lock, Unlock, Wand2, Palette } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import HashnodeMarkdownRenderer from '@/components/markdown/HashnodeMarkdownRenderer';
 import { WYSIWYGEditor } from './WYSIWYGEditor';
+import { CommandPalette } from './CommandPalette';
 import { useLiveTyping } from '@/hooks/useLiveTyping';
 import { TypingIndicator } from './TypingIndicator';
 import { VisibilitySwitch } from './VisibilitySwitch';
@@ -46,6 +47,8 @@ export function EditorMain({
 }: EditorMainProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
   const [editMode, setEditMode] = useState<'markdown' | 'preview' | 'wysiwyg'>('markdown');
+  const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [commandPosition, setCommandPosition] = useState({ top: 0, left: 0 });
   
   // Live typing functionality
   const { typingSessions, handleTyping, getLatestTypingContent } = useLiveTyping(selectedFile);
@@ -72,6 +75,46 @@ export function EditorMain({
       // Send typing event for real-time updates
       handleTyping(newContent, cursorPosition);
     }
+  };
+
+  // Handle keyboard shortcuts for command palette
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    // Check for Ctrl+/ or Cmd+/ for command palette
+    if (e.key === '/' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      
+      if (textareaRef.current) {
+        const rect = textareaRef.current.getBoundingClientRect();
+        const scrollTop = textareaRef.current.scrollTop;
+        
+        setCommandPosition({
+          top: rect.top + 40 - scrollTop,
+          left: rect.left + 20
+        });
+        setShowCommandPalette(true);
+      }
+    } else if (e.key === 'Escape') {
+      setShowCommandPalette(false);
+    }
+  };
+
+  // Handle inserting content from command palette
+  const handleInsert = (insertContent: string) => {
+    if (textareaRef.current) {
+      const textarea = textareaRef.current;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
+      
+      const newContent = displayContent.slice(0, start) + insertContent + displayContent.slice(end);
+      handleContentChangeWithTyping(newContent);
+      
+      // Set cursor position after the inserted content
+      setTimeout(() => {
+        textarea.focus();
+        textarea.setSelectionRange(start + insertContent.length, start + insertContent.length);
+      }, 0);
+    }
+    setShowCommandPalette(false);
   };
 
   // Update content when live typing content changes (for viewers)
@@ -102,7 +145,7 @@ export function EditorMain({
   }
 
   return (
-    <div className="h-full flex flex-col bg-background">
+    <div className="h-full flex flex-col bg-background relative">
       {/* Live Editing Banner - only show when someone else is editing */}
       {isLockedByOther && (
         <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 border-b shadow-lg">
@@ -272,11 +315,25 @@ export function EditorMain({
             {/* Editor Panel */}
             <ResizablePanel defaultSize={50} minSize={30}>
               <div className="h-full flex flex-col">
+                {/* Command palette hint */}
+                {canEdit && (
+                  <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/10">
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-1.5 bg-muted/50 px-2 py-1 rounded-md">
+                        <Palette className="h-3 w-3" />
+                        <span>Ctrl+/</span>
+                      </div>
+                      <span>for components</span>
+                    </div>
+                  </div>
+                )}
+                
                 <div className="flex-1 relative">
                   <Textarea
                     ref={textareaRef}
                     value={displayContent}
                     onChange={(e) => handleContentChangeWithTyping(e.target.value)}
+                    onKeyDown={handleKeyDown}
                     placeholder={
                       isLockedByOther 
                         ? `${lockedBy} is editing this file...` 
@@ -353,6 +410,16 @@ export function EditorMain({
           />
         )}
       </div>
+
+      {/* Command Palette for Markdown Mode */}
+      {editMode === 'markdown' && (
+        <CommandPalette
+          isOpen={showCommandPalette}
+          onClose={() => setShowCommandPalette(false)}
+          onInsert={handleInsert}
+          position={commandPosition}
+        />
+      )}
     </div>
   );
 }
