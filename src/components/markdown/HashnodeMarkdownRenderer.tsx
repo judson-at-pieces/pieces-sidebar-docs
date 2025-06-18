@@ -5,6 +5,7 @@ import { MarkdownCard } from './MarkdownCard';
 import { CardGroup } from './CardGroup';
 import { Steps, Step } from './Steps';
 import { SecureInlineMarkdown } from './SecureInlineMarkdown';
+import { NewTab } from './NewTab';
 import { sanitizeText } from '@/utils/secureMarkdownProcessor';
 import { X } from 'lucide-react';
 
@@ -21,6 +22,7 @@ const TABS_PATTERN = '<Tabs';
 const BUTTON_PATTERN = '<Button';
 const STEPS_PATTERN = '<Steps';
 const CARD_PATTERN = '<Card';
+const NEWTAB_PATTERN = '<new-tab'; // Add new-tab pattern
 
 // Types
 type SectionType = 'frontmatter' | 'image' | 'cardgroup' | 'callout' | 'accordion' | 'accordiongroup' | 'tabs' | 'button' | 'steps' | 'card' | 'markdown' | 'mixed';
@@ -359,8 +361,49 @@ const parseSteps = (content: string): StepData[] => {
 
 const processInlineMarkdown = (text: string): React.ReactNode => {
   console.log('🔄 processInlineMarkdown: Processing text with secure renderer');
-  const sanitizedText = sanitizeText(text);
-  return <SecureInlineMarkdown content={sanitizedText} />;
+  
+  // First handle new-tab components
+  const newTabRegex = /<new-tab\s+href="([^"]*)"[^>]*>(.*?)<\/new-tab>/g;
+  const parts: React.ReactNode[] = [];
+  let lastIndex = 0;
+  let match;
+  let partIndex = 0;
+
+  while ((match = newTabRegex.exec(text)) !== null) {
+    // Add text before new-tab
+    if (match.index > lastIndex) {
+      const beforeText = text.slice(lastIndex, match.index);
+      if (beforeText.trim()) {
+        const sanitizedText = sanitizeText(beforeText);
+        parts.push(<SecureInlineMarkdown key={`before-${partIndex}`} content={sanitizedText} />);
+        partIndex++;
+      }
+    }
+
+    const href = match[1];
+    const content = match[2];
+    
+    // Add new-tab component
+    parts.push(
+      <NewTab key={`newtab-${partIndex}`} href={href}>
+        {content}
+      </NewTab>
+    );
+    partIndex++;
+
+    lastIndex = match.index + match[0].length;
+  }
+
+  // Add remaining text
+  if (lastIndex < text.length) {
+    const remainingText = text.slice(lastIndex);
+    if (remainingText.trim()) {
+      const sanitizedText = sanitizeText(remainingText);
+      parts.push(<SecureInlineMarkdown key={`remaining-${partIndex}`} content={sanitizedText} />);
+    }
+  }
+
+  return parts.length > 0 ? <>{parts}</> : <SecureInlineMarkdown content={sanitizeText(text)} />;
 };
 
 const processSimpleMarkdown = (text: string): React.ReactNode => {

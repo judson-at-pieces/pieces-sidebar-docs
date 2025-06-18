@@ -28,14 +28,16 @@ export const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
       const titleMatch = attributes.match(/title\s*=\s*["']([^"']*)["']/i);
       const imageMatch = attributes.match(/image\s*=\s*["']([^"']*)["']/i);
       const hrefMatch = attributes.match(/href\s*=\s*["']([^"']*)["']/i);
+      const targetMatch = attributes.match(/target\s*=\s*["']([^"']*)["']/i);
       const externalMatch = attributes.match(/external\s*=\s*["']([^"']*)["']/i);
       
       const title = titleMatch ? titleMatch[1] : '';
       const image = imageMatch ? imageMatch[1] : '';
       const href = hrefMatch ? hrefMatch[1] : '';
+      const target = targetMatch ? targetMatch[1] : '';
       const external = externalMatch ? externalMatch[1] : '';
       
-      console.log('🃏 CardGroup: Extracted attributes:', { title, image, href, external });
+      console.log('🃏 CardGroup: Extracted attributes:', { title, image, href, target, external });
       
       // Use href first, then external as fallback
       const finalHref = href || external;
@@ -44,6 +46,7 @@ export const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
         original_href: href, 
         original_external: external, 
         final: finalHref,
+        target: target,
         willBeClickable: !!finalHref
       });
       
@@ -51,6 +54,7 @@ export const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
         title,
         image,
         href: finalHref,
+        target,
         children: innerContent
       });
     }
@@ -71,6 +75,7 @@ export const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
             title={card.title}
             image={card.image}
             href={card.href}
+            target={card.target}
           >
             {card.children}
           </MarkdownCard>
@@ -99,13 +104,15 @@ export const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
           const title = props.title || '';
           const image = props.image || '';
           const href = props.href || props.external || '';
+          const target = props.target || '';
           
-          console.log('🃏 CardGroup: Using href from React element:', { original: href, final: href });
+          console.log('🃏 CardGroup: Using href from React element:', { original: href, final: href, target });
           
           cards.push({
             title,
             image,
             href: href,
+            target,
             children: props.children || ''
           });
         }
@@ -132,6 +139,7 @@ export const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
           title={card.title}
           image={card.image}
           href={card.href}
+          target={card.target}
         >
           {card.children}
         </MarkdownCard>

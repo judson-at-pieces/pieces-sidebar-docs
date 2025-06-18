@@ -6,6 +6,7 @@ interface MarkdownCardProps {
   title: string;
   image?: string;
   href?: string;
+  target?: string;
   external?: string;
   children?: React.ReactNode;
 }
@@ -29,8 +30,8 @@ const renderMarkdownWithSpacing = (content: string) => {
   });
 };
 
-export const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, href, external, children }) => {
-  console.log('🔥 MarkdownCard FORCE RENDER:', { title, image, href, external, hasChildren: !!children });
+export const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, href, target, external, children }) => {
+  console.log('🔥 MarkdownCard FORCE RENDER:', { title, image, href, target, external, hasChildren: !!children });
   
   const cardContent = (
     <div className="p-6 my-4 border rounded-xl dark:border-slate-800/80 border-slate-200 bg-white dark:bg-slate-900 transition-all duration-300 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-lg hover:-translate-y-1">
@@ -69,10 +70,12 @@ export const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, href, 
   const linkUrl = href;
   
   if (linkUrl) {
-    console.log('🔥 MAKING CARD CLICKABLE WITH URL:', linkUrl);
+    console.log('🔥 MAKING CARD CLICKABLE WITH URL:', linkUrl, 'target:', target);
     return (
       <a 
         href={linkUrl} 
+        target={target}
+        rel={target === '_blank' ? 'noopener noreferrer' : undefined}
         className="block no-underline hover:no-underline"
         style={{ 
           textDecoration: 'none !important',
