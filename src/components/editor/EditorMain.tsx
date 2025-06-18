@@ -1,15 +1,13 @@
 
-import React, { useEffect, useRef, useState } from 'react';
-import { FileText, MoreHorizontal, Copy, Trash2, Eye, Edit3, Lock, Unlock, Wand2, Palette } from 'lucide-react';
+import React, { useEffect, useRef } from 'react';
+import { FileText, MoreHorizontal, Copy, Trash2, Eye, Edit3, Lock, Unlock } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuItem } from '@/components/ui/dropdown-menu';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import HashnodeMarkdownRenderer from '@/components/markdown/HashnodeMarkdownRenderer';
-import { WYSIWYGEditor } from './WYSIWYGEditor';
-import { CommandPalette } from './CommandPalette';
+import HashnodeMarkdownRenderer from '@/components/HashnodeMarkdownRenderer';
 import { useLiveTyping } from '@/hooks/useLiveTyping';
 import { TypingIndicator } from './TypingIndicator';
 import { VisibilitySwitch } from './VisibilitySwitch';
@@ -46,9 +44,6 @@ export function EditorMain({
   onVisibilityChange
 }: EditorMainProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [editMode, setEditMode] = useState<'markdown' | 'preview' | 'wysiwyg'>('markdown');
-  const [showCommandPalette, setShowCommandPalette] = useState(false);
-  const [commandPosition, setCommandPosition] = useState({ top: 0, left: 0 });
   
   // Live typing functionality
   const { typingSessions, handleTyping, getLatestTypingContent } = useLiveTyping(selectedFile);
@@ -75,46 +70,6 @@ export function EditorMain({
       // Send typing event for real-time updates
       handleTyping(newContent, cursorPosition);
     }
-  };
-
-  // Handle keyboard shortcuts for command palette
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    // Check for Ctrl+/ or Cmd+/ for command palette
-    if (e.key === '/' && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      
-      if (textareaRef.current) {
-        const rect = textareaRef.current.getBoundingClientRect();
-        const scrollTop = textareaRef.current.scrollTop;
-        
-        setCommandPosition({
-          top: rect.top + 40 - scrollTop,
-          left: rect.left + 20
-        });
-        setShowCommandPalette(true);
-      }
-    } else if (e.key === 'Escape') {
-      setShowCommandPalette(false);
-    }
-  };
-
-  // Handle inserting content from command palette
-  const handleInsert = (insertContent: string) => {
-    if (textareaRef.current) {
-      const textarea = textareaRef.current;
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      
-      const newContent = displayContent.slice(0, start) + insertContent + displayContent.slice(end);
-      handleContentChangeWithTyping(newContent);
-      
-      // Set cursor position after the inserted content
-      setTimeout(() => {
-        textarea.focus();
-        textarea.setSelectionRange(start + insertContent.length, start + insertContent.length);
-      }, 0);
-    }
-    setShowCommandPalette(false);
   };
 
   // Update content when live typing content changes (for viewers)
@@ -145,7 +100,7 @@ export function EditorMain({
   }
 
   return (
-    <div className="h-full flex flex-col bg-background relative">
+    <div className="h-full flex flex-col bg-background">
       {/* Live Editing Banner - only show when someone else is editing */}
       {isLockedByOther && (
         <div className="bg-gradient-to-r from-blue-500 to-blue-600 text-white p-4 border-b shadow-lg">
@@ -236,39 +191,6 @@ export function EditorMain({
         </div>
 
         <div className="flex items-center gap-4">
-          {/* Edit Mode Toggle */}
-          {canEdit && (
-            <div className="flex items-center gap-1 bg-muted/50 p-1 rounded-lg">
-              <Button
-                variant={editMode === 'markdown' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setEditMode('markdown')}
-                className="h-7 px-2 text-xs"
-              >
-                <Edit3 className="h-3 w-3 mr-1" />
-                Markdown
-              </Button>
-              <Button
-                variant={editMode === 'preview' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setEditMode('preview')}
-                className="h-7 px-2 text-xs"
-              >
-                <Eye className="h-3 w-3 mr-1" />
-                Preview
-              </Button>
-              <Button
-                variant={editMode === 'wysiwyg' ? 'default' : 'ghost'}
-                size="sm"
-                onClick={() => setEditMode('wysiwyg')}
-                className="h-7 px-2 text-xs"
-              >
-                <Wand2 className="h-3 w-3 mr-1" />
-                Visual
-              </Button>
-            </div>
-          )}
-
           {/* Visibility Switch */}
           {canEdit && onVisibilityChange && (
             <VisibilitySwitch
@@ -307,92 +229,55 @@ export function EditorMain({
         </div>
       </div>
 
-      {/* Content Area */}
-      <div className="flex-1 overflow-hidden">
-        {editMode === 'markdown' ? (
-          // Split View: Markdown Editor + Preview
-          <ResizablePanelGroup direction="horizontal" className="h-full">
-            {/* Editor Panel */}
-            <ResizablePanel defaultSize={50} minSize={30}>
-              <div className="h-full flex flex-col">
-                {/* Command palette hint */}
-                {canEdit && (
-                  <div className="flex items-center justify-between px-4 py-2 border-b bg-muted/10">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <div className="flex items-center gap-1.5 bg-muted/50 px-2 py-1 rounded-md">
-                        <Palette className="h-3 w-3" />
-                        <span>Ctrl+/</span>
-                      </div>
-                      <span>for components</span>
-                    </div>
-                  </div>
-                )}
-                
-                <div className="flex-1 relative">
-                  <Textarea
-                    ref={textareaRef}
-                    value={displayContent}
-                    onChange={(e) => handleContentChangeWithTyping(e.target.value)}
-                    onKeyDown={handleKeyDown}
-                    placeholder={
-                      isLockedByOther 
-                        ? `${lockedBy} is editing this file...` 
-                        : canEdit
-                          ? "Start typing your content here..."
-                          : isAcquiringLock
-                            ? "Acquiring editing permissions..."
-                            : "Content will be editable once lock is acquired..."
-                    }
-                    disabled={!canEdit}
-                    className={`h-full resize-none border-0 rounded-none focus:ring-0 font-mono text-sm leading-relaxed ${
-                      !canEdit ? 'bg-muted/30 cursor-default' : ''
-                    }`}
-                    style={{ 
-                      minHeight: '100%',
-                      fontFamily: '"JetBrains Mono", "Fira Code", monospace'
-                    }}
-                  />
-                  {!canEdit && (
-                    <div className="absolute inset-0 bg-transparent pointer-events-none" />
-                  )}
-                </div>
-              </div>
-            </ResizablePanel>
+      {/* Split View */}
+      <ResizablePanelGroup direction="horizontal" className="flex-1">
+        {/* Editor Panel */}
+        <ResizablePanel defaultSize={50} minSize={30}>
+          <div className="h-full flex flex-col">
+            <div className="flex-1 relative">
+              <Textarea
+                ref={textareaRef}
+                value={displayContent}
+                onChange={(e) => handleContentChangeWithTyping(e.target.value)}
+                placeholder={
+                  isLockedByOther 
+                    ? `${lockedBy} is editing this file...` 
+                    : canEdit
+                      ? "Start typing your content here..."
+                      : isAcquiringLock
+                        ? "Acquiring editing permissions..."
+                        : "Content will be editable once lock is acquired..."
+                }
+                disabled={!canEdit}
+                className={`h-full resize-none border-0 rounded-none focus:ring-0 font-mono text-sm leading-relaxed ${
+                  !canEdit ? 'bg-muted/30 cursor-default' : ''
+                }`}
+                style={{ 
+                  minHeight: '100%',
+                  fontFamily: '"JetBrains Mono", "Fira Code", monospace'
+                }}
+              />
+              {!canEdit && (
+                <div className="absolute inset-0 bg-transparent pointer-events-none" />
+              )}
+            </div>
+          </div>
+        </ResizablePanel>
 
-            <ResizableHandle withHandle />
+        <ResizableHandle withHandle />
 
-            {/* Preview Panel */}
-            <ResizablePanel defaultSize={50} minSize={30}>
-              <div className="h-full border-l border-border/50">
-                <div className="p-4 border-b border-border/50 bg-muted/10">
-                  <div className="flex items-center gap-2">
-                    <Eye className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">Live Preview</span>
-                    <span className="text-xs text-muted-foreground">(Same renderer as docs)</span>
-                    {isLockedByOther && (
-                      <Badge variant="outline" className="text-xs">
-                        {(liveContent || latestTypingContent) ? 'Live Updates' : 'Read-only'}
-                      </Badge>
-                    )}
-                  </div>
-                </div>
-                
-                <ScrollArea className="h-[calc(100%-57px)]">
-                  <div className="p-6">
-                    <HashnodeMarkdownRenderer content={displayContent} />
-                  </div>
-                </ScrollArea>
-              </div>
-            </ResizablePanel>
-          </ResizablePanelGroup>
-        ) : editMode === 'preview' ? (
-          // Full Preview Mode
-          <div className="h-full">
+        {/* Preview Panel */}
+        <ResizablePanel defaultSize={50} minSize={30}>
+          <div className="h-full border-l border-border/50">
             <div className="p-4 border-b border-border/50 bg-muted/10">
               <div className="flex items-center gap-2">
                 <Eye className="h-4 w-4 text-muted-foreground" />
-                <span className="text-sm font-medium">Preview Mode</span>
-                <span className="text-xs text-muted-foreground">(Same renderer as docs)</span>
+                <span className="text-sm font-medium">Live Preview</span>
+                {isLockedByOther && (
+                  <Badge variant="outline" className="text-xs">
+                    {(liveContent || latestTypingContent) ? 'Live Updates' : 'Read-only'}
+                  </Badge>
+                )}
               </div>
             </div>
             
@@ -402,24 +287,8 @@ export function EditorMain({
               </div>
             </ScrollArea>
           </div>
-        ) : (
-          // WYSIWYG Mode
-          <WYSIWYGEditor 
-            content={displayContent}
-            onContentChange={canEdit ? onContentChange : () => {}}
-          />
-        )}
-      </div>
-
-      {/* Command Palette for Markdown Mode */}
-      {editMode === 'markdown' && (
-        <CommandPalette
-          isOpen={showCommandPalette}
-          onClose={() => setShowCommandPalette(false)}
-          onInsert={handleInsert}
-          position={commandPosition}
-        />
-      )}
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
   );
 }
