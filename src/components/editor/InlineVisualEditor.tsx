@@ -1,4 +1,3 @@
-
 import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { Eye, Edit3, Type, Hash, List, Link2, Image, Code, Quote, Plus } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -86,8 +85,7 @@ export function InlineVisualEditor({ content, onContentChange, readOnly = false 
     const walker = document.createTreeWalker(
       contentRef.current,
       NodeFilter.SHOW_TEXT,
-      null,
-      false
+      null
     );
 
     let currentOffset = 0;
