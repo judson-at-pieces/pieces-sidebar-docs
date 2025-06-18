@@ -47,121 +47,149 @@ export const processInlineMarkdown = (text: string): ProcessedMarkdown[] => {
 
   console.log('🔄 processInlineMarkdown input:', text.substring(0, 200));
 
+  // Simple sequential processing approach
+  let currentText = text;
   const elements: ProcessedMarkdown[] = [];
-  let processedText = text;
-
-  // Simple regex patterns for inline markdown
-  const patterns = [
-    // Code blocks first (to avoid conflicts)
-    {
-      regex: /`([^`]+)`/g,
-      type: 'code' as const,
-      process: (match: string, content: string) => ({ type: 'code' as const, content: content.trim() })
-    },
-    // Links - both markdown and HTML
-    {
-      regex: /<a\s+href\s*=\s*["']([^"']+)["'][^>]*>(.*?)<\/a>/gi,
-      type: 'link' as const,
-      process: (match: string, href: string, linkText: string) => {
-        if (validateUrl(href) && linkText.trim()) {
-          return { type: 'link' as const, content: linkText.trim(), href };
-        }
-        return { type: 'text' as const, content: match };
-      }
-    },
-    {
-      regex: /\[([^\]]*)\]\(([^)]+)\)/g,
-      type: 'link' as const,
-      process: (match: string, linkText: string, href: string) => {
-        const cleanText = linkText.replace(/\\(.)/g, '$1'); // Unescape characters
-        if (validateUrl(href) && cleanText.trim()) {
-          return { type: 'link' as const, content: cleanText.trim(), href };
-        }
-        return { type: 'text' as const, content: match };
-      }
-    },
-    // Bold
-    {
-      regex: /\*\*(.*?)\*\*/g,
-      type: 'bold' as const,
-      process: (match: string, content: string) => {
-        if (content.trim()) {
-          return { type: 'bold' as const, content: content.trim() };
-        }
-        return { type: 'text' as const, content: match };
-      }
-    },
-    // Italic (but not if it's part of **)
-    {
-      regex: /(?<!\*)\*([^*]+)\*(?!\*)/g,
-      type: 'italic' as const,
-      process: (match: string, content: string) => {
-        if (content.trim()) {
-          return { type: 'italic' as const, content: content.trim() };
-        }
-        return { type: 'text' as const, content: match };
-      }
-    }
-  ];
-
-  // Process patterns one by one
-  const foundElements: Array<{ start: number; end: number; element: ProcessedMarkdown }> = [];
-
-  patterns.forEach(pattern => {
-    let match;
-    const regex = new RegExp(pattern.regex.source, pattern.regex.flags);
-    
-    while ((match = regex.exec(text)) !== null) {
-      const element = pattern.process(match[0], match[1], match[2]);
-      if (element.type !== 'text' || element.content !== match[0]) {
-        foundElements.push({
-          start: match.index!,
-          end: match.index! + match[0].length,
-          element
-        });
-      }
-    }
-  });
-
-  // Sort by position and resolve overlaps
-  foundElements.sort((a, b) => a.start - b.start);
   
-  const resolvedElements: Array<{ start: number; end: number; element: ProcessedMarkdown }> = [];
+  // Process the text character by character to build elements
+  let i = 0;
+  let currentElement = '';
   
-  for (const current of foundElements) {
-    // Check if this element overlaps with any already resolved element
-    const hasOverlap = resolvedElements.some(resolved => 
-      (current.start < resolved.end && current.end > resolved.start)
-    );
-    
-    if (!hasOverlap) {
-      resolvedElements.push(current);
+  while (i < currentText.length) {
+    // Check for bold **text**
+    if (currentText.substring(i, i + 2) === '**') {
+      // Add any accumulated text
+      if (currentElement) {
+        elements.push({ type: 'text', content: currentElement });
+        currentElement = '';
+      }
+      
+      // Find the closing **
+      let endIndex = currentText.indexOf('**', i + 2);
+      if (endIndex !== -1) {
+        const boldContent = currentText.substring(i + 2, endIndex);
+        if (boldContent.trim()) {
+          elements.push({ type: 'bold', content: boldContent });
+        }
+        i = endIndex + 2;
+        continue;
+      }
     }
+    
+    // Check for italic *text* (but not **)
+    if (currentText[i] === '*' && currentText[i + 1] !== '*' && currentText[i - 1] !== '*') {
+      // Add any accumulated text
+      if (currentElement) {
+        elements.push({ type: 'text', content: currentElement });
+        currentElement = '';
+      }
+      
+      // Find the closing *
+      let endIndex = -1;
+      for (let j = i + 1; j < currentText.length; j++) {
+        if (currentText[j] === '*' && currentText[j + 1] !== '*' && currentText[j - 1] !== '*') {
+          endIndex = j;
+          break;
+        }
+      }
+      
+      if (endIndex !== -1) {
+        const italicContent = currentText.substring(i + 1, endIndex);
+        if (italicContent.trim()) {
+          elements.push({ type: 'italic', content: italicContent });
+        }
+        i = endIndex + 1;
+        continue;
+      }
+    }
+    
+    // Check for code `text`
+    if (currentText[i] === '`') {
+      // Add any accumulated text
+      if (currentElement) {
+        elements.push({ type: 'text', content: currentElement });
+        currentElement = '';
+      }
+      
+      // Find the closing `
+      let endIndex = currentText.indexOf('`', i + 1);
+      if (endIndex !== -1) {
+        const codeContent = currentText.substring(i + 1, endIndex);
+        if (codeContent.trim()) {
+          elements.push({ type: 'code', content: codeContent });
+        }
+        i = endIndex + 1;
+        continue;
+      }
+    }
+    
+    // Check for markdown links [text](url)
+    if (currentText[i] === '[') {
+      // Add any accumulated text
+      if (currentElement) {
+        elements.push({ type: 'text', content: currentElement });
+        currentElement = '';
+      }
+      
+      // Find the closing ] and opening (
+      let textEnd = currentText.indexOf(']', i + 1);
+      if (textEnd !== -1 && currentText[textEnd + 1] === '(') {
+        let urlEnd = currentText.indexOf(')', textEnd + 2);
+        if (urlEnd !== -1) {
+          const linkText = currentText.substring(i + 1, textEnd);
+          const linkUrl = currentText.substring(textEnd + 2, urlEnd);
+          
+          if (linkText.trim() && validateUrl(linkUrl)) {
+            elements.push({ 
+              type: 'link', 
+              content: linkText.trim(), 
+              href: linkUrl.trim() 
+            });
+            i = urlEnd + 1;
+            continue;
+          }
+        }
+      }
+    }
+    
+    // Check for HTML links <a href="url">text</a>
+    if (currentText.substring(i, i + 2) === '<a') {
+      // Add any accumulated text
+      if (currentElement) {
+        elements.push({ type: 'text', content: currentElement });
+        currentElement = '';
+      }
+      
+      // Find the href attribute and closing tag
+      let tagEnd = currentText.indexOf('>', i);
+      if (tagEnd !== -1) {
+        let closingTag = currentText.indexOf('</a>', tagEnd);
+        if (closingTag !== -1) {
+          const tagContent = currentText.substring(i, tagEnd + 1);
+          const hrefMatch = tagContent.match(/href\s*=\s*["']([^"']+)["']/);
+          const linkText = currentText.substring(tagEnd + 1, closingTag);
+          
+          if (hrefMatch && linkText.trim() && validateUrl(hrefMatch[1])) {
+            elements.push({ 
+              type: 'link', 
+              content: linkText.trim(), 
+              href: hrefMatch[1] 
+            });
+            i = closingTag + 4; // Skip </a>
+            continue;
+          }
+        }
+      }
+    }
+    
+    // Regular character - add to current element
+    currentElement += currentText[i];
+    i++;
   }
-
-  // Build final elements array
-  let lastIndex = 0;
   
-  for (const { start, end, element } of resolvedElements) {
-    // Add text before this element
-    if (start > lastIndex) {
-      const textContent = text.slice(lastIndex, start);
-      if (textContent) {
-        elements.push({ type: 'text', content: textContent });
-      }
-    }
-    
-    // Add the processed element
-    elements.push(element);
-    lastIndex = end;
-  }
-  
-  // Add remaining text
-  if (lastIndex < text.length) {
-    const remainingText = text.slice(lastIndex);
-    if (remainingText) {
-      elements.push({ type: 'text', content: remainingText });
-    }
+  // Add any remaining text
+  if (currentElement) {
+    elements.push({ type: 'text', content: currentElement });
   }
 
   // If no elements were processed, return the original text
