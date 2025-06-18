@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import CodeBlock from './CodeBlock';
+import { CodeBlock } from './CodeBlock';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
 import { oneDark, oneLight } from 'react-syntax-highlighter/dist/esm/styles/prism';
 import { CustomTable } from './CustomTable';
@@ -383,6 +383,184 @@ const processSimpleMarkdown = (text: string): React.ReactNode => {
   return <span dangerouslySetInnerHTML={{ __html: text }} />;
 };
 
+// Components
+const ImageSection: React.FC<{ src: string; alt: string; align: string; fullwidth: boolean }> = ({ src, alt, align, fullwidth }) => (
+  <div className={`my-6 ${align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left'}`}>
+    <img 
+      src={src} 
+      alt={alt} 
+      className={`rounded-lg shadow-md ${fullwidth ? 'w-full' : 'max-w-full'} ${align === 'center' ? 'mx-auto' : ''}`}
+    />
+  </div>
+);
+
+const CalloutSection: React.FC<{ type: string; content: string }> = ({ type, content }) => {
+  const getCalloutStyles = (type: string) => {
+    switch (type) {
+      case 'warning':
+        return 'border-orange-200 bg-orange-50 text-orange-800 dark:border-orange-800 dark:bg-orange-950 dark:text-orange-200';
+      case 'error':
+        return 'border-red-200 bg-red-50 text-red-800 dark:border-red-800 dark:bg-red-950 dark:text-red-200';
+      case 'success':
+        return 'border-green-200 bg-green-50 text-green-800 dark:border-green-800 dark:bg-green-950 dark:text-green-200';
+      case 'tip':
+        return 'border-purple-200 bg-purple-50 text-purple-800 dark:border-purple-800 dark:bg-purple-950 dark:text-purple-200';
+      default:
+        return 'border-blue-200 bg-blue-50 text-blue-800 dark:border-blue-800 dark:bg-blue-950 dark:text-blue-200';
+    }
+  };
+
+  return (
+    <div className={`border-l-4 p-4 my-4 rounded-r-lg ${getCalloutStyles(type)}`}>
+      <div className="prose prose-sm dark:prose-invert max-w-none">
+        {processInlineMarkdown(content)}
+      </div>
+    </div>
+  );
+};
+
+const CardSection: React.FC<{ card: CardData }> = ({ card }) => (
+  <div className="border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow bg-card">
+    {card.image && (
+      <div className="mb-4">
+        <img src={card.image} alt={card.title} className="w-full h-48 object-cover rounded-md" />
+      </div>
+    )}
+    <h3 className="text-lg font-semibold mb-2">{card.title}</h3>
+    <div className="prose prose-sm dark:prose-invert max-w-none">
+      {processInlineMarkdown(card.content)}
+    </div>
+  </div>
+);
+
+const CardGroupSection: React.FC<{ cols: number; cards: CardData[] }> = ({ cols = 2, cards }) => (
+  <div className={`grid gap-6 my-6 ${cols === 3 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1 md:grid-cols-2'}`}>
+    {cards.map((card, index) => (
+      <CardSection key={index} card={card} />
+    ))}
+  </div>
+);
+
+const AccordionSection: React.FC<AccordionData> = ({ title, content }) => {
+  const [isOpen, setIsOpen] = useState(false);
+
+  return (
+    <div className="border border-border rounded-lg my-4">
+      <button
+        onClick={() => setIsOpen(!isOpen)}
+        className="w-full px-4 py-3 text-left font-medium hover:bg-muted/50 transition-colors flex items-center justify-between"
+      >
+        <span>{title}</span>
+        <span className={`transform transition-transform ${isOpen ? 'rotate-180' : ''}`}>
+          ▼
+        </span>
+      </button>
+      {isOpen && (
+        <div className="px-4 pb-4 border-t border-border">
+          <div className="pt-3 prose prose-sm dark:prose-invert max-w-none">
+            {processInlineMarkdown(content)}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+const AccordionGroupSection: React.FC<{ accordions: AccordionData[] }> = ({ accordions }) => (
+  <div className="space-y-2 my-6">
+    {accordions.map((accordion, index) => (
+      <AccordionSection key={index} {...accordion} />
+    ))}
+  </div>
+);
+
+const TabsSection: React.FC<{ tabs: TabData[] }> = ({ tabs }) => {
+  const [activeTab, setActiveTab] = useState(0);
+
+  return (
+    <div className="my-6">
+      <div className="border-b border-border">
+        <div className="flex space-x-8">
+          {tabs.map((tab, index) => (
+            <button
+              key={index}
+              onClick={() => setActiveTab(index)}
+              className={`py-2 px-1 border-b-2 font-medium text-sm transition-colors ${
+                activeTab === index
+                  ? 'border-primary text-primary'
+                  : 'border-transparent text-muted-foreground hover:text-foreground hover:border-muted-foreground'
+              }`}
+            >
+              {tab.title}
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="pt-4">
+        <div className="prose prose-sm dark:prose-invert max-w-none">
+          {processInlineMarkdown(tabs[activeTab]?.content || '')}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+const ButtonSection: React.FC<ButtonData> = ({ label, linkHref, openLinkInNewTab, align, lightColor, darkColor }) => {
+  const alignClass = align === 'center' ? 'text-center' : align === 'right' ? 'text-right' : 'text-left';
+  
+  return (
+    <div className={`my-4 ${alignClass}`}>
+      <a
+        href={linkHref}
+        target={openLinkInNewTab ? '_blank' : '_self'}
+        rel={openLinkInNewTab ? 'noopener noreferrer' : undefined}
+        className="inline-block px-6 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors font-medium"
+        style={{
+          backgroundColor: lightColor,
+          color: darkColor
+        }}
+      >
+        {label}
+      </a>
+    </div>
+  );
+};
+
+const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => {
+  console.log('👣 StepsSection rendering:', { stepCount: steps.length });
+  
+  return (
+    <div className="my-6 [&>.step:last-of-type]:mb-0">
+      {steps.map((step, index) => {
+        const isLast = index === steps.length - 1;
+        
+        return (
+          <div key={index} className="flex gap-4 step mb-5">
+            <div className="flex flex-col items-center gap-2">
+              <div className="w-6 h-6 text-xs font-semibold border rounded-md flex items-center justify-center border-slate-100 bg-slate-50 dark:bg-slate-900 dark:border-slate-800/40 text-slate-700 dark:text-slate-200">
+                {index + 1}
+              </div>
+              {!isLast && (
+                <div className="h-[20px] w-[1px] bg-slate-200 dark:bg-slate-800/80"></div>
+              )}
+            </div>
+            <div className="flex-1 w-60">
+              <div className="flex flex-col gap-3">
+                <h3 className="font-bold text-base text-slate-700 dark:text-slate-200 m-0">
+                  {step.title}
+                </h3>
+                <div className="text-base text-slate-600 dark:text-slate-300 prose prose-sm dark:prose-invert max-w-none">
+                  {processInlineMarkdown(step.content)}
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })}
+    </div>
+  );
+};
+
 // Basic markdown renderer with enhanced code block support
 const MarkdownSection: React.FC<{ content: string }> = ({ content }) => {
   if (!content) return null;
@@ -442,8 +620,6 @@ const renderBasicMarkdown = (content: string): React.ReactNode => {
   const elements: React.ReactNode[] = [];
   let currentListItems: string[] = [];
   let currentListType: ListType = null;
-  let tableRows: string[] = [];
-  let inTable = false;
 
   const flushList = () => {
     if (currentListItems.length > 0) {
@@ -462,81 +638,18 @@ const renderBasicMarkdown = (content: string): React.ReactNode => {
     }
   };
 
-  const flushTable = () => {
-    if (tableRows.length > 0) {
-      console.log('📝 Flushing table with', tableRows.length, 'rows');
-      
-      // Parse table rows properly
-      const headerRow = tableRows[0]?.split('|').map(cell => cell.trim()).filter(Boolean) || [];
-      const separatorRow = tableRows[1]?.split('|').map(cell => cell.trim()).filter(Boolean) || [];
-      const dataRows = tableRows.slice(2).filter(row => row.trim());
-
-      if (headerRow.length > 0) {
-        elements.push(
-          <CustomTable key={`table-${elements.length}`}>
-            <thead>
-              <tr>
-                {headerRow.map((cell, i) => (
-                  <th key={i} className="px-4 py-2 text-left text-sm font-semibold text-slate-700 dark:text-slate-200">
-                    <p className="!m-0 min-h-6">
-                      <strong>
-                        <span dangerouslySetInnerHTML={{ __html: cell }} />
-                      </strong>
-                    </p>
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-200 dark:divide-slate-800/80">
-              {dataRows.map((row, rowIndex) => {
-                const cells = row.split('|').map(cell => cell.trim()).filter(Boolean);
-                return (
-                  <tr key={rowIndex}>
-                    {cells.map((cell, cellIndex) => (
-                      <td key={cellIndex} className="px-4 py-2 text-sm text-slate-700 dark:text-slate-300">
-                        <span dangerouslySetInnerHTML={{ __html: cell }} />
-                      </td>
-                    ))}
-                  </tr>
-                );
-              })}
-            </tbody>
-          </CustomTable>
-        );
-      }
-      
-      tableRows = [];
-      inTable = false;
-    }
-  };
-
   lines.forEach((line, index) => {
     line = line.trim();
     
     if (!line) {
       flushList();
-      flushTable();
       return;
-    }
-
-    // Tables - improved detection
-    if (line.includes('|') && (line.trim().startsWith('|') || line.match(/\|.*\|/))) {
-      if (!inTable) {
-        console.log(`📝 Starting table at line ${index}:`, line);
-        flushList();
-        inTable = true;
-      }
-      tableRows.push(line);
-      return;
-    } else if (inTable) {
-      flushTable();
     }
 
     // Handle lists
     if (line.match(/^[*\-]\s+/)) {
       if (currentListType !== 'unordered') {
         flushList();
-        flushTable();
         currentListType = 'unordered';
       }
       currentListItems.push(line);
@@ -546,7 +659,6 @@ const renderBasicMarkdown = (content: string): React.ReactNode => {
     if (line.match(/^\d+\.\s+/)) {
       if (currentListType !== 'ordered') {
         flushList();
-        flushTable();
         currentListType = 'ordered';
       }
       currentListItems.push(line);
@@ -554,7 +666,6 @@ const renderBasicMarkdown = (content: string): React.ReactNode => {
     }
 
     flushList();
-    flushTable();
 
     // Handle headers
     if (line.startsWith('### ')) {
@@ -570,7 +681,6 @@ const renderBasicMarkdown = (content: string): React.ReactNode => {
   });
 
   flushList();
-  flushTable();
   return <>{elements}</>;
 };
 
