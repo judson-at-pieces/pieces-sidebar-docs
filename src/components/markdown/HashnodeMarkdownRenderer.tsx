@@ -442,13 +442,24 @@ const CardSection: React.FC<{ card: CardData }> = ({ card }) => {
   );
 };
 
-const CardGroupSection: React.FC<{ cols: number; cards: CardData[] }> = ({ cols = 2, cards }) => (
-  <div className={`grid gap-6 my-6 ${cols === 3 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1 md:grid-cols-2'}`}>
-    {cards.map((card, index) => (
-      <CardSection key={`card-${index}`} card={card} />
-    ))}
-  </div>
-);
+const CardGroupSection: React.FC<{ cols: number; cards: CardData[] }> = ({ cols = 2, cards }) => {
+  console.log('🃏 CardGroupSection: Rendering with cards:', cards.map(c => ({ title: c.title, href: c.href })));
+  
+  // Convert CardData to the raw markdown string format that CardGroup expects
+  const cardGroupContent = cards.map(card => {
+    const hrefAttr = card.href ? ` href="${card.href}"` : '';
+    const imageAttr = card.image ? ` image="${card.image}"` : '';
+    return `<Card title="${card.title}"${imageAttr}${hrefAttr}>${card.content}</Card>`;
+  }).join('\n  ');
+  
+  const fullCardGroupMarkdown = `<CardGroup cols={${cols}}>
+  ${cardGroupContent}
+</CardGroup>`;
+
+  console.log('🃏 CardGroupSection: Generated markdown:', fullCardGroupMarkdown);
+  
+  return <CardGroup cols={cols as 2 | 3 | 4}>{fullCardGroupMarkdown}</CardGroup>;
+};
 
 // Parse Accordion
 const AccordionSection: React.FC<{ accordion: AccordionData }> = ({ accordion }) => {
