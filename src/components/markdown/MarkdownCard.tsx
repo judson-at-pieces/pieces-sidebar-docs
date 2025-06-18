@@ -33,7 +33,7 @@ export const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, href, 
   console.log('🔥 MarkdownCard FORCE RENDER:', { title, image, href, external, hasChildren: !!children });
   
   const cardContent = (
-    <div className="p-6 my-4 border rounded-xl dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
+    <div className="p-6 my-4 border rounded-xl dark:border-slate-800/80 border-slate-200 bg-white dark:bg-slate-900 transition-all duration-300 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-lg hover:-translate-y-1">
       {image && (
         <div className="w-10 h-10 mb-6 relative rounded-lg">
           <img
@@ -65,26 +65,18 @@ export const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, href, 
     </div>
   );
 
-  // FORCE CLICKABILITY - check for ANY link-like attribute
-  const linkUrl = href || external;
+  // Use href if available
+  const linkUrl = href;
   
   if (linkUrl) {
     console.log('🔥 MAKING CARD CLICKABLE WITH URL:', linkUrl);
     return (
       <a 
         href={linkUrl} 
-        target="_blank" 
-        rel="noopener noreferrer"
-        className="block no-underline hover:no-underline cursor-pointer transition-transform hover:scale-[1.02] hover:shadow-lg"
+        className="block no-underline hover:no-underline"
         style={{ 
           textDecoration: 'none !important',
           color: 'inherit !important' 
-        }}
-        onClick={(e) => {
-          console.log('🔥 CARD CLICKED! Opening:', linkUrl);
-          // Force open in new tab
-          window.open(linkUrl, '_blank', 'noopener,noreferrer');
-          e.preventDefault();
         }}
       >
         {cardContent}
