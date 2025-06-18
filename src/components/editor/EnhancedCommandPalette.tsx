@@ -6,7 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { 
   Type, Hash, Image as ImageIcon, AlertCircle, List, Quote, Code, Link,
-  Table, Separator, FileText, Layout, Grid, Lightbulb, Zap, Star
+  Table, Minus, FileText, Layout, Grid, Lightbulb, Zap, Star
 } from 'lucide-react';
 
 interface EnhancedCommandPaletteProps {
@@ -168,7 +168,7 @@ const commands = [
   {
     id: 'horizontal-rule',
     label: 'Horizontal Rule',
-    icon: Separator,
+    icon: Minus,
     content: '---',
     description: 'Horizontal divider line',
     category: 'layout',
