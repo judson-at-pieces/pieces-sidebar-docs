@@ -1,3 +1,4 @@
+
 ---
 title: "Generative AI Conversations"
 path: "/cli/copilot/chat"
@@ -15,13 +16,13 @@ To quickly start a conversation with Pieces Copilot:
 
 <Steps>
   <Step title="Open a Terminal">
-    Opening a terminal on your device depends on your platform: Open your OS’ search bar and enter `terminal` (macOS/Linux) or `CMD` (Windows).
+    Opening a terminal on your device depends on your platform: Open your OS' search bar and enter `terminal` (macOS/Linux) or `CMD` (Windows).
   </Step>
 
   <Step title="Enter Ask Command">
     You can launch Pieces CLI by typing `pieces run`., Then, you can type `ask query`, where `query` is your question.
 
-    If you’re not in Pieces CLI, in your terminal, you can type `pieces ask query`, replacing `query` with your question.
+    If you're not in Pieces CLI, in your terminal, you can type `pieces ask query`, replacing `query` with your question.
 
     <Image src="https://storage.googleapis.com/hashnode_product_documentation_assets/cli_assets/pieces_copilot/chat/ask_pieces.gif" alt="" align="center" fullwidth="true" />
   </Step>
@@ -41,21 +42,21 @@ Use these flags with your `chat` command to manage conversations as you go:
 
 * `chat --new`, `chat -n`: Create a new conversation and switch to it.
 
-* `chat --delete`, `chat -d`: Delete the conversation you’re currently viewing.
+* `chat --delete`, `chat -d`: Delete the conversation you're currently viewing.
 
-* `chat --rename [name]`, `chat -r [name]`: Rename the conversation you’re viewing. If you don’t provide `[name]`, the assistant will suggest one.
+* `chat --rename [name]`, `chat -r [name]`: Rename the conversation you're viewing. If you don't provide `[name]`, the assistant will suggest one.
 
 [Read more about what commands are available in the Pieces CLI](https://docs.pieces.app/products/cli/commands).
 
 ## Contextualized Chats
 
-You can narrow Copilot’s focus by feeding it specific materials or files when you ask a question.
+You can narrow Copilot's focus by feeding it specific materials or files when you ask a question.
 
 ### via Material Index
 
 <Steps>
   <Step title="Open a Terminal">
-    Opening a terminal on your device depends on your platform: Open your OS’ search bar and enter `terminal`(macOS/Linux) or `CMD`(Windows).
+    Opening a terminal on your device depends on your platform: Open your OS' search bar and enter `terminal`(macOS/Linux) or `CMD`(Windows).
   </Step>
 
   <Step title="List your materials">
@@ -81,7 +82,7 @@ Use a folder of specific file as context for Pieces Copilot by initiating the co
   </Step>
 
   <Step title="Open a Terminal">
-    Opening a terminal on your device depends on your platform: Open your OS’ search bar and enter `terminal`(macOS/Linux) or `CMD`(Windows).
+    Opening a terminal on your device depends on your platform: Open your OS' search bar and enter `terminal`(macOS/Linux) or `CMD`(Windows).
   </Step>
 
   <Step title="Ask with a File">
@@ -123,7 +124,7 @@ Automatically sets up MCP for VS Code, Goose, or Cursor.
 
     <Image src="https://storage.googleapis.com/hashnode_product_documentation_assets/cli_assets/pieces_copilot/chat/selecting_mcp_option.png" alt="" align="center" fullwidth="true" />
 
-    After selecting the environment you plan to set up Pieces MCP with, you’ll be prompted with the next set of questions.
+    After selecting the environment you plan to set up Pieces MCP with, you'll be prompted with the next set of questions.
   </Step>
 
   <Step title="Select Workspace">
@@ -131,7 +132,7 @@ Automatically sets up MCP for VS Code, Goose, or Cursor.
 
     * `User Settings` — Make the MCP available in any project you work on within VS Code.
 
-    * `Workspace Settings` — Save the MCP locally to the current project you’re working on.
+    * `Workspace Settings` — Save the MCP locally to the current project you're working on.
 
     When you select the workspace you want to set up, Pieces CLI will automatically add the configuration for you and guide you through using Pieces MCP within the platform you chose.
   </Step>
@@ -175,7 +176,7 @@ Suppose functions across your workspace use inconsistent naming patterns (e.g., 
 
 In that case, Pieces Copilot can suggest adopting a standardized naming convention for better readability and maintainability, like this:
 
-```c
+```go
 func authenticateUser(ctx context.Context, credentials Credentials) (User, error) {
     if credentials.Username == "" || credentials.Password == "" {
         return User{}, errors.New("missing credentials")
@@ -187,7 +188,7 @@ func authenticateUser(ctx context.Context, credentials Credentials) (User, error
 
 If error-handling strategies differ across files (e.g., structured errors in `authService.go` vs. inconsistent handling in `userService.go`), Pieces Copilot can help unify the approach:
 
-```c
+```go
 func LoginUser(credentials Credentials) (string, error) {
     token, err := authenticate(credentials)
     if err != nil {
