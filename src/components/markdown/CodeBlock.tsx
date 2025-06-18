@@ -11,6 +11,48 @@ interface CodeBlockProps {
   language?: string;
 }
 
+// Map common language variations to syntax highlighter language names
+const languageMap: Record<string, string> = {
+  'c': 'c',
+  'C': 'c',
+  'cpp': 'cpp',
+  'c++': 'cpp',
+  'C++': 'cpp',
+  'csharp': 'csharp',
+  'c#': 'csharp',
+  'C#': 'csharp',
+  'js': 'javascript',
+  'ts': 'typescript',
+  'py': 'python',
+  'rb': 'ruby',
+  'sh': 'bash',
+  'shell': 'bash',
+  'yml': 'yaml',
+  'json': 'json',
+  'xml': 'xml',
+  'html': 'markup',
+  'css': 'css',
+  'sql': 'sql',
+  'php': 'php',
+  'java': 'java',
+  'kotlin': 'kotlin',
+  'swift': 'swift',
+  'go': 'go',
+  'rust': 'rust',
+  'dart': 'dart',
+  'scala': 'scala',
+  'r': 'r',
+  'matlab': 'matlab',
+  'powershell': 'powershell',
+  'batch': 'batch',
+  'dockerfile': 'docker',
+  'makefile': 'makefile',
+  'ini': 'ini',
+  'toml': 'toml',
+  'markdown': 'markdown',
+  'md': 'markdown'
+};
+
 export function CodeBlock({ children, className, language }: CodeBlockProps) {
   const [copied, setCopied] = useState(false);
 
@@ -37,8 +79,14 @@ export function CodeBlock({ children, className, language }: CodeBlockProps) {
     }
   };
 
-  // Extract language from className if not provided directly
-  const detectedLanguage = language || (className ? className.replace(/^language-/, '') : '');
+  // Extract and normalize language
+  let detectedLanguage = language || (className ? className.replace(/^language-/, '') : '');
+  
+  // Normalize language using the mapping
+  if (detectedLanguage) {
+    detectedLanguage = languageMap[detectedLanguage.toLowerCase()] || detectedLanguage.toLowerCase();
+  }
+
   const codeContent = extractCodeContent(children);
 
   console.log('CodeBlock render:', { 
@@ -49,7 +97,7 @@ export function CodeBlock({ children, className, language }: CodeBlockProps) {
     hasLanguage: !!detectedLanguage 
   });
 
-  // Always use syntax highlighting if we have content
+  // Use syntax highlighting with the normalized language
   return (
     <div className="relative group my-4">
       <SyntaxHighlighter
