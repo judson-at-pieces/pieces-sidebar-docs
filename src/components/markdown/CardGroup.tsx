@@ -11,6 +11,17 @@ export const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
   console.log('🃏 CardGroup render - RAW children:', children);
   console.log('🃏 CardGroup render - children type:', typeof children);
   
+  // Function to get download URL based on title
+  const getDownloadUrl = (title: string): string => {
+    if (title.includes('PiecesOS') && title.includes('.EXE')) {
+      return 'https://builds.pieces.app/stages/production/os/windows/download';
+    }
+    if (title.includes('Pieces Desktop App') || title.includes('Pieces for Developers')) {
+      return 'https://builds.pieces.app/stages/production/appleseed/windows/download';
+    }
+    return '';
+  };
+  
   // Handle string children (from markdown processing)
   if (typeof children === 'string') {
     console.log('🃏 CardGroup: Processing string children');
@@ -33,12 +44,15 @@ export const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
       const href = hrefMatch ? hrefMatch[1] : '';
       const external = externalMatch ? externalMatch[1] : '';
       
-      console.log('🃏 CardGroup: Parsed card from string:', { title, image, href, external });
+      // FORCE CLICKABILITY - if no href/external, try to get download URL
+      const finalHref = href || external || getDownloadUrl(title);
+      
+      console.log('🃏 CardGroup: Parsed card from string:', { title, image, href, external, finalHref });
       
       cards.push({
         title,
         image,
-        href: href || external,
+        href: finalHref,
         children: innerContent
       });
     }
@@ -83,10 +97,18 @@ export const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
             (typeof child.type === 'function' && child.type.name === 'MarkdownCard')) {
           const props = child.props as any;
           console.log('🃏 CardGroup: Found card with props:', props);
+          
+          const title = props.title || '';
+          const image = props.image || '';
+          const href = props.href || props.external || '';
+          
+          // FORCE CLICKABILITY - if no href/external, try to get download URL
+          const finalHref = href || getDownloadUrl(title);
+          
           cards.push({
-            title: props.title || '',
-            image: props.image || '',
-            href: props.href || props.external || '',
+            title,
+            image,
+            href: finalHref,
             children: props.children || ''
           });
         }
