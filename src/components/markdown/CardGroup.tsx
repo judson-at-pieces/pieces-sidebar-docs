@@ -41,12 +41,15 @@ export const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
       
       // Use href first, then external as fallback
       const finalHref = href || external;
+      // Default to _blank if no target specified but href exists
+      const finalTarget = target || (finalHref ? '_blank' : '');
       
-      console.log('🃏 CardGroup: Final href decision:', { 
+      console.log('🃏 CardGroup: Final decisions:', { 
         original_href: href, 
         original_external: external, 
-        final: finalHref,
-        target: target,
+        original_target: target,
+        final_href: finalHref,
+        final_target: finalTarget,
         willBeClickable: !!finalHref
       });
       
@@ -54,7 +57,7 @@ export const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
         title,
         image,
         href: finalHref,
-        target,
+        target: finalTarget,
         children: innerContent
       });
     }
@@ -104,9 +107,9 @@ export const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
           const title = props.title || '';
           const image = props.image || '';
           const href = props.href || props.external || '';
-          const target = props.target || '';
+          const target = props.target || (href ? '_blank' : '');
           
-          console.log('🃏 CardGroup: Using href from React element:', { original: href, final: href, target });
+          console.log('🃏 CardGroup: Using attributes from React element:', { href, target });
           
           cards.push({
             title,

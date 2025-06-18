@@ -67,15 +67,16 @@ export const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, href, 
   );
 
   // Use href if available
-  const linkUrl = href;
+  const linkUrl = href || external;
+  const linkTarget = target || (linkUrl ? '_blank' : undefined);
   
   if (linkUrl) {
-    console.log('🔥 MAKING CARD CLICKABLE WITH URL:', linkUrl, 'target:', target);
+    console.log('🔥 MAKING CARD CLICKABLE WITH URL:', linkUrl, 'target:', linkTarget);
     return (
       <a 
         href={linkUrl} 
-        target={target}
-        rel={target === '_blank' ? 'noopener noreferrer' : undefined}
+        target={linkTarget}
+        rel={linkTarget === '_blank' ? 'noopener noreferrer' : undefined}
         className="block no-underline hover:no-underline"
         style={{ 
           textDecoration: 'none !important',
