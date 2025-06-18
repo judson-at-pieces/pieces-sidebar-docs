@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Callout } from './Callout';
 import { CodeBlock } from './CodeBlock';
@@ -143,10 +142,11 @@ export function createComponentMappings() {
     // Horizontal rule
     hr: HorizontalRule,
     
-    // Custom components - using MarkdownCard instead of Card
+    // Custom components - ensure MarkdownCard is properly mapped
     Callout,
     CodeBlock,
     Card: MarkdownCard,
+    MarkdownCard,
     CardGroup,
     Steps,
     Tabs,
