@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Callout } from './Callout';
 import { CodeBlock } from './CodeBlock';
@@ -90,12 +91,19 @@ export function createComponentMappings() {
       console.log('Pre element:', { className, children });
       
       // Check if the pre contains a code element with language info
-      if (React.isValidElement(children) && children.props && children.props.className) {
+      if (React.isValidElement(children) && 
+          children.props && 
+          typeof children.props === 'object' && 
+          'className' in children.props && 
+          typeof children.props.className === 'string') {
+        
         const codeClassName = children.props.className;
         const language = codeClassName ? codeClassName.replace('language-', '') : undefined;
         
         // Pass the language info to CodeBlock
-        return <CodeBlock className={codeClassName} language={language}>{children.props.children}</CodeBlock>;
+        if ('children' in children.props) {
+          return <CodeBlock className={codeClassName} language={language}>{children.props.children}</CodeBlock>;
+        }
       }
       
       // If the pre contains a code element, pass through the children
