@@ -24,7 +24,7 @@ export const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
       
       console.log('🃏 CardGroup: Raw attributes string:', attributes);
       
-      // More flexible attribute extraction - handle both quote styles and spaces
+      // Extract attributes - handle multiple quote styles and spacing
       const titleMatch = attributes.match(/title\s*=\s*["']([^"']*)["']/i);
       const imageMatch = attributes.match(/image\s*=\s*["']([^"']*)["']/i);
       const hrefMatch = attributes.match(/href\s*=\s*["']([^"']*)["']/i);
@@ -36,10 +36,6 @@ export const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
       const external = externalMatch ? externalMatch[1] : '';
       
       console.log('🃏 CardGroup: Extracted attributes:', { title, image, href, external });
-      console.log('🃏 CardGroup: Href extraction details:', { 
-        hrefMatch: hrefMatch ? hrefMatch[0] : 'NO MATCH',
-        externalMatch: externalMatch ? externalMatch[0] : 'NO MATCH'
-      });
       
       // Use href first, then external as fallback
       const finalHref = href || external;
@@ -71,7 +67,7 @@ export const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
       <div className={`grid ${gridClass} gap-6 my-8`}>
         {cards.map((card, index) => (
           <MarkdownCard
-            key={index}
+            key={`card-${index}`}
             title={card.title}
             image={card.image}
             href={card.href}
@@ -132,7 +128,7 @@ export const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
     <div className={`grid ${gridClass} gap-6 my-8`}>
       {cards.map((card, index) => (
         <MarkdownCard
-          key={index}
+          key={`card-${index}`}
           title={card.title}
           image={card.image}
           href={card.href}

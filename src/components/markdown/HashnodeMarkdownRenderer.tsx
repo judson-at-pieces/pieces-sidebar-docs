@@ -442,19 +442,13 @@ const CardSection: React.FC<{ card: CardData }> = ({ card }) => {
   );
 };
 
-const CardGroupSection: React.FC<{ cols: number; cards: CardData[] }> = ({ cols, cards }) => {
-  console.log('🃏 Rendering CardGroup with:', { cols, cardCount: cards.length });
-  
-  return (
-    <CardGroup cols={cols as 2 | 3 | 4}>
-      {cards.map((card, index) => (
-        <MarkdownCard key={`card-${index}`} title={card.title} image={card.image}>
-          {card.content}
-        </MarkdownCard>
-      ))}
-    </CardGroup>
-  );
-};
+const CardGroupSection: React.FC<{ cols: number; cards: CardData[] }> = ({ cols = 2, cards }) => (
+  <div className={`grid gap-6 my-6 ${cols === 3 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1 md:grid-cols-2'}`}>
+    {cards.map((card, index) => (
+      <CardSection key={`card-${index}`} card={card} />
+    ))}
+  </div>
+);
 
 // Parse Accordion
 const AccordionSection: React.FC<{ accordion: AccordionData }> = ({ accordion }) => {
