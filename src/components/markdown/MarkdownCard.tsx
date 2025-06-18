@@ -68,7 +68,7 @@ export const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, href, 
         href={href} 
         target="_blank" 
         rel="noopener noreferrer"
-        className="block no-underline hover:no-underline"
+        className="block no-underline hover:no-underline cursor-pointer"
       >
         {cardContent}
       </a>
