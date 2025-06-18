@@ -69,10 +69,11 @@ export function createComponentMappings() {
       </li>
     ),
     
-    // Code - Force using the updated CodeBlock with Go detection
+    // Code - Handle inline vs block code properly
     code: ({ inline, children, className, ...props }: any) => {
       console.log('Code mapping called:', { inline, className, children });
       
+      // For inline code (like `dxdiag`)
       if (inline) {
         return (
           <code 
