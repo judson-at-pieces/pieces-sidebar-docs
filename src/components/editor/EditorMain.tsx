@@ -7,13 +7,10 @@ import { DropdownMenu, DropdownMenuTrigger, DropdownMenuContent, DropdownMenuIte
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from '@/components/ui/resizable';
 import { Textarea } from '@/components/ui/textarea';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import HashnodeMarkdownRenderer from '@/components/HashnodeMarkdownRenderer';
 import { useLiveTyping } from '@/hooks/useLiveTyping';
 import { TypingIndicator } from './TypingIndicator';
 import { VisibilitySwitch } from './VisibilitySwitch';
-import { VisualEditor } from './VisualEditor';
-import { EnhancedCommandPalette } from './EnhancedCommandPalette';
 
 interface EditorMainProps {
   selectedFile?: string;
@@ -47,8 +44,6 @@ export function EditorMain({
   onVisibilityChange
 }: EditorMainProps) {
   const textareaRef = useRef<HTMLTextAreaElement>(null);
-  const [showCommandPalette, setShowCommandPalette] = React.useState(false);
-  const [commandPosition, setCommandPosition] = React.useState({ top: 0, left: 0 });
   
   // Live typing functionality
   const { typingSessions, handleTyping, getLatestTypingContent } = useLiveTyping(selectedFile);
@@ -75,44 +70,6 @@ export function EditorMain({
       // Send typing event for real-time updates
       handleTyping(newContent, cursorPosition);
     }
-  };
-
-  // Command palette for markdown editor
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === '/' && (e.ctrlKey || e.metaKey)) {
-      e.preventDefault();
-      
-      if (textareaRef.current) {
-        const rect = textareaRef.current.getBoundingClientRect();
-        const scrollTop = textareaRef.current.scrollTop;
-        
-        setCommandPosition({
-          top: rect.top + 40 - scrollTop,
-          left: rect.left + 20
-        });
-        setShowCommandPalette(true);
-      }
-    } else if (e.key === 'Escape') {
-      setShowCommandPalette(false);
-    }
-  };
-
-  const handleInsert = (insertContent: string) => {
-    if (textareaRef.current && canEdit) {
-      const textarea = textareaRef.current;
-      const start = textarea.selectionStart;
-      const end = textarea.selectionEnd;
-      
-      const newContent = content.slice(0, start) + insertContent + content.slice(end);
-      onContentChange(newContent);
-      
-      // Set cursor position after the inserted content
-      setTimeout(() => {
-        textarea.focus();
-        textarea.setSelectionRange(start + insertContent.length, start + insertContent.length);
-      }, 0);
-    }
-    setShowCommandPalette(false);
   };
 
   // Update content when live typing content changes (for viewers)
@@ -272,34 +229,27 @@ export function EditorMain({
         </div>
       </div>
 
-      {/* Editor Tabs */}
-      <div className="flex-1 p-4">
-        <Tabs defaultValue="split" className="h-full flex flex-col">
-          <TabsList className="grid w-fit grid-cols-3 mb-4">
-            <TabsTrigger value="markdown">Markdown</TabsTrigger>
-            <TabsTrigger value="visual">Visual</TabsTrigger>
-            <TabsTrigger value="split">Split View</TabsTrigger>
-          </TabsList>
-
-          {/* Markdown Only */}
-          <TabsContent value="markdown" className="flex-1 mt-0">
-            <div className="h-full relative">
+      {/* Split View */}
+      <ResizablePanelGroup direction="horizontal" className="flex-1">
+        {/* Editor Panel */}
+        <ResizablePanel defaultSize={50} minSize={30}>
+          <div className="h-full flex flex-col">
+            <div className="flex-1 relative">
               <Textarea
                 ref={textareaRef}
                 value={displayContent}
                 onChange={(e) => handleContentChangeWithTyping(e.target.value)}
-                onKeyDown={handleKeyDown}
                 placeholder={
                   isLockedByOther 
                     ? `${lockedBy} is editing this file...` 
                     : canEdit
-                      ? "Start typing your content here... Press Ctrl+/ for components"
+                      ? "Start typing your content here..."
                       : isAcquiringLock
                         ? "Acquiring editing permissions..."
                         : "Content will be editable once lock is acquired..."
                 }
                 disabled={!canEdit}
-                className={`h-full resize-none border rounded-lg focus:ring-2 font-mono text-sm leading-relaxed ${
+                className={`h-full resize-none border-0 rounded-none focus:ring-0 font-mono text-sm leading-relaxed ${
                   !canEdit ? 'bg-muted/30 cursor-default' : ''
                 }`}
                 style={{ 
@@ -307,90 +257,38 @@ export function EditorMain({
                   fontFamily: '"JetBrains Mono", "Fira Code", monospace'
                 }}
               />
+              {!canEdit && (
+                <div className="absolute inset-0 bg-transparent pointer-events-none" />
+              )}
             </div>
-          </TabsContent>
+          </div>
+        </ResizablePanel>
 
-          {/* Visual Only */}
-          <TabsContent value="visual" className="flex-1 mt-0">
-            <VisualEditor
-              content={displayContent}
-              onContentChange={onContentChange}
-              onSave={onSave}
-              isLocked={!canEdit}
-              lockedBy={isLockedByOther ? lockedBy : undefined}
-            />
-          </TabsContent>
+        <ResizableHandle withHandle />
 
-          {/* Split View */}
-          <TabsContent value="split" className="flex-1 mt-0">
-            <ResizablePanelGroup direction="horizontal" className="h-full">
-              {/* Editor Panel */}
-              <ResizablePanel defaultSize={50} minSize={30}>
-                <div className="h-full flex flex-col">
-                  <div className="flex-1 relative">
-                    <Textarea
-                      ref={textareaRef}
-                      value={displayContent}
-                      onChange={(e) => handleContentChangeWithTyping(e.target.value)}
-                      onKeyDown={handleKeyDown}
-                      placeholder={
-                        isLockedByOther 
-                          ? `${lockedBy} is editing this file...` 
-                          : canEdit
-                            ? "Start typing your content here... Press Ctrl+/ for components"
-                            : isAcquiringLock
-                              ? "Acquiring editing permissions..."
-                              : "Content will be editable once lock is acquired..."
-                      }
-                      disabled={!canEdit}
-                      className={`h-full resize-none border-0 rounded-none focus:ring-0 font-mono text-sm leading-relaxed ${
-                        !canEdit ? 'bg-muted/30 cursor-default' : ''
-                      }`}
-                      style={{ 
-                        minHeight: '100%',
-                        fontFamily: '"JetBrains Mono", "Fira Code", monospace'
-                      }}
-                    />
-                  </div>
-                </div>
-              </ResizablePanel>
-
-              <ResizableHandle withHandle />
-
-              {/* Preview Panel */}
-              <ResizablePanel defaultSize={50} minSize={30}>
-                <div className="h-full border-l border-border/50">
-                  <div className="p-4 border-b border-border/50 bg-muted/10">
-                    <div className="flex items-center gap-2">
-                      <Eye className="h-4 w-4 text-muted-foreground" />
-                      <span className="text-sm font-medium">Live Preview</span>
-                      {isLockedByOther && (
-                        <Badge variant="outline" className="text-xs">
-                          {(liveContent || latestTypingContent) ? 'Live Updates' : 'Read-only'}
-                        </Badge>
-                      )}
-                    </div>
-                  </div>
-                  
-                  <ScrollArea className="h-[calc(100%-57px)]">
-                    <div className="p-6">
-                      <HashnodeMarkdownRenderer content={displayContent} />
-                    </div>
-                  </ScrollArea>
-                </div>
-              </ResizablePanel>
-            </ResizablePanelGroup>
-          </TabsContent>
-        </Tabs>
-      </div>
-
-      {/* Command Palette for Markdown Editor */}
-      <EnhancedCommandPalette
-        isOpen={showCommandPalette}
-        onClose={() => setShowCommandPalette(false)}
-        onInsert={handleInsert}
-        position={commandPosition}
-      />
+        {/* Preview Panel */}
+        <ResizablePanel defaultSize={50} minSize={30}>
+          <div className="h-full border-l border-border/50">
+            <div className="p-4 border-b border-border/50 bg-muted/10">
+              <div className="flex items-center gap-2">
+                <Eye className="h-4 w-4 text-muted-foreground" />
+                <span className="text-sm font-medium">Live Preview</span>
+                {isLockedByOther && (
+                  <Badge variant="outline" className="text-xs">
+                    {(liveContent || latestTypingContent) ? 'Live Updates' : 'Read-only'}
+                  </Badge>
+                )}
+              </div>
+            </div>
+            
+            <ScrollArea className="h-[calc(100%-57px)]">
+              <div className="p-6">
+                <HashnodeMarkdownRenderer content={displayContent} />
+              </div>
+            </ScrollArea>
+          </div>
+        </ResizablePanel>
+      </ResizablePanelGroup>
     </div>
   );
 }
