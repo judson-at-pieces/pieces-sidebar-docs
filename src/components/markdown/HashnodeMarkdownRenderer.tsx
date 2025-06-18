@@ -160,17 +160,20 @@ interface CardData {
   title: string;
   image?: string;
   content: string;
+  href?: string; // Add href property to the interface
 }
 
 const parseCard = (content: string): CardData => {
   const titleMatch = content.match(/title="([^"]*)"/);
   const imageMatch = content.match(/image="([^"]*)"/);
+  const hrefMatch = content.match(/href="([^"]*)"/);
   const contentMatch = content.match(/<Card[^>]*>([\s\S]*?)<\/Card>/);
   
   return {
     title: titleMatch?.[1] || '',
     image: imageMatch?.[1],
-    content: contentMatch?.[1]?.trim() || ''
+    content: contentMatch?.[1]?.trim() || '',
+    href: hrefMatch?.[1] // Properly assign href to the returned object
   };
 };
 
@@ -203,12 +206,16 @@ const parseCardGroup = (content: string): CardGroupData => {
     const imageMatch = attributes.match(/image="([^"]*)"/);
     const image = imageMatch ? imageMatch[1] : undefined;
     
-    console.log('🃏 Parsed card:', { title, image, contentLength: innerContent.length });
+    const hrefMatch = attributes.match(/href="([^"]*)"/);
+    const href = hrefMatch ? hrefMatch[1] : undefined;
+    
+    console.log('🃏 Parsed card:', { title, image, href, contentLength: innerContent.length });
     
     cards.push({
       title,
       image,
-      content: innerContent
+      content: innerContent,
+      href // Include href in card data
     });
   }
   
