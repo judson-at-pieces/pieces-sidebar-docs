@@ -50,28 +50,29 @@ export function useUrlState<T>(
   const setValue = useCallback((newValue: T) => {
     setValueState(newValue);
     
-    try {
-      const newParams = new URLSearchParams(searchParams);
-      
-      if (newValue === defaultValue || newValue === null || newValue === undefined) {
-        newParams.delete(key);
-      } else {
-        newParams.set(key, serialize(newValue));
+    // Only update URL for certain keys (like selected file), not content
+    if (key === 'file') {
+      try {
+        const newParams = new URLSearchParams(searchParams);
+        
+        if (newValue === defaultValue || newValue === null || newValue === undefined) {
+          newParams.delete(key);
+        } else {
+          newParams.set(key, serialize(newValue));
+        }
+        
+        const newSearch = newParams.toString();
+        const newUrl = `${location.pathname}${newSearch ? `?${newSearch}` : ''}`;
+        
+        // Only navigate if the URL actually changed
+        if (newUrl !== `${location.pathname}${location.search}`) {
+          setSearchParams(newParams);
+        }
+      } catch (error) {
+        console.warn('Failed to update URL state:', error);
       }
-      
-      // Use navigate instead of setSearchParams to have more control
-      const newSearch = newParams.toString();
-      const newUrl = `${location.pathname}${newSearch ? `?${newSearch}` : ''}`;
-      
-      // Only navigate if the URL actually changed
-      if (newUrl !== `${location.pathname}${location.search}`) {
-        navigate(newUrl, { replace: true });
-      }
-    } catch (error) {
-      console.warn('Failed to update URL state:', error);
-      // URL update failed, but we still have localStorage fallback
     }
-  }, [key, defaultValue, serialize, searchParams, navigate, location]);
+  }, [key, defaultValue, serialize, searchParams, setSearchParams, location]);
 
   return [value, setValue] as const;
 }

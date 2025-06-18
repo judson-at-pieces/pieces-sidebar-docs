@@ -1,5 +1,5 @@
 
-import { useCallback, useRef, useEffect } from 'react';
+import { useCallback, useRef, useEffect, useState } from 'react';
 import { useBranchContentManager } from './useBranchContentManager';
 import { useBranchLockManager } from './useBranchLockManager';
 import { useUrlState } from './useUrlState';
@@ -11,7 +11,7 @@ export function useBranchEditorWithUrl() {
   const contentManager = useBranchContentManager();
   const lockManager = useBranchLockManager();
   
-  // Store selected file in URL with simple string serialization
+  // Only store selected file in URL with simple string serialization
   const [selectedFile, setSelectedFileUrl] = useUrlState<string | undefined>(
     'file', 
     undefined,
@@ -19,25 +19,33 @@ export function useBranchEditorWithUrl() {
     (value) => value || undefined
   );
   
-  // Store content in URL but only when we have a selected file
-  const [localContent, setLocalContent] = useUrlState<string>(
-    'content',
-    '',
-    (value) => value,
-    (value) => value
-  );
-  
-  const [isLoading, setIsLoading] = useUrlState<boolean>(
-    'loading',
-    false,
-    (value) => value.toString(),
-    (value) => value === 'true'
-  );
+  // Store content only in localStorage, not URL
+  const [localContent, setLocalContent] = useState<string>('');
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   
   const lastBranch = useRef<string | null>(null);
   const loadingFile = useRef<string | null>(null);
   const initialLoad = useRef<boolean>(true);
   const lastSelectedFile = useRef<string | undefined>(undefined);
+
+  // Load content from localStorage for the current file and branch
+  useEffect(() => {
+    if (selectedFile && contentManager.currentBranch) {
+      const storageKey = `editor_content_${selectedFile}_${contentManager.currentBranch}`;
+      const storedContent = localStorage.getItem(storageKey);
+      if (storedContent && !isLoading) {
+        setLocalContent(storedContent);
+      }
+    }
+  }, [selectedFile, contentManager.currentBranch, isLoading]);
+
+  // Save content to localStorage whenever it changes
+  useEffect(() => {
+    if (selectedFile && contentManager.currentBranch && localContent) {
+      const storageKey = `editor_content_${selectedFile}_${contentManager.currentBranch}`;
+      localStorage.setItem(storageKey, localContent);
+    }
+  }, [selectedFile, contentManager.currentBranch, localContent]);
 
   // Initialize from URL/localStorage on mount
   useEffect(() => {
@@ -46,10 +54,8 @@ export function useBranchEditorWithUrl() {
       initialLoad.current = false;
       lastSelectedFile.current = selectedFile;
       
-      // If we have a file but no content, load it
-      if (selectedFile && !localContent) {
-        loadFileContent(selectedFile);
-      }
+      // Load the file content
+      loadFileContent(selectedFile);
     }
   }, [selectedFile, contentManager.currentBranch]);
 
@@ -159,7 +165,7 @@ Start editing to see the live preview!
     const canEdit = lockManager.isFileLockedByMe(selectedFile, contentManager.currentBranch);
     if (!canEdit) return;
 
-    // Update URL state
+    // Update local state
     setLocalContent(newContent);
     
     // Auto-save to current branch
@@ -170,7 +176,7 @@ Start editing to see the live preview!
     if (DEBUG_EDITOR) {
       console.log('📝 Content updated, auto-saving to branch:', contentManager.currentBranch);
     }
-  }, [selectedFile, contentManager, lockManager, setLocalContent]);
+  }, [selectedFile, contentManager, lockManager]);
 
   // Handle branch changes
   const handleBranchChange = useCallback(async (newBranch: string) => {
