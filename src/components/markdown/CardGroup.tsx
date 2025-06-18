@@ -23,6 +23,7 @@ export const CardGroup: React.FC<CardGroupProps> = ({ cols = 2, children }) => {
       const innerContent = match[2].trim();
       
       console.log('🃏 CardGroup: Raw attributes string:', attributes);
+      console.log('🃏 CardGroup: Inner content:', innerContent);
       
       // Extract attributes - handle multiple quote styles and spacing
       const titleMatch = attributes.match(/title\s*=\s*["']([^"']*)["']/i);

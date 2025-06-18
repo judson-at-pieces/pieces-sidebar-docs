@@ -31,7 +31,7 @@ const renderMarkdownWithSpacing = (content: string) => {
 };
 
 export const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, href, target, external, children }) => {
-  console.log('🔥 MarkdownCard FORCE RENDER:', { title, image, href, target, external, hasChildren: !!children });
+  console.log('🔥 MarkdownCard RENDER:', { title, image, href, target, external, hasChildren: !!children });
   
   const cardContent = (
     <div className="p-6 my-4 border rounded-xl dark:border-slate-800/80 border-slate-200 bg-white dark:bg-slate-900 transition-all duration-300 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-lg hover:-translate-y-1">
@@ -66,7 +66,7 @@ export const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, href, 
     </div>
   );
 
-  // Use href if available
+  // Use href if available, fallback to external
   const linkUrl = href || external;
   const linkTarget = target || (linkUrl ? '_blank' : undefined);
   
