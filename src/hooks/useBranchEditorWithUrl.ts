@@ -37,19 +37,29 @@ export function useBranchEditorWithUrl() {
   const lastBranch = useRef<string | null>(null);
   const loadingFile = useRef<string | null>(null);
   const initialLoad = useRef<boolean>(true);
+  const lastSelectedFile = useRef<string | undefined>(undefined);
 
-  // Initialize from URL on mount
+  // Initialize from URL/localStorage on mount
   useEffect(() => {
     if (initialLoad.current && selectedFile && contentManager.currentBranch) {
-      console.log('🔄 Initializing from URL:', { selectedFile, branch: contentManager.currentBranch });
+      console.log('🔄 Initializing from URL/localStorage:', { selectedFile, branch: contentManager.currentBranch });
       initialLoad.current = false;
+      lastSelectedFile.current = selectedFile;
       
-      // If we have a file in URL but no content, load it
+      // If we have a file but no content, load it
       if (selectedFile && !localContent) {
         loadFileContent(selectedFile);
       }
     }
-  }, [selectedFile, contentManager.currentBranch, localContent]);
+  }, [selectedFile, contentManager.currentBranch]);
+
+  // Prevent losing selected file on re-renders
+  useEffect(() => {
+    if (selectedFile && selectedFile !== lastSelectedFile.current) {
+      lastSelectedFile.current = selectedFile;
+      console.log('🎯 File selection updated:', selectedFile);
+    }
+  }, [selectedFile]);
 
   const loadFileContent = async (filePath: string) => {
     if (DEBUG_EDITOR) {
@@ -115,7 +125,10 @@ Start editing to see the live preview!
 
   // Handle file selection with proper content loading
   const selectFile = useCallback(async (filePath: string) => {
-    if (selectedFile === filePath) return;
+    if (selectedFile === filePath && lastSelectedFile.current === filePath) {
+      console.log('📝 File already selected:', filePath);
+      return;
+    }
     
     if (DEBUG_EDITOR) {
       console.log('📝 Selecting file:', filePath, 'on branch:', contentManager.currentBranch);
@@ -131,7 +144,8 @@ Start editing to see the live preview!
       }
     }
 
-    // Update URL with selected file - don't navigate away from current page
+    // Update URL with selected file - this should persist across refreshes
+    lastSelectedFile.current = filePath;
     setSelectedFileUrl(filePath);
     
     // Load the file content
@@ -203,7 +217,7 @@ Start editing to see the live preview!
 
   return {
     // State
-    selectedFile,
+    selectedFile: selectedFile || lastSelectedFile.current,
     localContent,
     isLoading,
     currentBranch: contentManager.currentBranch,
