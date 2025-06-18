@@ -1,4 +1,3 @@
-
 // Client-side processor for custom markdown syntax
 
 // Security utilities for safe HTML attribute handling
@@ -114,80 +113,79 @@ export function processCustomSyntax(content: string): string {
       }
     );
 
-    // Transform CardGroup components to HTML with proper closing tag handling
+    // Transform CardGroup components - KEEP AS JSX for proper processing
     processedContent = processedContent.replace(/<CardGroup\s+cols=\{(\d+)\}>/gi, (match, cols) => {
       const numCols = parseInt(cols, 10);
       if (isNaN(numCols) || numCols < 1 || numCols > 6) {
-        return '<div data-cardgroup="true" data-cols="2">'; // Default fallback
+        return '<CardGroup cols={2}>'; // Default fallback
       }
-      return `<div data-cardgroup="true" data-cols="${numCols}">`;
+      return `<CardGroup cols={${numCols}}>`;
     });
     
     processedContent = processedContent.replace(/<CardGroup>/gi, () => {
-      return '<div data-cardgroup="true" data-cols="2">';
+      return '<CardGroup cols={2}>';
     });
     
     processedContent = processedContent.replace(/<\/CardGroup>/gi, () => {
-      return '</div>';
+      return '</CardGroup>';
     });
 
-    // Transform Card components with content - Use direct HTML with proper data attributes
+    // Transform Card components with content - PRESERVE AS JSX with proper href handling
     processedContent = processedContent.replace(/<Card\s+([^>]*?)>([\s\S]*?)<\/Card>/gi, (match, attributes, innerContent) => {
       try {
-        console.log('Processing Card with content:', { attributes, innerContent: innerContent.substring(0, 100) });
+        console.log('🃏 Processing Card with content:', { attributes, innerContent: innerContent.substring(0, 100) });
         
-        const titleMatch = attributes.match(/title="([^"]*)"/);
-        const imageMatch = attributes.match(/image="([^"]*)"/);
-        const hrefMatch = attributes.match(/href="([^"]*)"/);
-        const externalMatch = attributes.match(/external=["']([^"']*)["']/);
-        const iconMatch = attributes.match(/icon="([^"]*)"/);
+        // More robust attribute parsing
+        const titleMatch = attributes.match(/title\s*=\s*"([^"]*)"/);
+        const imageMatch = attributes.match(/image\s*=\s*"([^"]*)"/);
+        const hrefMatch = attributes.match(/href\s*=\s*"([^"]*)"/);
         
-        const title = sanitizeAttribute(titleMatch ? titleMatch[1] : '');
-        const image = validateUrl(imageMatch ? imageMatch[1] : '');
-        const href = validateUrl(hrefMatch ? hrefMatch[1] : '');
-        const external = sanitizeAttribute(externalMatch ? externalMatch[1] : '');
-        const icon = sanitizeAttribute(iconMatch ? iconMatch[1] : '');
+        const title = titleMatch ? titleMatch[1] : '';
+        const image = imageMatch ? imageMatch[1] : '';
+        const href = hrefMatch ? hrefMatch[1] : '';
         
-        // PRESERVE the inner content exactly as is - this is crucial for markdown processing
+        // Validate URL but don't sanitize it too aggressively
+        const safeHref = href && (href.startsWith('http') || href.startsWith('/')) ? href : '';
+        
+        console.log('🃏 Parsed Card attributes:', { title, image, href, safeHref });
+        
+        // PRESERVE the inner content exactly as is
         const preservedContent = innerContent || '';
         
-        console.log('Card transformation result:', { title, image, href, external, icon, contentLength: preservedContent.length });
-        
-        // Use the MarkdownCard component directly in JSX format for proper rendering
-        if (href) {
-          return `<MarkdownCard title="${title}" image="${image}" href="${href}">\n${preservedContent}\n</MarkdownCard>`;
+        // Use Card component directly - this should map to MarkdownCard via componentMappings
+        if (safeHref) {
+          return `<Card title="${title}" image="${image}" href="${safeHref}">\n${preservedContent}\n</Card>`;
         } else {
-          return `<MarkdownCard title="${title}" image="${image}">\n${preservedContent}\n</MarkdownCard>`;
+          return `<Card title="${title}" image="${image}">\n${preservedContent}\n</Card>`;
         }
       } catch (error) {
         console.warn('Error parsing Card attributes:', error);
-        return `<MarkdownCard>\n${innerContent || ''}\n</MarkdownCard>`;
+        return `<Card>\n${innerContent || ''}\n</Card>`;
       }
     });
 
     // Transform self-closing Card components
     processedContent = processedContent.replace(/<Card\s+([^>]*?)\/>/gi, (match, attributes) => {
       try {
-        const titleMatch = attributes.match(/title="([^"]*)"/);
-        const imageMatch = attributes.match(/image="([^"]*)"/);
-        const hrefMatch = attributes.match(/href="([^"]*)"/);
-        const externalMatch = attributes.match(/external=["']([^"']*)["']/);
-        const iconMatch = attributes.match(/icon="([^"]*)"/);
+        const titleMatch = attributes.match(/title\s*=\s*"([^"]*)"/);
+        const imageMatch = attributes.match(/image\s*=\s*"([^"]*)"/);
+        const hrefMatch = attributes.match(/href\s*=\s*"([^"]*)"/);
         
-        const title = sanitizeAttribute(titleMatch ? titleMatch[1] : '');
-        const image = validateUrl(imageMatch ? imageMatch[1] : '');
-        const href = validateUrl(hrefMatch ? hrefMatch[1] : '');
-        const external = sanitizeAttribute(externalMatch ? externalMatch[1] : '');
-        const icon = sanitizeAttribute(iconMatch ? iconMatch[1] : '');
+        const title = titleMatch ? titleMatch[1] : '';
+        const image = imageMatch ? imageMatch[1] : '';
+        const href = hrefMatch ? hrefMatch[1] : '';
         
-        if (href) {
-          return `<MarkdownCard title="${title}" image="${image}" href="${href}" />`;
+        // Validate URL but don't sanitize it too aggressively
+        const safeHref = href && (href.startsWith('http') || href.startsWith('/')) ? href : '';
+        
+        if (safeHref) {
+          return `<Card title="${title}" image="${image}" href="${safeHref}" />`;
         } else {
-          return `<MarkdownCard title="${title}" image="${image}" />`;
+          return `<Card title="${title}" image="${image}" />`;
         }
       } catch (error) {
         console.warn('Error parsing Card attributes:', error);
-        return '<MarkdownCard />';
+        return '<Card />';
       }
     });
 
@@ -232,7 +230,7 @@ export function processCustomSyntax(content: string): string {
       }
     );
 
-    console.log('Custom syntax processing complete. Sample output:', processedContent.substring(0, 500));
+    console.log('🔧 Custom syntax processing complete. Card transformations preserved as JSX.');
     return processedContent;
   } catch (error) {
     console.error('Error processing custom syntax:', error);

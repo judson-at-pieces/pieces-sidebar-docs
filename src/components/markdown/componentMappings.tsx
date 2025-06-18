@@ -142,10 +142,22 @@ export function createComponentMappings() {
     // Horizontal rule
     hr: HorizontalRule,
     
-    // Custom components - ensure MarkdownCard is properly mapped
+    // Custom components - ensure Card is properly mapped to MarkdownCard with href support
     Callout,
     CodeBlock,
-    Card: MarkdownCard,
+    Card: ({ title, image, href, children, ...props }: any) => {
+      console.log('🃏 Card mapping called with:', { title, image, href, hasChildren: !!children });
+      return (
+        <MarkdownCard 
+          title={title} 
+          image={image} 
+          href={href} 
+          {...props}
+        >
+          {children}
+        </MarkdownCard>
+      );
+    },
     MarkdownCard,
     CardGroup,
     Steps,
