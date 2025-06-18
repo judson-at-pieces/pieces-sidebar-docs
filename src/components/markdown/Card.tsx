@@ -1,6 +1,6 @@
 
 import React from 'react';
-import { SecureInlineMarkdown } from './SecureInlineMarkdown';
+import { processInlineMarkdown, sanitizeText } from '../../utils/secureMarkdownProcessor';
 
 interface CardProps {
   title: string;
@@ -8,6 +8,43 @@ interface CardProps {
   href?: string;
   children: React.ReactNode;
 }
+
+const renderInlineMarkdown = (content: string) => {
+  const elements = processInlineMarkdown(content);
+  return elements.map((element, index) => {
+    switch (element.type) {
+      case 'bold':
+        return <strong key={index} className="font-semibold">{sanitizeText(element.content)}</strong>;
+      case 'italic':
+        return <em key={index} className="italic">{sanitizeText(element.content)}</em>;
+      case 'code':
+        return <code key={index} className="bg-gray-100 px-1 py-0.5 rounded text-sm font-mono">{sanitizeText(element.content)}</code>;
+      case 'link':
+        return (
+          <a 
+            key={index} 
+            href={element.href} 
+            target={element.target}
+            className="text-blue-600 hover:text-blue-800 underline"
+          >
+            {sanitizeText(element.content)}
+          </a>
+        );
+      case 'image':
+        return (
+          <img 
+            key={index} 
+            src={element.src} 
+            alt={element.alt} 
+            className="inline-block max-w-full h-auto"
+          />
+        );
+      case 'text':
+      default:
+        return <span key={index}>{sanitizeText(element.content)}</span>;
+    }
+  });
+};
 
 const Card: React.FC<CardProps> = ({ title, image, href, children }) => {
   const cardContent = (
@@ -35,7 +72,7 @@ const Card: React.FC<CardProps> = ({ title, image, href, children }) => {
       </span>
       <div className="mt-3 text-base text-slate-600 dark:text-slate-300">
         {typeof children === 'string' ? (
-          <SecureInlineMarkdown content={children} />
+          renderInlineMarkdown(children)
         ) : (
           children
         )}
