@@ -31,7 +31,36 @@ export function InteractiveEditor({
     setTempContent(content);
   }, [content]);
 
-  const handleElementClick = (e: React.MouseEvent) => {
+  // Make elements editable when editing mode is enabled
+  useEffect(() => {
+    if (!containerRef.current || !canEdit) return;
+
+    const container = containerRef.current;
+    const editableElements = container.querySelectorAll('h1, h2, h3, h4, h5, h6, p');
+
+    editableElements.forEach((element) => {
+      if (isEditing) {
+        // Add click handler and styling for editing mode
+        element.addEventListener('click', handleElementClick);
+        element.classList.add('cursor-pointer', 'hover:bg-blue-50', 'dark:hover:bg-blue-900/20', 'p-2', 'rounded', 'transition-colors', 'ring-2', 'ring-blue-200', 'dark:ring-blue-800');
+        element.setAttribute('title', 'Click to edit');
+      } else {
+        // Remove click handler and styling
+        element.removeEventListener('click', handleElementClick);
+        element.classList.remove('cursor-pointer', 'hover:bg-blue-50', 'dark:hover:bg-blue-900/20', 'p-2', 'rounded', 'transition-colors', 'ring-2', 'ring-blue-200', 'dark:ring-blue-800');
+        element.removeAttribute('title');
+      }
+    });
+
+    // Cleanup function
+    return () => {
+      editableElements.forEach((element) => {
+        element.removeEventListener('click', handleElementClick);
+      });
+    };
+  }, [isEditing, tempContent, canEdit]);
+
+  const handleElementClick = (e: Event) => {
     if (!canEdit || !isEditing) return;
     
     e.preventDefault();
@@ -49,10 +78,13 @@ export function InteractiveEditor({
     target.style.outline = '2px solid #3b82f6';
     target.style.outlineOffset = '2px';
     
+    // Add keydown handler
+    target.addEventListener('keydown', handleKeyDown);
+    
     toast.info(`Editing ${elementType}. Press Enter to save or Escape to cancel.`);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent) => {
+  const handleKeyDown = (e: KeyboardEvent) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       saveElement(e.currentTarget as HTMLElement);
@@ -91,6 +123,7 @@ export function InteractiveEditor({
     // Remove editing state
     element.contentEditable = 'false';
     element.style.outline = '';
+    element.removeEventListener('keydown', handleKeyDown);
     setEditingElement(null);
     
     toast.success('Content updated!');
@@ -99,6 +132,7 @@ export function InteractiveEditor({
   const cancelEdit = (element: HTMLElement) => {
     element.contentEditable = 'false';
     element.style.outline = '';
+    element.removeEventListener('keydown', handleKeyDown);
     setEditingElement(null);
     
     // Restore original content
@@ -110,7 +144,6 @@ export function InteractiveEditor({
     if (!canEdit) return;
     
     let newContent = '';
-    const timestamp = Date.now();
     
     switch (type) {
       case 'heading':
@@ -132,65 +165,6 @@ export function InteractiveEditor({
     onContentChange(updatedContent);
     
     toast.success(`New ${type} added!`);
-  };
-
-  const renderEditableContent = () => {
-    // Create a custom component mapping for editable elements
-    const editableComponents = {
-      h1: ({ children, ...props }: any) => (
-        <h1 
-          {...props} 
-          onClick={handleElementClick}
-          onKeyDown={handleKeyDown}
-          className={`cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 p-2 rounded transition-colors ${isEditing ? 'ring-2 ring-blue-200 dark:ring-blue-800' : ''}`}
-          title={canEdit && isEditing ? "Click to edit" : ""}
-        >
-          {children}
-        </h1>
-      ),
-      h2: ({ children, ...props }: any) => (
-        <h2 
-          {...props} 
-          onClick={handleElementClick}
-          onKeyDown={handleKeyDown}
-          className={`cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 p-2 rounded transition-colors ${isEditing ? 'ring-2 ring-blue-200 dark:ring-blue-800' : ''}`}
-          title={canEdit && isEditing ? "Click to edit" : ""}
-        >
-          {children}
-        </h2>
-      ),
-      h3: ({ children, ...props }: any) => (
-        <h3 
-          {...props} 
-          onClick={handleElementClick}
-          onKeyDown={handleKeyDown}
-          className={`cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 p-2 rounded transition-colors ${isEditing ? 'ring-2 ring-blue-200 dark:ring-blue-800' : ''}`}
-          title={canEdit && isEditing ? "Click to edit" : ""}
-        >
-          {children}
-        </h3>
-      ),
-      p: ({ children, ...props }: any) => (
-        <p 
-          {...props} 
-          onClick={handleElementClick}
-          onKeyDown={handleKeyDown}
-          className={`cursor-pointer hover:bg-blue-50 dark:hover:bg-blue-900/20 p-2 rounded transition-colors ${isEditing ? 'ring-2 ring-blue-200 dark:ring-blue-800' : ''}`}
-          title={canEdit && isEditing ? "Click to edit" : ""}
-        >
-          {children}
-        </p>
-      )
-    };
-
-    return (
-      <div ref={containerRef} className="interactive-editor-content">
-        <HashnodeMarkdownRenderer 
-          content={tempContent}
-          components={editableComponents}
-        />
-      </div>
-    );
   };
 
   return (
@@ -292,8 +266,8 @@ export function InteractiveEditor({
                 </div>
               )}
               
-              <div className="markdown-content">
-                {renderEditableContent()}
+              <div className="markdown-content" ref={containerRef}>
+                <HashnodeMarkdownRenderer content={tempContent} />
               </div>
             </div>
           </div>
