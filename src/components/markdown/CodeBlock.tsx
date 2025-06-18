@@ -41,6 +41,8 @@ export function CodeBlock({ children, className, language }: CodeBlockProps) {
   const detectedLanguage = language || (className ? className.replace('language-', '') : '');
   const codeContent = extractCodeContent(children);
 
+  console.log('CodeBlock props:', { className, language, detectedLanguage, codeContent: codeContent.substring(0, 50) });
+
   // If we have a language, use syntax highlighting
   if (detectedLanguage && detectedLanguage !== 'text') {
     return (

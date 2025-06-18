@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Callout } from './Callout';
 import { CodeBlock } from './CodeBlock';
@@ -71,6 +70,8 @@ export function createComponentMappings() {
     
     // Code - Enhanced to pass language information
     code: ({ inline, children, className, ...props }: any) => {
+      console.log('Code element:', { inline, className, children: typeof children === 'string' ? children.substring(0, 50) : children });
+      
       if (inline) {
         return (
           <code 
@@ -85,7 +86,18 @@ export function createComponentMappings() {
       const language = className ? className.replace('language-', '') : undefined;
       return <CodeBlock className={className} language={language} {...props}>{children}</CodeBlock>;
     },
-    pre: ({ children, ...props }: any) => {
+    pre: ({ children, className, ...props }: any) => {
+      console.log('Pre element:', { className, children });
+      
+      // Check if the pre contains a code element with language info
+      if (React.isValidElement(children) && children.props && children.props.className) {
+        const codeClassName = children.props.className;
+        const language = codeClassName ? codeClassName.replace('language-', '') : undefined;
+        
+        // Pass the language info to CodeBlock
+        return <CodeBlock className={codeClassName} language={language}>{children.props.children}</CodeBlock>;
+      }
+      
       // If the pre contains a code element, pass through the children
       // The CodeBlock component will handle the styling
       return children;
