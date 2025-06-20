@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import CodeBlock from './CodeBlock';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -152,7 +151,8 @@ const smartSplitSections = (text: string): string[] => {
       trimmedLine.includes('<Card ') ||
       trimmedLine.includes('<Steps') ||
       trimmedLine.includes('<Callout') ||
-      trimmedLine.includes('<Accordion')
+      trimmedLine.includes('<Accordion') ||
+      trimmedLine.includes('<AccordionGroup')
     )) {
       insideComponent = true;
       componentDepth = 1;
@@ -160,6 +160,7 @@ const smartSplitSections = (text: string): string[] => {
       else if (trimmedLine.includes('<Card ')) componentName = 'Card';
       else if (trimmedLine.includes('<Steps')) componentName = 'Steps';
       else if (trimmedLine.includes('<Callout')) componentName = 'Callout';
+      else if (trimmedLine.includes('<AccordionGroup')) componentName = 'AccordionGroup';
       else if (trimmedLine.includes('<Accordion')) componentName = 'Accordion';
       
       currentSection += line + '\n';
@@ -291,19 +292,32 @@ const parseCardGroup = (content: string): CardGroupData => {
 interface AccordionData {
   title: string;
   content: string;
+  defaultOpen?: boolean;
 }
 
 const parseAccordion = (content: string): AccordionData => {
   const titleMatch = content.match(/title="([^"]*)"/);
+  const defaultOpenMatch = content.match(/defaultOpen=\{?(true|false)\}?/);
   const contentMatch = content.match(/<Accordion[^>]*>([\s\S]*?)<\/Accordion>/);
   
   return {
     title: titleMatch?.[1] || '',
-    content: contentMatch?.[1]?.trim() || ''
+    content: contentMatch?.[1]?.trim() || '',
+    defaultOpen: defaultOpenMatch?.[1] === 'true'
   };
 };
 
-const parseAccordionGroup = (content: string): AccordionData[] => {
+interface AccordionGroupData {
+  allowMultiple?: boolean;
+  accordions: AccordionData[];
+}
+
+const parseAccordionGroup = (content: string): AccordionGroupData => {
+  console.log('📁 Parsing AccordionGroup content:', content.substring(0, 200));
+  
+  const allowMultipleMatch = content.match(/allowMultiple=\{?(true|false)\}?/);
+  const allowMultiple = allowMultipleMatch?.[1] === 'true';
+  
   const accordionRegex = /<Accordion\s+([^>]*)>([\s\S]*?)<\/Accordion>/g;
   const accordions: AccordionData[] = [];
   
@@ -313,15 +327,22 @@ const parseAccordionGroup = (content: string): AccordionData[] => {
     const innerContent = match[2].trim();
     
     const titleMatch = attributes.match(/title="([^"]*)"/);
+    const defaultOpenMatch = attributes.match(/defaultOpen=\{?(true|false)\}?/);
     const title = titleMatch ? titleMatch[1] : '';
+    const defaultOpen = defaultOpenMatch?.[1] === 'true';
+    
+    console.log('📁 Parsed accordion:', { title, defaultOpen, contentLength: innerContent.length });
     
     accordions.push({
       title,
-      content: innerContent
+      content: innerContent,
+      defaultOpen
     });
   }
   
-  return accordions;
+  console.log('📁 Total accordions parsed:', accordions.length);
+  
+  return { allowMultiple, accordions };
 };
 
 interface TabData {
@@ -557,8 +578,8 @@ const CardGroupSection: React.FC<{ cols: number; cards: CardData[] }> = ({ cols 
   </div>
 );
 
-const AccordionSection: React.FC<AccordionData> = ({ title, content }) => {
-  const [isOpen, setIsOpen] = useState(false);
+const AccordionSection: React.FC<AccordionData> = ({ title, content, defaultOpen = false }) => {
+  const [isOpen, setIsOpen] = useState(defaultOpen);
 
   return (
     <div className="border border-border rounded-lg my-4">
@@ -574,7 +595,7 @@ const AccordionSection: React.FC<AccordionData> = ({ title, content }) => {
       {isOpen && (
         <div className="px-4 pb-4 border-t border-border">
           <div className="pt-3 prose prose-sm dark:prose-invert max-w-none">
-            {processInlineMarkdown(content)}
+            <MixedContentSection content={content} />
           </div>
         </div>
       )}
@@ -582,13 +603,63 @@ const AccordionSection: React.FC<AccordionData> = ({ title, content }) => {
   );
 };
 
-const AccordionGroupSection: React.FC<{ accordions: AccordionData[] }> = ({ accordions }) => (
-  <div className="space-y-2 my-6">
-    {accordions.map((accordion, index) => (
-      <AccordionSection key={index} {...accordion} />
-    ))}
-  </div>
-);
+const AccordionGroupSection: React.FC<AccordionGroupData> = ({ allowMultiple = false, accordions }) => {
+  const [openItems, setOpenItems] = useState<Set<number>>(() => {
+    const initialOpen = new Set<number>();
+    accordions.forEach((accordion, index) => {
+      if (accordion.defaultOpen) {
+        initialOpen.add(index);
+      }
+    });
+    return initialOpen;
+  });
+
+  const toggleItem = (index: number) => {
+    const newOpenItems = new Set(openItems);
+    
+    if (allowMultiple) {
+      if (newOpenItems.has(index)) {
+        newOpenItems.delete(index);
+      } else {
+        newOpenItems.add(index);
+      }
+    } else {
+      if (newOpenItems.has(index)) {
+        newOpenItems.clear();
+      } else {
+        newOpenItems.clear();
+        newOpenItems.add(index);
+      }
+    }
+    
+    setOpenItems(newOpenItems);
+  };
+
+  return (
+    <div className="space-y-2 my-6">
+      {accordions.map((accordion, index) => (
+        <div key={index} className="border border-border rounded-lg">
+          <button
+            onClick={() => toggleItem(index)}
+            className="w-full px-4 py-3 text-left font-medium hover:bg-muted/50 transition-colors flex items-center justify-between"
+          >
+            <span>{accordion.title}</span>
+            <span className={`transform transition-transform ${openItems.has(index) ? 'rotate-180' : ''}`}>
+              ▼
+            </span>
+          </button>
+          {openItems.has(index) && (
+            <div className="px-4 pb-4 border-t border-border">
+              <div className="pt-3 prose prose-sm dark:prose-invert max-w-none">
+                <MixedContentSection content={accordion.content} />
+              </div>
+            </div>
+          )}
+        </div>
+      ))}
+    </div>
+  );
+};
 
 const TabsSection: React.FC<{ tabs: TabData[] }> = ({ tabs }) => {
   const [activeTab, setActiveTab] = useState(0);
@@ -812,48 +883,52 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
   const imageRegex = /<Image[^>]*\/>/g;
   const calloutRegex = /<Callout[^>]*>[\s\S]*?<\/Callout>/g;
   const standaloneCardRegex = /<Card[^>]*>[\s\S]*?<\/Card>/g;
+  const accordionGroupRegex = /<AccordionGroup[^>]*>[\s\S]*?<\/AccordionGroup>/g;
+  const accordionRegex = /<Accordion[^>]*>[\s\S]*?<\/Accordion>/g;
   
   const allMatches: Array<{ match: RegExpMatchArray; type: string }> = [];
   
-  // Find Callouts first (they can be nested in other components)
+  // Find AccordionGroups first
   let match;
+  while ((match = accordionGroupRegex.exec(content)) !== null) {
+    allMatches.push({ match, type: 'accordiongroup' });
+  }
+  
+  // Find standalone Accordions (not inside AccordionGroups)
+  accordionGroupRegex.lastIndex = 0;
+  const accordionGroupMatches = allMatches.filter(m => m.type === 'accordiongroup');
+  while ((match = accordionRegex.exec(content)) !== null) {
+    // Check if this accordion is inside an AccordionGroup
+    const isInAccordionGroup = accordionGroupMatches.some(agMatch => {
+      const agStart = agMatch.match.index!;
+      const agEnd = agStart + agMatch.match[0].length;
+      return match.index! >= agStart && match.index! < agEnd;
+    });
+    
+    if (!isInAccordionGroup) {
+      allMatches.push({ match, type: 'accordion' });
+    }
+  }
+  
+  // Find other components
+  accordionRegex.lastIndex = 0;
   while ((match = calloutRegex.exec(content)) !== null) {
     allMatches.push({ match, type: 'callout' });
   }
   
-  // Find Steps
   calloutRegex.lastIndex = 0;
   while ((match = stepsRegex.exec(content)) !== null) {
     allMatches.push({ match, type: 'steps' });
   }
   
-  // Find CardGroups
   stepsRegex.lastIndex = 0;
   while ((match = cardGroupRegex.exec(content)) !== null) {
     allMatches.push({ match, type: 'cardgroup' });
   }
   
-  // Find standalone Cards (not inside CardGroups)
   cardGroupRegex.lastIndex = 0;
-  const cardGroupMatches = allMatches.filter(m => m.type === 'cardgroup');
+  const componentMatches = allMatches.filter(m => ['steps', 'cardgroup', 'accordiongroup'].includes(m.type));
   while ((match = standaloneCardRegex.exec(content)) !== null) {
-    // Check if this card is inside a CardGroup
-    const isInCardGroup = cardGroupMatches.some(cgMatch => {
-      const cgStart = cgMatch.match.index!;
-      const cgEnd = cgStart + cgMatch.match[0].length;
-      return match.index! >= cgStart && match.index! < cgEnd;
-    });
-    
-    if (!isInCardGroup) {
-      allMatches.push({ match, type: 'card' });
-    }
-  }
-  
-  // Find Images (but exclude those inside Steps, CardGroups, or other components)
-  standaloneCardRegex.lastIndex = 0;
-  const componentMatches = allMatches.filter(m => m.type === 'steps' || m.type === 'cardgroup');
-  while ((match = imageRegex.exec(content)) !== null) {
-    // Check if this image is inside any special component
     const isInsideComponent = componentMatches.some(componentMatch => {
       const componentStart = componentMatch.match.index!;
       const componentEnd = componentStart + componentMatch.match[0].length;
@@ -861,10 +936,20 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
     });
     
     if (!isInsideComponent) {
-      console.log('🖼️ Found standalone image at position:', match.index);
+      allMatches.push({ match, type: 'card' });
+    }
+  }
+  
+  standaloneCardRegex.lastIndex = 0;
+  while ((match = imageRegex.exec(content)) !== null) {
+    const isInsideComponent = componentMatches.some(componentMatch => {
+      const componentStart = componentMatch.match.index!;
+      const componentEnd = componentStart + componentMatch.match[0].length;
+      return match.index! >= componentStart && match.index! < componentEnd;
+    });
+    
+    if (!isInsideComponent) {
       allMatches.push({ match, type: 'image' });
-    } else {
-      console.log('🖼️ Skipping image inside component at position:', match.index);
     }
   }
   
@@ -897,6 +982,20 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
     // Add the special element
     console.log('🔀 Adding special element:', type);
     switch (type) {
+      case 'accordiongroup': {
+        const accordionGroupData = parseAccordionGroup(match[0]);
+        elements.push(
+          <AccordionGroupSection key={`accordiongroup-${elementIndex}`} {...accordionGroupData} />
+        );
+        break;
+      }
+      case 'accordion': {
+        const accordionData = parseAccordion(match[0]);
+        elements.push(
+          <AccordionSection key={`accordion-${elementIndex}`} {...accordionData} />
+        );
+        break;
+      }
       case 'cardgroup': {
         const { cols, cards } = parseCardGroup(match[0]);
         elements.push(
@@ -999,13 +1098,15 @@ const HashnodeMarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) 
       
       case 'accordion': {
         const accordionData = parseAccordion(section.content);
+        console.log('📂 Rendering AccordionSection with data:', accordionData);
         result = <AccordionSection key={section.index} {...accordionData} />;
         break;
       }
       
       case 'accordiongroup': {
         const accordionGroupData = parseAccordionGroup(section.content);
-        result = <AccordionGroupSection key={section.index} accordions={accordionGroupData} />;
+        console.log('📁 Rendering AccordionGroupSection with data:', accordionGroupData);
+        result = <AccordionGroupSection key={section.index} {...accordionGroupData} />;
         break;
       }
       

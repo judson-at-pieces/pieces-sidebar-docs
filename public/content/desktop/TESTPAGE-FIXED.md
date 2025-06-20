@@ -1,9 +1,4 @@
 ---
-title: "Keyboard Shortcuts"
-path: "/desktop/actions/keyboard-shortcuts"
-visibility: "PUBLIC"
----
----
 title: "Component Test Page - Fixed"
 path: "/desktop/TESTPAGE-FIXED"
 visibility: "PUBLIC"

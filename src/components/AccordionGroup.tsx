@@ -47,7 +47,16 @@ interface AccordionGroupProps {
 }
 
 const AccordionGroup: React.FC<AccordionGroupProps> = ({ children, allowMultiple = false }) => {
-  const [openItems, setOpenItems] = useState<Set<number>>(new Set());
+  const [openItems, setOpenItems] = useState<Set<number>>(() => {
+    // Initialize with defaultOpen items
+    const initialOpenItems = new Set<number>();
+    React.Children.forEach(children, (child, index) => {
+      if (React.isValidElement(child) && child.props && 'defaultOpen' in child.props && child.props.defaultOpen) {
+        initialOpenItems.add(index);
+      }
+    });
+    return initialOpenItems;
+  });
 
   const toggleItem = (index: number) => {
     const newOpenItems = new Set(openItems);
@@ -73,27 +82,29 @@ const AccordionGroup: React.FC<AccordionGroupProps> = ({ children, allowMultiple
   return (
     <div className="my-4 border border-slate-200 rounded-xl overflow-hidden [&>.accordion-item]:border-b [&>.accordion-item]:border-b-slate-200 dark:[&>.accordion-item]:border-b-slate-800/80 [&>.accordion-item:last-of-type]:border-b-0 dark:border-slate-800/80">
       {React.Children.map(children, (child, index) => {
-        if (React.isValidElement(child) && child.type === AccordionItem) {
-          return React.cloneElement(child, {
-            ...child.props,
-            isOpen: openItems.has(index),
-            onToggle: () => toggleItem(index),
-          });
-        }
-        
-        // If it's an Accordion component with title prop, convert it to AccordionItem
-        if (React.isValidElement(child) && typeof child.props === 'object' && child.props && 'title' in child.props) {
-          const props = child.props as { title: string; children: React.ReactNode };
-          return (
-            <AccordionItem
-              key={index}
-              title={props.title}
-              isOpen={openItems.has(index)}
-              onToggle={() => toggleItem(index)}
-            >
-              {props.children}
-            </AccordionItem>
-          );
+        if (React.isValidElement(child)) {
+          // Handle both AccordionItem and Accordion components
+          if (child.type === AccordionItem) {
+            return React.cloneElement(child, {
+              ...child.props,
+              isOpen: openItems.has(index),
+              onToggle: () => toggleItem(index),
+            });
+          }
+          
+          // Handle Accordion components (with title prop)
+          if (child.props && 'title' in child.props && typeof child.props.title === 'string') {
+            return (
+              <AccordionItem
+                key={index}
+                title={child.props.title}
+                isOpen={openItems.has(index)}
+                onToggle={() => toggleItem(index)}
+              >
+                {child.props.children}
+              </AccordionItem>
+            );
+          }
         }
         
         return child;

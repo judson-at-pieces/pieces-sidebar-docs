@@ -132,6 +132,16 @@ export function DynamicDocPage() {
   // Show TOC only if it's not the getting-started page and content has headings
   const shouldShowTOC = !isGettingStartedPage && content.content.includes('#');
 
+  // Check if content should use HashnodeMarkdownRenderer
+  const shouldUseHashnodeRenderer = content.content.includes('***') || 
+    content.content.includes('<Accordion') || 
+    content.content.includes('<AccordionGroup') ||
+    content.content.includes('<CardGroup') ||
+    content.content.includes('<Steps') ||
+    content.content.includes('<Callout') ||
+    content.content.includes('<Card ') ||
+    content.content.includes('<Image');
+
   return (
     <div className="max-w-7xl mx-auto flex flex-col lg:flex-row gap-8">
       {/* Main content */}
@@ -162,16 +172,16 @@ export function DynamicDocPage() {
           </div>
         )}
 
-        {/* Content with Hashnode styling */}
+        {/* Content with appropriate renderer */}
         <div className="max-w-none">
-          {content.content.includes('***') ? (
+          {shouldUseHashnodeRenderer ? (
             <>
-              {console.log('DynamicDocPage: Using HashnodeMarkdownRenderer for content with ***', content.metadata.title)}
+              {console.log('DynamicDocPage: Using HashnodeMarkdownRenderer for content with special components', content.metadata.title)}
               <HashnodeMarkdownRenderer content={content.content} />
             </>
           ) : (
             <>
-              {console.log('DynamicDocPage: Using MarkdownRenderer for content without ***', content.metadata.title)}
+              {console.log('DynamicDocPage: Using MarkdownRenderer for standard content', content.metadata.title)}
               <div className="hn-markdown-renderer">
                 <MarkdownRenderer content={content.content} />
               </div>
