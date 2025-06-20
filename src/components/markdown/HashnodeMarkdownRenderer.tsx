@@ -5,7 +5,6 @@ import { MarkdownCard } from './MarkdownCard';
 import { CardGroup } from './CardGroup';
 import { Steps, Step } from './Steps';
 import { SecureInlineMarkdown } from './SecureInlineMarkdown';
-import { NewTab } from './NewTab';
 import { sanitizeText } from '@/utils/secureMarkdownProcessor';
 import { X } from 'lucide-react';
 
@@ -22,7 +21,6 @@ const TABS_PATTERN = '<Tabs';
 const BUTTON_PATTERN = '<Button';
 const STEPS_PATTERN = '<Steps';
 const CARD_PATTERN = '<Card';
-const NEWTAB_PATTERN = '<new-tab'; // Add new-tab pattern
 
 // Types
 type SectionType = 'frontmatter' | 'image' | 'cardgroup' | 'callout' | 'accordion' | 'accordiongroup' | 'tabs' | 'button' | 'steps' | 'card' | 'markdown' | 'mixed';
@@ -162,20 +160,17 @@ interface CardData {
   title: string;
   image?: string;
   content: string;
-  href?: string; // Add href property to the interface
 }
 
 const parseCard = (content: string): CardData => {
   const titleMatch = content.match(/title="([^"]*)"/);
   const imageMatch = content.match(/image="([^"]*)"/);
-  const hrefMatch = content.match(/href="([^"]*)"/);
   const contentMatch = content.match(/<Card[^>]*>([\s\S]*?)<\/Card>/);
   
   return {
     title: titleMatch?.[1] || '',
     image: imageMatch?.[1],
-    content: contentMatch?.[1]?.trim() || '',
-    href: hrefMatch?.[1] // Properly assign href to the returned object
+    content: contentMatch?.[1]?.trim() || ''
   };
 };
 
@@ -208,16 +203,12 @@ const parseCardGroup = (content: string): CardGroupData => {
     const imageMatch = attributes.match(/image="([^"]*)"/);
     const image = imageMatch ? imageMatch[1] : undefined;
     
-    const hrefMatch = attributes.match(/href="([^"]*)"/);
-    const href = hrefMatch ? hrefMatch[1] : undefined;
-    
-    console.log('🃏 Parsed card:', { title, image, href, contentLength: innerContent.length });
+    console.log('🃏 Parsed card:', { title, image, contentLength: innerContent.length });
     
     cards.push({
       title,
       image,
-      content: innerContent,
-      href // Include href in card data
+      content: innerContent
     });
   }
   
@@ -361,49 +352,8 @@ const parseSteps = (content: string): StepData[] => {
 
 const processInlineMarkdown = (text: string): React.ReactNode => {
   console.log('🔄 processInlineMarkdown: Processing text with secure renderer');
-  
-  // First handle new-tab components
-  const newTabRegex = /<new-tab\s+href="([^"]*)"[^>]*>(.*?)<\/new-tab>/g;
-  const parts: React.ReactNode[] = [];
-  let lastIndex = 0;
-  let match;
-  let partIndex = 0;
-
-  while ((match = newTabRegex.exec(text)) !== null) {
-    // Add text before new-tab
-    if (match.index > lastIndex) {
-      const beforeText = text.slice(lastIndex, match.index);
-      if (beforeText.trim()) {
-        const sanitizedText = sanitizeText(beforeText);
-        parts.push(<SecureInlineMarkdown key={`before-${partIndex}`} content={sanitizedText} />);
-        partIndex++;
-      }
-    }
-
-    const href = match[1];
-    const content = match[2];
-    
-    // Add new-tab component
-    parts.push(
-      <NewTab key={`newtab-${partIndex}`} href={href}>
-        {content}
-      </NewTab>
-    );
-    partIndex++;
-
-    lastIndex = match.index + match[0].length;
-  }
-
-  // Add remaining text
-  if (lastIndex < text.length) {
-    const remainingText = text.slice(lastIndex);
-    if (remainingText.trim()) {
-      const sanitizedText = sanitizeText(remainingText);
-      parts.push(<SecureInlineMarkdown key={`remaining-${partIndex}`} content={sanitizedText} />);
-    }
-  }
-
-  return parts.length > 0 ? <>{parts}</> : <SecureInlineMarkdown content={sanitizeText(text)} />;
+  const sanitizedText = sanitizeText(text);
+  return <SecureInlineMarkdown content={sanitizedText} />;
 };
 
 const processSimpleMarkdown = (text: string): React.ReactNode => {
@@ -492,23 +442,18 @@ const CardSection: React.FC<{ card: CardData }> = ({ card }) => {
   );
 };
 
-const CardGroupSection: React.FC<{ cols: number; cards: CardData[] }> = ({ cols = 2, cards }) => {
-  console.log('🃏 CardGroupSection: Rendering with cards:', cards.map(c => ({ title: c.title, href: c.href })));
+const CardGroupSection: React.FC<{ cols: number; cards: CardData[] }> = ({ cols, cards }) => {
+  console.log('🃏 Rendering CardGroup with:', { cols, cardCount: cards.length });
   
-  // Convert CardData to the raw markdown string format that CardGroup expects
-  const cardGroupContent = cards.map(card => {
-    const hrefAttr = card.href ? ` href="${card.href}"` : '';
-    const imageAttr = card.image ? ` image="${card.image}"` : '';
-    return `<Card title="${card.title}"${imageAttr}${hrefAttr}>${card.content}</Card>`;
-  }).join('\n  ');
-  
-  const fullCardGroupMarkdown = `<CardGroup cols={${cols}}>
-  ${cardGroupContent}
-</CardGroup>`;
-
-  console.log('🃏 CardGroupSection: Generated markdown:', fullCardGroupMarkdown);
-  
-  return <CardGroup cols={cols as 2 | 3 | 4}>{fullCardGroupMarkdown}</CardGroup>;
+  return (
+    <CardGroup cols={cols as 2 | 3 | 4}>
+      {cards.map((card, index) => (
+        <MarkdownCard key={`card-${index}`} title={card.title} image={card.image}>
+          {card.content}
+        </MarkdownCard>
+      ))}
+    </CardGroup>
+  );
 };
 
 // Parse Accordion

@@ -1,40 +1,27 @@
 
 import React from 'react';
-import { SecureInlineMarkdown } from './SecureInlineMarkdown';
+import ReactMarkdown from 'react-markdown';
+import { createComponentMappings } from './componentMappings';
 
 interface MarkdownCardProps {
   title: string;
   image?: string;
-  href?: string;
-  target?: string;
-  external?: string;
-  children?: React.ReactNode;
+  children: React.ReactNode;
 }
 
-const renderMarkdownWithSpacing = (content: string) => {
-  // Split content by double line breaks for paragraphs, then by single line breaks
-  const paragraphs = content.split('\n\n').filter(para => para.trim() !== '');
-  
-  return paragraphs.map((paragraph, paragraphIndex) => {
-    const lines = paragraph.split('\n').filter(line => line.trim() !== '');
-    
-    return (
-      <div key={paragraphIndex} className={paragraphIndex > 0 ? 'mt-4' : ''}>
-        {lines.map((line, lineIndex) => (
-          <div key={lineIndex} className={lineIndex > 0 ? 'mt-1' : ''}>
-            <SecureInlineMarkdown content={line.trim()} />
-          </div>
-        ))}
-      </div>
-    );
+const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, children }) => {
+  console.log('🎯 MarkdownCard rendering:', { 
+    title, 
+    image, 
+    hasChildren: !!children,
+    childrenType: typeof children,
+    childrenContent: typeof children === 'string' ? children.substring(0, 100) : 'not-string'
   });
-};
 
-export const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, href, target, external, children }) => {
-  console.log('🔥 MarkdownCard RENDER:', { title, image, href, target, external, hasChildren: !!children });
-  
-  const cardContent = (
-    <div className="p-6 my-4 border rounded-xl dark:border-slate-800/80 border-slate-200 bg-white dark:bg-slate-900 transition-all duration-300 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-lg hover:-translate-y-1">
+  const components = createComponentMappings();
+
+  return (
+    <div className="p-6 my-4 border rounded-xl bg-white dark:bg-[#2a2b2b] dark:border-gray-700 hover:border-slate-300 dark:hover:border-gray-600 transition-colors shadow-sm">
       {image && (
         <div className="w-10 h-10 mb-6 relative rounded-lg">
           <img
@@ -53,41 +40,23 @@ export const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, href, 
           />
         </div>
       )}
-      <span className="block text-base font-semibold text-slate-700 dark:text-slate-200">
+      <span className="block text-base font-semibold text-slate-700 dark:text-slate-200 mb-3">
         {title}
       </span>
-      <div className="mt-3 text-base text-slate-600 dark:text-slate-300">
+      <div className="text-base text-slate-600 dark:text-slate-300 leading-relaxed [&_a]:text-blue-600 [&_a]:hover:text-blue-800 [&_a]:underline [&_a]:underline-offset-4 dark:[&_a]:text-blue-400 dark:[&_a]:hover:text-blue-300">
         {typeof children === 'string' ? (
-          renderMarkdownWithSpacing(children)
+          <ReactMarkdown components={components}>
+            {children}
+          </ReactMarkdown>
         ) : (
           children
         )}
       </div>
     </div>
   );
-
-  // Use href if available, fallback to external
-  const linkUrl = href || external;
-  const linkTarget = target || (linkUrl ? '_blank' : undefined);
-  
-  if (linkUrl) {
-    console.log('🔥 MAKING CARD CLICKABLE WITH URL:', linkUrl, 'target:', linkTarget);
-    return (
-      <a 
-        href={linkUrl} 
-        target={linkTarget}
-        rel={linkTarget === '_blank' ? 'noopener noreferrer' : undefined}
-        className="block no-underline hover:no-underline"
-        style={{ 
-          textDecoration: 'none !important',
-          color: 'inherit !important' 
-        }}
-      >
-        {cardContent}
-      </a>
-    );
-  }
-
-  console.log('🔥 NON-CLICKABLE CARD');
-  return cardContent;
 };
+
+export default MarkdownCard;
+
+// Export named export for compatibility
+export { MarkdownCard };

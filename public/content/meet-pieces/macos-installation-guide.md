@@ -1,4 +1,3 @@
-
 ---
 title: "Installation Guide | macOS"
 path: "/meet-pieces/macos-installation-guide"
@@ -15,11 +14,11 @@ visibility: "PUBLIC"
 Click the **buttons below** to download Pieces for your macOS device.
 
 <CardGroup cols={2}>
-  <Card title="Download — PiecesOS & Pieces Desktop App (ARM)" image="https://cdn.hashnode.com/res/hashnode/image/upload/v1747074321429/80687359-563d-425d-a6c5-37b7b81a6dc5.png" href="https://builds.pieces.app/stages/production/macos_packaging/pkg-arm64/download?download=true&product=DOCUMENTATION_WEBSITE" target="_blank">
+  <Card title="Download — PiecesOS & Pieces Desktop App (ARM)" image="https://cdn.hashnode.com/res/hashnode/image/upload/v1747074321429/80687359-563d-425d-a6c5-37b7b81a6dc5.png" href="https://builds.pieces.app/stages/production/macos_packaging/pkg-arm64/download?download=true&product=DOCUMENTATION_WEBSITE" external="true">
     *macOS 13.0 (Ventura) or higher required*
   </Card>
 
-  <Card title="Download — PiecesOS & Desktop App (Intel)" image="https://cdn.hashnode.com/res/hashnode/image/upload/v1747074283357/7fb8bef5-ce0d-4412-876e-88a8d4afabd8.png" href="https://builds.pieces.app/stages/production/macos_packaging/pkg/download?download=true&product=DOCUMENTATION_WEBSITE" target="_blank">
+  <Card title="Download — PiecesOS & Desktop App (Intel)" image="https://cdn.hashnode.com/res/hashnode/image/upload/v1747074283357/7fb8bef5-ce0d-4412-876e-88a8d4afabd8.png" href="https://builds.pieces.app/stages/production/macos_packaging/pkg/download?download=true&product=DOCUMENTATION_WEBSITE" external="true">
     *macOS 13.0 (Ventura) or higher required*
   </Card>
 </CardGroup>
@@ -30,7 +29,7 @@ Click the **buttons below** to download Pieces for your macOS device.
 
 ## Install the PKG
 
-Once you've downloaded the correct `.pkg` file, it's time to run the installer.
+Once you’ve downloaded the correct `.pkg` file, it’s time to run the installer.
 
 <Steps>
   <Step title="Open the Installer">
@@ -44,13 +43,13 @@ Once you've downloaded the correct `.pkg` file, it's time to run the installer.
 
 ### System Requirements
 
-There are **(2)** requirements for installing Pieces on your macOS device:
+There are <mark>(2)</mark> requirements for installing Pieces on your macOS device:
 
 1. Compatible OS Version—**macOS 13.0 (Ventura) or higher**
 
-2. Compatible installer for your device's architecture—**Apple Silicon (ARM) or Intel**
+2. Compatible installer for your device’s architecture—**Apple Silicon (ARM) or Intel**
 
-Click here for a quick guide on [determining your OS type](https://docs.pieces.app/products/meet-pieces/troubleshooting/macos#checking-os-version), and here for [how to check your device's CPU architecture.](https://docs.pieces.app/products/meet-pieces/troubleshooting/macos#checking-cpu-type)
+Click here for a quick guide on [determining your OS type](https://docs.pieces.app/products/meet-pieces/troubleshooting/macos#checking-os-version), and here for [how to check your device’s CPU architecture.](https://docs.pieces.app/products/meet-pieces/troubleshooting/macos#checking-cpu-type)
 
 ***
 
@@ -65,14 +64,14 @@ Click here for a quick guide on [determining your OS type](https://docs.pieces.a
 
 ## Alternative Installations
 
-If you cannot use the `.pkg` installer for any reason, you can install PiecesOS and the Pieces Desktop App using standalone `.dmg` files or by using `Homebrew` through your Mac's terminal.
+If you cannot use the `.pkg` installer for any reason, you can install PiecesOS and the Pieces Desktop App using standalone `.dmg` files or by using `Homebrew` through your Mac’s terminal.
 
 ### via DMG (Apple Silicon / M-Series / ARM)
 
 Install both PiecesOS and the Pieces Desktop App **in order** by clicking the download cards below for your ARM device.
 
 <CardGroup cols={2}>
-  <Card title="Download — PiecesOS (DMG / ARM)" image="https://cdn.hashnode.com/res/hashnode/image/upload/v1741277926767/73a4deec-0825-4138-9d1f-247b1c149866.webp" href="https://builds.pieces.app/stages/production/os_server/dmg-arm64/download" target="_blank">
+  <Card title="Download — PiecesOS (DMG / ARM)" image="https://cdn.hashnode.com/res/hashnode/image/upload/v1741277926767/73a4deec-0825-4138-9d1f-247b1c149866.webp" href="https://builds.pieces.app/stages/production/os_server/dmg-arm64/download">
     **Step 1:** Download PiecesOS
 
     ***
@@ -82,7 +81,7 @@ Install both PiecesOS and the Pieces Desktop App **in order** by clicking the do
     macOS 13.0 (Ventura) or higher required.
   </Card>
 
-  <Card title="Download — Pieces Desktop App (DMG / ARM)" image="https://cdn.hashnode.com/res/hashnode/image/upload/v1741277928929/0bcc9837-5849-411e-98ef-6ad9e118c36f.webp" href="https://builds.pieces.app/stages/production/pieces_for_x/dmg-arm64/download" target="_blank">
+  <Card title="Download — Pieces Desktop App (DMG / ARM)" image="https://cdn.hashnode.com/res/hashnode/image/upload/v1741277928929/0bcc9837-5849-411e-98ef-6ad9e118c36f.webp" href="https://builds.pieces.app/stages/production/pieces_for_x/dmg-arm64/download">
     **Step 2:** Download the Desktop App
 
     ***
@@ -98,7 +97,7 @@ Install both PiecesOS and the Pieces Desktop App **in order** by clicking the do
 Install both PiecesOS and the Pieces Desktop App **in order** by clicking the download cards below for your Intel device.
 
 <CardGroup cols={2}>
-  <Card title="Download — PiecesOS (DMG / Intel)" image="https://cdn.hashnode.com/res/hashnode/image/upload/v1742414057539/e91879e6-3aa5-4473-a944-6426ef7113d3.png" href="https://builds.pieces.app/stages/production/os_server/dmg/download" target="_blank">
+  <Card title="Download — PiecesOS (DMG / Intel)" image="https://cdn.hashnode.com/res/hashnode/image/upload/v1742414057539/e91879e6-3aa5-4473-a944-6426ef7113d3.png" href="https://builds.pieces.app/stages/production/os_server/dmg/download">
     **Step 1:** Download PiecesOS
 
     ***
@@ -108,7 +107,7 @@ Install both PiecesOS and the Pieces Desktop App **in order** by clicking the do
     macOS 13.0 (Ventura) or higher required.
   </Card>
 
-  <Card title="Download — Pieces Desktop App (DMG / Intel)" image="https://cdn.hashnode.com/res/hashnode/image/upload/v1742414060905/c16603bc-e289-45f8-b027-61d035a1e09e.png" href="https://builds.pieces.app/stages/production/pieces_for_x/dmg/download" target="_blank">
+  <Card title="Download — Pieces Desktop App (DMG / Intel)" image="https://cdn.hashnode.com/res/hashnode/image/upload/v1742414060905/c16603bc-e289-45f8-b027-61d035a1e09e.png" href="https://builds.pieces.app/stages/production/pieces_for_x/dmg/download">
     **Step 2:** Download the Desktop App
 
     ***
@@ -121,7 +120,7 @@ Install both PiecesOS and the Pieces Desktop App **in order** by clicking the do
 
 ## Install the DMG
 
-After downloading the correct `.dmg` file, it's time to install the Pieces Desktop App.
+After downloading the correct `.dmg` file, it’s time to install the Pieces Desktop App.
 
 <Steps>
   <Step title="">
@@ -146,7 +145,7 @@ After downloading the correct `.dmg` file, it's time to install the Pieces Deskt
 Alternatively, you may opt to install Pieces via Homebrew in your terminal.
 
 <Card title="Installing via Homebrew" image="https://cdn.hashnode.com/res/hashnode/image/upload/v1741278053952/7feb3fa1-4a4b-47ff-86c2-326cf634f593.png">
-  You can install PiecesOS manually using Homebrew from your device's terminal.
+  You can install PiecesOS manually using Homebrew from your device’s terminal.
 
   To do so:
 
@@ -158,12 +157,12 @@ Alternatively, you may opt to install Pieces via Homebrew in your terminal.
 
   3. Wait for installation to complete—Homebrew will download and install the necessary files.
 
-  Once it's done, you'll see a message indicating successful installation.
+  Once it’s done, you’ll see a message indicating successful installation.
 </Card>
 
 ## Post-Installation Tips
 
-Read the documentation below for some tips and information to make sure you're up and running with the latest version(s) of PiecesOS and the Pieces Desktop App, as well as steps to uninstall Pieces software from your Apple device.
+Read the documentation below for some tips and information to make sure you’re up and running with the latest version(s) of PiecesOS and the Pieces Desktop App, as well as steps to uninstall Pieces software from your Apple device.
 
 ### Updating
 

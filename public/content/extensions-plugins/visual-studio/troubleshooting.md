@@ -1,4 +1,3 @@
-
 ---
 title: "Troubleshooting"
 path: "/extensions-plugins/visual-studio/troubleshooting"
@@ -8,7 +7,7 @@ visibility: "PUBLIC"
 
 # Having Issues with Visual Studio?
 
-Read the documentation below for a series of basic troubleshooting steps you can take if the Pieces for Visual Studio Extension isn't working as expected.
+Read the documentation below for a series of basic troubleshooting steps you can take if the Pieces for Visual Studio Extension isn’t working as expected.
 
 <on-device-storage />
 
@@ -18,7 +17,7 @@ Many issues stem from an out-of-date version of PiecesOS or a system inadequatel
 
 ### Ensure You Have the Latest Versions
 
-First, ensure you're using the latest version of the <new-tab href="https://marketplace.visualstudio.com/items?itemName=MeshIntelligentTechnologiesInc.PiecesVisualStudio">Pieces for Visual Studio Extension</new-tab> from the Visual Studio Marketplace and the newest version of [PiecesOS](https://docs.pieces.app/products/core-dependencies/pieces-os). The minimum supported version is Visual Studio 2022 — 17.9.0 or higher.
+First, ensure you're using the latest version of the <a target="_blank" href="https://marketplace.visualstudio.com/items?itemName=MeshIntelligentTechnologiesInc.PiecesVisualStudio">Pieces for Visual Studio Extension</a> from the Visual Studio Marketplace and the newest version of [PiecesOS](https://docs.pieces.app/products/core-dependencies/pieces-os). The minimum supported version is Visual Studio 2022 — 17.9.0 or higher.
 
 ### Check the Settings for Pieces
 
@@ -55,7 +54,7 @@ Regardless of platform, your device should meet the following basic system speci
 
 ## Checking Hardware
 
-It may be necessary to verify your system's specifications if you experience ongoing issues.
+It may be necessary to verify your system’s specifications if you experience ongoing issues.
 
 See the OS-specific pages for instructions on how to check CPU, RAM, and GPU details:
 
@@ -67,7 +66,7 @@ See the OS-specific pages for instructions on how to check CPU, RAM, and GPU det
 
 ### Restart Visual Studio After Updates
 
-If you've recently installed or updated PiecesOS or the Pieces for Visual Studio Extension, restart the IDE.
+If you’ve recently installed or updated PiecesOS or the Pieces for Visual Studio Extension, restart the IDE.
 
 Contact the <a target="_blank" href="https://getpieces.typeform.com/to/mCjBSIjF#docs-vscode">Pieces support team</a> if the issue still persists.
 

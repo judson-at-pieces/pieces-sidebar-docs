@@ -1,3 +1,4 @@
+
 // Client-side processor for custom markdown syntax
 
 // Security utilities for safe HTML attribute handling
@@ -113,117 +114,73 @@ export function processCustomSyntax(content: string): string {
       }
     );
 
-    // Transform CardGroup components - KEEP AS JSX for proper processing
+    // Transform CardGroup components to HTML with proper closing tag handling
     processedContent = processedContent.replace(/<CardGroup\s+cols=\{(\d+)\}>/gi, (match, cols) => {
       const numCols = parseInt(cols, 10);
       if (isNaN(numCols) || numCols < 1 || numCols > 6) {
-        return '<CardGroup cols={2}>'; // Default fallback
+        return '<div data-cardgroup="true" data-cols="2">'; // Default fallback
       }
-      return `<CardGroup cols={${numCols}}>`;
+      return `<div data-cardgroup="true" data-cols="${numCols}">`;
     });
     
     processedContent = processedContent.replace(/<CardGroup>/gi, () => {
-      return '<CardGroup cols={2}>';
+      return '<div data-cardgroup="true" data-cols="2">';
     });
     
     processedContent = processedContent.replace(/<\/CardGroup>/gi, () => {
-      return '</CardGroup>';
+      return '</div>';
     });
 
-    // Transform Card components with content - SUPER AGGRESSIVE href preservation
-    processedContent = processedContent.replace(/<Card\s+([^>]*?)>([\s\S]*?)<\/Card>/gi, (match, attributes, innerContent) => {
+    // Transform Card components - Use direct HTML instead of special syntax
+    // First handle self-closing cards
+    processedContent = processedContent.replace(/<Card\s+([^>]*?)\/>/gi, (match, attributes) => {
       try {
-        console.log('🔥 FORCE Processing Card with content:', { attributes, innerContent: innerContent.substring(0, 100) });
+        const titleMatch = attributes.match(/title="([^"]*)"/);
+        const imageMatch = attributes.match(/image="([^"]*)"/);
+        const hrefMatch = attributes.match(/href="([^"]*)"/);
+        const externalMatch = attributes.match(/external=["']([^"']*)["']/);
+        const iconMatch = attributes.match(/icon="([^"]*)"/);
         
-        // SUPER aggressive attribute extraction - try multiple patterns
-        const titleMatch = attributes.match(/title\s*=\s*["']([^"']*)["']/i);
-        const imageMatch = attributes.match(/image\s*=\s*["']([^"']*)["']/i);
-        const hrefMatch = attributes.match(/href\s*=\s*["']([^"']*)["']/i);
-        const externalMatch = attributes.match(/external\s*=\s*["']([^"']*)["']/i);
+        const title = sanitizeAttribute(titleMatch ? titleMatch[1] : '');
+        const image = validateUrl(imageMatch ? imageMatch[1] : '');
+        const href = validateUrl(hrefMatch ? hrefMatch[1] : '');
+        const external = sanitizeAttribute(externalMatch ? externalMatch[1] : '');
+        const icon = sanitizeAttribute(iconMatch ? iconMatch[1] : '');
         
-        const title = titleMatch ? titleMatch[1] : '';
-        const image = imageMatch ? imageMatch[1] : '';
-        const href = hrefMatch ? hrefMatch[1] : '';
-        const external = externalMatch ? externalMatch[1] : '';
-        
-        console.log('🔥 FORCE Parsed Card attributes:', { title, image, href, external });
-        
-        // PRESERVE the inner content exactly as is
-        const preservedContent = innerContent || '';
-        
-        // Build the Card JSX with MAXIMUM attributes
-        let cardJSX = '<Card';
-        if (title) cardJSX += ` title="${title}"`;
-        if (image) cardJSX += ` image="${image}"`;
-        if (href) cardJSX += ` href="${href}"`;
-        if (external) cardJSX += ` external="${external}"`;
-        
-        // FORCE add any other attributes we might have missed
-        const otherAttrs = attributes
-          .replace(/title\s*=\s*["'][^"']*["']/gi, '')
-          .replace(/image\s*=\s*["'][^"']*["']/gi, '')
-          .replace(/href\s*=\s*["'][^"']*["']/gi, '')
-          .replace(/external\s*=\s*["'][^"']*["']/gi, '')
-          .trim();
-        
-        if (otherAttrs) {
-          cardJSX += ` ${otherAttrs}`;
-        }
-        
-        cardJSX += `>\n${preservedContent}\n</Card>`;
-        
-        console.log('🔥 GENERATED CARD JSX:', cardJSX);
-        return cardJSX;
+        return `<div data-card="true" data-title="${title}" data-image="${image}" data-href="${href}" data-external="${external}" data-icon="${icon}"></div>`;
       } catch (error) {
         console.warn('Error parsing Card attributes:', error);
-        return `<Card>\n${innerContent || ''}\n</Card>`;
+        return '<div data-card="true"></div>';
       }
     });
 
-    // Transform self-closing Card components - SUPER AGGRESSIVE href preservation
-    processedContent = processedContent.replace(/<Card\s+([^>]*?)\/>/gi, (match, attributes) => {
+    // Then handle Card components with content - Use direct HTML
+    processedContent = processedContent.replace(/<Card\s+([^>]*?)>([\s\S]*?)<\/Card>/gi, (match, attributes, innerContent) => {
       try {
-        console.log('🔥 FORCE Processing self-closing Card:', { attributes });
+        console.log('Processing Card with content:', { attributes, innerContent: innerContent.substring(0, 100) });
         
-        // SUPER aggressive attribute extraction
-        const titleMatch = attributes.match(/title\s*=\s*["']([^"']*)["']/i);
-        const imageMatch = attributes.match(/image\s*=\s*["']([^"']*)["']/i);
-        const hrefMatch = attributes.match(/href\s*=\s*["']([^"']*)["']/i);
-        const externalMatch = attributes.match(/external\s*=\s*["']([^"']*)["']/i);
+        const titleMatch = attributes.match(/title="([^"]*)"/);
+        const imageMatch = attributes.match(/image="([^"]*)"/);
+        const hrefMatch = attributes.match(/href="([^"]*)"/);
+        const externalMatch = attributes.match(/external=["']([^"']*)["']/);
+        const iconMatch = attributes.match(/icon="([^"]*)"/);
         
-        const title = titleMatch ? titleMatch[1] : '';
-        const image = imageMatch ? imageMatch[1] : '';
-        const href = hrefMatch ? hrefMatch[1] : '';
-        const external = externalMatch ? externalMatch[1] : '';
+        const title = sanitizeAttribute(titleMatch ? titleMatch[1] : '');
+        const image = validateUrl(imageMatch ? imageMatch[1] : '');
+        const href = validateUrl(hrefMatch ? hrefMatch[1] : '');
+        const external = sanitizeAttribute(externalMatch ? externalMatch[1] : '');
+        const icon = sanitizeAttribute(iconMatch ? iconMatch[1] : '');
         
-        console.log('🔥 FORCE Parsed self-closing Card attributes:', { title, image, href, external });
+        // PRESERVE the inner content exactly as is - this is crucial for markdown processing
+        const preservedContent = innerContent || '';
         
-        // Build the Card JSX with MAXIMUM attributes
-        let cardJSX = '<Card';
-        if (title) cardJSX += ` title="${title}"`;
-        if (image) cardJSX += ` image="${image}"`;
-        if (href) cardJSX += ` href="${href}"`;
-        if (external) cardJSX += ` external="${external}"`;
+        console.log('Card transformation result:', { title, image, href, external, icon, contentLength: preservedContent.length });
         
-        // FORCE add any other attributes we might have missed
-        const otherAttrs = attributes
-          .replace(/title\s*=\s*["'][^"']*["']/gi, '')
-          .replace(/image\s*=\s*["'][^"']*["']/gi, '')
-          .replace(/href\s*=\s*["'][^"']*["']/gi, '')
-          .replace(/external\s*=\s*["'][^"']*["']/gi, '')
-          .trim();
-        
-        if (otherAttrs) {
-          cardJSX += ` ${otherAttrs}`;
-        }
-        
-        cardJSX += ' />';
-        
-        console.log('🔥 GENERATED SELF-CLOSING CARD JSX:', cardJSX);
-        return cardJSX;
+        // Use direct HTML that will be processed by ReactMarkdown
+        return `<div data-card="true" data-title="${title}" data-image="${image}" data-href="${href}" data-external="${external}" data-icon="${icon}">\n\n${preservedContent}\n\n</div>`;
       } catch (error) {
         console.warn('Error parsing Card attributes:', error);
-        return '<Card />';
+        return `<div data-card="true">\n\n${innerContent || ''}\n\n</div>`;
       }
     });
 
@@ -268,7 +225,7 @@ export function processCustomSyntax(content: string): string {
       }
     );
 
-    console.log('🔥 FORCE Custom syntax processing complete. Cards WILL be clickable.');
+    console.log('Custom syntax processing complete. Sample output:', processedContent.substring(0, 500));
     return processedContent;
   } catch (error) {
     console.error('Error processing custom syntax:', error);
