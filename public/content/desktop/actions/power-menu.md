@@ -13,7 +13,7 @@ The **Power Menu** in Pieces for Developers is a dynamic command palette. It sho
 
 The **Power Menu** in Pieces for Developers is a dynamic command palette.
 
-When you press the Power Menu hotkey or open it from the app interface, you’ll see different actions depending on which view or section of the app you’re currently in.
+When you press the Power Menu hotkey or open it from the app interface, you’ll see different actions *depending on which view or section of the app you’re currently in*.
 
 For example:
 

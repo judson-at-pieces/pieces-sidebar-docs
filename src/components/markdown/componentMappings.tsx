@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Callout } from './Callout';
 import { CodeBlock } from './CodeBlock';
@@ -105,7 +106,7 @@ export function createComponentMappings() {
       return <CodeBlock>{children}</CodeBlock>;
     },
     
-    // Links and emphasis - FIXED TYPOGRAPHY HANDLING
+    // Links and emphasis
     a: ({ children, href, ...props }: any) => (
       <a 
         href={href}

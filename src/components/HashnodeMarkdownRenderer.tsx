@@ -449,18 +449,14 @@ const processInlineMarkdown = (text: string): React.ReactNode => {
 const processSimpleMarkdown = (text: string): React.ReactNode => {
   if (!text) return null;
   
-  // Process in order of precedence: bold-italic first, then bold, then italic
-  // Handle bold italic with ***
-  text = text.replace(/\*\*\*(.*?)\*\*\*/g, '<strong class="font-semibold italic">$1</strong>');
-  
-  // Handle bold with **
-  text = text.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>');
-  
-  // Handle italic with * (but not part of ** or ***)
-  text = text.replace(/(?<!\*)\*([^*\s][^*]*[^*\s]|\S)\*(?!\*)/g, '<em class="italic">$1</em>');
-  
   // Handle inline code
   text = text.replace(/`([^`]+)`/g, '<code class="hn-inline-code bg-muted px-1 py-0.5 rounded text-sm font-mono">$1</code>');
+  
+  // Handle bold with **
+  text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  
+  // Handle italic with *
+  text = text.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
   
   // Handle links
   text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="hn-link text-primary underline hover:no-underline">$1</a>');
@@ -665,8 +661,8 @@ const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => {
                 <h3 className="font-bold text-base text-slate-700 dark:text-slate-200 m-0">
                   {step.title}
                 </h3>
-                <div className="text-base text-slate-600 dark:text-slate-300">
-                  <MixedContentSection content={step.content} />
+                <div className="text-base text-slate-600 dark:text-slate-300 prose prose-sm dark:prose-invert max-w-none">
+                  {processInlineMarkdown(step.content)}
                 </div>
               </div>
             </div>
@@ -815,26 +811,26 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
   
   const allMatches: Array<{ match: RegExpMatchArray; type: string }> = [];
   
-  // Find Callouts first (they can be nested in other components)
+  // Find CardGroups first
   let match;
-  while ((match = calloutRegex.exec(content)) !== null) {
-    allMatches.push({ match, type: 'callout' });
-  }
-  
-  // Find Steps
-  calloutRegex.lastIndex = 0;
-  while ((match = stepsRegex.exec(content)) !== null) {
-    allMatches.push({ match, type: 'steps' });
-  }
-  
-  // Find CardGroups
-  stepsRegex.lastIndex = 0;
   while ((match = cardGroupRegex.exec(content)) !== null) {
     allMatches.push({ match, type: 'cardgroup' });
   }
   
-  // Find standalone Cards (not inside CardGroups)
+  // Find Steps
   cardGroupRegex.lastIndex = 0;
+  while ((match = stepsRegex.exec(content)) !== null) {
+    allMatches.push({ match, type: 'steps' });
+  }
+  
+  // Find Callouts
+  stepsRegex.lastIndex = 0;
+  while ((match = calloutRegex.exec(content)) !== null) {
+    allMatches.push({ match, type: 'callout' });
+  }
+  
+  // Find standalone Cards (not inside CardGroups)
+  calloutRegex.lastIndex = 0;
   const cardGroupMatches = allMatches.filter(m => m.type === 'cardgroup');
   while ((match = standaloneCardRegex.exec(content)) !== null) {
     // Check if this card is inside a CardGroup
@@ -851,10 +847,10 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
   
   // Find Images (but exclude those inside Steps, CardGroups, or other components)
   standaloneCardRegex.lastIndex = 0;
-  const componentMatches = allMatches.filter(m => m.type === 'steps' || m.type === 'cardgroup');
+  const stepsMatches = allMatches.filter(m => m.type === 'steps');
   while ((match = imageRegex.exec(content)) !== null) {
     // Check if this image is inside any special component
-    const isInsideComponent = componentMatches.some(componentMatch => {
+    const isInsideComponent = allMatches.some(componentMatch => {
       const componentStart = componentMatch.match.index!;
       const componentEnd = componentStart + componentMatch.match[0].length;
       return match.index! >= componentStart && match.index! < componentEnd;
