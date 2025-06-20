@@ -8,6 +8,9 @@ import { SecureInlineMarkdown } from './SecureInlineMarkdown';
 import { NewTab } from './NewTab';
 import { sanitizeText } from '@/utils/secureMarkdownProcessor';
 import { X } from 'lucide-react';
+import { TableOfContents } from './TableOfContents';
+import { GlossaryAll } from './GlossaryAll';
+import { Embed } from './Embed';
 
 // Constants
 const SECTION_DELIMITER = '***';
@@ -23,9 +26,12 @@ const BUTTON_PATTERN = '<Button';
 const STEPS_PATTERN = '<Steps';
 const CARD_PATTERN = '<Card';
 const NEWTAB_PATTERN = '<new-tab'; // Add new-tab pattern
+const TABLEOFCONTENTS_PATTERN = '<TableOfContents';
+const GLOSSARYALL_PATTERN = '<GlossaryAll';
+const EMBED_PATTERN = '<Embed';
 
 // Types
-type SectionType = 'frontmatter' | 'image' | 'cardgroup' | 'callout' | 'accordion' | 'accordiongroup' | 'tabs' | 'button' | 'steps' | 'card' | 'markdown' | 'mixed';
+type SectionType = 'frontmatter' | 'image' | 'cardgroup' | 'callout' | 'accordion' | 'accordiongroup' | 'tabs' | 'button' | 'steps' | 'card' | 'markdown' | 'mixed' | 'tableofcontents' | 'glossaryall' | 'embed';
 type ListType = 'ordered' | 'unordered' | null;
 
 interface ParsedSection {
@@ -126,6 +132,18 @@ const parseSections = (text: string): ParsedSection[] => {
     if (section.startsWith(CALLOUT_PATTERN) && !hasSteps && !hasCardGroup) {
       console.log('💬 Found pure Callout section');
       return { type: 'callout', content: section, index };
+    }
+    if (section.startsWith(TABLEOFCONTENTS_PATTERN)) {
+      console.log('📑 Found TableOfContents section');
+      return { type: 'tableofcontents', content: section, index };
+    }
+    if (section.startsWith(GLOSSARYALL_PATTERN)) {
+      console.log('📚 Found GlossaryAll section');
+      return { type: 'glossaryall', content: section, index };
+    }
+    if (section.startsWith(EMBED_PATTERN)) {
+      console.log('📹 Found Embed section');
+      return { type: 'embed', content: section, index };
     }
     
     console.log('📝 Found markdown section');
@@ -316,6 +334,34 @@ const parseButton = (content: string): ButtonData => {
     align: alignMatch?.[1] || 'left',
     lightColor: lightColorMatch?.[1],
     darkColor: darkColorMatch?.[1]
+  };
+};
+
+// Parse TableOfContents
+const parseTableOfContents = (content: string) => {
+  // Match content prop with template literal
+  const contentMatch = content.match(/content=\{`([^`]*)`\}/s);
+  if (contentMatch) {
+    return contentMatch[1];
+  }
+  // Try regular string prop
+  const stringMatch = content.match(/content="([^"]*)"/);
+  return stringMatch ? stringMatch[1] : '';
+};
+
+// Parse Embed
+interface EmbedData {
+  src: string;
+  title?: string;
+}
+
+const parseEmbed = (content: string): EmbedData => {
+  const srcMatch = content.match(/src="([^"]*)"/);
+  const titleMatch = content.match(/title="([^"]*)"/);
+  
+  return {
+    src: srcMatch?.[1] || '',
+    title: titleMatch?.[1]
   };
 };
 
@@ -1169,6 +1215,26 @@ const HashnodeMarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) 
       case 'mixed': {
         console.log('🔀 Rendering MixedContentSection');
         result = <MixedContentSection key={section.index} content={section.content} />;
+        break;
+      }
+      
+      case 'tableofcontents': {
+        const tocContent = parseTableOfContents(section.content);
+        console.log('📑 Rendering TableOfContents with content:', tocContent.substring(0, 100));
+        result = <TableOfContents key={section.index} content={tocContent} />;
+        break;
+      }
+      
+      case 'glossaryall': {
+        console.log('📚 Rendering GlossaryAll');
+        result = <GlossaryAll key={section.index} />;
+        break;
+      }
+      
+      case 'embed': {
+        const embedData = parseEmbed(section.content);
+        console.log('📹 Rendering Embed with src:', embedData.src);
+        result = <Embed key={section.index} src={embedData.src} title={embedData.title} />;
         break;
       }
         
