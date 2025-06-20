@@ -811,26 +811,26 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
   
   const allMatches: Array<{ match: RegExpMatchArray; type: string }> = [];
   
-  // Find CardGroups first
+  // Find Callouts first (they can be nested in other components)
   let match;
-  while ((match = cardGroupRegex.exec(content)) !== null) {
-    allMatches.push({ match, type: 'cardgroup' });
-  }
-  
-  // Find Steps
-  cardGroupRegex.lastIndex = 0;
-  while ((match = stepsRegex.exec(content)) !== null) {
-    allMatches.push({ match, type: 'steps' });
-  }
-  
-  // Find Callouts
-  stepsRegex.lastIndex = 0;
   while ((match = calloutRegex.exec(content)) !== null) {
     allMatches.push({ match, type: 'callout' });
   }
   
-  // Find standalone Cards (not inside CardGroups)
+  // Find Steps
   calloutRegex.lastIndex = 0;
+  while ((match = stepsRegex.exec(content)) !== null) {
+    allMatches.push({ match, type: 'steps' });
+  }
+  
+  // Find CardGroups
+  stepsRegex.lastIndex = 0;
+  while ((match = cardGroupRegex.exec(content)) !== null) {
+    allMatches.push({ match, type: 'cardgroup' });
+  }
+  
+  // Find standalone Cards (not inside CardGroups)
+  cardGroupRegex.lastIndex = 0;
   const cardGroupMatches = allMatches.filter(m => m.type === 'cardgroup');
   while ((match = standaloneCardRegex.exec(content)) !== null) {
     // Check if this card is inside a CardGroup
@@ -847,10 +847,10 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
   
   // Find Images (but exclude those inside Steps, CardGroups, or other components)
   standaloneCardRegex.lastIndex = 0;
-  const stepsMatches = allMatches.filter(m => m.type === 'steps');
+  const componentMatches = allMatches.filter(m => m.type === 'steps' || m.type === 'cardgroup');
   while ((match = imageRegex.exec(content)) !== null) {
     // Check if this image is inside any special component
-    const isInsideComponent = allMatches.some(componentMatch => {
+    const isInsideComponent = componentMatches.some(componentMatch => {
       const componentStart = componentMatch.match.index!;
       const componentEnd = componentStart + componentMatch.match[0].length;
       return match.index! >= componentStart && match.index! < componentEnd;
