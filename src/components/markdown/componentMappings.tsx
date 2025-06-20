@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Callout } from './Callout';
 import { CodeBlock } from './CodeBlock';
@@ -110,7 +111,7 @@ export function createComponentMappings() {
       return <CodeBlock>{children}</CodeBlock>;
     },
     
-    // Links and emphasis - FIXED TYPOGRAPHY HANDLING
+    // Links and emphasis - Fixed typography handling
     a: ({ children, href, ...props }: any) => (
       <a 
         href={href}
@@ -172,8 +173,34 @@ export function createComponentMappings() {
     Step,
     Tabs,
     TabItem,
-    Accordion,
-    AccordionGroup,
+    // Fixed Accordion components with proper boolean prop handling
+    Accordion: ({ title, children, defaultOpen, ...props }: any) => {
+      // Convert string "true"/"false" to boolean
+      const isDefaultOpen = defaultOpen === true || defaultOpen === 'true';
+      
+      return (
+        <Accordion 
+          title={title} 
+          defaultOpen={isDefaultOpen}
+          {...props}
+        >
+          {children}
+        </Accordion>
+      );
+    },
+    AccordionGroup: ({ children, allowMultiple, ...props }: any) => {
+      // Convert string "true"/"false" to boolean
+      const isAllowMultiple = allowMultiple === true || allowMultiple === 'true';
+      
+      return (
+        <AccordionGroup 
+          allowMultiple={isAllowMultiple}
+          {...props}
+        >
+          {children}
+        </AccordionGroup>
+      );
+    },
     Button,
     TableOfContents,
     GlossaryAll,
