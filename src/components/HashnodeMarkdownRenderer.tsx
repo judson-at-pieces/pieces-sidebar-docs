@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import CodeBlock from './CodeBlock';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -367,16 +368,22 @@ const processInlineMarkdown = (text: string): React.ReactNode => {
 const processSimpleMarkdown = (text: string): React.ReactNode => {
   if (!text) return null;
   
-  // Handle inline HTML links first (before other markdown processing)
+  // Handle inline HTML links with various attribute orders and spacing
   text = text.replace(
-    /<a\s+target="_blank"\s+href="([^"]+)">([^<]+)<\/a>/g,
-    '<a href="$1" target="_blank" rel="noopener noreferrer" class="hn-link text-primary underline hover:no-underline">$2</a>'
+    /<a\s+([^>]*target="_blank"[^>]*href="[^"]+"|[^>]*href="[^"]+"[^>]*target="_blank"[^>]*)>([^<]+)<\/a>/g,
+    (match, attributes, linkText) => {
+      const hrefMatch = attributes.match(/href="([^"]+)"/);
+      const href = hrefMatch ? hrefMatch[1] : '#';
+      const hasTarget = attributes.includes('target="_blank"');
+      
+      return `<a href="${href}" ${hasTarget ? 'target="_blank" rel="noopener noreferrer"' : ''} class="text-blue-600 hover:text-blue-800 underline">${linkText}</a>`;
+    }
   );
   
-  // Handle other inline HTML links
+  // Handle other inline HTML links (without target="_blank")
   text = text.replace(
     /<a\s+href="([^"]+)"[^>]*>([^<]+)<\/a>/g,
-    '<a href="$1" class="hn-link text-primary underline hover:no-underline">$2</a>'
+    '<a href="$1" class="text-blue-600 hover:text-blue-800 underline">$2</a>'
   );
   
   // Handle inline code
@@ -389,7 +396,7 @@ const processSimpleMarkdown = (text: string): React.ReactNode => {
   text = text.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
   
   // Handle markdown links (after HTML links to avoid conflicts)
-  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="hn-link text-primary underline hover:no-underline">$1</a>');
+  text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="text-blue-600 hover:text-blue-800 underline">$1</a>');
   
   return <span dangerouslySetInnerHTML={{ __html: text }} />;
 };
