@@ -449,14 +449,18 @@ const processInlineMarkdown = (text: string): React.ReactNode => {
 const processSimpleMarkdown = (text: string): React.ReactNode => {
   if (!text) return null;
   
-  // Handle inline code
-  text = text.replace(/`([^`]+)`/g, '<code class="hn-inline-code bg-muted px-1 py-0.5 rounded text-sm font-mono">$1</code>');
+  // Process in order of precedence: bold-italic first, then bold, then italic
+  // Handle bold italic with ***
+  text = text.replace(/\*\*\*(.*?)\*\*\*/g, '<strong class="font-semibold italic">$1</strong>');
   
   // Handle bold with **
-  text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  text = text.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>');
   
-  // Handle italic with *
-  text = text.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
+  // Handle italic with * (but not part of ** or ***)
+  text = text.replace(/(?<!\*)\*([^*\s][^*]*[^*\s]|\S)\*(?!\*)/g, '<em class="italic">$1</em>');
+  
+  // Handle inline code
+  text = text.replace(/`([^`]+)`/g, '<code class="hn-inline-code bg-muted px-1 py-0.5 rounded text-sm font-mono">$1</code>');
   
   // Handle links
   text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="hn-link text-primary underline hover:no-underline">$1</a>');

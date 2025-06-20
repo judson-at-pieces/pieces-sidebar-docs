@@ -1,6 +1,6 @@
 
 export interface ProcessedMarkdown {
-  type: 'text' | 'bold' | 'italic' | 'code' | 'link' | 'image';
+  type: 'text' | 'bold' | 'italic' | 'bold-italic' | 'code' | 'link' | 'image';
   content: string;
   href?: string;
   target?: string;
@@ -31,13 +31,14 @@ export function processInlineMarkdown(content: string): ProcessedMarkdown[] {
   const elements: ProcessedMarkdown[] = [];
   let currentIndex = 0;
 
-  // Regex patterns for inline markdown
+  // Process in order of precedence: bold-italic first, then bold, then italic
   const patterns = [
-    // Bold text with **text** or *text* (when used for emphasis)
+    // Bold italic with ***text*** (highest precedence)
+    { type: 'bold-italic' as const, pattern: /\*\*\*([^*]+)\*\*\*/g },
+    // Bold text with **text**
     { type: 'bold' as const, pattern: /\*\*([^*]+)\*\*/g },
-    { type: 'bold' as const, pattern: /\*([^*\n]+)\*/g },
-    // Italic text with _text_
-    { type: 'italic' as const, pattern: /_([^_]+)_/g },
+    // Italic text with *text* (but not part of ** or ***)
+    { type: 'italic' as const, pattern: /(?<!\*)\*([^*\s][^*]*[^*\s]|\S)\*(?!\*)/g },
     // Inline code with `code`
     { type: 'code' as const, pattern: /`([^`]+)`/g },
     // Links with [text](url)
@@ -63,6 +64,7 @@ export function processInlineMarkdown(content: string): ProcessedMarkdown[] {
           switch (type) {
             case 'bold':
             case 'italic':
+            case 'bold-italic':
             case 'code':
               element = {
                 type,
