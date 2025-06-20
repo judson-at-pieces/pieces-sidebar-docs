@@ -11,6 +11,8 @@ import { X } from 'lucide-react';
 import { TableOfContents } from './TableOfContents';
 import { GlossaryAll } from './GlossaryAll';
 import { Embed } from './Embed';
+import Accordion from './Accordion';
+import AccordionGroup from './AccordionGroup';
 
 // Constants
 const SECTION_DELIMITER = '***';
@@ -248,22 +250,34 @@ const parseCardGroup = (content: string): CardGroupData => {
 interface AccordionData {
   title: string;
   content: string;
+  defaultOpen?: boolean;
 }
 
 const parseAccordion = (content: string): AccordionData => {
   const titleMatch = content.match(/title="([^"]*)"/);
   const contentMatch = content.match(/<Accordion[^>]*>([\s\S]*?)<\/Accordion>/);
+  const defaultOpenMatch = content.match(/defaultOpen={?(true|false)}?/);
   
   return {
     title: titleMatch?.[1] || '',
-    content: contentMatch?.[1]?.trim() || ''
+    content: contentMatch?.[1]?.trim() || '',
+    defaultOpen: defaultOpenMatch ? defaultOpenMatch[1] === 'true' : undefined
   };
 };
 
 // Parse AccordionGroup
-const parseAccordionGroup = (content: string): AccordionData[] => {
+interface AccordionGroupData {
+  accordions: AccordionData[];
+  allowMultiple?: boolean;
+}
+
+const parseAccordionGroup = (content: string): AccordionGroupData => {
   const accordionRegex = /<Accordion\s+([^>]*)>([\s\S]*?)<\/Accordion>/g;
   const accordions: AccordionData[] = [];
+  
+  // Check for allowMultiple attribute
+  const allowMultipleMatch = content.match(/allowMultiple={?(true|false)}?/);
+  const allowMultiple = allowMultipleMatch ? allowMultipleMatch[1] === 'true' : undefined;
   
   let match: RegExpExecArray | null;
   while ((match = accordionRegex.exec(content)) !== null) {
@@ -273,13 +287,17 @@ const parseAccordionGroup = (content: string): AccordionData[] => {
     const titleMatch = attributes.match(/title="([^"]*)"/);
     const title = titleMatch ? titleMatch[1] : '';
     
+    const defaultOpenMatch = attributes.match(/defaultOpen={?(true|false)}?/);
+    const defaultOpen = defaultOpenMatch ? defaultOpenMatch[1] === 'true' : undefined;
+    
     accordions.push({
       title,
-      content: innerContent
+      content: innerContent,
+      defaultOpen
     });
   }
   
-  return accordions;
+  return { accordions, allowMultiple };
 };
 
 // Parse Tabs
@@ -559,37 +577,26 @@ const CardGroupSection: React.FC<{ cols: number; cards: CardData[] }> = ({ cols 
 
 // Parse Accordion
 const AccordionSection: React.FC<{ accordion: AccordionData }> = ({ accordion }) => {
-  const [isOpen, setIsOpen] = useState(false);
-  
-  console.log('📂 AccordionSection rendering:', { title: accordion.title, content: accordion.content });
+  console.log('📂 AccordionSection rendering:', { title: accordion.title, content: accordion.content, defaultOpen: accordion.defaultOpen });
   
   return (
-    <div className="hn-accordion">
-      <button 
-        className="hn-accordion-trigger" 
-        onClick={() => setIsOpen(!isOpen)}
-      >
-        {accordion.title}
-        <span className={`hn-accordion-icon ${isOpen ? 'open' : ''}`}>▼</span>
-      </button>
-      {isOpen && (
-        <div className="hn-accordion-content">
-          {processInlineMarkdown(accordion.content)}
-        </div>
-      )}
-    </div>
+    <Accordion title={accordion.title} defaultOpen={accordion.defaultOpen}>
+      {processInlineMarkdown(accordion.content)}
+    </Accordion>
   );
 };
 
 // Parse AccordionGroup
-const AccordionGroupSection: React.FC<{ accordions: AccordionData[] }> = ({ accordions }) => {
-  console.log('📁 AccordionGroupSection rendering:', { count: accordions.length });
+const AccordionGroupSection: React.FC<{ accordionGroup: AccordionGroupData }> = ({ accordionGroup }) => {
+  console.log('📁 AccordionGroupSection rendering:', { count: accordionGroup.accordions.length, allowMultiple: accordionGroup.allowMultiple });
   return (
-    <div className="hn-accordion-group">
-      {accordions.map((accordion, index) => (
-        <AccordionSection key={index} accordion={accordion} />
+    <AccordionGroup allowMultiple={accordionGroup.allowMultiple}>
+      {accordionGroup.accordions.map((accordion, index) => (
+        <Accordion key={index} title={accordion.title} defaultOpen={accordion.defaultOpen}>
+          {processInlineMarkdown(accordion.content)}
+        </Accordion>
       ))}
-    </div>
+    </AccordionGroup>
   );
 };
 
@@ -1189,7 +1196,7 @@ const HashnodeMarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) 
       
       case 'accordiongroup': {
         const accordionGroupData = parseAccordionGroup(section.content);
-        result = <AccordionGroupSection key={section.index} accordions={accordionGroupData} />;
+        result = <AccordionGroupSection key={section.index} accordionGroup={accordionGroupData} />;
         break;
       }
       
