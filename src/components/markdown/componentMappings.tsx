@@ -3,14 +3,19 @@ import { Callout } from './Callout';
 import { CodeBlock } from './CodeBlock';
 import { MarkdownCard } from './MarkdownCard';
 import { CardGroup } from './CardGroup';
-import { Steps } from './Steps';
-import { Tabs } from './Tabs';
+import { Steps, Step } from './Steps';
+import { Tabs, TabItem } from './Tabs';
 import Accordion from './Accordion';
 import AccordionGroup from './AccordionGroup';
 import Table from './Table';
 import { Image } from './Image';
+import { ExpandableImage } from './ExpandableImage';
 import Button from './Button';
 import HorizontalRule from './HorizontalRule';
+import { TableOfContents } from './TableOfContents';
+import { GlossaryAll } from './GlossaryAll';
+import { Embed } from './Embed';
+import { NewTab } from './NewTab';
 
 export function createComponentMappings() {
   return {
@@ -164,9 +169,16 @@ export function createComponentMappings() {
     MarkdownCard,
     CardGroup,
     Steps,
+    Step,
     Tabs,
+    TabItem,
     Accordion,
     AccordionGroup,
     Button,
+    TableOfContents,
+    GlossaryAll,
+    Embed,
+    ExpandableImage,
+    NewTab,
   };
 }
