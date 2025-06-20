@@ -661,8 +661,8 @@ const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => {
                 <h3 className="font-bold text-base text-slate-700 dark:text-slate-200 m-0">
                   {step.title}
                 </h3>
-                <div className="text-base text-slate-600 dark:text-slate-300 prose prose-sm dark:prose-invert max-w-none">
-                  {processInlineMarkdown(step.content)}
+                <div className="text-base text-slate-600 dark:text-slate-300">
+                  <MixedContentSection content={step.content} />
                 </div>
               </div>
             </div>
