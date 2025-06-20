@@ -1,3 +1,4 @@
+
 ---
 title: "Installation Guide | Linux"
 path: "/meet-pieces/linux-installation-guide"
@@ -19,14 +20,14 @@ There are several requirements that your Linux device must meet to download and 
 
 * **Snap Support:** Ensure `snapd` is installed and enabled on your system. Most recent Ubuntu releases include `snapd` by default. If needed, install `snapd` by following the official `snapd` documentation.
 
-* **Administrator Access:** You’ll need `sudo` privileges to install `snap` packages.
+* **Administrator Access:** You'll need `sudo` privileges to install `snap` packages.
 
 * **Minimum OS Type:** PiecesOS has been tested and developed primarily for Ubuntu 22+ or later-based distributions, so make sure your system is updated to at least Ubuntu 22+ or later.
 
 * **X11 Window Manager:** Virtual Linux machines or dedicated instances of Linux, even PiecesOS-compatible Ubuntu 22+ distributions, *must utilize* **X11** as the proprietary Window Manager.
 
 <Callout type="tip">
-  To determine which display manager your Linux device is using, go to **Settings,** then **System,** and **System Details** to see if you are using an X11 or a non-LLVM compatible manager.
+  To determine which display manager your Linux device is using, go to **Settings,** then **System,** and **System Details** to see if you are using an X11 or a non-LLVM compatible manager.
 </Callout>
 
 <Card title="Download — Linux" image="https://cdn.hashnode.com/res/hashnode/image/upload/v1740080977439/7ad5c157-3c13-4f22-8e83-6d159b135c28.png">
@@ -34,7 +35,7 @@ There are several requirements that your Linux device must meet to download and 
 
   ***
 
-  Run these commands **in order** to install and properly set up the Pieces Desktop App and it’s core dependencies:
+  Run these commands **in order** to install and properly set up the Pieces Desktop App and it's core dependencies:
 
   1. `sudo snap install pieces-os`
 
@@ -55,7 +56,7 @@ Installation of PiecesOS and the Pieces Desktop App on supported Linux systems i
 
 ## Post-Installation Tips
 
-Read the documentation below for tips and information to ensure you’re up and running with the latest versions of PiecesOS and the Pieces Desktop App, as well as steps to uninstall Pieces software from your Linux device.
+Read the documentation below for tips and information to ensure you're up and running with the latest versions of PiecesOS and the Pieces Desktop App, as well as steps to uninstall Pieces software from your Linux device.
 
 ### Updating
 
@@ -70,7 +71,7 @@ You can also manually check for updates to PiecesOS and the Pieces Desktop App b
 You can uninstall PiecesOS and the Pieces Desktop App using `snap` commands directly from your terminal.
 
 <Callout type="info">
-  When running both of these commands, you will be prompted to enter your device’s local account password due to the `sudo` command.
+  When running both of these commands, you will be prompted to enter your device's local account password due to the `sudo` command.
 </Callout>
 
 <Steps>

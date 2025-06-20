@@ -2,7 +2,7 @@
 import React from 'react';
 import { Callout } from './Callout';
 import { CodeBlock } from './CodeBlock';
-import Card from './Card';
+import { MarkdownCard } from './MarkdownCard';
 import { CardGroup } from './CardGroup';
 import { Steps } from './Steps';
 import { Tabs } from './Tabs';
@@ -143,10 +143,26 @@ export function createComponentMappings() {
     // Horizontal rule
     hr: HorizontalRule,
     
-    // Custom components
+    // Custom components - Card mapping with COMPLETE href support
     Callout,
     CodeBlock,
-    Card,
+    Card: ({ title, image, href, external, children, ...props }: any) => {
+      console.log('🔥 Card mapping called with ALL PROPS:', { title, image, href, external, hasChildren: !!children, allProps: props });
+      
+      // Pass ALL possible link attributes to MarkdownCard
+      return (
+        <MarkdownCard 
+          title={title} 
+          image={image} 
+          href={href}
+          external={external}
+          {...props}
+        >
+          {children}
+        </MarkdownCard>
+      );
+    },
+    MarkdownCard,
     CardGroup,
     Steps,
     Tabs,
