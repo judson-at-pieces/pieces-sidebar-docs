@@ -5,130 +5,570 @@ visibility: "PUBLIC"
 ---
 ***
 
-## Overview
+# Component Test Page
 
-You can browse the list of keyboard shortcuts below as a reference guide, or you can open the **Keyboard Shortcuts** modal by navigating to **Settings,** and scrolling to **Support** or use `⌘+;` (macOS) or `ctrl+;` (Windows/Linux).
+This page contains examples of all available components for testing the markdown renderer.
 
-<Image src="https://storage.googleapis.com/hashnode_product_documentation_assets/desktop_app_assets/settings_with_mcp_update/extras/keyboard_shortcuts.png" alt="" align="center" fullwidth="false" />
+---
 
-## Use a Piece
+## Basic Typography
 
-These shortcuts let you quickly interact with saved material in your workspace, making it easy to download, duplicate, or copy it with context.
+This is a paragraph with **bold text**, *italic text*, and ***bold italic text***.
 
-***
+Here's a [link to Pieces](https://pieces.app) and a <NewTab href="https://pieces.app">link that opens in a new tab</NewTab>.
 
-| **Command**         | **Windows/Linux** | **macOS**    |
-| ------------------- | ----------------- | ------------ |
-| *Download a Piece*  | `shift+ctrl+d`    | `shift+⌘+d`  |
-| *Duplicate a Piece* | `ctrl+d`          | `⌘+d`        |
-| *Copy with Context* | `ctrl+alt+c`      | `⌘+option+c` |
+### Lists
 
-***
+#### Unordered List
+- First item
+- Second item
+  - Nested item
+  - Another nested item
+- Third item
 
-## Add a Piece
+#### Ordered List
+1. First step
+2. Second step
+   1. Sub-step A
+   2. Sub-step B
+3. Third step
 
-Use these shortcuts to seamlessly add new materials into Pieces—whether you're importing files, creating new snippets, or adding collections.
+---
 
-***
+## Images
 
-| **Command**                           | **Windows/Linux**             | **macOS**   |
-| ------------------------------------- | ----------------------------- | ----------- |
-| *Add Code file to Pieces*             | `ctrl+v`                      | `⌘+v`       |
-| *Add Collections to Pieces*           | `ctrl+shift+c`                | `⌘+shift+c` |
-| *Add Code Snippet to Pieces from IDE* | `ctrl+c `*(in IDE),* `ctrl+v` | `⌘+c,⌘+v`   |
-| *Create New Material from Scratch*    | `ctrl+n`                      | `⌘+n`       |
+### Basic Image
+<Image src="https://storage.googleapis.com/hashnode_product_documentation_assets/mcp_documentation/mcp_gh_copilot/mcp-2-1.png" alt="Basic image example" />
 
-***
+### Centered Image
+<Image src="https://storage.googleapis.com/hashnode_product_documentation_assets/mcp_documentation/mcp_gh_copilot/mcp-2-1.png" alt="Centered image" align="center" />
 
-## Manage a Saved Material
+### Full Width Image
+<Image src="https://storage.googleapis.com/hashnode_product_documentation_assets/mcp_documentation/mcp_gh_copilot/mcp-2-1.png" alt="Full width image" align="center" fullwidth="true" />
 
-These keyboard shortcuts help you organize your content by renaming, editing, reclassifying, or even deleting a piece as needed.
+### Expandable Image
+<ExpandableImage src="https://storage.googleapis.com/hashnode_product_documentation_assets/mcp_documentation/mcp_gh_copilot/mcp-2-1.png" alt="Click to expand" caption="This image can be expanded by clicking on it" />
 
-***
+---
 
-| **Command**                       | **Windows/Linux**           | **macOS**             |
-| --------------------------------- | --------------------------- | --------------------- |
-| *Rename*                          | `ctrl+r`                    | `⌘+r`                 |
-| *Open quick menu*                 | `ctrl+o`                    | `⌘+o`                 |
-| *Reclassify*                      | `ctrl+y`                    | `⌘+y`                 |
-| *Delete*                          | `del`                       | `del`                 |
-| *Edit piece description*          | `shift+ctrl+n/shift+ctrl+p` | `shift+⌘+n/shift+⌘+p` |
-| *Add related links*               | `ctrl+k (if shown)`         | `⌘+k (if shown)`      |
-| *Add tags*                        | `ctrl+t (if shown)`         | `⌘+t (if shown)`      |
-| *Toggle information view*         | `ctrl+i (if shown)`         | `⌘+i (if shown)`      |
-| *Highlight sensitive information* | `ctrl+! (if shown)`         | `⌘+! (if shown)`      |
-| *Open action menu*                | `ctrl+enter`                | `⌘+enter`             |
+## Code Blocks
 
-***
+### Inline Code
+Use `pieces login` to authenticate with Pieces.
 
-## Editing a Piece
+### Basic Code Block
+```
+This is a basic code block without syntax highlighting
+```
 
-Quickly focus on the editor, save your changes, or exit editing mode with these shortcuts, so you stay in control of your work.
+### JavaScript Code
+```javascript
+function greet(name) {
+  console.log(`Hello, ${name}!`);
+}
 
-***
+greet('Pieces User');
+```
 
-| **Command**      | **Windows/Linux** | **macOS** |
-| ---------------- | ----------------- | --------- |
-| *Edit Mode*      | `ctrl+e`          | `⌘+e`     |
-| *Escape Editing* | `esc`             | `esc`     |
-| *Save Edits*     | `ctrl+s`          | `⌘+s`     |
+### Python Code
+```python
+def greet(name):
+    print(f"Hello, {name}!")
 
-***
+greet("Pieces User")
+```
 
-## Share with People / Support
+### JSON Code
+```json
+{
+  "name": "Pieces",
+  "version": "1.0.0",
+  "features": ["snippets", "copilot", "sharing"]
+}
+```
 
-Access options for generating shareable links or reaching out for support directly within the app using these commands.
+---
 
-***
+## Callouts
 
-| **Command**               | **Windows/Linux** | **macOS** |
-| ------------------------- | ----------------- | --------- |
-| *Generate Shareable Link* | `ctrl+l`          | `⌘+l`     |
-| *Submit Feedback/Issues*  | `shift+?`         | `shift+?` |
+<Callout type="info">
+  This is an **info** callout with some important information. It supports *markdown* formatting.
+</Callout>
 
-***
+<Callout type="tip">
+  This is a **tip** callout with a helpful suggestion. You can include `code` and [links](https://pieces.app).
+</Callout>
 
-## Navigating Pieces
+<Callout type="alert">
+  This is an **alert** callout for warnings or important notices. Pay attention to this!
+</Callout>
 
-These shortcuts make it simple to jump between different views and features, keeping your workflow smooth and efficient.
+---
 
-***
+## Cards
 
-| **Command**                          | **Windows/Linux** | **macOS**   |
-| ------------------------------------ | ----------------- | ----------- |
-| *Focus search*                       | `ctrl+f or /`     | `⌘+f or /`  |
-| *Workflow activity view*             | `shift+ctrl+a`    | `shift+⌘+a` |
-| *Jump to first/last piece*           | `ctrl+→/ctrl+←`   | `⌘+→/⌘+←`   |
-| *Toggle between image and code view* | `t`               | `t`         |
-| *View next or previous piece*        | `→ or ←`          | `→ or ←`    |
+### Single Card
+<Card title="Getting Started" image="https://storage.googleapis.com/hashnode_product_documentation_assets/mcp_documentation/mcp_pfd_new.png">
+  Learn how to get started with Pieces and boost your productivity.
+</Card>
 
-***
+### Card with Link
+<Card title="Documentation" href="https://docs.pieces.app" target="_blank">
+  Explore our comprehensive documentation to learn more about Pieces.
+</Card>
 
-## Zoom & Updates
+### Card Group (2 columns)
+<CardGroup cols={2}>
+  <Card title="Desktop App" image="https://storage.googleapis.com/hashnode_product_documentation_assets/mcp_documentation/mcp_pfd_new.png">
+    Download and install the Pieces Desktop App for your operating system.
+  </Card>
+  <Card title="VS Code Extension" image="https://storage.googleapis.com/hashnode_product_documentation_assets/mcp_documentation/mcp_gh_copilot/mcp_add_server_dropdown.png">
+    Install the Pieces extension for Visual Studio Code.
+  </Card>
+</CardGroup>
 
-Adjust the UI scale and check for updates quickly with these handy shortcuts, ensuring a comfortable and current user experience.
+### Card Group (3 columns)
+<CardGroup cols={3}>
+  <Card title="Save Snippets">
+    Save code snippets with one click
+  </Card>
+  <Card title="AI Copilot">
+    Get AI-powered code assistance
+  </Card>
+  <Card title="Share Code">
+    Share code with your team easily
+  </Card>
+</CardGroup>
 
-***
+---
 
-| **Command**                     | **Windows/Linux** | **macOS**   |
-| ------------------------------- | ----------------- | ----------- |
-| *Zoom in*                       | `ctrl++`          | `⌘++`       |
-| *Zoom out*                      | `ctrl+-`          | `⌘+-`       |
-| *Check for desktop app updates* | `shift+u`         | `shift+⌘+u` |
-| *Release notes*                 | `shift+w`         | `shift+⌘+w` |
-| *View keyboard shortcuts*       | `ctrl+;`          | `⌘+;`       |
+## Steps
 
-***
+### Basic Steps
+<Steps>
+  <Step title="Install Pieces">
+    Download and install Pieces for your operating system.
+  </Step>
+  <Step title="Create Account">
+    Sign up for a free Pieces account to sync your data.
+  </Step>
+  <Step title="Start Coding">
+    Begin saving and managing your code snippets!
+  </Step>
+</Steps>
 
-## Configuring Pieces
+### Steps with Rich Content
+<Steps>
+  <Step title="Download Pieces">
+    First, download the Pieces Desktop App from our website.
+    
+    <Image src="https://storage.googleapis.com/hashnode_product_documentation_assets/mcp_documentation/mcp_pfd_new.png" alt="Download page" align="center" />
+  </Step>
+  
+  <Step title="Configure Settings">
+    Open the settings and configure your preferences.
+    
+    ```json
+    {
+      "theme": "dark",
+      "autoSave": true,
+      "syncEnabled": true
+    }
+    ```
+    
+    <Callout type="tip">
+      We recommend enabling auto-save to never lose your snippets!
+    </Callout>
+  </Step>
+  
+  <Step title="Connect Your IDE">
+    Install the Pieces plugin for your favorite IDE:
+    
+    - **VS Code**: Search for "Pieces" in extensions
+    - **JetBrains**: Find "Pieces" in the plugin marketplace
+    - **Visual Studio**: Download from the Visual Studio Marketplace
+    
+    <Callout type="alert">
+      Make sure PiecesOS is running before connecting your IDE!
+    </Callout>
+  </Step>
+</Steps>
 
-Use these shortcuts to open settings and toggle themes, allowing you to personalize your Pieces environment with ease.
+---
 
-***
+## Tabs
 
-| **Command**     | **Windows/Linux** | **macOS** |
-| --------------- | ----------------- | --------- |
-| *Open Settings* | `ctrl+,`          | `⌘+,`     |
-| *Change Theme*  | `ctrl+t`          | `⌘+t`     |
+<Tabs>
+  <TabItem title="macOS">
+    ### Installation on macOS
+    
+    1. Download the `.dmg` file
+    2. Open the downloaded file
+    3. Drag Pieces to Applications
+    
+    ```bash
+    # Verify installation
+    pieces --version
+    ```
+  </TabItem>
+  
+  <TabItem title="Windows">
+    ### Installation on Windows
+    
+    1. Download the `.exe` installer
+    2. Run the installer
+    3. Follow the setup wizard
+    
+    ```powershell
+    # Verify installation
+    pieces --version
+    ```
+  </TabItem>
+  
+  <TabItem title="Linux">
+    ### Installation on Linux
+    
+    1. Download the AppImage
+    2. Make it executable
+    3. Run the AppImage
+    
+    ```bash
+    chmod +x Pieces.AppImage
+    ./Pieces.AppImage
+    ```
+  </TabItem>
+</Tabs>
 
-***
+---
+
+## Accordions
+
+### Single Accordion
+<Accordion title="What is Pieces?" defaultOpen={true}>
+  Pieces is a developer productivity tool that helps you save, organize, and share code snippets. It includes AI-powered features to enhance your coding workflow.
+</Accordion>
+
+### Accordion Group (Single Open)
+<AccordionGroup>
+  <Accordion title="Features">
+    - Save code snippets with one click
+    - AI-powered code generation
+    - Smart code search
+    - Team collaboration
+  </Accordion>
+  
+  <Accordion title="Supported Languages">
+    Pieces supports over 40 programming languages including:
+    - JavaScript/TypeScript
+    - Python
+    - Java
+    - C++
+    - Go
+    - Rust
+    - And many more!
+  </Accordion>
+  
+  <Accordion title="Pricing">
+    Pieces offers a free tier with generous limits and paid plans for teams and enterprises.
+  </Accordion>
+</AccordionGroup>
+
+### Accordion Group (Multiple Open)
+<AccordionGroup allowMultiple={true}>
+  <Accordion title="Getting Started" defaultOpen={true}>
+    1. Download Pieces
+    2. Install the app
+    3. Connect your IDE
+    4. Start saving snippets!
+  </Accordion>
+  
+  <Accordion title="Advanced Features" defaultOpen={true}>
+    - Long-term memory
+    - Context awareness
+    - Smart recommendations
+    - Code transformations
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Tables
+
+### Basic Table
+<Table 
+  headers={["Feature", "Free", "Pro", "Enterprise"]}
+  rows={[
+    ["Snippets", "100", "Unlimited", "Unlimited"],
+    ["AI Queries", "50/day", "500/day", "Unlimited"],
+    ["Team Members", "1", "10", "Unlimited"],
+    ["Support", "Community", "Priority", "Dedicated"]
+  ]}
+/>
+
+### Complex Table with Markdown Content
+| Component | Description | Example Usage |
+|-----------|-------------|---------------|
+| `<Callout>` | Highlighted information boxes | `<Callout type="info">Message</Callout>` |
+| `<Steps>` | Step-by-step instructions | `<Steps><Step title="...">Content</Step></Steps>` |
+| `<Card>` | Content cards with images | `<Card title="..." image="...">Content</Card>` |
+| `<Tabs>` | Tabbed content | `<Tabs><TabItem title="...">Content</TabItem></Tabs>` |
+
+---
+
+## Buttons
+
+<Button label="Get Started" linkHref="/getting-started" align="center" />
+
+<Button label="Download Pieces" linkHref="https://pieces.app/download" openLinkInNewTab={true} align="left" />
+
+<Button label="View Documentation" linkHref="/docs" align="right" lightColor="#3B82F6" darkColor="#60A5FA" />
+
+---
+
+## Nested Components Examples
+
+### Callouts Inside Steps
+<Steps>
+  <Step title="Important Configuration">
+    Before proceeding, make sure to configure your environment properly.
+    
+    <Callout type="alert">
+      This step is **critical** for proper functionality. Do not skip it!
+    </Callout>
+    
+    Run the following command:
+    ```bash
+    pieces config --set api.key YOUR_API_KEY
+    ```
+  </Step>
+  
+  <Step title="Multiple Callouts">
+    This step contains multiple callouts for different purposes.
+    
+    <Callout type="info">
+      This is general information about the process.
+    </Callout>
+    
+    <Callout type="tip">
+      Here's a helpful tip to make things easier!
+    </Callout>
+    
+    <Callout type="alert">
+      And this is a warning about potential issues.
+    </Callout>
+  </Step>
+</Steps>
+
+### Cards Inside Tabs
+<Tabs>
+  <TabItem title="Downloads">
+    <CardGroup cols={2}>
+      <Card title="macOS" image="https://storage.googleapis.com/hashnode_product_documentation_assets/mcp_documentation/mcp_pfd_new.png">
+        Download for macOS (Intel & Apple Silicon)
+      </Card>
+      <Card title="Windows" image="https://storage.googleapis.com/hashnode_product_documentation_assets/mcp_documentation/mcp_pfd_new.png">
+        Download for Windows 10/11
+      </Card>
+    </CardGroup>
+  </TabItem>
+  
+  <TabItem title="Extensions">
+    <CardGroup cols={3}>
+      <Card title="VS Code">
+        Install from VS Code Marketplace
+      </Card>
+      <Card title="JetBrains">
+        Available in Plugin Repository
+      </Card>
+      <Card title="Visual Studio">
+        Get from Visual Studio Marketplace
+      </Card>
+    </CardGroup>
+  </TabItem>
+</Tabs>
+
+### Complex Nested Structure
+<AccordionGroup allowMultiple={true}>
+  <Accordion title="Installation Guide" defaultOpen={true}>
+    <Steps>
+      <Step title="Choose Your Platform">
+        Select your operating system:
+        
+        <Tabs>
+          <TabItem title="macOS">
+            <Callout type="info">
+              Requires macOS 10.15 or later
+            </Callout>
+            
+            Download the `.dmg` file and follow the installer.
+          </TabItem>
+          
+          <TabItem title="Windows">
+            <Callout type="info">
+              Requires Windows 10 version 1903 or later
+            </Callout>
+            
+            Download the `.exe` installer.
+          </TabItem>
+        </Tabs>
+      </Step>
+      
+      <Step title="Verify Installation">
+        After installation, verify everything is working:
+        
+        ```bash
+        pieces --version
+        pieces doctor
+        ```
+        
+        <Callout type="tip">
+          If you encounter issues, check our troubleshooting guide!
+        </Callout>
+      </Step>
+    </Steps>
+  </Accordion>
+  
+  <Accordion title="Configuration Options">
+    <Table 
+      headers={["Setting", "Default", "Description"]}
+      rows={[
+        ["theme", "system", "UI theme (light/dark/system)"],
+        ["autoStart", "true", "Start Pieces on system boot"],
+        ["telemetry", "false", "Send anonymous usage data"]
+      ]}
+    />
+  </Accordion>
+</AccordionGroup>
+
+---
+
+## Horizontal Rules
+
+Standard horizontal rule:
+
+---
+
+Multiple horizontal rules:
+
+---
+
+---
+
+---
+
+## Embedded Content
+
+### YouTube Video
+<Embed src="https://www.youtube.com/watch?v=dQw4w9WgXcQ" />
+
+---
+
+## Table of Contents
+
+<TableOfContents content={`
+# Table of Contents
+- [Introduction](#introduction)
+- [Getting Started](#getting-started)
+  - [Installation](#installation)
+  - [Configuration](#configuration)
+- [Features](#features)
+  - [Code Snippets](#code-snippets)
+  - [AI Assistance](#ai-assistance)
+- [Advanced Usage](#advanced-usage)
+`} />
+
+---
+
+## Special Components
+
+### Glossary (if available)
+<GlossaryAll />
+
+---
+
+## Edge Cases and Stress Tests
+
+### Very Long Code Block
+```javascript
+// This is a very long code block to test horizontal scrolling
+const veryLongVariableNameThatShouldCauseHorizontalScrollingInTheCodeBlockToTestTheRenderingBehavior = "This is a test of how the code block handles very long lines of code that extend beyond the normal viewport width";
+
+function anotherLongFunctionNameToTestScrolling(parameterOne, parameterTwo, parameterThree, parameterFour, parameterFive) {
+  return parameterOne + parameterTwo + parameterThree + parameterFour + parameterFive;
+}
+```
+
+### Deeply Nested Lists
+1. Level 1
+   1. Level 2
+      1. Level 3
+         1. Level 4
+            - Mixed list type
+            - Another item
+         2. Back to level 4
+      2. Back to level 3
+   2. Back to level 2
+2. Back to level 1
+
+### Empty Components
+<Callout type="info"></Callout>
+
+<Card title="Empty Card"></Card>
+
+<Steps>
+  <Step title="Empty Step"></Step>
+</Steps>
+
+---
+
+## All Callout Types in Steps
+
+<Steps>
+  <Step title="Testing All Callout Types">
+    Let's test every callout type inside a step:
+    
+    <Callout type="info">
+      This is an **info** callout inside a step.
+    </Callout>
+    
+    <Callout type="tip">
+      This is a **tip** callout inside a step.
+    </Callout>
+    
+    <Callout type="alert">
+      This is an **alert** callout inside a step.
+    </Callout>
+    
+    And here's some code too:
+    ```python
+    print("Hello from inside a step!")
+    ```
+  </Step>
+</Steps>
+
+---
+
+## Mixed Content in Cards
+
+<CardGroup cols={2}>
+  <Card title="Card with Code">
+    This card contains a code snippet:
+    
+    ```javascript
+    console.log("Hello from a card!");
+    ```
+  </Card>
+  
+  <Card title="Card with List">
+    This card contains a list:
+    - First item
+    - Second item
+    - Third item
+  </Card>
+</CardGroup>
+
+---
+
+## End of Test Page
+
+This page contains examples of all available components and common nesting patterns. Use this as a reference for testing the markdown renderer.
