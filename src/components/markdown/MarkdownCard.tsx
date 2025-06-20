@@ -6,9 +6,7 @@ interface MarkdownCardProps {
   title: string;
   image?: string;
   href?: string;
-  target?: string;
-  external?: string;
-  children?: React.ReactNode;
+  children: React.ReactNode;
 }
 
 const renderMarkdownWithSpacing = (content: string) => {
@@ -30,11 +28,9 @@ const renderMarkdownWithSpacing = (content: string) => {
   });
 };
 
-export const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, href, target, external, children }) => {
-  console.log('🔥 MarkdownCard RENDER:', { title, image, href, target, external, hasChildren: !!children });
-  
+export const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, href, children }) => {
   const cardContent = (
-    <div className="p-6 my-4 border rounded-xl dark:border-slate-800/80 border-slate-200 bg-white dark:bg-slate-900 transition-all duration-300 hover:border-slate-300 dark:hover:border-slate-700 hover:shadow-lg hover:-translate-y-1">
+    <div className="p-6 my-4 border rounded-xl dark:border-slate-800/80 hover:border-slate-300 dark:hover:border-slate-700 transition-colors">
       {image && (
         <div className="w-10 h-10 mb-6 relative rounded-lg">
           <img
@@ -66,28 +62,18 @@ export const MarkdownCard: React.FC<MarkdownCardProps> = ({ title, image, href, 
     </div>
   );
 
-  // Use href if available, fallback to external
-  const linkUrl = href || external;
-  const linkTarget = target || (linkUrl ? '_blank' : undefined);
-  
-  if (linkUrl) {
-    console.log('🔥 MAKING CARD CLICKABLE WITH URL:', linkUrl, 'target:', linkTarget);
+  if (href) {
     return (
       <a 
-        href={linkUrl} 
-        target={linkTarget}
-        rel={linkTarget === '_blank' ? 'noopener noreferrer' : undefined}
+        href={href} 
+        target="_blank" 
+        rel="noopener noreferrer"
         className="block no-underline hover:no-underline"
-        style={{ 
-          textDecoration: 'none !important',
-          color: 'inherit !important' 
-        }}
       >
         {cardContent}
       </a>
     );
   }
 
-  console.log('🔥 NON-CLICKABLE CARD');
   return cardContent;
 };

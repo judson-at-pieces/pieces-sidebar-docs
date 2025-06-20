@@ -1,45 +1,48 @@
 
 import React from 'react';
-import { MarkdownCard } from './MarkdownCard';
-
-interface Card {
-  title: string;
-  image?: string;
-  href?: string;
-  content?: string;
-}
+import { CardGroup } from './CardGroup';
 
 interface DynamicCardGroupProps {
-  cols?: number;
-  cards: Card[];
+  cols?: 2 | 3 | 4;
+  children: React.ReactNode;
 }
 
-export const DynamicCardGroup: React.FC<DynamicCardGroupProps> = ({ cols = 2, cards }) => {
-  console.log('DynamicCardGroup render:', { cols, cards });
+const DynamicCardGroup: React.FC<DynamicCardGroupProps> = ({ cols = 2, children }) => {
+  console.log('🎯 DynamicCardGroup rendering:', { 
+    cols, 
+    childrenCount: React.Children.count(children),
+    children: React.Children.toArray(children).map((child, index) => ({
+      index,
+      type: React.isValidElement(child) ? child.type : typeof child,
+      props: React.isValidElement(child) ? Object.keys(child.props) : 'not-element'
+    }))
+  });
 
-  const gridClass = cols === 1 ? 'grid-cols-1' : 
-                   cols === 2 ? 'grid-cols-1 md:grid-cols-2' :
-                   cols === 3 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' :
-                   cols === 4 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4' :
-                   'grid-cols-1 md:grid-cols-2';
+  // Prevent duplicate rendering by checking if we've already processed this content
+  const processedChildren = React.useMemo(() => {
+    return React.Children.toArray(children).filter((child, index, array) => {
+      // Remove duplicates by checking if this exact child appears earlier in the array
+      const firstIndex = array.findIndex(item => 
+        React.isValidElement(item) && 
+        React.isValidElement(child) && 
+        item.type === child.type &&
+        JSON.stringify(item.props) === JSON.stringify(child.props)
+      );
+      return firstIndex === index;
+    });
+  }, [children]);
+
+  console.log('🎯 DynamicCardGroup after deduplication:', { 
+    originalCount: React.Children.count(children),
+    processedCount: processedChildren.length
+  });
 
   return (
-    <div className={`grid ${gridClass} gap-6 my-8`}>
-      {cards.map((card, index) => {
-        console.log('DynamicCardGroup: Rendering card:', card);
-        return (
-          <MarkdownCard
-            key={index}
-            title={card.title}
-            image={card.image}
-            href={card.href}
-          >
-            {card.content}
-          </MarkdownCard>
-        );
-      })}
-    </div>
+    <CardGroup cols={cols}>
+      {processedChildren}
+    </CardGroup>
   );
 };
 
 export default DynamicCardGroup;
+export { DynamicCardGroup };
