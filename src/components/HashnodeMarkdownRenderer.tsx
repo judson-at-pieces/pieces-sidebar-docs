@@ -367,6 +367,18 @@ const processInlineMarkdown = (text: string): React.ReactNode => {
 const processSimpleMarkdown = (text: string): React.ReactNode => {
   if (!text) return null;
   
+  // Handle inline HTML links first (before other markdown processing)
+  text = text.replace(
+    /<a\s+target="_blank"\s+href="([^"]+)">([^<]+)<\/a>/g,
+    '<a href="$1" target="_blank" rel="noopener noreferrer" class="hn-link text-primary underline hover:no-underline">$2</a>'
+  );
+  
+  // Handle other inline HTML links
+  text = text.replace(
+    /<a\s+href="([^"]+)"[^>]*>([^<]+)<\/a>/g,
+    '<a href="$1" class="hn-link text-primary underline hover:no-underline">$2</a>'
+  );
+  
   // Handle inline code
   text = text.replace(/`([^`]+)`/g, '<code class="hn-inline-code bg-muted px-1 py-0.5 rounded text-sm font-mono">$1</code>');
   
@@ -376,7 +388,7 @@ const processSimpleMarkdown = (text: string): React.ReactNode => {
   // Handle italic with *
   text = text.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
   
-  // Handle links
+  // Handle markdown links (after HTML links to avoid conflicts)
   text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="hn-link text-primary underline hover:no-underline">$1</a>');
   
   return <span dangerouslySetInnerHTML={{ __html: text }} />;
