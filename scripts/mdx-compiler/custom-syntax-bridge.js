@@ -98,8 +98,8 @@ export function processCustomSyntax(content) {
       return '</div>';
     });
 
-    // Transform Card components to HTML - handle multiple attributes safely
-    content = content.replace(/<Card\s+([^>]*)>/gi, (match, attributes) => {
+    // Transform Card components with content - PRESERVE as JSX components
+    content = content.replace(/<Card\s+([^>]*?)>([\s\S]*?)<\/Card>/gi, (match, attributes, innerContent) => {
       try {
         const titleMatch = attributes.match(/title="([^"]*)"/);
         const imageMatch = attributes.match(/image="([^"]*)"/);
@@ -113,15 +113,45 @@ export function processCustomSyntax(content) {
         const external = sanitizeAttribute(externalMatch ? externalMatch[1] : '');
         const icon = sanitizeAttribute(iconMatch ? iconMatch[1] : '');
         
-        return `<div data-card="true" data-title="${title}" data-image="${image}" data-href="${href}" data-external="${external}" data-icon="${icon}">`;
+        // PRESERVE the inner content exactly as is
+        const preservedContent = innerContent || '';
+        
+        // Use the MarkdownCard component directly in JSX format for proper rendering
+        if (href) {
+          return `<MarkdownCard title="${title}" image="${image}" href="${href}">\n${preservedContent}\n</MarkdownCard>`;
+        } else {
+          return `<MarkdownCard title="${title}" image="${image}">\n${preservedContent}\n</MarkdownCard>`;
+        }
       } catch (error) {
         console.warn('Error parsing Card attributes:', error);
-        return '<div data-card="true">';
+        return `<MarkdownCard>\n${innerContent || ''}\n</MarkdownCard>`;
       }
     });
-    
-    content = content.replace(/<\/Card>/gi, () => {
-      return '</div>';
+
+    // Transform self-closing Card components - PRESERVE as JSX components
+    content = content.replace(/<Card\s+([^>]*?)\/>/gi, (match, attributes) => {
+      try {
+        const titleMatch = attributes.match(/title="([^"]*)"/);
+        const imageMatch = attributes.match(/image="([^"]*)"/);
+        const hrefMatch = attributes.match(/href="([^"]*)"/);
+        const externalMatch = attributes.match(/external=["']([^"']*)["']/);
+        const iconMatch = attributes.match(/icon="([^"]*)"/);
+        
+        const title = sanitizeAttribute(titleMatch ? titleMatch[1] : '');
+        const image = validateUrl(imageMatch ? imageMatch[1] : '');
+        const href = validateUrl(hrefMatch ? hrefMatch[1] : '');
+        const external = sanitizeAttribute(externalMatch ? externalMatch[1] : '');
+        const icon = sanitizeAttribute(iconMatch ? iconMatch[1] : '');
+        
+        if (href) {
+          return `<MarkdownCard title="${title}" image="${image}" href="${href}" />`;
+        } else {
+          return `<MarkdownCard title="${title}" image="${image}" />`;
+        }
+      } catch (error) {
+        console.warn('Error parsing Card attributes:', error);
+        return '<MarkdownCard />';
+      }
     });
 
     // Transform Steps and Step components to HTML

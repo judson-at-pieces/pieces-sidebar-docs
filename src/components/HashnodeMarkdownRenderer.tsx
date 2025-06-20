@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import CodeBlock from './CodeBlock';
 import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter';
@@ -35,6 +36,7 @@ interface CardData {
   title: string;
   image?: string;
   content: string;
+  href?: string; // Add href property
 }
 
 // Utility functions
@@ -47,7 +49,8 @@ const parseSections = (text: string): ParsedSection[] => {
     return [{ type: 'mixed', content: text.trim(), index: 0 }];
   }
   
-  const sections = text.split(SECTION_DELIMITER).map(section => section.trim()).filter(Boolean);
+  // Smart splitting that respects component boundaries
+  const sections = smartSplitSections(text);
   console.log('🔍 parseSections: Split into', sections.length, 'sections');
   
   return sections.map((section, index) => {
@@ -129,6 +132,79 @@ const parseSections = (text: string): ParsedSection[] => {
   });
 };
 
+// Smart section splitting that respects component boundaries
+const smartSplitSections = (text: string): string[] => {
+  const sections: string[] = [];
+  let currentSection = '';
+  let insideComponent = false;
+  let componentDepth = 0;
+  let componentName = '';
+  
+  const lines = text.split('\n');
+  
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    const trimmedLine = line.trim();
+    
+    // Check if we're entering a component
+    if (!insideComponent && (
+      trimmedLine.includes('<CardGroup') ||
+      trimmedLine.includes('<Card ') ||
+      trimmedLine.includes('<Steps') ||
+      trimmedLine.includes('<Callout') ||
+      trimmedLine.includes('<Accordion')
+    )) {
+      insideComponent = true;
+      componentDepth = 1;
+      if (trimmedLine.includes('<CardGroup')) componentName = 'CardGroup';
+      else if (trimmedLine.includes('<Card ')) componentName = 'Card';
+      else if (trimmedLine.includes('<Steps')) componentName = 'Steps';
+      else if (trimmedLine.includes('<Callout')) componentName = 'Callout';
+      else if (trimmedLine.includes('<Accordion')) componentName = 'Accordion';
+      
+      currentSection += line + '\n';
+      continue;
+    }
+    
+    // If inside a component, track depth
+    if (insideComponent) {
+      // Check for opening tags
+      if (trimmedLine.includes(`<${componentName}`) && !trimmedLine.includes('/>')) {
+        componentDepth++;
+      }
+      // Check for closing tags
+      if (trimmedLine.includes(`</${componentName}>`)) {
+        componentDepth--;
+        if (componentDepth === 0) {
+          insideComponent = false;
+          componentName = '';
+        }
+      }
+      
+      currentSection += line + '\n';
+      continue;
+    }
+    
+    // If we encounter a section delimiter and we're not inside a component
+    if (trimmedLine === '***' && !insideComponent) {
+      if (currentSection.trim()) {
+        sections.push(currentSection.trim());
+        currentSection = '';
+      }
+      continue;
+    }
+    
+    currentSection += line + '\n';
+  }
+  
+  // Add the final section
+  if (currentSection.trim()) {
+    sections.push(currentSection.trim());
+  }
+  
+  return sections.filter(Boolean);
+};
+
 const extractImageData = (content: string) => {
   const srcMatch = content.match(/src="([^"]+)"/);
   const altMatch = content.match(/alt="([^"]*)"/);
@@ -156,12 +232,14 @@ const extractCalloutData = (content: string) => {
 const parseCard = (content: string): CardData => {
   const titleMatch = content.match(/title="([^"]*)"/);
   const imageMatch = content.match(/image="([^"]*)"/);
+  const hrefMatch = content.match(/href="([^"]*)"/);
   const contentMatch = content.match(/<Card[^>]*>([\s\S]*?)<\/Card>/);
   
   return {
     title: titleMatch?.[1] || '',
     image: imageMatch?.[1],
-    content: contentMatch?.[1]?.trim() || ''
+    content: contentMatch?.[1]?.trim() || '',
+    href: hrefMatch?.[1] // Extract href from card
   };
 };
 
@@ -192,12 +270,16 @@ const parseCardGroup = (content: string): CardGroupData => {
     const imageMatch = attributes.match(/image="([^"]*)"/);
     const image = imageMatch ? imageMatch[1] : undefined;
     
-    console.log('🃏 Parsed card:', { title, image, contentLength: innerContent.length });
+    const hrefMatch = attributes.match(/href="([^"]*)"/);
+    const href = hrefMatch ? hrefMatch[1] : undefined;
+    
+    console.log('🃏 Parsed card:', { title, image, href, contentLength: innerContent.length });
     
     cards.push({
       title,
       image,
-      content: innerContent
+      content: innerContent,
+      href // Include href in card data
     });
   }
   
@@ -367,14 +449,18 @@ const processInlineMarkdown = (text: string): React.ReactNode => {
 const processSimpleMarkdown = (text: string): React.ReactNode => {
   if (!text) return null;
   
-  // Handle inline code
-  text = text.replace(/`([^`]+)`/g, '<code class="hn-inline-code bg-muted px-1 py-0.5 rounded text-sm font-mono">$1</code>');
+  // Process in order of precedence: bold-italic first, then bold, then italic
+  // Handle bold italic with ***
+  text = text.replace(/\*\*\*(.*?)\*\*\*/g, '<strong class="font-semibold italic">$1</strong>');
   
   // Handle bold with **
-  text = text.replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+  text = text.replace(/\*\*(.*?)\*\*/g, '<strong class="font-semibold">$1</strong>');
   
-  // Handle italic with *
-  text = text.replace(/(?<!\*)\*([^*]+)\*(?!\*)/g, '<em>$1</em>');
+  // Handle italic with * (but not part of ** or ***)
+  text = text.replace(/(?<!\*)\*([^*\s][^*]*[^*\s]|\S)\*(?!\*)/g, '<em class="italic">$1</em>');
+  
+  // Handle inline code
+  text = text.replace(/`([^`]+)`/g, '<code class="hn-inline-code bg-muted px-1 py-0.5 rounded text-sm font-mono">$1</code>');
   
   // Handle links
   text = text.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" class="hn-link text-primary underline hover:no-underline">$1</a>');
@@ -418,19 +504,50 @@ const CalloutSection: React.FC<{ type: string; content: string }> = ({ type, con
   );
 };
 
-const CardSection: React.FC<{ card: CardData }> = ({ card }) => (
-  <div className="border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow bg-card">
-    {card.image && (
-      <div className="mb-4">
-        <img src={card.image} alt={card.title} className="w-full h-48 object-cover rounded-md" />
+const CardSection: React.FC<{ card: CardData & { href?: string } }> = ({ card }) => {
+  console.log('🎯 CardSection rendering card:', { title: card.title, href: card.href, hasHref: !!card.href });
+  
+  const cardContent = (
+    <div className="border rounded-lg p-6 shadow-sm hover:shadow-md transition-shadow bg-card">
+      {card.image && (
+        <div className="mb-4">
+          <img src={card.image} alt={card.title} className="w-full h-48 object-cover rounded-md" />
+        </div>
+      )}
+      <h3 className="text-lg font-semibold mb-2">{card.title}</h3>
+      <div className="prose prose-sm dark:prose-invert max-w-none">
+        {processInlineMarkdown(card.content)}
       </div>
-    )}
-    <h3 className="text-lg font-semibold mb-2">{card.title}</h3>
-    <div className="prose prose-sm dark:prose-invert max-w-none">
-      {processInlineMarkdown(card.content)}
     </div>
-  </div>
-);
+  );
+
+  // Make card clickable if it has an href
+  if (card.href) {
+    console.log('🎯 Making CardSection clickable with href:', card.href);
+    return (
+      <a 
+        href={card.href} 
+        target="_blank" 
+        rel="noopener noreferrer"
+        className="block no-underline hover:no-underline cursor-pointer transition-transform hover:scale-[1.02] hover:shadow-lg"
+        style={{ 
+          textDecoration: 'none !important',
+          color: 'inherit !important' 
+        }}
+        onClick={(e) => {
+          console.log('🎯 CardSection clicked! Opening:', card.href);
+          window.open(card.href, '_blank', 'noopener,noreferrer');
+          e.preventDefault();
+        }}
+      >
+        {cardContent}
+      </a>
+    );
+  }
+
+  console.log('🎯 CardSection non-clickable');
+  return cardContent;
+};
 
 const CardGroupSection: React.FC<{ cols: number; cards: CardData[] }> = ({ cols = 2, cards }) => (
   <div className={`grid gap-6 my-6 ${cols === 3 ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-3' : 'grid-cols-1 md:grid-cols-2'}`}>
@@ -548,8 +665,8 @@ const StepsSection: React.FC<{ steps: StepData[] }> = ({ steps }) => {
                 <h3 className="font-bold text-base text-slate-700 dark:text-slate-200 m-0">
                   {step.title}
                 </h3>
-                <div className="text-base text-slate-600 dark:text-slate-300 prose prose-sm dark:prose-invert max-w-none">
-                  {processInlineMarkdown(step.content)}
+                <div className="text-base text-slate-600 dark:text-slate-300">
+                  <MixedContentSection content={step.content} />
                 </div>
               </div>
             </div>
@@ -698,26 +815,26 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
   
   const allMatches: Array<{ match: RegExpMatchArray; type: string }> = [];
   
-  // Find CardGroups first
+  // Find Callouts first (they can be nested in other components)
   let match;
-  while ((match = cardGroupRegex.exec(content)) !== null) {
-    allMatches.push({ match, type: 'cardgroup' });
-  }
-  
-  // Find Steps
-  cardGroupRegex.lastIndex = 0;
-  while ((match = stepsRegex.exec(content)) !== null) {
-    allMatches.push({ match, type: 'steps' });
-  }
-  
-  // Find Callouts
-  stepsRegex.lastIndex = 0;
   while ((match = calloutRegex.exec(content)) !== null) {
     allMatches.push({ match, type: 'callout' });
   }
   
-  // Find standalone Cards (not inside CardGroups)
+  // Find Steps
   calloutRegex.lastIndex = 0;
+  while ((match = stepsRegex.exec(content)) !== null) {
+    allMatches.push({ match, type: 'steps' });
+  }
+  
+  // Find CardGroups
+  stepsRegex.lastIndex = 0;
+  while ((match = cardGroupRegex.exec(content)) !== null) {
+    allMatches.push({ match, type: 'cardgroup' });
+  }
+  
+  // Find standalone Cards (not inside CardGroups)
+  cardGroupRegex.lastIndex = 0;
   const cardGroupMatches = allMatches.filter(m => m.type === 'cardgroup');
   while ((match = standaloneCardRegex.exec(content)) !== null) {
     // Check if this card is inside a CardGroup
@@ -734,10 +851,10 @@ const MixedContentSection: React.FC<{ content: string }> = ({ content }) => {
   
   // Find Images (but exclude those inside Steps, CardGroups, or other components)
   standaloneCardRegex.lastIndex = 0;
-  const stepsMatches = allMatches.filter(m => m.type === 'steps');
+  const componentMatches = allMatches.filter(m => m.type === 'steps' || m.type === 'cardgroup');
   while ((match = imageRegex.exec(content)) !== null) {
     // Check if this image is inside any special component
-    const isInsideComponent = allMatches.some(componentMatch => {
+    const isInsideComponent = componentMatches.some(componentMatch => {
       const componentStart = componentMatch.match.index!;
       const componentEnd = componentStart + componentMatch.match[0].length;
       return match.index! >= componentStart && match.index! < componentEnd;

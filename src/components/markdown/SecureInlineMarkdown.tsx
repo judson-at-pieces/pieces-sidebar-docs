@@ -24,6 +24,8 @@ export const SecureInlineMarkdown: React.FC<SecureInlineMarkdownProps> = ({ cont
             return <strong key={index} className="font-semibold">{element.content}</strong>;
           case 'italic':
             return <em key={index} className="italic">{element.content}</em>;
+          case 'bold-italic':
+            return <strong key={index} className="font-semibold italic">{element.content}</strong>;
           case 'code':
             return (
               <code key={index} className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold">

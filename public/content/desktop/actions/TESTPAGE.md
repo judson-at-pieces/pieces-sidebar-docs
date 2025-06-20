@@ -1,9 +1,8 @@
 ---
-title: "Keyboard Shortcuts"
-path: "/desktop/actions/keyboard-shortcuts"
+title: "Component Test Page"
+path: "/desktop/TESTPAGE"
 visibility: "PUBLIC"
 ---
-***
 
 # Component Test Page
 
