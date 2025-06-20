@@ -3,15 +3,11 @@ title: "Keyboard Shortcuts"
 path: "/desktop/actions/keyboard-shortcuts"
 visibility: "PUBLIC"
 ---
----
-title: "Component Test Page - Fixed"
-path: "/desktop/TESTPAGE-FIXED"
-visibility: "PUBLIC"
----
+***
 
-# Component Test Page - Fixed
+# Component Test Page
 
-This page contains examples of all available components with corrected syntax for testing the markdown renderer.
+This page contains examples of all available components for testing the markdown renderer.
 
 ---
 
@@ -19,7 +15,7 @@ This page contains examples of all available components with corrected syntax fo
 
 This is a paragraph with **bold text**, *italic text*, and ***bold italic text***.
 
-Here's a [link to Pieces](https://pieces.app) and a link that opens in a new tab.
+Here's a [link to Pieces](https://pieces.app) and a <NewTab href="https://pieces.app">link that opens in a new tab</NewTab>.
 
 ### Lists
 
@@ -49,6 +45,9 @@ Here's a [link to Pieces](https://pieces.app) and a link that opens in a new tab
 
 ### Full Width Image
 <Image src="https://storage.googleapis.com/hashnode_product_documentation_assets/mcp_documentation/mcp_gh_copilot/mcp-2-1.png" alt="Full width image" align="center" fullwidth="true" />
+
+### Expandable Image
+<ExpandableImage src="https://storage.googleapis.com/hashnode_product_documentation_assets/mcp_documentation/mcp_gh_copilot/mcp-2-1.png" alt="Click to expand" caption="This image can be expanded by clicking on it" />
 
 ---
 
@@ -454,6 +453,36 @@ Multiple horizontal rules:
 ---
 
 ---
+
+---
+
+## Embedded Content
+
+### YouTube Video
+<Embed src="https://www.youtube.com/watch?v=dQw4w9WgXcQ" />
+
+---
+
+## Table of Contents
+
+<TableOfContents content={`
+# Table of Contents
+- [Introduction](#introduction)
+- [Getting Started](#getting-started)
+  - [Installation](#installation)
+  - [Configuration](#configuration)
+- [Features](#features)
+  - [Code Snippets](#code-snippets)
+  - [AI Assistance](#ai-assistance)
+- [Advanced Usage](#advanced-usage)
+`} />
+
+---
+
+## Special Components
+
+### Glossary (if available)
+<GlossaryAll />
 
 ---
 

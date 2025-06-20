@@ -8,11 +8,6 @@ import { SecureInlineMarkdown } from './SecureInlineMarkdown';
 import { NewTab } from './NewTab';
 import { sanitizeText } from '@/utils/secureMarkdownProcessor';
 import { X } from 'lucide-react';
-import { TableOfContents } from './TableOfContents';
-import { GlossaryAll } from './GlossaryAll';
-import { Embed } from './Embed';
-import Accordion from './Accordion';
-import AccordionGroup from './AccordionGroup';
 
 // Constants
 const SECTION_DELIMITER = '***';
@@ -28,12 +23,9 @@ const BUTTON_PATTERN = '<Button';
 const STEPS_PATTERN = '<Steps';
 const CARD_PATTERN = '<Card';
 const NEWTAB_PATTERN = '<new-tab'; // Add new-tab pattern
-const TABLEOFCONTENTS_PATTERN = '<TableOfContents';
-const GLOSSARYALL_PATTERN = '<GlossaryAll';
-const EMBED_PATTERN = '<Embed';
 
 // Types
-type SectionType = 'frontmatter' | 'image' | 'cardgroup' | 'callout' | 'accordion' | 'accordiongroup' | 'tabs' | 'button' | 'steps' | 'card' | 'markdown' | 'mixed' | 'tableofcontents' | 'glossaryall' | 'embed';
+type SectionType = 'frontmatter' | 'image' | 'cardgroup' | 'callout' | 'accordion' | 'accordiongroup' | 'tabs' | 'button' | 'steps' | 'card' | 'markdown' | 'mixed';
 type ListType = 'ordered' | 'unordered' | null;
 
 interface ParsedSection {
@@ -134,18 +126,6 @@ const parseSections = (text: string): ParsedSection[] => {
     if (section.startsWith(CALLOUT_PATTERN) && !hasSteps && !hasCardGroup) {
       console.log('💬 Found pure Callout section');
       return { type: 'callout', content: section, index };
-    }
-    if (section.startsWith(TABLEOFCONTENTS_PATTERN)) {
-      console.log('📑 Found TableOfContents section');
-      return { type: 'tableofcontents', content: section, index };
-    }
-    if (section.startsWith(GLOSSARYALL_PATTERN)) {
-      console.log('📚 Found GlossaryAll section');
-      return { type: 'glossaryall', content: section, index };
-    }
-    if (section.startsWith(EMBED_PATTERN)) {
-      console.log('📹 Found Embed section');
-      return { type: 'embed', content: section, index };
     }
     
     console.log('📝 Found markdown section');
@@ -250,34 +230,22 @@ const parseCardGroup = (content: string): CardGroupData => {
 interface AccordionData {
   title: string;
   content: string;
-  defaultOpen?: boolean;
 }
 
 const parseAccordion = (content: string): AccordionData => {
   const titleMatch = content.match(/title="([^"]*)"/);
   const contentMatch = content.match(/<Accordion[^>]*>([\s\S]*?)<\/Accordion>/);
-  const defaultOpenMatch = content.match(/defaultOpen={?(true|false)}?/);
   
   return {
     title: titleMatch?.[1] || '',
-    content: contentMatch?.[1]?.trim() || '',
-    defaultOpen: defaultOpenMatch ? defaultOpenMatch[1] === 'true' : undefined
+    content: contentMatch?.[1]?.trim() || ''
   };
 };
 
 // Parse AccordionGroup
-interface AccordionGroupData {
-  accordions: AccordionData[];
-  allowMultiple?: boolean;
-}
-
-const parseAccordionGroup = (content: string): AccordionGroupData => {
+const parseAccordionGroup = (content: string): AccordionData[] => {
   const accordionRegex = /<Accordion\s+([^>]*)>([\s\S]*?)<\/Accordion>/g;
   const accordions: AccordionData[] = [];
-  
-  // Check for allowMultiple attribute
-  const allowMultipleMatch = content.match(/allowMultiple={?(true|false)}?/);
-  const allowMultiple = allowMultipleMatch ? allowMultipleMatch[1] === 'true' : undefined;
   
   let match: RegExpExecArray | null;
   while ((match = accordionRegex.exec(content)) !== null) {
@@ -287,17 +255,13 @@ const parseAccordionGroup = (content: string): AccordionGroupData => {
     const titleMatch = attributes.match(/title="([^"]*)"/);
     const title = titleMatch ? titleMatch[1] : '';
     
-    const defaultOpenMatch = attributes.match(/defaultOpen={?(true|false)}?/);
-    const defaultOpen = defaultOpenMatch ? defaultOpenMatch[1] === 'true' : undefined;
-    
     accordions.push({
       title,
-      content: innerContent,
-      defaultOpen
+      content: innerContent
     });
   }
   
-  return { accordions, allowMultiple };
+  return accordions;
 };
 
 // Parse Tabs
@@ -352,34 +316,6 @@ const parseButton = (content: string): ButtonData => {
     align: alignMatch?.[1] || 'left',
     lightColor: lightColorMatch?.[1],
     darkColor: darkColorMatch?.[1]
-  };
-};
-
-// Parse TableOfContents
-const parseTableOfContents = (content: string) => {
-  // Match content prop with template literal
-  const contentMatch = content.match(/content=\{`([^`]*)`\}/s);
-  if (contentMatch) {
-    return contentMatch[1];
-  }
-  // Try regular string prop
-  const stringMatch = content.match(/content="([^"]*)"/);
-  return stringMatch ? stringMatch[1] : '';
-};
-
-// Parse Embed
-interface EmbedData {
-  src: string;
-  title?: string;
-}
-
-const parseEmbed = (content: string): EmbedData => {
-  const srcMatch = content.match(/src="([^"]*)"/);
-  const titleMatch = content.match(/title="([^"]*)"/);
-  
-  return {
-    src: srcMatch?.[1] || '',
-    title: titleMatch?.[1]
   };
 };
 
@@ -577,26 +513,37 @@ const CardGroupSection: React.FC<{ cols: number; cards: CardData[] }> = ({ cols 
 
 // Parse Accordion
 const AccordionSection: React.FC<{ accordion: AccordionData }> = ({ accordion }) => {
-  console.log('📂 AccordionSection rendering:', { title: accordion.title, content: accordion.content, defaultOpen: accordion.defaultOpen });
+  const [isOpen, setIsOpen] = useState(false);
+  
+  console.log('📂 AccordionSection rendering:', { title: accordion.title, content: accordion.content });
   
   return (
-    <Accordion title={accordion.title} defaultOpen={accordion.defaultOpen}>
-      {processInlineMarkdown(accordion.content)}
-    </Accordion>
+    <div className="hn-accordion">
+      <button 
+        className="hn-accordion-trigger" 
+        onClick={() => setIsOpen(!isOpen)}
+      >
+        {accordion.title}
+        <span className={`hn-accordion-icon ${isOpen ? 'open' : ''}`}>▼</span>
+      </button>
+      {isOpen && (
+        <div className="hn-accordion-content">
+          {processInlineMarkdown(accordion.content)}
+        </div>
+      )}
+    </div>
   );
 };
 
 // Parse AccordionGroup
-const AccordionGroupSection: React.FC<{ accordionGroup: AccordionGroupData }> = ({ accordionGroup }) => {
-  console.log('📁 AccordionGroupSection rendering:', { count: accordionGroup.accordions.length, allowMultiple: accordionGroup.allowMultiple });
+const AccordionGroupSection: React.FC<{ accordions: AccordionData[] }> = ({ accordions }) => {
+  console.log('📁 AccordionGroupSection rendering:', { count: accordions.length });
   return (
-    <AccordionGroup allowMultiple={accordionGroup.allowMultiple}>
-      {accordionGroup.accordions.map((accordion, index) => (
-        <Accordion key={index} title={accordion.title} defaultOpen={accordion.defaultOpen}>
-          {processInlineMarkdown(accordion.content)}
-        </Accordion>
+    <div className="hn-accordion-group">
+      {accordions.map((accordion, index) => (
+        <AccordionSection key={index} accordion={accordion} />
       ))}
-    </AccordionGroup>
+    </div>
   );
 };
 
@@ -1196,7 +1143,7 @@ const HashnodeMarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) 
       
       case 'accordiongroup': {
         const accordionGroupData = parseAccordionGroup(section.content);
-        result = <AccordionGroupSection key={section.index} accordionGroup={accordionGroupData} />;
+        result = <AccordionGroupSection key={section.index} accordions={accordionGroupData} />;
         break;
       }
       
@@ -1222,26 +1169,6 @@ const HashnodeMarkdownRenderer: React.FC<MarkdownRendererProps> = ({ content }) 
       case 'mixed': {
         console.log('🔀 Rendering MixedContentSection');
         result = <MixedContentSection key={section.index} content={section.content} />;
-        break;
-      }
-      
-      case 'tableofcontents': {
-        const tocContent = parseTableOfContents(section.content);
-        console.log('📑 Rendering TableOfContents with content:', tocContent.substring(0, 100));
-        result = <TableOfContents key={section.index} content={tocContent} />;
-        break;
-      }
-      
-      case 'glossaryall': {
-        console.log('📚 Rendering GlossaryAll');
-        result = <GlossaryAll key={section.index} />;
-        break;
-      }
-      
-      case 'embed': {
-        const embedData = parseEmbed(section.content);
-        console.log('📹 Rendering Embed with src:', embedData.src);
-        result = <Embed key={section.index} src={embedData.src} title={embedData.title} />;
         break;
       }
         
